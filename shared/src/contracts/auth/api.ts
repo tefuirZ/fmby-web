@@ -54,12 +54,33 @@ export interface RegisterResponse {
   user?: User | null;
 }
 
+export interface MeResponse {
+  userId: number;
+  capabilities: string[];
+  user?: User;
+}
+
+export function mapMeResponse(raw: unknown): MeResponse {
+  const record = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  const userId = typeof record.user_id === 'number' ? record.user_id : typeof record.userId === 'number' ? record.userId : 0;
+  const capabilities = Array.isArray(record.capabilities) ? record.capabilities.filter((c): c is string => typeof c === 'string') : [];
+  return {
+    userId,
+    capabilities,
+  };
+}
+
 /* ---- API 方法 ---- */
 
 export const authApi = {
   /** 用户登录 */
   login(data: LoginRequest) {
     return httpClient.post<AuthResponse>('/api/auth/login', { body: data });
+  },
+
+  /** 当前会话与能力检查（docs/interfaces/webui.md） */
+  me() {
+    return httpClient.get<MeResponse>('/api/auth/me');
   },
 
   /** 使用注册码注册 */
@@ -72,7 +93,7 @@ export const authApi = {
     return httpClient.post<AuthResponse>('/api/auth/setup', { body: data });
   },
 
-  /** 获取当前会话 */
+  /** 获取当前会话（兼容） */
   getSession() {
     return httpClient.get<SessionResponse>('/api/session');
   },
@@ -82,8 +103,13 @@ export const authApi = {
     return httpClient.get<SetupStatusResponse>('/api/auth/entry/status');
   },
 
-  /** 登出当前会话 */
-  logout() {
-    return httpClient.delete<LogoutResponse>('/api/auth/logout');
+  /** 登出当前会话（docs/interfaces/webui.md POST /api/auth/logout） */
+  async logout() {
+    try {
+      await httpClient.post<void>('/api/auth/logout');
+    } catch {
+      await httpClient.delete<LogoutResponse>('/api/auth/logout');
+    }
   },
 };
+

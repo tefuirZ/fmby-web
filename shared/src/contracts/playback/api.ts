@@ -8,7 +8,14 @@ import {
   ticksToSeconds,
 } from '@fmby/v2-shared/api/mapping';
 import { mapArtwork } from '@fmby/v2-shared/contracts/assets';
-import type { PlaybackProgressUpdate, PlaybackSession, PlaybackTrack } from './types';
+import type {
+  PlaybackProgressUpdate,
+  PlaybackReportRequest,
+  PlaybackResolveRequest,
+  PlaybackSession,
+  PlaybackTarget,
+  PlaybackTrack,
+} from './types';
 
 type PlaybackSourceRecord = Record<string, unknown>;
 
@@ -67,7 +74,44 @@ export const playbackApi = {
       },
     });
   },
+
+  /** 播放端点解析（docs/interfaces/webui.md） */
+  async resolve(payload: PlaybackResolveRequest): Promise<PlaybackTarget> {
+    const raw = await httpClient.post<unknown>('/api/playback/resolve', {
+      body: {
+        variant_id: payload.variantId,
+        variantId: payload.variantId,
+      },
+    });
+    return mapPlaybackTarget(raw);
+  },
+
+  /** 播放会话进度上报（docs/interfaces/webui.md） */
+  async report(payload: PlaybackReportRequest): Promise<void> {
+    await httpClient.post('/api/playback/report', {
+      body: {
+        session_id: payload.sessionId,
+        sessionId: payload.sessionId,
+        progress: payload.progress,
+        completed: payload.completed ?? false,
+      },
+    });
+  },
 };
+
+export function mapPlaybackTarget(raw: unknown): PlaybackTarget {
+  const record = asRecord(raw);
+  const rawKind = readString(record.kind, record.type) ?? 'direct';
+  const kind: PlaybackTarget['kind'] =
+    rawKind === 'hls' || rawKind === 'dash' || rawKind === 'external' ? rawKind : 'direct';
+
+  return {
+    urlRef: readString(record.url_ref, record.urlRef, record.url, record.stream_url) ?? '',
+    kind,
+    format: readString(record.format, record.container),
+    headers: asRecord(record.headers) as Record<string, string>,
+  };
+}
 
 function mapPlaybackSession(raw: unknown, requestedItemId: string): PlaybackSession {
   const record = asRecord(raw);

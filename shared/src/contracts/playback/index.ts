@@ -1,2 +1,10 @@
-export { playbackApi } from './api';
-export type { PlaybackProgressUpdate, PlaybackSession, PlaybackTrack } from './types';
+export { playbackApi, mapPlaybackTarget } from './api';
+export type {
+  PlaybackProgressUpdate,
+  PlaybackReportRequest,
+  PlaybackResolveRequest,
+  PlaybackSession,
+  PlaybackTarget,
+  PlaybackTrack,
+} from './types';
+

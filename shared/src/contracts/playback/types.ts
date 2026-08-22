@@ -37,3 +37,21 @@ export interface PlaybackProgressUpdate {
   paused?: boolean;
   completed?: boolean;
 }
+
+export interface PlaybackResolveRequest {
+  variantId: string;
+}
+
+export interface PlaybackTarget {
+  urlRef: string;
+  kind: 'direct' | 'hls' | 'dash' | 'external';
+  format?: string;
+  headers?: Record<string, string>;
+}
+
+export interface PlaybackReportRequest {
+  sessionId: string;
+  progress: number;
+  completed?: boolean;
+}
+

@@ -7,7 +7,7 @@
  * - 认证相关类型
  */
 
-export { authApi } from './api';
+export { authApi, mapMeResponse } from './api';
 export type {
   LoginRequest,
   RegisterRequest,
@@ -15,6 +15,7 @@ export type {
   SetupRequest,
   AuthResponse,
   SetupStatusResponse,
+  MeResponse,
 } from './api';
 export {
   loginSchema,
