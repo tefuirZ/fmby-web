@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { manageApi } from '@fmby/v2-shared/contracts/manage/api';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
 import { namingCleanupApi } from '@fmby/v2-shared/contracts/manage/naming';
 import { queryKeys } from '@fmby/v2-shared/query';
 import type {
