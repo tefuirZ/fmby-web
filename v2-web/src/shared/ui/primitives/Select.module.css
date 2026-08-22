@@ -1,0 +1,93 @@
+/*
+ * Darkroom · 下拉选择
+ * ------------------------------------------------------------
+ * trigger 与 Field 输入框共用同一套语汇（同高、同边线档位），
+ * 保证一行里输入框和下拉并排时不会一深一浅。
+ * 弹出层用实底 —— 下拉浮在内容之上，半透明会直接把下面的字读进来。
+ */
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 38px;
+  min-width: 140px;
+  padding: 0 var(--space-3);
+  background: var(--surface-1);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-size: var(--text-body);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default);
+}
+
+.trigger:hover:not([data-disabled]) {
+  border-color: var(--border-default);
+  background: var(--surface-2);
+}
+
+.trigger[data-placeholder] {
+  color: var(--text-3);
+}
+
+.trigger[data-disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chevron {
+  display: inline-flex;
+  color: var(--text-3);
+}
+
+.content {
+  z-index: var(--z-dropdown);
+  min-width: var(--radix-select-trigger-width);
+  max-height: var(--radix-select-content-available-height);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-l2);
+  overflow: hidden;
+}
+
+.viewport {
+  padding: var(--space-1);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body);
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+.item[data-highlighted] {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+/* 已选项用内容主色标记（管理页下即安全灯），与全站选中态一致 */
+.item[data-state='checked'] {
+  color: var(--content-accent);
+}
+
+.item[data-disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.indicator {
+  display: inline-flex;
+  color: var(--content-accent);
+}

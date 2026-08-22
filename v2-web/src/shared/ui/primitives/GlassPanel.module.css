@@ -1,0 +1,19 @@
+/*
+ * Darkroom：GlassPanel 去玻璃化。
+ * data-variant="blur" 语义改为「浮层」—— 不再模糊背景，而是给一层实底，
+ * 保证纯黑画布上的对话框/抽屉能被看见。
+ */
+
+.panel {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  color: var(--text-1);
+}
+
+.panel[data-variant='blur'] {
+  background: var(--bg-raised);
+  border-color: var(--border-muted);
+  box-shadow: var(--shadow-l2);
+}

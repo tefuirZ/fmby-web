@@ -1,0 +1,28 @@
+/*
+ * Darkroom · 错误边界的重试按钮
+ * ------------------------------------------------------------
+ * 与 primitives/Button 的 primary 保持完全一致：白底黑字。
+ * 页面已经崩到只剩这一颗按钮，它必须是整屏最亮的东西。
+ */
+
+.retryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--brand-gold);
+  color: var(--bg-base);
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.retryButton:hover {
+  background: var(--brand-gold-hover);
+}
+
+.retryButton:active {
+  background: var(--brand-gold-active);
+}

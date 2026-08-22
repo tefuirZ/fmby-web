@@ -1,0 +1,432 @@
+/*
+ * Darkroom · 设置中心（布局 + 分区 + 表单行）
+ * ------------------------------------------------------------
+ * 设置页是纯信息密度场景，暗房在这里做的事就是把原来层层嵌套的
+ * 玻璃卡片拆掉，只留三样东西：
+ *   一条竖线分栏（.nav 的右边线）、
+ *   一条横线分节（.sectionCard 的上边线）、
+ *   足够的留白。
+ *
+ * 侧栏选中态的处理是这一页的核心细节：选中项点亮它在分栏细线上的
+ * 那一段，而不是给自己套一个背景块 —— 导航因此始终是「一条线」，
+ * 不会退回卡片。
+ *
+ * 全页唯一保留实底的是 .stickyBar，因为它悬浮在滚动内容之上，
+ * 必须真正遮住背后的东西。
+ */
+
+/* ---------- 布局 ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: var(--space-10);
+  align-items: start;
+  width: 100%;
+}
+
+/* 侧栏不是卡片，只是一列贴着分栏线的链接 */
+.nav {
+  position: sticky;
+  /* 与 TopBar 共用高度 token，顶栏改高时这里不会脱节 */
+  top: calc(var(--topbar-height-desktop) + var(--space-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-1) 0 var(--space-4);
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border-subtle);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navLabel {
+  padding: 0 var(--space-4) var(--space-2) var(--space-1);
+  font-size: 11px;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+.navLink {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-1);
+  border: none;
+  /* 选中标记压在分栏线上：-1px 让两条线严丝合缝地重合 */
+  border-right: 1px solid transparent;
+  margin-right: -1px;
+  border-radius: 0;
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-normal);
+  text-decoration: none;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.navLink:hover {
+  background: var(--surface-1);
+  color: var(--text-2);
+}
+
+/* 选中项：亮起分栏线的一段 + 提亮文字，不加背景块 */
+.navLinkActive,
+.navLinkActive:hover {
+  background: none;
+  border-right-color: var(--content-accent);
+  color: var(--text-1);
+}
+
+.navDescription {
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5;
+  color: var(--text-4);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.mobileNav {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .mobileNav {
+    display: flex;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding: 0 0 var(--space-2);
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    scrollbar-width: none;
+  }
+
+  .mobileNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 横向导航里分栏线变成底线，选中标记跟着换到下边 */
+  .mobileNav .navLink {
+    flex: 0 0 auto;
+    min-width: 132px;
+    padding: var(--space-2);
+    border-right: none;
+    margin-right: 0;
+    border-bottom: 1px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .mobileNav .navLinkActive {
+    border-bottom-color: var(--content-accent);
+  }
+}
+
+/* ---------- 页面骨架 ---------- */
+.pageSections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: 88px; /* 给 stickyBar 留出空间 */
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-2);
+}
+
+.pageHeaderContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* kicker：宽字距小字，不占用强调色 */
+.pageEyebrow {
+  font-size: 11px;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-1);
+}
+
+.pageDescription {
+  margin: 0;
+  max-width: 640px;
+  font-size: var(--text-body-sm);
+  line-height: 1.75;
+  color: var(--text-3);
+}
+
+.pageMeta {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: none;
+  font-size: var(--text-caption);
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* ---------- 分区：一条上线 + 留白，不是卡片 ---------- */
+.sectionCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-8) 0 var(--space-2);
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+}
+
+.sectionDescription {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.7;
+  color: var(--text-3);
+}
+
+/* ---------- 表单 ---------- */
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-5);
+}
+
+/*
+ * .field 是 <label>，输入控件是它的子节点，
+ * 因此这里不设 letter-spacing（会被输入框继承，拉散用户输入的文字）。
+ */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-normal);
+  color: var(--text-2);
+}
+
+.fieldSpan {
+  grid-column: 1 / -1;
+}
+
+.fieldHint {
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* 行与行之间用细线分隔，不再每行套一个盒子 */
+.compactList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* compactList 里偶尔混入普通字段（如“维护横幅”），补回竖向呼吸 */
+.compactList > .field {
+  padding: var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.switchRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-2);
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.switchRow:hover {
+  background: var(--surface-1);
+}
+
+.switchBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-body);
+  color: var(--text-2);
+}
+
+/* 层级靠亮度而不是字重 */
+.switchBody strong {
+  font-weight: var(--font-weight-normal);
+  color: var(--text-1);
+}
+
+.reorderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-2);
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.reorderRow:hover {
+  background: var(--surface-1);
+}
+
+/* 每组最后一行不收尾线，避免和分区上线撞成双线 */
+.compactList > .field:last-child,
+.switchRow:last-child,
+.reorderRow:last-child {
+  border-bottom-color: transparent;
+}
+
+/* 高危操作：不画虚线框，用一块极微提亮的面把它从表单里陷下去 */
+.ipRiskResetPanel {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-4);
+  border: none;
+  border-left: 2px solid var(--border-default);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-1);
+}
+
+.ipRiskResetPanel .field {
+  flex: 1 1 260px;
+}
+
+/* ---------- 局部提示 ---------- */
+.softNotice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-4);
+  border: none;
+  border-left: 2px solid var(--border-default);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-1);
+  font-size: var(--text-body-sm);
+  color: var(--text-3);
+}
+
+/* ---------- Sticky 保存条 ---------- */
+/*
+ * 全页唯一的实底浮层：它压在滚动内容之上，必须遮得住背后。
+ * 用 --glass-bg-strong 实底 + 一条细线 + 投影代替原来的毛玻璃。
+ * z-index 保持 20（低于 --z-dropdown），确保 Select 之类的弹层
+ * 始终盖在保存条上面。
+ */
+.stickyBar {
+  position: sticky;
+  bottom: var(--space-4);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-l2);
+}
+
+.stickyText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-body);
+  color: var(--text-1);
+}
+
+.stickyText strong {
+  font-weight: var(--font-weight-normal);
+}
+
+.stickyHint {
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.stickyActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .pageSections {
+    padding-bottom: 120px;
+  }
+
+  .stickyBar {
+    bottom: var(--space-2);
+  }
+
+  .stickyActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

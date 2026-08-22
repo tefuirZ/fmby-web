@@ -1,0 +1,1198 @@
+/*
+ * Darkroom · 播放页
+ * ------------------------------------------------------------
+ * 这一页是暗房里的「沉浸态」：PlayPage.tsx 根节点挂了 data-surface="immersive"，
+ * 环境光已经关闭（--ambient-strength: 0）。因此整页只剩两类东西：
+ *   1. 画面本身 —— .videoBox 里的播放器，是全页唯一的光源；
+ *   2. 需要时才浮现的 chrome —— 顶部页头、剧集抽屉、画面下方的信息行。
+ *
+ * chrome 一律去掉底色、描边、毛玻璃与卡片圆角，只靠「极细线 + 留白 + 亮度」
+ * 分层；原 aurora-glass 的紫/青极光点缀全部移除。
+ * 类名与 PlayPage.tsx、play/PlayPanels.tsx、play/ExternalPlayerBar.tsx 完全一致。
+ */
+
+/* ============================================================
+ * 页面骨架
+ * ============================================================ */
+
+.page {
+  min-height: 100svh;
+  /* 沉浸态没有任何背景装饰，纯黑画布直接托住画面 */
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-10);
+  color: var(--text-1);
+  overflow-x: hidden;
+}
+
+/*
+ * 页头：不用底色块也不用毛玻璃，改成一段「黑 → 透明」的渐隐。
+ * 页面滚动时内容从下方溶进纯黑，chrome 本身看不见边界。
+ */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) clamp(16px, 3vw, 32px);
+  border-bottom: none;
+  background: linear-gradient(
+    180deg,
+    var(--bg-base) 0%,
+    var(--bg-base) 64%,
+    transparent 100%
+  );
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 40;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle {
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.playbackShell {
+  width: min(1680px, calc(100% - 32px));
+  margin: 0 auto;
+  padding-top: clamp(76px, 7.5vh, 104px);
+}
+
+.playbackLayout {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 2vw, 28px);
+}
+
+.playbackStage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(18px, 2vw, 28px);
+  align-items: stretch;
+}
+
+.playbackMain {
+  min-width: 0;
+  width: min(100%, 1480px);
+  margin: 0 auto;
+}
+
+.playbackStage[data-has-sidebar='true'] .playbackMain {
+  width: 100%;
+}
+
+.playbackDetails {
+  width: 100%;
+  margin: 0;
+}
+
+.videoWrap {
+  width: 100%;
+  margin: 0;
+}
+
+/*
+ * 画框：暗房里画面不需要被「框」起来。
+ * 去掉描边、内高光与大圆角；黑边视频与纯黑页面直接连成一片，
+ * 只在画面有内容的地方才出现边界。投影在纯黑上不可见，一并去掉。
+ */
+.videoBox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0 auto;
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: none;
+  box-shadow: none;
+}
+
+.playerInner {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================================
+ * 播放器内核皮肤（DPlayer / ArtPlayer）
+ * ------------------------------------------------------------
+ * 这一段的控件叠在任意一帧画面之上，而不是叠在纯黑上。
+ * --surface-* / --border-* 是按纯黑底校准的，放到亮画面上会直接消失，
+ * 所以此处保留少量固定 rgba —— 它们必须自带对比度。
+ * 唯一跟随主题的是进度与滑块，用 --content-accent（token 明确允许的用途）。
+ * ============================================================ */
+
+.playerInner :global(.dplayer),
+.playerInner :global(.dplayer-video-wrap),
+.playerInner :global(.dplayer-video),
+.playerInner :global(.dplayer-video-wrap video) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.playerInner :global(.dplayer) {
+  background: transparent !important;
+  font-family: inherit;
+}
+
+.playerInner :global(.dplayer-video) {
+  object-fit: contain;
+  background: var(--bg-base);
+}
+
+.playerInner :global(.dplayer-mask) {
+  background: transparent !important;
+}
+
+/* 控件区压黑：保证任意亮画面下控件都可读，属于功能性遮罩而非装饰 */
+.playerInner :global(.dplayer-controller-mask) {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    transparent 58%,
+    rgba(0, 0, 0, 0.86) 100%
+  ) !important;
+}
+
+.playerInner :global(.dplayer-controller) {
+  background: transparent !important;
+  padding: 0 16px 14px !important;
+}
+
+.playerInner :global(.dplayer-bar-wrap) {
+  padding: 10px 0 12px !important;
+}
+
+/* 进度条压扁：暗房里控件越薄越好，轨道保持 pill 形以免看着断续 */
+.playerInner :global(.dplayer-bar-wrap .dplayer-bar) {
+  height: 4px !important;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.playerInner :global(.dplayer-loaded) {
+  background: rgba(255, 255, 255, 0.32) !important;
+}
+
+.playerInner :global(.dplayer-played) {
+  background: var(--content-accent) !important;
+}
+
+.playerInner :global(.dplayer-thumb) {
+  width: 11px !important;
+  height: 11px !important;
+  margin-top: -3.5px !important;
+  border-radius: var(--radius-full);
+  background: var(--content-accent) !important;
+  /* 拖拽点的外圈只是命中提示，跟随内容主色，不再是紫色光环 */
+  box-shadow: 0 0 0 4px rgb(var(--content-accent-rgb) / 0.22);
+}
+
+.playerInner :global(.dplayer-icon) {
+  color: rgba(255, 255, 255, 0.86) !important;
+  opacity: 0.9;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+/* 悬停只改亮度，不做位移 */
+.playerInner :global(.dplayer-icon:hover) {
+  opacity: 1;
+}
+
+/* 播放器自带的下拉/菜单同样走「实底浮层」，不用半透明也不用模糊 */
+.playerInner :global(.dplayer-setting-box),
+.playerInner :global(.dplayer-quality-mask),
+.playerInner :global(.dplayer-menu) {
+  background: var(--glass-bg-strong) !important;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-l2);
+}
+
+.playerInner :global(.dplayer-menu-item),
+.playerInner :global(.dplayer-quality-item),
+.playerInner :global(.dplayer-setting-origin-panel li) {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.playerInner :global(.dplayer-menu-item:hover),
+.playerInner :global(.dplayer-quality-item:hover),
+.playerInner :global(.dplayer-setting-origin-panel li:hover) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+}
+
+/* 字幕描边：叠在画面上，必须保留黑色投影才读得清 */
+.playerInner :global(.dplayer-subtitle) {
+  font-size: clamp(19px, 1.55vw, 28px) !important;
+  font-weight: var(--font-weight-medium);
+  bottom: 7.5% !important;
+  text-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.95),
+    0 0 1px rgba(0, 0, 0, 0.95);
+}
+
+/* 中央的播放/暂停提示：叠在画面上，用黑底而不是灰蓝底 */
+.playerInner :global(.dplayer-bezel) {
+  background: rgba(0, 0, 0, 0.62) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.playerInner :global(.artplayer),
+.playerInner :global(.art-video),
+.playerInner :global(.art-video-player) {
+  width: 100% !important;
+  height: 100% !important;
+  background: var(--bg-base) !important;
+  font-family: inherit;
+}
+
+.playerInner :global(.art-video) {
+  object-fit: contain;
+}
+
+.playerInner :global(.art-bottom) {
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.88)) !important;
+}
+
+.playerInner :global(.art-control),
+.playerInner :global(.art-controls) {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.playerInner :global(.art-progress-played),
+.playerInner :global(.art-volume-current) {
+  background: var(--content-accent) !important;
+}
+
+.playerInner :global(.art-setting),
+.playerInner :global(.art-contextmenus) {
+  border: 1px solid var(--border-muted) !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--glass-bg-strong) !important;
+  box-shadow: var(--shadow-l2);
+}
+
+.playerInner :global(.art-subtitle) {
+  font-size: clamp(19px, 1.55vw, 28px) !important;
+  font-weight: var(--font-weight-medium);
+  text-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.95),
+    0 0 1px rgba(0, 0, 0, 0.95);
+}
+
+/* ============================================================
+ * 不兼容提示（占据画框位置）
+ * ============================================================ */
+
+.incompatOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: clamp(24px, 5%, 48px);
+  text-align: center;
+  /* 播放失败时画框回落成纯黑，不用色雾去「装饰」一个错误 */
+  background: var(--bg-base);
+}
+
+/* 从「红色圆形徽标」退化为一个裸图标：暗房里状态靠颜色本身表达 */
+.incompatIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+.incompatTitle {
+  font-size: clamp(16px, 2.2vw, 22px);
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-1);
+  margin: 0;
+}
+
+.incompatHint {
+  font-size: clamp(12px, 1.4vw, 14px);
+  color: var(--text-3);
+  max-width: 560px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.incompatActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* ============================================================
+ * 画面下方的信息行
+ * ------------------------------------------------------------
+ * 原本 .infoBar / .playerBar / .playbackNotice / .overviewPanel 各是一张
+ * 圆角卡片。暗房里它们退化为同一根竖直流里的「行」，彼此只用一条
+ * --border-subtle 分开，宽度撑满，视觉上完全让位给上方的画面。
+ * ============================================================ */
+
+.infoBar,
+.playerBar,
+.playbackNotice,
+.overviewPanel {
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.infoBar {
+  padding: var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.formatBadges {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/*
+ * 规格标记不再是胶囊色块：改成宽字距小字，靠字距而不是边框把它们分开。
+ * 语义状态（不兼容 / 待确认）改由文字颜色承担。
+ */
+.badge {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.badgeWarn {
+  color: var(--danger);
+}
+
+.badgeNotice {
+  color: var(--warning);
+}
+
+.playbackNotice {
+  padding: var(--space-4) 0;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+/* 提示图标同样脱掉圆形底：只是一个安静的记号 */
+.playbackNoticeIcon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: 0;
+  border: none;
+  background: none;
+  color: var(--text-3);
+}
+
+.playbackNoticeBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 层级靠亮度而不是颜色：标题用最亮的一档，正文退到 text-3 */
+.playbackNoticeTitle {
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+}
+
+.playbackNoticeText {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  line-height: 1.65;
+}
+
+.externalActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+ * 剧集队列 / 相关推荐抽屉
+ * ============================================================ */
+
+.sidebarColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 遮罩靠加黑把注意力交给抽屉，不再用模糊 */
+.queueBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  border: 0;
+  background: rgba(0, 0, 0, 0.72);
+  cursor: pointer;
+}
+
+.sidebarDrawer {
+  position: fixed;
+  top: 76px;
+  right: clamp(16px, 3vw, 36px);
+  bottom: 28px;
+  z-index: 45;
+  width: min(390px, calc(100vw - 32px));
+  animation: queue-drawer-enter var(--duration-panel) var(--ease-default);
+}
+
+.sidebarDrawer .sidebarSection {
+  height: 100%;
+}
+
+/*
+ * 抽屉是全页唯一需要「从黑里抬起来」的面：用实底 --bg-raised，
+ * 不用半透明也不用模糊，否则纯黑背景下抽屉会糊成一团。
+ */
+.sidebarSection {
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-l3);
+}
+
+.sidebarSectionFill {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sidebarSectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* 面板标题走暗房的「宽字距小标签」，不再是粗体大字 */
+.sidebarSectionTitle {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-2);
+}
+
+.sidebarSectionDescription {
+  margin: 0;
+  color: var(--text-4);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.sidebarCardList,
+.episodeQueue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.episodeListScroller {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+  margin-right: -6px;
+  scrollbar-width: thin;
+  /* 滚动条也去色：暗房里没有紫色渐变把手 */
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.episodeListScroller::-webkit-scrollbar {
+  width: 6px;
+}
+
+.episodeListScroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.episodeListScroller::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+  border: none;
+}
+
+.episodeListScroller::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* 推荐条目不再是卡片：去掉底色与描边，靠海报和留白分组 */
+.sidebarMediaCard {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-radius: 0;
+  background: none;
+  border: none;
+}
+
+.sidebarPosterLink {
+  display: block;
+  text-decoration: none;
+}
+
+.sidebarPosterWrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.sidebarPoster,
+.sidebarPosterFallback {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--surface-2);
+  display: block;
+}
+
+.sidebarPosterFallback {
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+}
+
+.sidebarMediaBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sidebarMediaEyebrow {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-4);
+}
+
+.sidebarMediaTitleLink {
+  color: var(--text-1);
+  text-decoration: none;
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5;
+}
+
+.sidebarMediaTitleLink:hover {
+  color: #fff;
+}
+
+.sidebarMediaMeta {
+  color: var(--text-3);
+  font-size: var(--text-caption);
+}
+
+/* 行动链接不再用紫色：暗房里「可点」用亮度差表示 */
+.sidebarActionLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-2);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.sidebarActionLink:hover {
+  color: #fff;
+}
+
+/* 剧集条目：只保留一条底部细线做节奏，悬停提亮底面，不做位移 */
+.episodeQueueItem {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+  background: none;
+  border: none;
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.episodeQueueItem:hover {
+  background: var(--surface-1);
+}
+
+.episodeQueuePoster,
+.episodeQueuePosterFallback {
+  width: 64px;
+  height: 88px;
+  object-fit: cover;
+  background: var(--surface-2);
+  display: block;
+}
+
+.episodeQueuePosterWrap {
+  position: relative;
+  overflow: hidden;
+  width: 64px;
+  height: 88px;
+  border-radius: var(--radius-sm);
+}
+
+.episodeQueuePosterFallback {
+  display: grid;
+  place-items: center;
+  font-size: 1.05rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+}
+
+.episodeQueueBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.episodeQueueLabel {
+  color: var(--text-4);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.episodeQueueTitle {
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-normal);
+  color: var(--text-2);
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.episodeQueueItem:hover .episodeQueueTitle {
+  color: var(--text-1);
+}
+
+.episodeQueueMeta {
+  color: var(--text-4);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.episodeQueueChevron {
+  color: var(--text-4);
+  flex-shrink: 0;
+}
+
+/* 空态：一段安静的说明文字，不需要虚线框把它围起来 */
+.sidebarEmpty {
+  padding: var(--space-5) 0;
+  border-radius: 0;
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  line-height: 1.7;
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* ============================================================
+ * 按钮
+ * ------------------------------------------------------------
+ * 主操作＝白底黑字（--brand-gold 在暗房里就是纯白），
+ * 次级与幽灵按钮只有一条线或什么都没有；悬停一律不位移。
+ * ============================================================ */
+
+.iconButton,
+.primaryButton,
+.secondaryButton,
+.ghostButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+  white-space: nowrap;
+}
+
+.iconButton {
+  min-width: 34px;
+  padding: 7px;
+  border: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--text-2);
+}
+
+.iconButton:hover {
+  background: var(--surface-1);
+  border-color: var(--border-default);
+  color: #fff;
+}
+
+.primaryButton {
+  background: var(--brand-gold);
+  color: #000;
+  box-shadow: none;
+}
+
+.primaryButton:hover {
+  background: var(--brand-gold-hover);
+}
+
+.secondaryButton {
+  border: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--text-2);
+}
+
+.secondaryButton:hover {
+  background: var(--surface-1);
+  border-color: var(--border-default);
+  color: #fff;
+}
+
+.ghostButton {
+  background: none;
+  color: var(--text-3);
+  border: 1px solid transparent;
+}
+
+.ghostButton:hover {
+  color: #fff;
+  background: var(--surface-1);
+}
+
+/* ============================================================
+ * 整页状态（加载 / 错误）
+ * ------------------------------------------------------------
+ * 这两个状态不经过 .page，需要自己铺黑底。
+ * 面板去卡片化：黑底上一段居中的文字，没有容器。
+ * ============================================================ */
+
+.errorPanel,
+.loadingPanel {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  background: var(--bg-base);
+  color: var(--text-1);
+}
+
+.panelCard {
+  width: min(520px, 100%);
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.panelCard h1 {
+  margin: 0;
+  font-size: var(--text-h1);
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.25;
+  color: var(--text-1);
+}
+
+.metaText {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+  line-height: 1.7;
+}
+
+.panelActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ============================================================
+ * 外部播放器一行
+ * ============================================================ */
+
+.playerBar {
+  padding: var(--space-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.playerBarLabel {
+  font-size: var(--text-caption);
+  color: var(--text-4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.playerBarButtons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.playerBarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-3);
+  background: none;
+  border: 1px solid var(--border-subtle);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.playerBarBtn:hover {
+  background: var(--surface-1);
+  color: #fff;
+  border-color: var(--border-default);
+}
+
+/* ============================================================
+ * 内容简介
+ * ============================================================ */
+
+.overviewPanel {
+  padding: var(--space-6) 0;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.overviewPosterColumn {
+  min-width: 0;
+}
+
+/* 海报是这一段里唯一「有实体」的东西，用投影把它从纯黑里托起来 */
+.overviewPosterWrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-l1);
+}
+
+/* 海报高度交给 2:3 比例决定 —— 面板改为顶对齐后不再需要撑满整栏 */
+.overviewPoster,
+.overviewPosterFallback {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--surface-2);
+  display: block;
+}
+
+.overviewPosterFallback {
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  font-weight: var(--font-weight-light);
+  color: var(--text-1);
+}
+
+.overviewBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/* kicker：宽字距小字，不再是紫色标签 */
+.overviewEyebrow {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+.overviewTitle {
+  margin: 0;
+  font-size: clamp(1.4rem, 1.3vw + 1rem, 2rem);
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.25;
+  color: var(--text-1);
+}
+
+.overviewMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+/* 元信息与 .badge 同一套语汇：裸文字 + 间距，不做胶囊 */
+.overviewMetaChip {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  letter-spacing: 0.04em;
+}
+
+.overviewDescription {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-body);
+  line-height: 1.85;
+  max-width: 68ch;
+}
+
+.overviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+/* ============================================================
+ * 动效
+ * ============================================================ */
+
+/* 抽屉进场只保留位移与淡入，去掉缩放（缩放会带来「弹出卡片」的观感） */
+@keyframes queue-drawer-enter {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes queue-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+ * 响应式
+ * ============================================================ */
+
+@media (max-width: 1180px) {
+  .playbackShell {
+    width: min(100%, calc(100% - 24px));
+  }
+
+  .overviewPanel {
+    grid-template-columns: 176px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .pageHeader {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .headerRight .ghostButton {
+    display: none;
+  }
+
+  .playbackShell {
+    width: calc(100% - 16px);
+    padding-top: 64px;
+  }
+
+  .sidebarDrawer {
+    top: auto;
+    right: 8px;
+    left: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: min(70svh, 620px);
+    animation-name: queue-sheet-enter;
+  }
+
+  .sidebarDrawer .sidebarSection {
+    height: min(70svh, 620px);
+  }
+
+  .sidebarSection {
+    padding: var(--space-4);
+  }
+
+  .overviewPanel {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-5) 0;
+  }
+
+  /* 限宽放在 wrap 上：角标是相对 wrap 定位的，只限图片会让角标飘到栏外 */
+  .overviewPosterWrap {
+    max-width: 200px;
+  }
+
+  .infoBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .playbackNotice {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebarMediaCard {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .episodeQueueItem {
+    grid-template-columns: 54px minmax(0, 1fr) 16px;
+  }
+
+  .episodeQueuePoster,
+  .episodeQueuePosterFallback,
+  .episodeQueuePosterWrap {
+    width: 54px;
+    height: 76px;
+  }
+
+  .incompatActions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .incompatActions > * {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .playerInner :global(.dplayer-subtitle),
+  .playerInner :global(.art-subtitle) {
+    font-size: clamp(16px, 4vw, 21px) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebarDrawer {
+    animation: none;
+  }
+}

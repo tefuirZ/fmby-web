@@ -1,0 +1,284 @@
+/*
+ * Darkroom · 顶栏
+ * ------------------------------------------------------------
+ * 暗房里的顶栏几乎不存在：没有底色块、没有毛玻璃，只有一条
+ * hairline 和一行宽字距小字。
+ *
+ * 底色用纯黑实底而不是 transparent —— 视觉上「黑压黑」，跟画布
+ * 没有区别，但能干净地遮住滚上来的内容，避免文字互相穿透。
+ * 高度直接取 --topbar-height-* token：ManageLayout 的侧栏 sticky
+ * 偏移就是按这几个 token 算的，两边共用同一个来源才不会错位。
+ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  height: var(--topbar-height-desktop);
+  /* 与 ManageLayout 的页宽 / 页边距对齐，站名与正文左缘同一条线 */
+  width: 100%;
+  max-width: var(--grid-max-width);
+  margin: 0 auto;
+  padding: 0 var(--grid-margin);
+}
+
+.leftArea {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 2.5vw, 36px);
+}
+
+.rightArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 站名退化为宽字距小字：是一枚标记，不是招牌 */
+.brand {
+  font-size: 13.5px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #ffffff;
+  padding-right: var(--space-2);
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.brand:hover {
+  opacity: 0.85;
+}
+
+/* 一级主导航 */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.navLink,
+.navLinkActive {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-wide);
+  text-decoration: none;
+  color: var(--text-2);
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.navLink:hover {
+  color: var(--text-1);
+  background-color: var(--surface-1);
+}
+
+.navLinkActive {
+  color: #ffffff;
+  font-weight: var(--font-weight-medium);
+  background-color: var(--surface-2);
+}
+
+.adminNavText {
+  color: var(--safelight);
+}
+
+/* 全局搜索触发器 */
+.searchTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.searchTrigger:hover {
+  background: var(--surface-2);
+  border-color: var(--border-default);
+  color: var(--text-1);
+}
+
+.searchIcon {
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.searchTrigger:hover .searchIcon {
+  color: var(--text-1);
+}
+
+.searchLabel {
+  font-size: 12px;
+}
+
+.searchKbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+}
+
+.userMenu {
+  position: relative;
+}
+
+.userButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: var(--text-body-sm);
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+/* 悬停与展开是同一种状态：提亮文字 + 一层极微的面，不加描边 */
+.userButton:hover,
+.userButton[aria-expanded='true'] {
+  background: var(--surface-1);
+  color: var(--text-1);
+}
+
+/* 头像从彩色渐变块退化为一枚细线圆环 */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-muted);
+  background: none;
+  color: var(--text-3);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.userButton:hover .avatar,
+.userButton[aria-expanded='true'] .avatar {
+  border-color: var(--border-strong);
+  color: var(--text-1);
+}
+
+.userName {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron,
+.chevronOpen {
+  transition: transform var(--duration-fast) var(--ease-default);
+  color: var(--text-4);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* 下拉是浮层：纯黑画布上半透明面板会「看不见」，必须用实底 */
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: var(--z-dropdown);
+  min-width: 184px;
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-l2);
+}
+
+.dropdownItem,
+.dropdownItemDanger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-2);
+  font-size: var(--text-body-sm);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.dropdownItem:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+.dropdownItemDanger {
+  color: var(--danger);
+}
+
+.dropdownItemDanger:hover {
+  background: var(--danger-glass-bg);
+}
+
+.divider {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border-subtle);
+}
+
+@media (max-width: 1024px) {
+  .container {
+    height: var(--topbar-height-tablet);
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    height: var(--topbar-height-mobile);
+    padding: 0 var(--space-3);
+  }
+
+  .userName {
+    display: none;
+  }
+}

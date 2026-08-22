@@ -1,0 +1,166 @@
+/*
+ * Darkroom · 二次确认对话框
+ * ------------------------------------------------------------
+ * 与 primitives/Dialog 同一套基座：纯黑遮罩 + 实底面板，不做模糊。
+ * 面板边线保留危险语义色 —— 这是「这一步不可撤销」的唯一视觉信号，
+ * 属于语义而非装饰，暗房里予以保留。
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  /* 遮罩没有对应 token（token 里的黑都是投影用），此处保留一次性纯黑 */
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.content {
+  position: fixed;
+  z-index: var(--z-modal);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(84vh, 760px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--danger-glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-l3);
+  outline: none;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--danger);
+}
+
+.title {
+  font-size: var(--text-h2);
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-1);
+}
+
+.description {
+  font-size: var(--text-body);
+  color: var(--text-2);
+}
+
+.impact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--warn-glass-bg);
+  border: 1px solid var(--warn-glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: var(--text-body-sm);
+}
+
+.impactLead {
+  font-weight: var(--font-weight-medium);
+  color: var(--warning);
+}
+
+.impactList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
+  list-style: disc;
+}
+
+.impactItem {
+  color: var(--text-2);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.errorBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--danger-glass-bg);
+  border: 1px solid var(--danger-glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: var(--text-body-sm);
+}
+
+.errorLead {
+  font-weight: var(--font-weight-medium);
+  color: var(--danger);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+/* 与 primitives/Button 的 ghost / danger 保持同一套语汇 */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-muted);
+  color: var(--text-1);
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-1);
+  border-color: var(--border-default);
+}
+
+.button:disabled {
+  opacity: 0.55;
+}
+
+.buttonDanger {
+  background: transparent;
+  border-color: var(--danger-glass-border);
+  color: var(--danger);
+}
+
+.buttonDanger:hover:not(:disabled) {
+  background: var(--danger-glass-bg);
+  border-color: var(--danger);
+}
+
+@media (max-width: 767px) {
+  .content {
+    width: calc(100vw - 20px);
+    padding: var(--space-4);
+  }
+}

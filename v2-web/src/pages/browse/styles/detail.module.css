@@ -1,0 +1,655 @@
+/*
+ * Darkroom · 条目详情页
+ * ------------------------------------------------------------
+ * 详情页是整个浏览态里唯一「一个条目独占一屏」的地方，因此也是
+ * 封面主色最该说话的地方：
+ *   · Hero 不再是一张带描边的大卡片，而是一张被重模糊压暗、
+ *     四边羽化进纯黑的色雾，海报靠 --glow-accent 从黑里浮起来
+ *   · 下面所有「信息卡」统一退化成「一条顶线 + 留白」的分区
+ *   · 季/集/流参数等控件去胶囊化，选中态用封面主色而不是紫色
+ *
+ * 关于遮罩色：压在封面上的角标底必须是字面 rgba(0,0,0,…)，token 里没有半透明黑；
+ * mask-image 里的 #000 是 alpha 蒙版的「保留」色，不是视觉颜色，同样不走 token。
+ * 除此之外本文件不含硬编码颜色。
+ *
+ * 类名与 ItemDetailHero / ItemDetailEpisodeSection / ItemDetailPeopleSection /
+ * ItemDetailTechnicalSection / StreamDisclosureGroup / ItemDetailRelatedSection
+ * 完全一致。
+ */
+
+/* ============ 详情 Hero ============ */
+
+.detailHero {
+  position: relative;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/*
+ * 背景只提供色温，不参与成像：重模糊 + 压暗 + 径向羽化，
+ * 保证任何一边都在容器边界之前完全溶进纯黑，不出现硬切边。
+ */
+.detailBackdrop {
+  position: absolute;
+  inset: -48px;
+  background-size: cover;
+  background-position: center 20%;
+  filter: blur(64px) saturate(1.3) brightness(0.34);
+  opacity: 0.6;
+  transform: scale(1.1);
+  mask-image: radial-gradient(70% 86% at 46% 34%, #000 6%, transparent 84%);
+  -webkit-mask-image: radial-gradient(70% 86% at 46% 34%, #000 6%, transparent 84%);
+}
+
+/* 去掉压黑层：背景已经被压到几乎不可见，文字直接落在黑上 */
+.detailLayout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: clamp(20px, 3vw, 40px);
+  padding: clamp(16px, 2.4vw, 28px) 0;
+  background: none;
+}
+
+.detailPosterColumn {
+  flex: 0 0 auto;
+  width: clamp(150px, 22vw, 250px);
+}
+
+/* 海报是这一屏唯一的实体：不描边，靠投影 + 主色辉光托起来 */
+.detailPosterWrap {
+  position: relative;
+  border: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-l3), var(--glow-accent);
+  aspect-ratio: 2 / 3;
+  background-color: var(--surface-1);
+}
+
+.detailPoster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detailPosterFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.detailCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  flex: 1;
+}
+
+/* 800 字重的大标题在纯黑上会糊成一团，改细体 + 收紧字距 */
+.detailTitle {
+  margin: 0;
+  font-size: clamp(26px, 3.6vw, 44px);
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-1);
+  line-height: 1.1;
+  text-shadow: none;
+}
+
+.detailSubtitle {
+  font-size: 13.5px;
+  color: var(--text-3);
+}
+
+.detailMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.detailButtonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.detailSummary {
+  margin: 0;
+  max-width: 760px;
+  font-size: var(--text-body);
+  line-height: 1.85;
+  color: var(--text-2);
+}
+
+.detailTagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 标签去胶囊：一条极细线 + 弱字，和 metaChip 同一语汇 */
+.detailTag {
+  padding: 3px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+/* ============ 信息分区 ============ */
+/*
+ * 原来的 detailInfoCard 是玻璃卡片，现在与 shared.module.css 的
+ * .sectionCard 保持同一套语汇：一条顶线 + 留白，没有底色和圆角。
+ */
+.detailInfoCard {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+  padding: var(--space-8) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.detailRelatedCard {
+  composes: detailInfoCard;
+}
+
+.detailSectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.sectionHeadingStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.detailSectionHint {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* 二级标题比分区标题窄一档字距，避免两级标签混淆 */
+.detailSubsectionTitle {
+  margin: 0 0 var(--space-3);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* ============ 分季选择 ============ */
+
+.seasonSelector {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: none;
+}
+
+.seasonSelector::-webkit-scrollbar {
+  display: none;
+}
+
+.seasonChip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.seasonChip:hover {
+  border-color: var(--border-default);
+  color: var(--text-1);
+}
+
+.seasonChip:focus-visible {
+  outline: 1px solid var(--brand-gold);
+  outline-offset: 2px;
+}
+
+/* 选中态是 token 明确允许使用封面主色的场景 */
+.seasonChip[data-selected='true'] {
+  color: var(--text-1);
+  border-color: var(--content-accent-line);
+  background-color: var(--content-accent-soft);
+}
+
+.seasonChipMeta {
+  font-size: 11px;
+  color: var(--text-4);
+}
+
+/* ============ 分集横向列表 ============ */
+
+.episodeList {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding: var(--space-1) 2px var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+.episodeList::-webkit-scrollbar {
+  height: 4px;
+}
+
+.episodeList::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: var(--radius-full);
+}
+
+.episodeSelectorEmpty {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-6);
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+/* 分集行不是卡片：去掉盒子，剧照本身就是这一格的主体 */
+.episodeRow {
+  flex: 0 0 clamp(240px, 26vw, 300px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.episodeCardMedia {
+  position: relative;
+  display: block;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background-color: var(--surface-1);
+  box-shadow: var(--shadow-l1);
+  transition: box-shadow var(--duration-panel) var(--ease-default);
+}
+
+.episodeCardMedia:hover,
+.episodeCardMedia:focus-visible {
+  box-shadow: var(--shadow-l2), var(--glow-accent);
+  outline: none;
+}
+
+.episodeCardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter var(--duration-panel) var(--ease-default);
+}
+
+.episodeCardMedia:hover .episodeCardImage {
+  filter: brightness(1.08);
+}
+
+.episodeCardFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* 集号压在剧照上，与海报角标同一语汇 */
+.episodeCardIndex {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 2;
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+  /* 遮罩底：token 无半透明黑，此处必须字面值 */
+  background-color: rgba(0, 0, 0, 0.62);
+}
+
+.episodeRowCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.episodeRowTitle {
+  font-size: 13px;
+  color: var(--text-1);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.episodeRowMeta {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.episodeRowDescription {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.episodeRowActions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+/* ============ 技术信息 ============ */
+
+.detailTechnicalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-5);
+}
+
+/* 与 cards 里的 smallStat 同构：参数表，不是小卡片 */
+.detailTechnicalPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+  padding: var(--space-3) 0 0;
+}
+
+.detailTechnicalPanelTitle {
+  font-size: 10.5px;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.detailTechnicalPanelValue {
+  font-size: 14px;
+  font-weight: var(--font-weight-light);
+  color: var(--text-1);
+}
+
+.detailTechnicalPanelHint {
+  font-size: 11.5px;
+  color: var(--text-4);
+}
+
+.detailStreamBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.detailStreamList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 折叠面板退化成分隔线之间的一行，不再是描边盒子 */
+.detailDisclosure,
+.detailGroupDisclosure {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.detailDisclosureSummary,
+.detailGroupSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 11px 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  color: var(--text-2);
+  list-style: none;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.detailDisclosureSummary:hover,
+.detailGroupSummary:hover {
+  color: var(--text-1);
+}
+
+.detailDisclosureSummary:focus-visible,
+.detailGroupSummary:focus-visible {
+  outline: 1px solid var(--brand-gold);
+  outline-offset: 2px;
+}
+
+.detailDisclosureSummary::-webkit-details-marker,
+.detailGroupSummary::-webkit-details-marker {
+  display: none;
+}
+
+.detailDisclosureHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 11px;
+  color: var(--text-4);
+  white-space: nowrap;
+}
+
+/*
+ * 展开指示：原来只有一句提示文字，没有任何图形状态。
+ * 这里用纯 CSS 画一个下箭头（同 select 的做法，颜色走 token），
+ * 展开后翻转 180°，让折叠状态一眼可辨。
+ */
+.detailDisclosureHint::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-4) 50%),
+    linear-gradient(135deg, var(--text-4) 50%, transparent 50%);
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+/*
+ * 必须用直接子选择器：detailGroupDisclosure 的 body 里还嵌着一层
+ * detailDisclosure，用后代选择器会把折叠着的子面板箭头也一起翻过来。
+ */
+.detailDisclosure[open] > .detailDisclosureSummary > .detailDisclosureHint::after,
+.detailGroupDisclosure[open] > .detailGroupSummary > .detailDisclosureHint::after {
+  transform: rotate(180deg);
+}
+
+.detailDisclosureBody,
+.detailGroupBody {
+  padding: 0 0 var(--space-4);
+}
+
+.detailFactsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2) var(--space-5);
+}
+
+.detailFactRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: 12.5px;
+}
+
+.detailFactTerm {
+  flex: 0 0 64px;
+  color: var(--text-4);
+}
+
+.detailFactDescription {
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+/* ============ 人物 ============ */
+
+.peopleSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.peopleRail {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding: 2px 2px var(--space-2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+.peopleRail::-webkit-scrollbar {
+  height: 4px;
+}
+
+.peopleRail::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: var(--radius-full);
+}
+
+.personCard {
+  flex: 0 0 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+/* 原来底色是极光紫混白，现在是一枚极微提亮的圆片 */
+.personAvatar {
+  width: 68px;
+  height: 68px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-2);
+  color: var(--text-2);
+  font-size: 20px;
+  font-weight: var(--font-weight-light);
+}
+
+.personAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.personText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+}
+
+.personName {
+  font-size: 12.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.personRole {
+  font-size: 11px;
+  color: var(--text-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============ 管理员快捷入口 / 相关内容 ============ */
+
+.detailShortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.detailRelatedGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--space-8) var(--space-5);
+}
+
+@media (max-width: 760px) {
+  .detailLayout {
+    flex-direction: column;
+  }
+
+  .detailPosterColumn {
+    width: min(200px, 56vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seasonChip,
+  .episodeCardMedia,
+  .episodeCardImage,
+  .detailDisclosureSummary,
+  .detailGroupSummary,
+  .detailDisclosureHint::after {
+    transition: none;
+  }
+}

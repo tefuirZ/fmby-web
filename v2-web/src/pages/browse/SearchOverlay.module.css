@@ -1,0 +1,290 @@
+/*
+ * Darkroom · 全局搜索浮层
+ * ------------------------------------------------------------
+ * 暗房里的搜索是「把灯全关掉，只留一条输入线」：
+ *   - 遮罩靠加黑（不是模糊）把整页压下去；
+ *   - 面板用实底 --glass-bg-strong，纯黑背景下必须有实体才立得住；
+ *   - 输入区、分组标题、结果行之间只用 --border-subtle 一条线，不做色块。
+ * 原极光渐变（紫 / 蓝 / 青）全部移除。
+ * 类名与 SearchOverlay.tsx 完全一致。
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(48px, 12vh, 120px) 16px 32px;
+  /* 遮罩不模糊，直接压黑：模糊会把底下的海报糊成一片彩色噪点 */
+  background: rgba(0, 0, 0, 0.78);
+  animation: overlayIn var(--duration-fast) var(--ease-default);
+}
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.panel {
+  width: min(640px, 100%);
+  max-height: min(72vh, 640px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+  /* 浮层实底，不用半透明 */
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-l3);
+  animation: panelIn var(--duration-panel) var(--ease-default);
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 输入区：原本是一条极光渐变，现在只留一条底线 */
+.searchInputWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: none;
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-1);
+}
+
+.searchInput::placeholder {
+  color: var(--text-4);
+  letter-spacing: normal;
+}
+
+.shortcutHint {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: none;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-4);
+}
+
+.results {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+
+.results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.results::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--radius-full);
+}
+
+.results::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+.statePanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+  text-align: center;
+}
+
+/* 空态图标退到最弱一档：它只是占位，不该比提示文字更抢眼 */
+.stateIcon {
+  color: var(--text-4);
+  opacity: 1;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.stateTitle {
+  font-size: var(--text-body-lg);
+  font-weight: var(--font-weight-normal);
+  color: var(--text-2);
+}
+
+.stateDescription {
+  max-width: 360px;
+  font-size: var(--text-body-sm);
+  line-height: 1.7;
+  color: var(--text-4);
+}
+
+.resultGroup {
+  padding: var(--space-1) 0 var(--space-2);
+}
+
+/* 分组标题走暗房的宽字距 kicker，不用色块也不用底纹 */
+.resultGroupTitle {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+  /* 悬停只提亮底面，不做位移 */
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.resultItem:hover,
+.resultItem:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+
+.resultItem:hover .resultTitle,
+.resultItem:focus-visible .resultTitle {
+  color: #fff;
+}
+
+.resultThumb,
+.resultThumbPlaceholder {
+  width: 38px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--surface-2);
+  border: none;
+  display: block;
+}
+
+.resultThumbPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+}
+
+.resultBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.resultTitle {
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.resultMeta {
+  font-size: var(--text-caption);
+  color: var(--text-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 类型标记从渐变胶囊退化为宽字距小字，与播放页的 .badge 同一套语汇 */
+.resultChip {
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  background: none;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-4);
+}
+
+@media (max-width: 767px) {
+  .overlay {
+    padding: 16px 10px;
+  }
+
+  .panel {
+    max-height: calc(100dvh - 32px);
+  }
+
+  .searchInputWrap {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .searchInput {
+    font-size: 15px;
+  }
+
+  .shortcutHint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .panel {
+    animation: none;
+  }
+}

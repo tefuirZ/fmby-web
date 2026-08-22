@@ -1,0 +1,111 @@
+/*
+ * Darkroom · 媒体库列表 / 媒体库详情
+ * ------------------------------------------------------------
+ * 这个文件里原本有整个浏览态最「极光」的一处：媒体库大厅头部叠了
+ * 紫 / 青 / 蓝三层径向渐变当装饰。暗房里装饰渐变一律取消，只保留
+ * 一层极弱的封面主色环境光（--content-accent 驱动，管理态自动归零）。
+ *
+ * 筛选面板也从玻璃卡片退化成「上下两条细线圈出的操作区」，
+ * 里面的原生 <select> 由 shared.module.css 统一自绘。
+ *
+ * 类名与 LibrariesPage / LibraryDetailPage 完全一致。
+ */
+
+/* ============ 媒体库大厅 Hero ============ */
+
+.libraryDirectoryHero {
+  position: relative;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/*
+ * 三层装饰渐变 → 一层环境光。
+ * 这不是"装饰渐变"，而是 token 体系里的氛围光：颜色来自当前内容，
+ * 强度乘以 --ambient-strength（管理态为 0，届时整块自动消失）。
+ */
+.libraryDirectoryBackdrop {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    72% 120% at 18% 0%,
+    rgb(var(--content-accent-rgb) / 0.07),
+    transparent 68%
+  );
+  opacity: var(--ambient-strength);
+}
+
+.libraryDirectoryContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  padding: clamp(20px, 3.2vw, 40px) 0;
+}
+
+.libraryDirectoryCopy {
+  max-width: 640px;
+}
+
+.libraryDirectoryStats {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+/* 统计不是小卡片，是铭牌：一条顶线 + 宽字距标签 + 细体大数字 */
+.libraryDirectoryStat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 96px;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+  padding: var(--space-3) 0 0;
+}
+
+.libraryDirectoryStat span {
+  font-size: 10.5px;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.libraryDirectoryStat strong {
+  font-size: 22px;
+  font-weight: var(--font-weight-light);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+}
+
+/* 筛选区：去掉玻璃盒子，只用上下两条细线把操作区从内容里划出来 */
+.libraryControlPanel {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+  padding: var(--space-4) 0;
+}
+
+/* ============ 详情内容网格（配合 windowing） ============ */
+
+.libraryDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-8) var(--space-5);
+}
+
+@media (max-width: 640px) {
+  .libraryDetailGrid {
+    grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+    gap: var(--space-6) var(--space-3);
+  }
+}

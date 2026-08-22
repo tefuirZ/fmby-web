@@ -1,0 +1,88 @@
+/*
+ * Darkroom · 空态 / 加载态 / 错误态面板
+ * ------------------------------------------------------------
+ * 空态不该是一张卡片：原来的玻璃底 + 描边会让「这里什么都没有」
+ * 反而显得像一块内容。这里退成纯留白，只用一个圆形图标定位视线。
+ * 状态色仍然只出现在图标上，正文保持中性。
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-6);
+  text-align: center;
+  background: none;
+  border: none;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-3);
+}
+
+.panel[data-variant='error'] .icon {
+  background: var(--danger-glass-bg);
+  border-color: var(--danger-glass-border);
+  color: var(--danger);
+}
+
+.panel[data-variant='success'] .icon {
+  background: var(--success-glass-bg);
+  border-color: var(--success-glass-border);
+  color: var(--success);
+}
+
+.panel[data-variant='warning'] .icon {
+  background: var(--warn-glass-bg);
+  border-color: var(--warn-glass-border);
+  color: var(--warning);
+}
+
+/* 加载不是一种「状态提示」，不给颜色，只比边线亮一档 */
+.panel[data-variant='loading'] .icon {
+  color: var(--text-2);
+}
+
+.title {
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-normal);
+  color: var(--text-1);
+}
+
+.description {
+  max-width: 420px;
+  font-size: var(--text-body);
+  color: var(--text-3);
+}
+
+.actionSlot {
+  margin-top: var(--space-2);
+  display: flex;
+  gap: var(--space-3);
+}
+
+.spinner {
+  animation: feedback-spin 1s linear infinite;
+}
+
+@keyframes feedback-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}

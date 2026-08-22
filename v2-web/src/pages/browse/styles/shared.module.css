@@ -1,0 +1,517 @@
+/*
+ * Darkroom · browse 共享样式
+ * ------------------------------------------------------------
+ * 覆盖：页面骨架、分区（BrowseSection）、按钮、表单控件、
+ *       筛选工具条、空态、横向轨道（BrowseRail）、骨架屏。
+ *
+ * 落地到本文件的三条规则：
+ *   1. 分区不再是「卡片」—— 去掉底色/描边/圆角/内发光，
+ *      只留一条 --border-subtle 的顶线把上一屏内容切开。
+ *   2. 分区标题退化成小字号 + --tracking-widest 的 kicker，
+ *      中文会被拉成「继 续 观 看」，让海报成为页面上唯一的重量。
+ *   3. 主操作白底黑字；次级只有一条线；幽灵按钮连线都没有。
+ *
+ * 类名与 BrowseSection / BrowseRail / HomePage / HistoryPage /
+ * LibrariesPage / LibraryDetailPage / item-detail 各 section 完全一致。
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: var(--grid-max-width);
+  margin: 0 auto;
+  padding: var(--space-5) var(--grid-margin) var(--space-16);
+  color: var(--text-1);
+}
+
+/* ---------- 文本 ---------- */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  /* 原来是极光紫；暗房里 eyebrow 是最弱的一级标签，不承担颜色 */
+  color: var(--text-3);
+}
+
+.pageTitle {
+  margin: var(--space-2) 0 0;
+  font-size: clamp(26px, 3.4vw, 38px);
+  /* 大标题走细体 + 收紧字距，避免粗体在纯黑上「发胖」 */
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.14;
+  color: var(--text-1);
+}
+
+.pageDescription {
+  margin: var(--space-3) 0 0;
+  max-width: 620px;
+  font-size: var(--text-body);
+  line-height: 1.75;
+  color: var(--text-3);
+}
+
+.metaText {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+/* ---------- 按钮 ---------- */
+/*
+ * 圆角从 999px 收到 --radius-sm：暗房里只有真正圆的东西（圆点、
+ * 圆形图标按钮）才用 --radius-full，矩形按钮一律接近直角。
+ * transition 里刻意不含 transform —— 悬停不做位移。
+ */
+.primaryButton,
+.secondaryButton,
+.ghostButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  padding: 10px 18px;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+/* 主操作：白底黑字。不跟随封面主色，保证任何封面下都可读 */
+.primaryButton {
+  color: var(--bg-base);
+  background-color: var(--brand-gold);
+  border-color: var(--brand-gold);
+}
+
+.primaryButton:hover {
+  background-color: var(--brand-gold-hover);
+  border-color: var(--brand-gold-hover);
+}
+
+.primaryButton:active {
+  background-color: var(--brand-gold-active);
+  border-color: var(--brand-gold-active);
+}
+
+.secondaryButton {
+  color: var(--text-1);
+  background-color: transparent;
+  border-color: var(--border-default);
+}
+
+.secondaryButton:hover {
+  background-color: var(--surface-1);
+  border-color: var(--border-strong);
+}
+
+/* 幽灵按钮在暗房里连线都不要，只是一段可点的文字 */
+.ghostButton {
+  color: var(--text-3);
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.ghostButton:hover {
+  color: var(--text-1);
+  background-color: var(--surface-1);
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.ghostButton:focus-visible {
+  outline: 1px solid var(--brand-gold);
+  outline-offset: 2px;
+}
+
+/* 「暂不可播放」这类不可用态是 span，用 aria-disabled 标记 */
+.primaryButton[aria-disabled='true'],
+.secondaryButton[aria-disabled='true'],
+.ghostButton[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ---------- 表单控件 ---------- */
+
+.input,
+.select {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-1);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 12.5px;
+  outline: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.input::placeholder {
+  color: var(--text-4);
+}
+
+.input:hover,
+.select:hover {
+  border-color: var(--border-default);
+  background-color: var(--surface-2);
+}
+
+/* 焦点态只提亮线与底，不用彩色描边 */
+.input:focus,
+.select:focus {
+  border-color: var(--border-strong);
+  background-color: var(--surface-2);
+}
+
+/*
+ * 原生 <select> 必须自绘。浏览器默认外观是浅色系统控件，
+ * 在纯黑画布上会突兀地亮一块（旧主题就已经存在这个问题）。
+ *
+ * appearance: none 去掉系统箭头后，箭头用两段线性渐变拼出的三角形补回来：
+ * 相比内联 SVG data URI，渐变可以直接引用 CSS 变量，箭头颜色因此也走 token，
+ * 悬停/聚焦时能跟着一起提亮。
+ */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 30px;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
+    linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) center,
+    calc(100% - 11px) center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.select:hover,
+.select:focus {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-1) 50%),
+    linear-gradient(135deg, var(--text-1) 50%, transparent 50%);
+}
+
+/*
+ * 下拉弹层由系统绘制，只吃实底色，不接受半透明。
+ * 这里用浮层实底 --glass-bg-strong，与对话框/抽屉保持同一层高。
+ */
+.select option {
+  background-color: var(--glass-bg-strong);
+  color: var(--text-1);
+}
+
+/* ---------- 分区 ---------- */
+/*
+ * BrowseSection 的外壳。原来是「玻璃卡片」，现在只剩一条顶线 + 留白。
+ * 横向 padding 保留 4px，是为了让 .sectionShelf 能把它归零、
+ * 使 rail 内容贴齐页面栅格边缘。
+ */
+.sectionCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-8) var(--space-1) 0;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sectionShelf {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/*
+ * 分区标题：11px + --tracking-widest。中文会被拉成「继 续 观 看」，
+ * 读起来像胶片盒侧面的标签，而不是一个抢眼的大标题。
+ */
+.sectionTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.sectionDescription {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-3);
+}
+
+.sectionAction {
+  font-size: 11px;
+}
+
+.sectionAction a {
+  color: var(--text-3);
+  text-decoration: none;
+  letter-spacing: var(--tracking-wide);
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+/* 悬停不加下划线，改为提亮 —— 与全站的 hover 语汇统一 */
+.sectionAction a:hover {
+  color: var(--text-1);
+}
+
+/* ---------- 页面头 ---------- */
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  padding: var(--space-2) 0;
+}
+
+.headerMeta {
+  margin-top: var(--space-3);
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ---------- 工具条 ---------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.filterGroup .input {
+  min-width: min(320px, 70vw);
+}
+
+/* 从胶囊退化为一块极微提亮的小标签 */
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-1);
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.activeFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* ---------- 空态 / 提示 ---------- */
+/* 不用虚线框（暗房里虚线永远显脏），一条实心细线圈出区域即可 */
+.emptyGrid {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-3);
+}
+
+/* ---------- 横向轨道 ---------- */
+
+.mediaRail {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding: var(--space-1) 2px var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+  scroll-snap-type: x proximity;
+}
+
+.mediaRail::-webkit-scrollbar {
+  height: 4px;
+}
+
+.mediaRail::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: var(--radius-full);
+}
+
+.posterRailItem {
+  flex: 0 0 clamp(136px, 15vw, 176px);
+  scroll-snap-align: start;
+}
+
+.continueRailItem {
+  flex: 0 0 clamp(240px, 26vw, 320px);
+  scroll-snap-align: start;
+}
+
+.libraryRailItem {
+  flex: 0 0 clamp(240px, 28vw, 340px);
+  scroll-snap-align: start;
+}
+
+/* ---------- 骨架屏 ---------- */
+/*
+ * 纯黑上不能用亮色块占位，否则加载态比加载完还刺眼。
+ * 这里只在 --surface-1 与 --surface-3 之间做一次缓慢扫光。
+ */
+.skeletonHero,
+.skeletonWideCard,
+.skeletonPosterCard {
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-1);
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    var(--surface-3) 50%,
+    transparent 70%
+  );
+  background-size: 240% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.skeletonHero {
+  height: clamp(240px, 38vw, 380px);
+}
+
+.skeletonSection {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.skeletonWideCard {
+  height: 130px;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-4);
+}
+
+.skeletonPosterCard {
+  aspect-ratio: 2 / 3;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonHero,
+  .skeletonWideCard,
+  .skeletonPosterCard {
+    animation: none;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .ghostButton,
+  .input,
+  .select,
+  .sectionAction a {
+    transition: none;
+  }
+}
+
+/* ---------- 加载更多 ---------- */
+
+.loadMoreHintCard {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) 0 var(--space-1);
+}
+
+@media (max-width: 640px) {
+  .page {
+    gap: var(--space-5);
+    padding-bottom: var(--space-10);
+  }
+
+  .sectionCard {
+    padding-top: var(--space-6);
+  }
+
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filterGroup .input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  /* 触控目标不小于 44px */
+  .input,
+  .select {
+    height: var(--touch-min);
+  }
+}

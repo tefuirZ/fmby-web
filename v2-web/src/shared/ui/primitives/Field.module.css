@@ -1,0 +1,51 @@
+/*
+ * Darkroom · 输入框 / 文本域
+ * ------------------------------------------------------------
+ * 全站表单的最底层样式，管理页与设置页几乎每个字段都走这里。
+ * 暗房里输入框不是「一块玻璃」，而是「黑底上被极细线圈出的一段」：
+ * 底色只比画布亮一档，靠边线告诉用户可以点。
+ */
+
+.input {
+  width: 100%;
+  min-height: 38px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-1);
+  /* 纯黑上 --border-subtle 太隐形，表单控件需要能被一眼找到，故用 muted 档 */
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-size: var(--text-body);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default);
+}
+
+.input::placeholder {
+  color: var(--text-3);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--border-default);
+}
+
+/*
+ * 不写 outline: none —— 焦点环统一交给 base.css 的全局 :focus-visible
+ * 白环，避免每个控件各带一套颜色。这里只负责把边线和底提亮一档，
+ * 表示「光标在这」。
+ */
+.input:focus {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.6;
+  min-height: 88px;
+}

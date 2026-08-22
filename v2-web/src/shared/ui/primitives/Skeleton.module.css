@@ -1,0 +1,52 @@
+/*
+ * Darkroom · 骨架屏
+ * ------------------------------------------------------------
+ * 加载态在暗房里应当几乎无声：底块用最低一档 --surface-1，
+ * 流光的峰值也只到 --surface-3，避免黑屏上闪出一条明显的白带。
+ */
+
+.skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--surface-1);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton[data-shape='text'] {
+  height: 1em;
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton[data-shape='circle'] {
+  border-radius: var(--radius-full);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    var(--surface-3) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    transform: none;
+    background: var(--surface-2);
+  }
+}

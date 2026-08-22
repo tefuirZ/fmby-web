@@ -1,0 +1,180 @@
+/*
+ * Darkroom · 侧边抽屉
+ * ------------------------------------------------------------
+ * 抽屉贴着视口边缘，所以外侧圆角一律去掉 —— 贴边元素的圆角是纯装饰，
+ * 反而会在屏幕角上露出一小块底色。只保留一条与画布分界的细线。
+ * 面板实底，不做模糊：黑底上半透明抽屉会和正文糊在一起。
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  /* 遮罩没有对应 token（token 里的黑都是投影用），此处保留一次性纯黑 */
+  background: rgba(0, 0, 0, 0.66);
+}
+
+.content {
+  position: fixed;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--border-muted);
+  border-radius: 0;
+  box-shadow: var(--shadow-l3);
+  outline: none;
+}
+
+/* 右侧抽屉（默认） */
+.content[data-placement='right'] {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 92vw);
+  /* 只留朝向内容的那一条边，其余三边贴住视口，画线没有意义 */
+  border-width: 0 0 0 1px;
+  animation: drawer-in-right var(--duration-panel) var(--ease-default);
+}
+
+/* 底部抽屉 */
+.content[data-placement='bottom'] {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 82dvh;
+  border-width: 1px 0 0;
+  animation: drawer-in-bottom var(--duration-panel) var(--ease-default);
+}
+
+/* 全屏 */
+.content[data-placement='fullscreen'] {
+  inset: 0;
+  border: none;
+  animation: drawer-fade var(--duration-panel) var(--ease-default);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  padding-top: calc(var(--space-5) + var(--safe-area-top));
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 从「渐变文字」退化为宽字距小标签，与全站 kicker 语汇一致 */
+.eyebrow {
+  font-size: 11px;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+.title {
+  font-size: var(--text-h2);
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-1);
+}
+
+.description {
+  font-size: var(--text-body);
+  color: var(--text-2);
+}
+
+.closeButton {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.closeButton:hover {
+  background: var(--surface-1);
+  border-color: var(--border-default);
+  color: var(--text-1);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  padding-bottom: calc(var(--space-5) + var(--safe-area-bottom));
+}
+
+/* 移动端：按 mobileVariant 收口 */
+@media (max-width: 767px) {
+  .content[data-placement='right'][data-mobile-variant='fullscreen'] {
+    inset: 0;
+    width: 100vw;
+    border: none;
+    animation: drawer-fade var(--duration-panel) var(--ease-default);
+  }
+
+  .content[data-placement='right'][data-mobile-variant='bottom'] {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-height: 82dvh;
+    border-width: 1px 0 0;
+    animation: drawer-in-bottom var(--duration-panel) var(--ease-default);
+  }
+}
+
+@keyframes drawer-in-right {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-in-bottom {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    animation: none !important;
+  }
+}

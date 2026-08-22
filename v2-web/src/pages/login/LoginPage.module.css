@@ -1,0 +1,377 @@
+/*
+ * Darkroom · 登录 / 注册码注册 / 首次初始化
+ * ------------------------------------------------------------
+ * 这是用户看到的第一屏，也是整套皮肤的定调：一块几乎全黑的画面，
+ * 中央只有一束极弱的中性辉光，和一列没有外框的表单。
+ *
+ * 关键取舍：
+ *   1. 卡片、毛玻璃、极光渐变全部移除 —— .card 只是「一列内容」，
+ *      类名保留是因为 LoginShell 仍然引用它。
+ *   2. 输入框退化成一条底线，聚焦时线转白并在下方留一点辉光：
+ *      整屏唯一会「亮起来」的地方，永远是用户此刻正在操作的那一处。
+ *   3. 主按钮白底黑字，是全屏唯一的实心块面。
+ *
+ * 三种入口（登录 / 注册码注册 / 建管理员）共用同一套骨架，
+ * 字段数量从 2 到 5 不等，因此纵向节奏靠 .form 的 gap 统一控制。
+ */
+
+/* ---- 页面容器 ---- */
+
+.page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10) var(--space-5);
+  background: var(--bg-base);
+  overflow: hidden;
+}
+
+/* ---- 背景辉光层 ---- */
+/*
+ * 原本是四色 aurora 光斑，暗房里换成单束中性辉光：取色自
+ * --content-accent（登录页没有封面，恒为白），强度不到 7%，
+ * 作用只是把画面中心从纯黑里稍稍托起来，让表单不显得悬空。
+ * 类名沿用 auroraLayer —— TSX 引用它，且它仍然是「氛围层」。
+ */
+.auroraLayer {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42% 34% at 50% 38%,
+      rgb(var(--content-accent-rgb) / 0.065),
+      transparent 72%
+    ),
+    radial-gradient(
+      56% 40% at 50% 100%,
+      rgb(var(--content-accent-rgb) / 0.03),
+      transparent 76%
+    );
+  opacity: var(--ambient-strength);
+  animation: auroraDrift 32s var(--ease-default) infinite alternate;
+}
+
+/* 位移幅度压到 1.5%：只需要让光「呼吸」，不需要看出它在动 */
+@keyframes auroraDrift {
+  from {
+    transform: translate3d(0, -1.5%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(0, 1.5%, 0) scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auroraLayer,
+  .card {
+    animation: none;
+  }
+}
+
+/* ---- 内容列（不再是卡片）---- */
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 360px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  animation: cardFadeIn var(--duration-hero) var(--ease-default) both;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- 品牌与副标题 ---- */
+
+.brand {
+  text-align: center;
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-h1);
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-widest);
+  /* 宽字距会在末字之后留一段空白，缩进等宽才能真正视觉居中 */
+  text-indent: var(--tracking-widest);
+  line-height: 1.2;
+  color: var(--text-1);
+}
+
+.subtitle {
+  text-align: center;
+  margin: 0 0 var(--space-10);
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+  line-height: 1.75;
+}
+
+/* ---- 表单 ---- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 字段名按暗房的「小标签」处理：小字号 + 宽字距 + 弱化 */
+.label {
+  font-size: 11px;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-3);
+}
+
+.inputWrapper {
+  position: relative;
+}
+
+/* 输入框只剩一条底线，没有盒子 */
+.input {
+  width: 100%;
+  padding: 8px 0;
+  font-size: var(--text-body-lg);
+  color: var(--text-1);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-muted);
+  border-radius: 0;
+  outline: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+
+.input::placeholder {
+  color: var(--text-4);
+}
+
+/* 排除错误态，否则悬停会把红色底线洗回中性色 */
+.input:not(.inputError):hover {
+  border-bottom-color: var(--border-default);
+}
+
+/*
+ * base.css 的全局 :focus-visible 是一圈白色矩形描边，会把下划线式
+ * 输入框重新框回盒子里。这里显式关掉它，改用「底线转白 + 线下微辉光」
+ * 表示聚焦 —— 对比度更高，也更符合「只剩光」的语汇。
+ */
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--content-accent);
+  box-shadow: 0 6px 16px -10px rgb(var(--content-accent-rgb) / 0.55);
+}
+
+.inputHasToggle {
+  padding-right: 36px;
+}
+
+.inputError {
+  border-bottom-color: var(--danger);
+}
+
+.inputError:focus,
+.inputError:focus-visible {
+  border-bottom-color: var(--danger);
+  box-shadow: 0 6px 16px -10px var(--danger-glass-border);
+}
+
+/* 密码可见性开关：悬停只提亮图标，不加底块 */
+.passwordToggle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-4);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.passwordToggle:hover {
+  color: var(--text-1);
+}
+
+.fieldError {
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  color: var(--danger);
+}
+
+.fieldHint {
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+/* ---- 提交按钮：整屏唯一的实心块面 ---- */
+
+.submitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: 12px 16px;
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-wide);
+  /* 白底黑字：主操作不跟随任何彩色，任何配色下都可读 */
+  color: var(--bg-base);
+  background: var(--brand-gold);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+
+/* 悬停不做位移，改成「亮一点」—— 按钮本身就是这一屏的光源 */
+.submitButton:hover:not(:disabled) {
+  background: var(--brand-gold-hover);
+  box-shadow: var(--glow-accent);
+}
+
+.submitButton:active:not(:disabled) {
+  background: var(--brand-gold-active);
+  box-shadow: none;
+}
+
+/* 白色块面降透明度仍然很亮，禁用态直接换成极暗的面 */
+.submitButton:disabled {
+  background: var(--surface-3);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+/* ---- 横幅：左侧一条色标，不画完整边框 ---- */
+
+.errorBanner {
+  padding: 10px var(--space-3);
+  border: none;
+  border-left: 2px solid var(--danger);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--danger-glass-bg);
+  color: var(--danger);
+  font-size: var(--text-body-sm);
+  line-height: 1.6;
+}
+
+.successBanner {
+  margin-bottom: var(--space-5);
+  padding: 10px var(--space-3);
+  border: none;
+  border-left: 2px solid var(--success);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--success-glass-bg);
+  color: var(--success);
+  font-size: var(--text-body-sm);
+  line-height: 1.6;
+}
+
+/* ---- 模式切换：分段控件退化为共享一条细线的两个标签 ---- */
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: var(--space-8);
+  padding: 0;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: none;
+}
+
+.modeButton {
+  padding: 10px 4px;
+  border: none;
+  /* 选中标记要压在容器的细线上，靠 -1px 让两条线重合 */
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 0;
+  background: none;
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+  letter-spacing: var(--tracking-wide);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+/* 排除选中项，否则悬停会把已选中的那一项反而调暗 */
+.modeButton:not(.modeButtonActive):hover {
+  color: var(--text-2);
+}
+
+.modeButtonActive {
+  border-bottom-color: var(--content-accent);
+  color: var(--text-1);
+  font-weight: var(--font-weight-normal);
+}
+
+/* ---- 加载 / 重试 ---- */
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-10) 0;
+  color: var(--text-3);
+}
+
+.retryContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.spinner {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- 移动端 ---- */
+
+@media (max-width: 480px) {
+  .page {
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .subtitle {
+    margin-bottom: var(--space-8);
+  }
+}

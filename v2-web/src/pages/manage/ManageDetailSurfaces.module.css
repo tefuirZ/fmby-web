@@ -1,0 +1,282 @@
+/**
+ * aurora-glass 管理页扩展表面样式（详情卡 / 日志 / 批量 / 浮动提示等）
+ * 由 ManagePages.module.css 通过 composes 桥接，消费方无需改 import。
+ */
+
+/* ── 详情面板 ─────────────────────────────────────────── */
+
+.detailSummaryGrid,
+.detailFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.detailCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  min-width: 0;
+}
+
+.detailCardLabel {
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.detailCardValue {
+  font-size: var(--text-body-sm);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.jsonBlock {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  overflow: auto;
+  max-height: 360px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.emptyInlineState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  border: 1px dashed var(--border-muted);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: var(--text-body-sm);
+  text-align: center;
+}
+
+/* ── 危险区块 ─────────────────────────────────────────── */
+
+.dangerPanel,
+.ipRiskResetPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--danger-glass-border);
+  border-radius: var(--radius-md);
+  background: var(--danger-glass-bg);
+}
+
+/* ── 批量操作 ─────────────────────────────────────────── */
+
+.batchActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--manage-cyan) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--manage-cyan) 8%, var(--surface-1));
+}
+
+/* ── 日志展示 ─────────────────────────────────────────── */
+
+.logOverviewCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.runtimeLogFilterActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ── 设置布局 ─────────────────────────────────────────── */
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.stickyBar {
+  position: sticky;
+  bottom: var(--space-4);
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-l2);
+}
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+/* ── 技术信息（探测详情）────────────────────────────── */
+
+.technicalStreamGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.technicalStreamCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.technicalFactList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.technicalFactItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-caption);
+}
+
+.technicalFactLabel {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.technicalFactValue {
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-all;
+}
+
+/* ── 浮动提示 ─────────────────────────────────────────── */
+
+.floatingToastLayer {
+  position: fixed;
+  bottom: calc(var(--space-6) + var(--safe-area-bottom));
+  right: var(--space-6);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  pointer-events: none;
+}
+
+.floatingToast {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 240px;
+  max-width: 360px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-l2);
+  pointer-events: auto;
+}
+
+.floatingToastTitle {
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.floatingToastDescription {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.mobileCardList,
+.mobileRecordGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mobileRecordCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.mobileRecordHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mobileRecordTitle {
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.mobileRecordBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mobileRecordMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.mobileRecordActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}

@@ -1,0 +1,259 @@
+/*
+ * Darkroom · 目录浏览器
+ * ------------------------------------------------------------
+ * 只出现在对话框里（挂载点配置选路径），所以底色走 --bg-raised 系：
+ * 比对话框实底 --glass-bg-strong (#101012) 再深一档，读起来像一口
+ * 「凹进去的井」，靠明度差分层，不靠阴影和描边。
+ *
+ * 选中态统一用 --content-accent —— 在 [data-surface='manage'] 下
+ * 它就是暗房安全灯的琥珀色，也是管理态唯一的强调色。
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.container[data-disabled='true'] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ---- 面包屑 ---- */
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-caption);
+  color: var(--text-3);
+}
+
+.breadcrumbSeparator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-4);
+  margin: 0 2px;
+  vertical-align: middle;
+}
+
+.breadcrumbItem {
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  color: var(--text-3);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.breadcrumbItem:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+/* 当前层级不是可点操作，用最亮的文字表示「你在这」，不占用强调色 */
+.breadcrumbItem[data-current='true'] {
+  color: var(--text-1);
+  cursor: default;
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---- 状态条 ---- */
+
+.statusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-caption);
+  color: var(--text-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-1);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+}
+
+.selectedPath {
+  color: var(--text-2);
+}
+
+/* 空 / 加载 / 错误态不画虚线框：一层极微提亮的面 + 弱化文字就够了 */
+.loadingState,
+.emptyState,
+.errorState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 96px;
+  font-size: var(--text-body-sm);
+  color: var(--text-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.errorMessage {
+  color: var(--danger);
+  word-break: break-all;
+}
+
+/* ---- 目录列表 ---- */
+
+.directoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* 行不是卡片：默认完全透明，只有悬停和选中才浮现 */
+.directoryItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.directoryItem:hover {
+  background: var(--surface-1);
+}
+
+.directoryItem[data-selected='true'] {
+  border-color: var(--content-accent-line);
+  background: var(--content-accent-soft);
+}
+
+.directoryIcon {
+  flex-shrink: 0;
+  color: var(--text-4);
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.directoryItem:hover .directoryIcon {
+  color: var(--text-2);
+}
+
+.directoryItem[data-selected='true'] .directoryIcon {
+  color: var(--content-accent);
+}
+
+.directoryMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+
+.directoryName {
+  font-size: var(--text-body-sm);
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directoryPath {
+  font-size: 11px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directoryActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ---- 操作区 ---- */
+
+.actionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.smallButton {
+  padding: 5px var(--space-3);
+  font-size: var(--text-caption);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.smallButton:hover:not(:disabled) {
+  background: var(--surface-1);
+  border-color: var(--border-strong);
+  color: var(--text-1);
+}
+
+.smallButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/*
+ * 主操作：白底黑字，全站统一的实心按钮语汇。
+ * 这个类同时承担列表行里的「已选」标记，白块本身就是选中反馈。
+ */
+.confirmButton {
+  padding: 5px var(--space-3);
+  font-size: var(--text-caption);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--brand-gold);
+  color: var(--bg-base);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.confirmButton:hover:not(:disabled) {
+  background: var(--brand-gold-hover);
+}
+
+/* 白块降透明度仍然很亮，禁用态换成极暗的面 */
+.confirmButton:disabled {
+  background: var(--surface-3);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .directoryItem {
+    flex-wrap: wrap;
+  }
+
+  .directoryActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

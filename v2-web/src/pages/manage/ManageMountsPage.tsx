@@ -1,0 +1,267 @@
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import {
+  type ManageMountDirectoryBrowserResponse,
+  type ManageMountProviderType,
+} from '@/domains/manage';
+import { FeedbackState } from '@/shared/ui';
+import { ConfirmDialog } from '@/shared/ui';
+import { InlineBanner } from '@/shared/ui';
+import { SensitiveActionDialog } from '@/shared/ui';
+import styles from './ManagePages.module.css';
+import { ManagePageHeader, MetricCard } from './components';
+import { getErrorMessage } from '@/shared/utils/error';
+import type { BannerState } from '@/shared/types/ui';
+import { matchKeyword } from '@/shared/search/matchKeyword';
+import {
+  type MountDrawerState,
+  type MountFormErrors,
+  type MountFormState,
+  type MountHealthStatus,
+  type PendingMountDeleteState,
+  type MountRemoteAuthMode,
+} from './mounts/types';
+import {
+  buildAuthModeChangeImpact,
+  buildPendingMountDeleteState,
+  buildMountDeleteImpact,
+  buildMountFormState,
+  createEmptyMountForm,
+} from './mounts/formUtils';
+import { useMountsQuery, useMountDetailQuery, useMountMutations, useMountValidation } from './mounts/hooks';
+import { MountTable, MountDrawer } from './mounts/components';
+
+export function ManageMountsPage() {
+  const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | MountHealthStatus>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | ManageMountProviderType>('all');
+  const [banner, setBanner] = useState<BannerState | null>(null);
+  const [drawerState, setDrawerState] = useState<MountDrawerState | null>(null);
+  const [formState, setFormState] = useState<MountFormState>(() => createEmptyMountForm());
+  const [formErrors, setFormErrors] = useState<MountFormErrors>({});
+  const [directoryBrowser, setDirectoryBrowser] = useState<ManageMountDirectoryBrowserResponse | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingMountDeleteState | null>(null);
+  const [pendingAuthModeChange, setPendingAuthModeChange] = useState<MountRemoteAuthMode | null>(null);
+  const deferredKeyword = useDeferredValue(keyword.trim());
+
+  const mountsQuery = useMountsQuery();
+  const mountDetailQuery = useMountDetailQuery(drawerState);
+  const { createMountMutation, updateMountMutation, deleteMountMutation } = useMountMutations({
+    setBanner,
+    setFormErrors,
+    setDirectoryBrowser,
+    setDrawerState,
+    clearPendingDelete: () => setPendingDelete(null),
+  });
+  const { validateMountMutation, refreshMountAccessMutation, browseDirectoriesMutation } = useMountValidation({
+    setBanner, setFormErrors, setDirectoryBrowser,
+  });
+
+  useEffect(() => {
+    if (drawerState?.mode === 'edit' && mountDetailQuery.data) {
+      setFormState(buildMountFormState(mountDetailQuery.data));
+      setFormErrors({});
+      setDirectoryBrowser(null);
+    }
+  }, [drawerState?.mode, mountDetailQuery.data]);
+
+  const mounts = mountsQuery.data?.items ?? [];
+  const currentDetail = mountDetailQuery.data;
+  const isSaving = createMountMutation.isPending || updateMountMutation.isPending;
+  const isDeleting = deleteMountMutation.isPending;
+
+  const filteredMounts = useMemo(() => {
+    return mounts.filter((mount) => {
+      const matchesKeyword = matchKeyword(
+        deferredKeyword,
+        mount.name,
+        mount.pathLabel,
+        mount.typeLabel,
+        mount.statusMessage,
+        `异常绑定 ${mount.unavailableBindingCount}`,
+        `媒体库绑定 ${mount.referenceCounts.librarySourceCount}`,
+        `媒体源 ${mount.referenceCounts.mediaSourceCount}`,
+        `旁路资源 ${mount.referenceCounts.sidecarAssetCount}`,
+        ...mount.linkedLibraries.map((library) => library.name),
+      );
+      const matchesStatus = statusFilter === 'all' || mount.healthStatus === statusFilter;
+      const matchesType = typeFilter === 'all' || mount.mountType === typeFilter;
+      return matchesKeyword && matchesStatus && matchesType;
+    });
+  }, [deferredKeyword, mounts, statusFilter, typeFilter]);
+
+  if (mountsQuery.isPending) {
+    return (
+      <FeedbackState variant="loading" title="正在加载数据源" description="正在整理来源类型、健康状态和最近校验时间。" />
+    );
+  }
+  if (mountsQuery.isError) {
+    return (
+      <FeedbackState
+        variant="error"
+        title="数据源加载失败"
+        description={getErrorMessage(mountsQuery.error)}
+        action={<button className={styles.primaryButton} type="button" onClick={() => mountsQuery.refetch()}>重试</button>}
+      />
+    );
+  }
+
+  const healthyCount = mounts.filter((m) => m.healthStatus === 'healthy').length;
+  const attentionCount = mounts.filter((m) => m.healthStatus === 'attention').length;
+  const criticalCount = mounts.filter((m) => m.healthStatus === 'critical').length;
+  const linkedLibrarySourceCount = mounts.reduce((sum, m) => sum + m.referenceCounts.librarySourceCount, 0);
+  const unavailableBindingMountCount = mounts.filter((mount) => mount.unavailableBindingCount > 0).length;
+
+  const openCreateDrawer = () => {
+    setBanner(null);
+    setFormErrors({});
+    setDirectoryBrowser(null);
+    setPendingAuthModeChange(null);
+    setFormState(createEmptyMountForm());
+    setDrawerState({ mode: 'create' });
+  };
+
+  const openMountDrawer = (mountId: string, mode: 'view' | 'edit') => {
+    setBanner(null);
+    setFormErrors({});
+    setDirectoryBrowser(null);
+    setPendingAuthModeChange(null);
+    if (mode === 'edit' && currentDetail?.mount.id === mountId) {
+      setFormState(buildMountFormState(currentDetail));
+    } else if (mode === 'edit') {
+      setFormState(createEmptyMountForm());
+    }
+    setDrawerState({ mode, mountId });
+  };
+
+  const closeDrawer = () => {
+    if (isSaving) return;
+    setFormErrors({});
+    setDirectoryBrowser(null);
+    setPendingAuthModeChange(null);
+    setFormState(createEmptyMountForm());
+    setDrawerState(null);
+  };
+
+  const requestDelete = (target: PendingMountDeleteState) => {
+    deleteMountMutation.reset();
+    setPendingDelete(target);
+  };
+
+  return (
+    <div className={styles.page}>
+      <ManagePageHeader
+        title="媒体来源"
+        description="这里负责把本地目录、OpenList、AList、WebDAV 或 S3 接进来，让媒体库真正能看到文件。"
+        meta={<span className={styles.metaText}>共 {mounts.length} 个媒体来源</span>}
+        actions={
+          <>
+            <button className={styles.primaryButton} type="button" onClick={openCreateDrawer}>添加媒体来源</button>
+            <button className={styles.secondaryButton} type="button" onClick={() => mountsQuery.refetch()}>刷新</button>
+          </>
+        }
+      />
+
+      {banner ? <InlineBanner variant={banner.variant} title={banner.title} description={banner.description} /> : null}
+      {(attentionCount > 0 || criticalCount > 0) && (
+        <InlineBanner
+          variant={criticalCount > 0 ? 'warning' : 'info'}
+          title={criticalCount > 0 ? '有媒体来源当前不可用' : '部分媒体来源建议复核'}
+          description={
+            unavailableBindingMountCount > 0
+              ? `当前共有 ${attentionCount + criticalCount} 个媒体来源不是“正常”状态，其中 ${unavailableBindingMountCount} 个来源已经有资源被系统隐藏，管理员需要尽快处理。`
+              : `当前共有 ${attentionCount + criticalCount} 个媒体来源不是“正常”状态，建议先检查连接信息和最近校验时间。`
+          }
+        />
+      )}
+
+      <section className={styles.metricsGrid}>
+        <MetricCard label="正常来源" value={healthyCount} status="healthy" />
+        <MetricCard label="需关注" value={attentionCount} status="attention" />
+        <MetricCard label="异常" value={criticalCount} status="critical" />
+        <MetricCard label="已绑定到媒体库" value={linkedLibrarySourceCount} status="healthy" />
+      </section>
+
+      <MountTable
+        mounts={mounts}
+        filteredMounts={filteredMounts}
+        keyword={keyword}
+        statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        onKeywordChange={setKeyword}
+        onStatusFilterChange={setStatusFilter}
+        onTypeFilterChange={setTypeFilter}
+        onOpenView={(id) => openMountDrawer(id, 'view')}
+        onOpenEdit={(id) => openMountDrawer(id, 'edit')}
+        onRequestDelete={(mount) => requestDelete(buildPendingMountDeleteState(mount))}
+        onCreateClick={openCreateDrawer}
+        validateMutation={validateMountMutation}
+      />
+
+      <MountDrawer
+        drawerState={drawerState}
+        mountDetailQuery={mountDetailQuery}
+        formState={formState}
+        setFormState={setFormState}
+        formErrors={formErrors}
+        setFormErrors={setFormErrors}
+        directoryBrowser={directoryBrowser}
+        setDirectoryBrowser={setDirectoryBrowser}
+        pendingAuthModeChange={pendingAuthModeChange}
+        setPendingAuthModeChange={setPendingAuthModeChange}
+        isSaving={isSaving}
+        isDeleting={isDeleting}
+        createMountMutation={createMountMutation}
+        updateMountMutation={updateMountMutation}
+        validateMountMutation={validateMountMutation}
+        refreshMountAccessMutation={refreshMountAccessMutation}
+        browseDirectoriesMutation={browseDirectoriesMutation}
+        setPendingDelete={(detail) => setPendingDelete(detail ? buildPendingMountDeleteState(detail) : null)}
+        setBanner={setBanner}
+        setDrawerState={setDrawerState}
+        onClose={closeDrawer}
+      />
+
+      <SensitiveActionDialog
+        open={pendingDelete !== null}
+        actionKey="delete-mount"
+        title={pendingDelete ? `删除数据源：${pendingDelete.mountName}` : ''}
+        description="删除后，该数据源将无法继续被媒体库绑定。"
+        impact={pendingDelete ? buildMountDeleteImpact(pendingDelete) : undefined}
+        errorMessage={pendingDelete && deleteMountMutation.isError ? getErrorMessage(deleteMountMutation.error) : undefined}
+        confirmLabel="删除来源"
+        onOpenChange={(open) => {
+          if (!open) {
+            deleteMountMutation.reset();
+            setPendingDelete(null);
+          }
+        }}
+        onConfirm={(confirmation) => {
+          if (!pendingDelete) return;
+          deleteMountMutation.reset();
+          deleteMountMutation.mutate({
+            mountId: pendingDelete.mountId,
+            confirmation,
+          });
+        }}
+        pending={isDeleting}
+      />
+      <ConfirmDialog
+        open={pendingAuthModeChange !== null}
+        title="切换认证方式"
+        description="切换并保存后，当前来源只会保留新认证方式对应的凭据；另一套已保存凭据会被覆盖。"
+        impact={buildAuthModeChangeImpact(currentDetail, formState.remoteConfig.authMode, pendingAuthModeChange)}
+        confirmLabel="继续切换"
+        onOpenChange={(open) => { if (!open) setPendingAuthModeChange(null); }}
+        onConfirm={() => {
+          if (!pendingAuthModeChange) return;
+          setFormErrors((prev) => ({ ...prev, username: undefined, password: undefined, token: undefined, browse: undefined }));
+          setDirectoryBrowser(null);
+          setPendingAuthModeChange(null);
+          setFormState((prev) => ({ ...prev, remoteConfig: { ...prev.remoteConfig, authMode: pendingAuthModeChange } }));
+        }}
+      />
+    </div>
+  );
+}
+
+export default ManageMountsPage;

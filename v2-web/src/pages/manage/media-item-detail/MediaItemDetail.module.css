@@ -1,0 +1,479 @@
+/*
+ * Darkroom · 管理端「媒体资源详情」局部样式
+ * ------------------------------------------------------------
+ * 只承载详情页独有的排版：封面区、数据源块、资产网格、字幕行、流水线卡片。
+ * 通用外壳（页面骨架 / 区块 / 按钮 / 表单 / 技术流卡片）一律复用
+ * ManagePages.module.css，不在这里重造一套皮肤。
+ *
+ * 暗房约束：不铺背景块，分区只用 --border-subtle 细线与留白；唯一强调色是
+ * 管理态安全灯，且只落在线与点上；悬停反馈是提亮而不是位移；只有图片允许
+ * 投影 —— 纯黑底上投影的作用是把画面「托」起来。
+ */
+
+/* ── 返回入口 ── */
+
+.backRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-wide);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.backLink:hover {
+  color: var(--text-1);
+}
+
+/* ── 行式容器：只有 gap 不同，基线合并 ── */
+
+.badgeRow,
+.assetActions,
+.toggleRow,
+.rawToggleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.assetActions {
+  gap: var(--space-2);
+}
+
+.toggleRow {
+  gap: var(--space-4);
+}
+
+.toggleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+/* 分区 kicker：暗房里用宽字距小字号代替小标题 */
+.kicker {
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
+.sectionNote {
+  font-size: var(--text-caption);
+  color: var(--text-3);
+  line-height: 1.6;
+}
+
+/* ── 基础信息与封面 ── */
+
+.identity {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.identityArt,
+.artSecondary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.identityArt {
+  gap: var(--space-3);
+}
+
+.identityBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* 海报框不描边不加底：封面自己就是内容，只靠投影与纯黑分离 */
+.artFrame,
+.assetPreview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-l2);
+}
+
+.assetPreview {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-l1);
+}
+
+.artFrameWide,
+.assetPreviewWide {
+  aspect-ratio: 16 / 9;
+}
+
+.artImage,
+.assetPreviewImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 图片缺失或加载失败时的占位，是全页少数几处需要「画出边界」的地方 */
+.artPlaceholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: inherit;
+  color: var(--text-4);
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-wide);
+  text-align: center;
+}
+
+.artSecondaryRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.artCaption {
+  font-size: var(--text-caption);
+  color: var(--text-4);
+  letter-spacing: var(--tracking-wide);
+}
+
+.overviewText {
+  margin: 0;
+  max-width: 76ch;
+  font-size: var(--text-body-sm);
+  line-height: 1.75;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+
+/* ── 元数据编辑 ── */
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.actorList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 演职员行不做卡片，行间只留一条细线；末行不画线，避免底部悬空一横 */
+.actorRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ── 数据源 ── */
+
+.sourceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* 一条资源常挂多个源，各自装卡片会把页面切碎，改用细线分隔 */
+.sourceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.actorRow:last-child,
+.sourceBlock:last-child,
+.subtitleRow:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.sourceHead,
+.subtitleHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.sourceHeadMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sourceTitle {
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+  letter-spacing: var(--tracking-tight);
+}
+
+.sourcePath {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  color: var(--text-3);
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.streamGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── 图片资产 ── */
+
+.assetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+  gap: var(--space-4);
+}
+
+.assetCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.assetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.assetName,
+.subtitleName {
+  font-size: var(--text-body-sm);
+  color: var(--text-1);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.assetMeta {
+  font-size: var(--text-caption);
+  color: var(--text-3);
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+/* 上传区是页面上唯一需要「圈出来」的操作块，与只读列表拉开层级 */
+.uploadForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: var(--space-4);
+  align-items: end;
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.fileInput {
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--text-body-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-default);
+}
+
+.fileInput:hover {
+  border-color: var(--border-strong);
+}
+
+.fileInput::file-selector-button {
+  margin-right: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--text-caption);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ── 字幕 ── */
+
+.subtitleList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.subtitleRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.subtitleForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--space-4);
+  align-items: end;
+}
+
+/* ── 元数据流水线 ── */
+
+.pipelineGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-5);
+}
+
+/* 不是卡片：左侧一条细线暗示「这是一段流程」，其余靠内边距分组 */
+.pipelineCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-subtle);
+  min-width: 0;
+}
+
+.pipelineCardActive {
+  border-left-color: var(--safelight-line);
+}
+
+.pipelineCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pipelineCardTitle {
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+}
+
+.pipelineFacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+/* 运行中指示点：安全灯呼吸，是全页唯一的动态元素 */
+.liveDot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--safelight);
+  letter-spacing: var(--tracking-wide);
+}
+
+.liveDot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--safelight);
+  animation: darkroomPulse 1.6s var(--ease-default) infinite;
+}
+
+@keyframes darkroomPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ── 危险操作 ── */
+
+.dangerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.dangerCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* ── 响应式 ── */
+
+@media (max-width: 1023px) {
+  .identity {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .identityArt {
+    max-width: 240px;
+  }
+}
+
+@media (max-width: 767px) {
+  .actorRow {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .identityArt {
+    max-width: none;
+  }
+
+  .artSecondaryRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liveDot::before {
+    animation: none;
+  }
+}

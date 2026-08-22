@@ -1,0 +1,1 @@
+export { useItemDetailQueries } from './useItemDetailQueries';

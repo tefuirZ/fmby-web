@@ -1,0 +1,96 @@
+/*
+ * ============================================================
+ * 暗房 Darkroom 响应式工程化基础设施
+ * ============================================================
+ *
+ * 断点档位（暗房约定）：
+ *   phone-sm   (max-width: 413px)
+ *   phone      (max-width: 767px)    ← 414 起为大屏手机
+ *   tablet     (max-width: 1023px)   ← 768 起为平板
+ *   laptop     (max-width: 1279px)   ← 1024 起为小型笔记本
+ *   desktop    (max-width: 1535px)   ← 1280 起为标准桌面
+ *   wide       (min-width: 1536px)
+ *
+ * 任何新写 @media 都应使用以上档位，禁止引入散值断点。
+ * JS 侧可读 :root 上的 --bp-* 获取一致值。
+ */
+
+/* ============================================================
+ * 容器查询基础工具
+ *   - .cqInline：仅宽度容器查询（最常用）
+ *   - .cqSize：宽高都做容器查询
+ * ============================================================ */
+.cqInline {
+  container-type: inline-size;
+}
+
+.cqSize {
+  container-type: size;
+}
+
+/* ============================================================
+ * 触控目标兜底（仅触控指针设备启用）
+ * ============================================================ */
+@media (hover: none) and (pointer: coarse) {
+  .touchTarget,
+  .touchTarget button,
+  .touchTarget a {
+    min-height: var(--touch-min);
+    min-width: var(--touch-min);
+  }
+}
+
+/* ============================================================
+ * iOS 安全区工具类
+ * ============================================================ */
+.safePaddingTop {
+  padding-top: var(--safe-area-top);
+}
+
+.safePaddingBottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.safePaddingX {
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+/* ============================================================
+ * 仅移动 / 仅桌面 显示工具类
+ * ============================================================ */
+.showMobile {
+  display: none;
+}
+
+.hideMobile {
+  display: revert;
+}
+
+@media (max-width: 767px) {
+  .showMobile {
+    display: revert;
+  }
+
+  .hideMobile {
+    display: none;
+  }
+}
+
+.showTablet {
+  display: none;
+}
+
+.hideTablet {
+  display: revert;
+}
+
+@media (max-width: 1023px) {
+  .showTablet {
+    display: revert;
+  }
+
+  .hideTablet {
+    display: none;
+  }
+}

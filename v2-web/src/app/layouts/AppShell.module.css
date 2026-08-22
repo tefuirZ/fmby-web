@@ -1,0 +1,15 @@
+/* ===== AppShell 应用壳（暗房）=====
+ * 应用壳只负责撑满视口高度并让内容纵向铺开；底色由 base.css 的 --bg-base 统一提供，
+ * 这里不再重复声明背景，避免在纯黑画布上叠出第二层底色。 */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}

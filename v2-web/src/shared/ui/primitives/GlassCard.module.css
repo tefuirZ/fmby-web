@@ -1,0 +1,46 @@
+/*
+ * Darkroom：GlassCard 去玻璃化。
+ * 保留组件名与 data-* 契约，视觉上退化为「一条极细线圈出的区域」，
+ * 不再有背景块、不再有位移动效 —— 悬停只提亮线与底。
+ */
+
+.card {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  color: var(--text-primary);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.card[data-padding='sm'] {
+  padding: var(--space-3);
+}
+
+.card[data-padding='md'] {
+  padding: var(--space-4);
+}
+
+.card[data-padding='lg'] {
+  padding: var(--space-6);
+}
+
+.card[data-interactive] {
+  cursor: pointer;
+}
+
+.card[data-interactive]:hover {
+  background: var(--surface-1);
+  border-color: var(--border-default);
+}
+
+.card[data-interactive]:active {
+  background: var(--surface-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

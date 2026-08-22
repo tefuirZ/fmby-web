@@ -1,0 +1,295 @@
+/*
+ * ============================================================
+ * Darkroom 设计 Token（兼容旧版 FMBY / aurora-glass token 命名）
+ * ============================================================
+ *
+ * 设计原则（暗房）：
+ *   1. 画布是纯黑。界面本身不发光，发光的只有内容。
+ *   2. 没有卡片、没有毛玻璃、没有渐变装饰。层级靠「极细线 + 微提亮」建立。
+ *   3. 品牌色不是固定值 —— 浏览态由当前封面主色驱动（--content-accent），
+ *      管理态用固定的暗房安全灯琥珀（--safelight）。
+ *   4. 圆角接近直角，投影只用于把海报从黑底里「托」起来。
+ *
+ * 兼容性：保留旧皮肤全部变量名（--glass-*、--aurora-*、--brand-gold 等），
+ * 仅改变取值，因此下游 CSS Module 无需改动即可整体换肤。
+ */
+
+:root {
+  /* ============================================================
+   * 画布
+   * ============================================================ */
+  --bg-base: #000000;
+  --bg-immersive: #000000;
+  /* 需要与黑底分离的浮层（对话框、抽屉、下拉）使用的实底 */
+  --bg-raised: #0d0d0f;
+  --bg-raised-strong: #141417;
+
+  /* ============================================================
+   * 内容主色（运行时由 useAmbientAccent 覆写）
+   * ------------------------------------------------------------
+   * --content-accent-rgb 为空格分隔的 RGB 分量，配合
+   * rgb(var(--content-accent-rgb) / <alpha>) 使用。
+   * JS 侧会把提取到的封面主色归一到 L≈68%、S≤70%，保证任何封面下
+   * 文本对比度都安全。
+   * ============================================================ */
+  --content-accent: #ffffff;
+  --content-accent-rgb: 255 255 255;
+  --content-accent-soft: rgb(var(--content-accent-rgb) / 0.16);
+  --content-accent-line: rgb(var(--content-accent-rgb) / 0.42);
+  /* 环境光强度：0 关闭氛围光，1 默认 */
+  --ambient-strength: 1;
+
+  /* 暗房安全灯：管理态唯一强调色 */
+  --safelight: #ffb454;
+  --safelight-hover: #ffc57a;
+  --safelight-active: #f0a03a;
+  --safelight-soft: rgba(255, 180, 84, 0.12);
+  --safelight-line: rgba(255, 180, 84, 0.34);
+
+  /* ============================================================
+   * 材质（旧 glass-* 命名保留，取值已去玻璃化）
+   * ------------------------------------------------------------
+   * --glass-blur 归零 ⇒ 全站 backdrop-filter: blur(var(--glass-blur))
+   * 自动失效，无需逐个文件删除。
+   * ============================================================ */
+  --glass-bg: rgba(255, 255, 255, 0.028);
+  /* 浮层用实底，避免纯黑背景下对话框「看不见」 */
+  --glass-bg-strong: #101012;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-glow: rgba(255, 255, 255, 0.2);
+  --glass-blur: 0px;
+  --glass-blur-heavy: 0px;
+  --glass-inner-glow: none;
+
+  /* 表面：极微提亮，用于分区而非「卡片」 */
+  --surface-1: rgba(255, 255, 255, 0.024);
+  --surface-2: rgba(255, 255, 255, 0.045);
+  --surface-3: rgba(255, 255, 255, 0.072);
+
+  /* ============================================================
+   * 文本
+   * ============================================================ */
+  --text-1: rgba(255, 255, 255, 0.94);
+  --text-2: rgba(255, 255, 255, 0.62);
+  --text-3: rgba(255, 255, 255, 0.38);
+  --text-4: rgba(255, 255, 255, 0.26);
+  /* 旧命名映射 */
+  --text-primary: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --text-tertiary: var(--text-4);
+
+  /* ============================================================
+   * 强调色（旧命名映射）
+   * ------------------------------------------------------------
+   * 暗房方案里主操作是「白底黑字」，不跟随封面色，保证任何封面下
+   * 都可读；封面色只驱动氛围光、进度、选中描边。
+   * ============================================================ */
+  --brand-gold: #ffffff;
+  --brand-gold-hover: rgba(255, 255, 255, 0.86);
+  --brand-gold-active: rgba(255, 255, 255, 0.72);
+  --manage-cyan: var(--safelight);
+  --manage-cyan-hover: var(--safelight-hover);
+  --manage-cyan-active: var(--safelight-active);
+  --accent-blue: rgba(255, 255, 255, 0.86);
+  /* 此前被引用但从未定义的两个变量，在此补齐 */
+  --accent: var(--content-accent);
+  --accent-cyan: var(--safelight);
+
+  /* 极光色不再表示极光，退化为中性/内容色的别名（保留命名兼容） */
+  --aurora-1: var(--content-accent);
+  --aurora-2: rgba(255, 255, 255, 0.9);
+  --aurora-3: rgba(255, 255, 255, 0.55);
+  --aurora-4: var(--safelight);
+
+  /* ============================================================
+   * 语义色（为纯黑底提亮、降饱和）
+   * ============================================================ */
+  --success: #5fd3a6;
+  --warning: #ffb454;
+  --danger: #ff7b72;
+  --info: #8ab4f8;
+
+  --success-glass-bg: rgba(95, 211, 166, 0.1);
+  --success-glass-border: rgba(95, 211, 166, 0.3);
+  --warn-glass-bg: rgba(255, 180, 84, 0.1);
+  --warn-glass-border: rgba(255, 180, 84, 0.3);
+  --warning-glass-bg: var(--warn-glass-bg);
+  --warning-glass-border: var(--warn-glass-border);
+  --danger-glass-bg: rgba(255, 123, 114, 0.1);
+  --danger-glass-border: rgba(255, 123, 114, 0.3);
+  --info-glass-bg: rgba(138, 180, 248, 0.1);
+  --info-glass-border: rgba(138, 180, 248, 0.3);
+  --neutral-glass-bg: rgba(255, 255, 255, 0.05);
+  --neutral-glass-border: rgba(255, 255, 255, 0.14);
+
+  /* ============================================================
+   * 线（暗房只有极细线，没有描边卡片）
+   * ============================================================ */
+  --border-subtle: rgba(255, 255, 255, 0.055);
+  --border-muted: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --hairline: rgba(255, 255, 255, 0.07);
+
+  /* ============================================================
+   * 字体系统
+   * ============================================================ */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', 'Noto Sans SC',
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', 'IBM Plex Mono',
+    Consolas, monospace;
+
+  /* 暗房：大标题走细体大字号，与浓黑底形成安静的对比 */
+  --text-display: clamp(38px, 5vw, 62px);
+  --text-h1: 26px;
+  --text-h2: 19px;
+  --text-h3: 15px;
+  --text-body-lg: 15px;
+  --text-body: 14px;
+  --text-body-sm: 13px;
+  --text-caption: 12px;
+  --text-mono: 12px;
+
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* 字距：暗房大量使用宽字距小字号做「标签」 */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.16em;
+  --tracking-widest: 0.32em;
+
+  /* ============================================================
+   * 间距
+   * ============================================================ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ============================================================
+   * 栅格
+   * ============================================================ */
+  --grid-max-width: 1760px;
+  --grid-gutter-desktop: 24px;
+  --grid-gutter-tablet: 20px;
+  --grid-gutter-mobile: 12px;
+  --grid-margin: clamp(16px, 3vw, 40px);
+
+  /* ============================================================
+   * 断点（语义变量，供 JS / 文档消费）
+   * ============================================================ */
+  --bp-xs: 414px;
+  --bp-sm: 768px;
+  --bp-md: 1024px;
+  --bp-lg: 1280px;
+  --bp-xl: 1536px;
+  --bp-2xl: 1920px;
+  --bp-3xl: 2560px;
+
+  --cq-xs: 320px;
+  --cq-sm: 480px;
+  --cq-md: 720px;
+  --cq-lg: 960px;
+  --cq-xl: 1200px;
+
+  --touch-min: 44px;
+  --touch-min-comfortable: 48px;
+  --text-mobile-min: 14px;
+
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* ============================================================
+   * 圆角（暗房接近直角）
+   * ============================================================ */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-card: 3px;
+  --radius-full: 9999px;
+
+  /* ============================================================
+   * 投影 / 辉光
+   * ------------------------------------------------------------
+   * 纯黑底上普通投影不可见，因此投影只服务于「把海报托起来」，
+   * 层级分离改用 --glow-* 与极细线。
+   * ============================================================ */
+  --shadow-l1: 0 10px 24px -12px rgba(0, 0, 0, 0.9);
+  --shadow-l2: 0 20px 48px -18px rgba(0, 0, 0, 0.95);
+  --shadow-l3: 0 34px 80px -24px rgba(0, 0, 0, 1);
+
+  --glow-accent: 0 0 60px -14px rgb(var(--content-accent-rgb) / 0.55);
+  --glow-focus: 0 0 0 1px rgba(255, 255, 255, 0.9);
+  --ring-selected: 0 0 0 1px rgba(255, 255, 255, 0.85);
+
+  /* ============================================================
+   * 动效
+   * ============================================================ */
+  --duration-micro: 180ms;
+  --duration-fast: 150ms;
+  --duration-panel: 260ms;
+  --duration-page: 320ms;
+  --duration-hero: 400ms;
+  --duration-ambient: 900ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --motion-fast: var(--duration-fast);
+  --motion-panel: var(--duration-panel);
+  --motion-page: var(--duration-page);
+
+  /* ============================================================
+   * 层级
+   * ============================================================ */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-tooltip: 500;
+
+  /* ============================================================
+   * 布局
+   * ============================================================ */
+  --topbar-height-desktop: 64px;
+  --topbar-height-tablet: 60px;
+  --topbar-height-mobile: 56px;
+  --manage-rail-width: 272px;
+}
+
+/*
+ * 管理态：整体切到安全灯语汇。
+ * ManageLayout 根节点加 data-surface="manage" 即可生效。
+ */
+[data-surface='manage'] {
+  --content-accent: var(--safelight);
+  --content-accent-rgb: 255 180 84;
+  /* 管理态不需要氛围光，信息密度优先 */
+  --ambient-strength: 0;
+}
+
+/* 减弱动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-micro: 0ms;
+    --duration-fast: 0ms;
+    --duration-panel: 0ms;
+    --duration-page: 0ms;
+    --duration-hero: 0ms;
+    --duration-ambient: 0ms;
+  }
+}

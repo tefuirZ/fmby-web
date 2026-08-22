@@ -1,0 +1,333 @@
+/**
+ * aurora-glass 管理后台布局
+ * 侧栏为低频大面板，允许 blur；导航项 hover 使用 flat。
+ */
+
+.shell {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: var(--grid-max-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--grid-margin) var(--space-12);
+  min-height: 100%;
+}
+
+/* ── 桌面侧栏 ─────────────────────────────────────────── */
+
+.desktopRail {
+  flex: 0 0 var(--manage-rail-width, 264px);
+  min-width: 0;
+}
+
+.rail {
+  position: sticky;
+  top: calc(var(--topbar-height-desktop, 64px) + var(--space-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: calc(100vh - var(--topbar-height-desktop, 64px) - var(--space-8));
+  overflow-y: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-l1), var(--glass-inner-glow);
+  scrollbar-width: thin;
+}
+
+.railHero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.railEyebrow {
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--manage-cyan);
+}
+
+.railTitle {
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.railHint {
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+/* ── 导航树 ──────────────────────────────────────────── */
+
+.navTree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.overviewCard {
+  border: 1px solid color-mix(in srgb, var(--manage-cyan) 30%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--manage-cyan) 7%, transparent);
+  padding: var(--space-1);
+}
+
+.navCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.navCard[data-active='true'] {
+  border-color: color-mix(in srgb, var(--manage-cyan) 35%, transparent);
+}
+
+.navCardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.navCard[data-active='true'] .navCardHeader {
+  color: var(--manage-cyan);
+}
+
+.navCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--space-2);
+}
+
+.subGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.subGroupBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.navLink:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.navLink[data-active='true'] {
+  background: color-mix(in srgb, var(--manage-cyan) 14%, transparent);
+  color: var(--manage-cyan);
+  font-weight: var(--font-weight-semibold);
+}
+
+.navIcon {
+  flex-shrink: 0;
+}
+
+/* ── 工作区 ──────────────────────────────────────────── */
+
+.workspace {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.contentSurface {
+  min-width: 0;
+}
+
+/* ── 移动端命令条 / 抽屉 ─────────────────────────────── */
+
+.mobileBar {
+  display: none;
+}
+
+.mobileTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-min-comfortable);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.mobileTriggerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mobileTriggerEyebrow {
+  font-size: var(--text-caption);
+  color: var(--text-muted);
+}
+
+.mobileTriggerTitle {
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.mobileTriggerAction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--manage-cyan);
+  white-space: nowrap;
+}
+
+.mobileOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: rgba(4, 10, 18, 0.6);
+}
+
+.mobileDrawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  width: min(320px, 88vw);
+  padding: var(--space-4);
+  gap: var(--space-4);
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+  backdrop-filter: blur(var(--glass-blur-heavy));
+  border-right: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-l3);
+  overflow-y: auto;
+}
+
+.mobileDrawerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mobileDrawerTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mobileDrawerTitle {
+  margin: 0;
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.mobileDrawerDescription {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.mobileClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mobileDrawerBody .rail {
+  position: static;
+  max-height: none;
+  border: none;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* ── 响应式 ──────────────────────────────────────────── */
+
+@media (max-width: 1023px) {
+  .shell {
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--grid-margin) calc(var(--space-10) + var(--safe-area-bottom));
+  }
+
+  .desktopRail {
+    display: none;
+  }
+
+  .mobileBar {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navLink {
+    transition: none;
+  }
+}

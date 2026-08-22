@@ -1,0 +1,358 @@
+/*
+ * Darkroom · 媒体库详情页 · 电影院式聚光轮播
+ * ------------------------------------------------------------
+ * 分层：背景轮播（ken-burns）→ 压黑遮罩 → 前景信息 → 胶片条
+ *
+ * 暗房改造要点：
+ *   · Hero 不再是一块带描边和圆角的大卡片。画面四边被径向蒙版
+ *     羽化进纯黑，看不出容器边界 —— 只有光，没有框。
+ *   · 遮罩从深蓝黑（#060912 系）换成真正的纯黑，与 --bg-base 无缝衔接。
+ *   · 胶片条当前项原来靠 translateY(-6px) + scale 弹出来；暗房里
+ *     禁止位移，改用「白色实环 + 封面主色辉光」标记，与首页 hero 一致。
+ *
+ * 关于遮罩色：scrim / 进度槽保留字面 rgba(0, 0, 0, …)，因为 token 里没有半透明黑，
+ * 而这里必须是纯黑才不会在黑底上留下色带；mask-image 里的 #000 是 alpha 蒙版的
+ * 「保留」色，不是视觉颜色，同样不走 token。
+ *
+ * 类名与 LibraryCinemaHero / CinemaHeroBackdrop / CinemaFilmstrip 完全一致。
+ */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: clamp(380px, 52vh, 560px);
+}
+
+/* ---------- 背景层 ---------- */
+
+.backdropStage {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.backdropSlide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--duration-ambient) var(--ease-default);
+}
+
+.backdropSlide[data-active='true'] {
+  opacity: 1;
+}
+
+/*
+ * 径向蒙版：右上为成像中心，四边都在容器边界之前完全透明，
+ * 于是画面是「从黑里浮出来」的，而不是贴在一个矩形里。
+ */
+.backdropImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.05);
+  mask-image: radial-gradient(96% 104% at 68% 30%, #000 34%, transparent 92%);
+  -webkit-mask-image: radial-gradient(96% 104% at 68% 30%, #000 34%, transparent 92%);
+}
+
+.backdropSlide[data-active='true'] .backdropImage {
+  animation: kenburns 16s linear both;
+}
+
+@keyframes kenburns {
+  from {
+    transform: scale(1.05);
+  }
+  to {
+    transform: scale(1.14);
+  }
+}
+
+/* 无横图时的氛围色（取自标题散列色，由组件内联注入），同样羽化 */
+.backdropAmbient {
+  width: 100%;
+  height: 100%;
+  opacity: 0.5;
+  mask-image: radial-gradient(96% 104% at 68% 30%, #000 20%, transparent 88%);
+  -webkit-mask-image: radial-gradient(96% 104% at 68% 30%, #000 20%, transparent 88%);
+}
+
+/* ---------- 压黑遮罩：保证前景文字对比 ---------- */
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.96) 0%,
+      rgba(0, 0, 0, 0.6) 40%,
+      rgba(0, 0, 0, 0.1) 72%
+    ),
+    linear-gradient(
+      100deg,
+      rgba(0, 0, 0, 0.9) 0%,
+      rgba(0, 0, 0, 0.4) 44%,
+      transparent 74%
+    );
+  pointer-events: none;
+}
+
+/* ---------- 前景信息 ---------- */
+
+.content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: clamp(20px, 3.5vw, 40px) 0 var(--space-4);
+  max-width: min(720px, 92%);
+}
+
+.eyebrowRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.counter {
+  font-size: 11px;
+  color: var(--text-4);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+}
+
+/* extrabold 在纯黑上会发糊；改细体大字号 + 收紧字距 */
+.title {
+  margin: 0;
+  font-size: clamp(28px, 3.6vw, 46px);
+  font-weight: var(--font-weight-light);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.08;
+  color: var(--text-1);
+  text-wrap: balance;
+  text-shadow: none;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.description {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13.5px;
+  line-height: 1.8;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.statsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* 切换标题/摘要时的淡入。这是入场动效，不是悬停位移，予以保留 */
+.slideCopy {
+  animation: copyFadeIn var(--duration-hero) var(--ease-default) both;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@keyframes copyFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- 胶片条 ---------- */
+
+.filmstripBar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 0 clamp(16px, 2.4vw, 28px);
+}
+
+.filmstrip {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding: var(--space-2) 2px;
+  margin: calc(-1 * var(--space-2)) -2px;
+  min-width: 0;
+}
+
+.filmstrip::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * 缩略图不带边框（原来是 2px 透明边框，选中时染成金色）。
+ * 暗房里选中态 = 白色实环 + 主色辉光，位置和尺寸都不变。
+ */
+.filmThumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 68px;
+  aspect-ratio: 2 / 3;
+  border: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  padding: 0;
+  background-color: var(--surface-1);
+  cursor: pointer;
+  scroll-snap-align: start;
+  opacity: 0.5;
+  transition:
+    opacity var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-panel) var(--ease-default);
+}
+
+.filmThumb:hover,
+.filmThumb:focus-visible {
+  opacity: 0.85;
+}
+
+.filmThumb:focus-visible {
+  outline: 1px solid var(--brand-gold);
+  outline-offset: 2px;
+}
+
+.filmThumb[data-active='true'] {
+  opacity: 1;
+  box-shadow: var(--ring-selected), var(--glow-accent);
+}
+
+.filmThumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.filmThumbFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  font-size: var(--text-h3);
+  font-weight: var(--font-weight-normal);
+}
+
+.filmThumbProgress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  /* 槽压在海报上，只能用字面纯黑 */
+  background-color: rgba(0, 0, 0, 0.55);
+}
+
+.filmThumbProgress > span {
+  display: block;
+  height: 100%;
+  background-color: var(--content-accent);
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+/* ---------- 响应式 ---------- */
+
+@media (max-width: 900px) {
+  .hero {
+    min-height: clamp(340px, 58vh, 480px);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    min-height: 0;
+  }
+
+  .content {
+    max-width: 100%;
+    padding-top: clamp(96px, 30vw, 140px);
+  }
+
+  .description {
+    -webkit-line-clamp: 3;
+  }
+
+  /* 竖屏时画面改为上下羽化，否则左右两边会被蒙版切得太窄 */
+  .backdropImage,
+  .backdropAmbient {
+    mask-image: radial-gradient(140% 84% at 62% 24%, #000 34%, transparent 92%);
+    -webkit-mask-image: radial-gradient(140% 84% at 62% 24%, #000 34%, transparent 92%);
+  }
+
+  .filmstripBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .filmThumb {
+    width: 56px;
+  }
+
+  .heroActions {
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdropSlide {
+    transition: none;
+  }
+
+  .backdropSlide[data-active='true'] .backdropImage {
+    animation: none;
+  }
+
+  .slideCopy {
+    animation: none;
+  }
+
+  .filmThumb {
+    transition: none;
+  }
+}

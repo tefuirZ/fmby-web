@@ -1,0 +1,41 @@
+/*
+ * Darkroom · 气泡提示
+ * ------------------------------------------------------------
+ * 浮层一律实底：纯黑画布上半透明面板等于看不见，
+ * 所以这里用 --glass-bg-strong(#101012) 而不是原来的半透明深蓝。
+ * 原 backdrop-filter 一并删除 —— 暗房不做毛玻璃。
+ */
+
+.content {
+  z-index: var(--z-tooltip);
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-l1);
+  color: var(--text-1);
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  /* 只淡入不位移：暗房里元素不「弹」出来 */
+  animation: tooltip-in var(--duration-fast) var(--ease-default);
+}
+
+.arrow {
+  fill: var(--glass-bg-strong);
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content {
+    animation: none;
+  }
+}

@@ -1,0 +1,68 @@
+/*
+ * Darkroom · 行内提示条
+ * ------------------------------------------------------------
+ * 提示条承载的是语义（成功 / 失败 / 需要注意），不是装饰，
+ * 所以保留极淡的状态色底与边线；只把玻璃内发光和大圆角去掉，
+ * 让它读起来像「一段被标记的正文」而不是一张浮起的卡片。
+ */
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+}
+
+.banner[data-variant='success'] {
+  background: var(--success-glass-bg);
+  border-color: var(--success-glass-border);
+}
+
+.banner[data-variant='error'] {
+  background: var(--danger-glass-bg);
+  border-color: var(--danger-glass-border);
+}
+
+.banner[data-variant='warning'] {
+  background: var(--warn-glass-bg);
+  border-color: var(--warn-glass-border);
+}
+
+.banner[data-variant='info'] {
+  background: var(--info-glass-bg);
+  border-color: var(--info-glass-border);
+}
+
+.icon {
+  display: inline-flex;
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+
+.banner[data-variant='success'] .icon { color: var(--success); }
+.banner[data-variant='error'] .icon { color: var(--danger); }
+.banner[data-variant='warning'] .icon { color: var(--warning); }
+.banner[data-variant='info'] .icon { color: var(--info); }
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+}
+
+.description {
+  font-size: var(--text-body-sm);
+  color: var(--text-2);
+  line-height: 1.6;
+}

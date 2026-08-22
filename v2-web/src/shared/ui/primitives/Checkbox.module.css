@@ -1,0 +1,41 @@
+/*
+ * Darkroom · 复选框
+ * ------------------------------------------------------------
+ * 未选中就是「一个空的方框」，不填底色；选中后整块被内容主色填满，
+ * 对勾取画布黑 —— 亮底上再画白勾会糊掉。
+ */
+
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.root:hover:not([data-disabled]) {
+  border-color: var(--border-strong);
+}
+
+.root[data-state='checked'],
+.root[data-state='indeterminate'] {
+  background: var(--content-accent);
+  border-color: transparent;
+}
+
+.root[data-disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.indicator {
+  display: inline-flex;
+  color: var(--bg-base);
+}

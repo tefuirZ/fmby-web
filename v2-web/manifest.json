@@ -1,0 +1,22 @@
+{
+  "contract_version": "0.1.0",
+  "name": "darkroom",
+  "display_name": "暗房",
+  "version": "0.1.0",
+  "description": "以纯黑为画布的 FMBY 全功能皮肤：不用卡片、不用毛玻璃，层级只靠细线与留白建立；界面的唯一色彩来自当前封面的主色。",
+  "author": {
+    "name": "tefuir"
+  },
+  "license": "MIT",
+  "entry": "dist/index.html",
+  "capabilities": [
+    "*"
+  ],
+  "localStorage_keys": [
+    "darkroom:"
+  ],
+  "min_fmby_version": "0.2.0",
+  "tags": [
+    "dark", "minimal", "cinematic", "full-featured"
+  ]
+}

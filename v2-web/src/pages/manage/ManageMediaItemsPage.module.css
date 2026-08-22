@@ -1,0 +1,252 @@
+/**
+ * aurora-glass 媒体条目管理页样式
+ * 表格与卡片 flat 半透明，禁 backdrop-filter。
+ */
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.searchField {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  color: var(--text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.searchInput {
+  padding-left: 42px;
+}
+
+.filterFooter,
+.paginationBar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.paginationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.paginationLabel {
+  min-width: 88px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.pendingChip {
+  border-color: color-mix(in srgb, var(--manage-cyan) 35%, transparent);
+  color: var(--manage-cyan);
+}
+
+.desktopTable {
+  display: block;
+}
+
+.cardGrid.mobileCardGrid {
+  display: none;
+}
+
+.itemCell,
+.itemCardTop {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.posterFrame {
+  flex-shrink: 0;
+  width: 72px;
+  height: 96px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--manage-cyan) 18%, transparent), transparent 58%),
+    var(--surface-3);
+}
+
+.posterImage,
+.posterFallback {
+  width: 100%;
+  height: 100%;
+}
+
+.posterImage {
+  display: block;
+  object-fit: cover;
+}
+
+.posterFallback {
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 20px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.itemCopy,
+.overrideStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.itemCopy {
+  flex: 1;
+}
+
+.itemTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.itemTitle {
+  color: var(--text-primary);
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.45;
+}
+
+.itemSubtitle {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-size: var(--text-body-sm);
+}
+
+.itemMetaLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.itemContextLine {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.statusStack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-4);
+}
+
+.itemCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--manage-cyan) 6%, transparent), transparent 32%),
+    var(--surface-1);
+  box-shadow: var(--shadow-l1);
+}
+
+.cardFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.actionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.smallDangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--danger-glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-glass-bg);
+  color: var(--danger);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.smallDangerButton:hover {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+}
+
+.smallDangerButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1279px) {
+  .filterGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1023px) {
+  .desktopTable {
+    display: none;
+  }
+
+  .cardGrid.mobileCardGrid {
+    display: grid;
+  }
+}
+
+@media (max-width: 767px) {
+  .filterGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .itemCell,
+  .itemCardTop,
+  .cardFooter,
+  .paginationBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .posterFrame {
+    width: 100%;
+    height: 180px;
+  }
+}

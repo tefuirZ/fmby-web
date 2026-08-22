@@ -1,0 +1,540 @@
+.signalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.signalCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.16), transparent 45%),
+    linear-gradient(180deg, rgba(34, 211, 238, 0.08), rgba(34, 211, 238, 0.02)),
+    var(--surface-2);
+  box-shadow: var(--shadow-l1);
+}
+
+.strategyGrid,
+.batchRepairGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.strategyCard,
+.scopeCallout,
+.metricMiniCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.strategyCard {
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.08), transparent 36%),
+    var(--surface-3);
+}
+
+.strategyCard strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strategyFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.batchRepairActionRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.batchRepairMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.metricMiniCard {
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.metricMiniCard span {
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.metricMiniCard strong {
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.scopeCallout {
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 92px;
+  padding: var(--space-4);
+  border: 1px solid rgba(255, 190, 92, 0.24);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at top left, rgba(255, 190, 92, 0.16), transparent 40%),
+    rgba(255, 255, 255, 0.02);
+}
+
+.cardDescription,
+.inlineMuted,
+.scopeCallout span {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.collapseCard,
+.collapseInner {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.collapseSummary,
+.collapseInnerSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  list-style: none;
+  cursor: pointer;
+}
+
+.collapseSummary::-webkit-details-marker,
+.collapseInnerSummary::-webkit-details-marker {
+  display: none;
+}
+
+.collapseSummary {
+  padding: var(--space-5);
+  background:
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.14), transparent 36%),
+    rgba(255, 255, 255, 0.02);
+}
+
+.collapseSummary p,
+.collapseInnerSummary span {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+}
+
+.collapseBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.collapseInnerSummary {
+  padding: var(--space-4) var(--space-5);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.collapseInnerBody {
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.signalEyebrow {
+  color: var(--manage-cyan);
+  font-size: var(--text-caption);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.previewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+  gap: var(--space-4);
+}
+
+.previewWorkbench,
+.previewBoard,
+.previewStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.replayGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.78fr) minmax(0, 1.22fr);
+  gap: var(--space-4);
+}
+
+.replayIntroCard,
+.replayConfigCard,
+.replayScopeCard,
+.replayPolicyCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.replayIntroCard {
+  justify-content: center;
+  border-color: rgba(255, 190, 92, 0.24);
+  background:
+    radial-gradient(circle at top left, rgba(255, 190, 92, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 190, 92, 0.08), rgba(255, 255, 255, 0.02));
+}
+
+.replayIntroCard strong,
+.replayScopeCard strong,
+.replayPolicyCard strong {
+  color: var(--text-primary);
+}
+
+.replayIntroCard p,
+.replayScopeCard p,
+.replayPolicyCard span {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.replayNoticeRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.replayMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.replayActionRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.previewBoard {
+  min-height: 100%;
+  padding: var(--space-5);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.1), transparent 38%),
+    var(--surface-3);
+}
+
+.inlineControls {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.previewVersionCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 84px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+}
+
+.previewVersionCard strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  word-break: break-word;
+}
+
+.previewHeadline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.previewHeadline strong {
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.35;
+}
+
+.previewFactsGrid,
+.previewMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.previewFactCard,
+.previewMetaPanel,
+.termCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.previewFactCard span,
+.previewMetaPanel h3 {
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.previewFactCard strong {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.tokenWall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tokenBadge,
+.protectedToken {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+}
+
+.tokenBadge[data-tone='danger'] {
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.tokenBadge[data-tone='warning'] {
+  border-color: rgba(255, 190, 92, 0.28);
+  background: rgba(255, 190, 92, 0.1);
+}
+
+.tokenBadge[data-tone='info'] {
+  border-color: rgba(34, 211, 238, 0.32);
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.tokenBadge[data-tone='success'] {
+  border-color: rgba(96, 198, 133, 0.32);
+  background: rgba(96, 198, 133, 0.12);
+}
+
+.traceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.traceItem {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+}
+
+.mutedInline {
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.emptyPanel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.emptyPanel strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.termList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.termCardHeader,
+.termCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.termGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.defaultToolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: end;
+}
+
+.defaultSummary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.defaultTokenGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.defaultToken {
+  display: flex;
+  min-height: 88px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  color: var(--text-primary);
+  text-align: left;
+  transition: transform var(--duration-micro) var(--ease-default),
+    border-color var(--duration-micro) var(--ease-default),
+    background var(--duration-micro) var(--ease-default);
+}
+
+.defaultToken:hover,
+.protectedToken:hover {
+  transform: translateY(-1px);
+}
+
+.defaultToken span,
+.defaultToken em {
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-style: normal;
+}
+
+.defaultTokenDisabled {
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.defaultTokenProtected {
+  box-shadow: inset 0 0 0 1px rgba(96, 198, 133, 0.3);
+}
+
+.protectedComposer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.protectedToken {
+  border-color: rgba(96, 198, 133, 0.3);
+  background: rgba(96, 198, 133, 0.1);
+}
+
+.protectedToken span {
+  color: var(--text-secondary);
+}
+
+.stickySummary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stickySummary span {
+  color: var(--text-secondary);
+  max-width: 760px;
+}
+
+@media (max-width: 1279px) {
+  .strategyGrid,
+  .batchRepairGrid,
+  .signalGrid,
+  .replayGrid,
+  .previewGrid,
+  .previewMetaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .batchRepairMetrics,
+  .replayMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1023px) {
+  .inlineControls,
+  .strategyFormGrid,
+  .termGrid,
+  .defaultToolbar,
+  .protectedComposer,
+  .batchRepairMetrics,
+  .replayNoticeRow,
+  .replayMetrics,
+  .previewFactsGrid,
+  .previewMetaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .previewHeadline {
+    flex-direction: column;
+  }
+
+  .defaultSummary {
+    justify-content: flex-start;
+  }
+}

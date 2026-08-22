@@ -1,0 +1,105 @@
+/*
+ * ============================================================
+ * Darkroom 环境光层（沿用文件名 aurora.css 以免改动 main.tsx 导入顺序）
+ * ============================================================
+ *
+ * 暗房里唯一的光源是「正在看的那张封面」。
+ * 这里只做两件事：
+ *   1. body::before —— 一团跟随 --content-accent 的极低亮度辉光，
+ *      位置固定在视口偏上方，模拟封面从画面深处透出来的光。
+ *   2. body::after  —— 一层暗角，把注意力压回画面中心。
+ *
+ * 强度由 --ambient-strength 控制（管理态置 0，直接关灯）。
+ * 颜色切换走 --duration-ambient 过渡，避免换封面时突兀跳色。
+ */
+
+body {
+  background-color: var(--bg-base);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: var(--ambient-strength, 1);
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(
+      70% 55% at 68% 8%,
+      rgb(var(--content-accent-rgb) / 0.15),
+      transparent 70%
+    ),
+    radial-gradient(
+      50% 40% at 20% 78%,
+      rgb(var(--content-accent-rgb) / 0.055),
+      transparent 72%
+    );
+  background-repeat: no-repeat;
+  transition:
+    background-image var(--duration-ambient, 900ms) var(--ease-default),
+    opacity var(--duration-ambient, 900ms) var(--ease-default);
+  will-change: opacity;
+}
+
+/* 暗角：越靠边越黑，强化「一束光打在中间」 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 50% 38%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+/*
+ * ============================================================
+ * 关灯：把 --ambient-strength 提到 :root
+ * ------------------------------------------------------------
+ * 这里必须用 :has() 往上提，不能只写 [data-surface='...']。
+ * 原因是自定义属性只能向下继承：data-surface 挂在页面根节点（.page /
+ * ManageLayout 根）上，而真正读这个变量的是 body::before —— 它是 body
+ * 的伪元素，位于 data-surface 节点的「上游」，子节点写的变量传不回去。
+ * 结果就是「标了沉浸态，氛围光照样亮着」。
+ *
+ * 改成 :root:has(...) 后变量落在 <html> 上，body 及其伪元素正常继承。
+ * 特异度 (0,2,0) 高于 tokens.css 里的 :root (0,1,0)，覆盖成立。
+ * ============================================================ */
+
+/*
+ * 沉浸态（播放页等）：彻底关灯，只剩画面。
+ * 用法：在页面根节点加 data-surface="immersive"。
+ */
+:root:has([data-surface='immersive']) {
+  --ambient-strength: 0;
+}
+
+/*
+ * 管理态：tokens.css 已在 [data-surface='manage'] 子树内把强度置 0，
+ * 那份声明负责管理页内部读该变量的组件；这一条负责的是 body 那层
+ * 全屏氛围光，两者缺一不可 —— 少了这条，管理页的信息密度会被一层
+ * 白色辉光糊住。
+ */
+:root:has([data-surface='manage']) {
+  --ambient-strength: 0;
+}
+
+/*
+ * 兜底：不支持 :has() 的浏览器至少让 data-surface 子树内部关灯，
+ * 与改造前的行为保持一致，不会更差。
+ */
+[data-surface='immersive'] {
+  --ambient-strength: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    transition: none;
+    will-change: auto;
+  }
+}

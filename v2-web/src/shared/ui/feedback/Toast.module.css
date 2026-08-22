@@ -1,0 +1,126 @@
+/*
+ * Darkroom · 全局消息条
+ * ------------------------------------------------------------
+ * Toast 会浮在任意页面之上（包括正在播放的画面），必须实底，
+ * 否则纯黑画布上半透明消息条基本读不出来。
+ * 状态色只出现在左侧图标与一条边线上，正文保持中性。
+ */
+
+.viewport {
+  position: fixed;
+  z-index: var(--z-toast);
+  top: calc(var(--space-4) + var(--safe-area-top));
+  right: calc(var(--space-4) + var(--safe-area-right));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  pointer-events: auto;
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-l2);
+  animation: toast-in var(--duration-panel) var(--ease-default);
+}
+
+.toast[data-variant='success'] {
+  border-color: var(--success-glass-border);
+}
+
+.toast[data-variant='error'] {
+  border-color: var(--danger-glass-border);
+}
+
+.toast[data-variant='warning'] {
+  border-color: var(--warn-glass-border);
+}
+
+.toast[data-variant='info'] {
+  border-color: var(--info-glass-border);
+}
+
+.icon {
+  display: inline-flex;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.toast[data-variant='success'] .icon { color: var(--success); }
+.toast[data-variant='error'] .icon { color: var(--danger); }
+.toast[data-variant='warning'] .icon { color: var(--warning); }
+.toast[data-variant='info'] .icon { color: var(--info); }
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  font-size: var(--text-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-1);
+  overflow-wrap: break-word;
+}
+
+.description {
+  font-size: var(--text-body-sm);
+  color: var(--text-2);
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-4);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.close:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+/* 入场只做淡入 + 轻微横移，不用弹簧曲线 —— 暗房里没有会弹的东西 */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .viewport {
+    left: calc(var(--space-3) + var(--safe-area-left));
+    right: calc(var(--space-3) + var(--safe-area-right));
+    width: auto;
+  }
+}

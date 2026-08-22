@@ -1,0 +1,47 @@
+/*
+ * Darkroom · 开关
+ * ------------------------------------------------------------
+ * 开启态用 --content-accent 填满轨道（管理页下即安全灯琥珀），
+ * 滑块反过来取画布黑 —— 亮轨配亮滑块会互相吃掉，取反才看得出位置。
+ */
+
+.root {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border-muted);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+
+.root[data-state='checked'] {
+  background: var(--content-accent);
+  border-color: transparent;
+}
+
+.root[data-disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--text-2);
+  transform: translateX(2px);
+  transition:
+    transform var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default);
+  will-change: transform;
+}
+
+.thumb[data-state='checked'] {
+  background: var(--bg-base);
+  transform: translateX(22px);
+}
