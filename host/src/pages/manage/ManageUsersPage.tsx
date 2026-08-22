@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { type ManageUserAccountKind, type UserStatus } from '@fmby/v2-shared/contracts/manage';
 import { manageApi } from '@fmby/v2-shared/contracts/manage';
-import { useSession } from '@fmby/v2-shared/hooks';
+import { useSession } from '@/session';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { SensitiveActionDialog } from '@fmby/v2-shared/ui';

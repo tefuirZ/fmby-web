@@ -9,3 +9,15 @@ declare module '*.module.css' {
   const classes: Readonly<Record<string, string>>;
   export default classes;
 }
+
+interface ImportMetaEnv {
+  readonly DEV?: boolean;
+  readonly PROD?: boolean;
+  readonly MODE?: string;
+  readonly [key: string]: unknown;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+

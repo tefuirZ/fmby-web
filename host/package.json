@@ -6,9 +6,9 @@
   "description": "FMBY v2 宿主壳：路由、会话、页面域骨架、主题分发（不承载共享契约；契约见 @fmby/v2-shared）。",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@fmby/v2-shared": "workspace:*",

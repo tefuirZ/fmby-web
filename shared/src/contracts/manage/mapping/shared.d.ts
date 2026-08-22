@@ -1,0 +1,25 @@
+import type { CreateManageLibraryRequest, ManageProbeTasksQuery, ManageRuntimeLogsQuery, ManageScansQuery, ManageUserRole } from "../types";
+import type { RawAuditLogRecord } from "../raw-types";
+export declare function mapEnvironmentStatus(raw: string): "healthy" | "warning" | "critical";
+export declare function mapEntityStatus(raw?: string | null): "healthy" | "attention" | "critical";
+export declare function mapRole(raw: string): ManageUserRole;
+export declare function mapUserStatus(raw: string): "active" | "disabled" | "locked" | "pending";
+export declare function mapRegistrationCodeStatus(raw: string): "active" | "paused" | "expired" | "used-up";
+export declare function mapRoleTemplateStatus(raw: string): "active" | "disabled";
+export declare function mapSessionStatus(raw: string, lastActivityAt: string): "active" | "idle" | "expired" | "revoked";
+export declare function mapLibraryTypeToApi(raw: CreateManageLibraryRequest["libraryType"]): "Movie" | "Series" | "Music" | "Mixed";
+export declare function mapLibraryType(raw?: string | null): "movie" | "series" | "music" | "mixed";
+export declare function mapScanTaskType(raw: string): "full-scan" | "incremental-refresh" | "manual-refresh";
+export declare function mapScanTaskTypeToApi(raw: "full-scan" | "incremental-refresh" | "manual-refresh"): "FullScan" | "IncrementalRefresh" | "ManualRefresh";
+export declare function mapScanStatus(raw: string): "pending" | "running" | "completed" | "failed";
+export declare function mapProbeTaskStatus(raw: string): "idle" | "queued" | "running" | "retry-waiting" | "succeeded" | "failed";
+export declare function mapScanStatusToApi(raw: ManageScansQuery["status"]): "Running" | "Completed" | "Failed" | "Pending";
+export declare function mapProbeTaskStatusToApi(raw: ManageProbeTasksQuery["status"]): "Running" | "Failed" | "Queued" | "RetryWaiting" | "Succeeded" | "Idle";
+export declare function mapRuntimeLogLevel(raw?: string | null): "trace" | "debug" | "info" | "warn" | "error" | "unknown";
+export declare function mapRuntimeLogLevelToApi(raw: ManageRuntimeLogsQuery["level"]): "TRACE" | "DEBUG" | "INFO" | "WARN" | "ERROR" | undefined;
+export declare function buildTargetLabel(targetType?: string | null, targetId?: string | null): string;
+export declare function buildAuditSummary(raw: RawAuditLogRecord): string;
+export declare function inferAuditResult(raw: RawAuditLogRecord): "success" | "warning" | "failure";
+export declare function extractTraceId(detail?: Record<string, unknown> | null): string | undefined;
+export declare function readString(value: unknown): string | null;
+//# sourceMappingURL=shared.d.ts.map

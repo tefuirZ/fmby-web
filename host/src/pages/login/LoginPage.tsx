@@ -15,7 +15,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
-import { useSession } from '@fmby/v2-shared/hooks';
+import { useSession } from '@/session';
 import {
   authApi,
   loginSchema,

@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@fmby/v2-shared': fileURLToPath(new URL('../shared/src', import.meta.url)),
       },
     },
     // workspace 源码包（shared / themes）不做依赖预打包：
@@ -103,9 +104,6 @@ export default defineConfig(({ mode }) => {
                 return 'query';
               }
               return undefined;
-            }
-            if (id.includes('apps/shared')) {
-              return 'shared';
             }
             return undefined;
           },

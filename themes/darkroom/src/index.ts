@@ -6,9 +6,10 @@
  * 不含 API client / mapper / query keys / 权限判断 / 业务数据预加载。
  */
 
-import type { ThemeEntryModule } from '@fmby/v2-shared/theme';
-import manifest from '../theme.manifest.json';
+import type { ThemeEntryModule, ThemeManifest } from '@fmby/v2-shared/theme';
+import manifestRaw from '../theme.manifest.json';
 
+const manifest = manifestRaw as unknown as ThemeManifest;
 const theme: ThemeEntryModule = { manifest };
 
 export default theme;

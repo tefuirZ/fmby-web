@@ -1,0 +1,16 @@
+/**
+ * @file Metadata & Pipeline Mappers
+ * @description 元数据、流水线、刮削相关复合记录映射
+ */
+import type { ManageMediaItemDetailRecord, ManageMediaItemIdentifyTaskRecord, ManageMediaItemIdentityBindingRecord, ManageMediaItemLocalMetadataOverrideRecord, ManageMediaItemMetadataStateRecord, ManageMediaItemPipelineRecord, ManageMediaItemRemoteMetadataRecord, ManageMediaItemScrapeTaskRecord, RequestManageMediaItemScrapeResult } from '../types';
+import type { RawManageMediaItemDetailRecord, RawManageMediaItemIdentifyTaskRecord, RawManageMediaItemIdentityBindingRecord, RawManageMediaItemLocalMetadataOverrideRecord, RawManageMediaItemMetadataStateRecord, RawManageMediaItemPipelineRecord, RawManageMediaItemRemoteMetadataRecord, RawManageMediaItemScrapeTaskRecord, RawRequestManageMediaItemScrapeResponse } from './types';
+export declare function mapRemoteMetadataRecord(raw: RawManageMediaItemRemoteMetadataRecord): ManageMediaItemRemoteMetadataRecord;
+export declare function mapLocalOverrideRecord(raw: RawManageMediaItemLocalMetadataOverrideRecord): ManageMediaItemLocalMetadataOverrideRecord;
+export declare function mapMetadataStateRecord(raw: RawManageMediaItemMetadataStateRecord): ManageMediaItemMetadataStateRecord;
+export declare function mapDetailRecord(raw: RawManageMediaItemDetailRecord): ManageMediaItemDetailRecord;
+export declare function mapIdentifyTaskRecord(raw: RawManageMediaItemIdentifyTaskRecord): ManageMediaItemIdentifyTaskRecord;
+export declare function mapIdentityBindingRecord(raw: RawManageMediaItemIdentityBindingRecord): ManageMediaItemIdentityBindingRecord;
+export declare function mapScrapeTaskRecord(raw: RawManageMediaItemScrapeTaskRecord): ManageMediaItemScrapeTaskRecord;
+export declare function mapPipelineRecord(raw: RawManageMediaItemPipelineRecord): ManageMediaItemPipelineRecord;
+export declare function mapScrapeResponse(raw: RawRequestManageMediaItemScrapeResponse): RequestManageMediaItemScrapeResult;
+//# sourceMappingURL=mappers-metadata.d.ts.map

@@ -14,7 +14,11 @@
     "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@fmby/v2-shared": ["../../shared/src/index.ts"],
+      "@fmby/v2-shared/*": ["../../shared/src/*"]
+    }
   },
   "include": ["src"]
 }
