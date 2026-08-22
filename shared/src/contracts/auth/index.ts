@@ -27,3 +27,5 @@ export type {
   SetupFormData,
 } from './schemas';
 
+export type { User, UserRole, Capability } from './user';
+export type { SessionState, SessionStatus } from './session';

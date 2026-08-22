@@ -2,9 +2,9 @@
  * 共享 Hooks 入口
  *
  * 在此统一导出所有可复用的自定义 Hook。
+ * 注意：useSession 属 host 会话域（@/session），不在本包。
  */
 
-export { useSession } from '@/shared/session/SessionProvider';
 export { useDebounce } from './useDebounce';
 export { useDelayedTrigger } from './useDelayedTrigger';
 export { useCredentialProbe } from './useCredentialProbe';
