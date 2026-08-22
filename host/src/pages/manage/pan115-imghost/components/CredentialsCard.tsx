@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { pan115ImghostApi } from '@/domains/manage/pan115Imghost';
-import type { Pan115ImghostQrcodeStatus } from '@/domains/manage/pan115Imghost';
+import { pan115ImghostApi } from '@fmby/v2-shared/contracts/manage/pan115Imghost';
+import type { Pan115ImghostQrcodeStatus } from '@fmby/v2-shared/contracts/manage/pan115Imghost';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
-import { StatusBadge } from '@/shared/ui';
-import { Dialog } from '@/shared/ui';
-import { ConfirmDialog } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
-import { isApiError } from '@/shared/types';
-import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@/shared/utils/pan115-cookie-app';
-import { queryKeys } from '@/shared/query-keys';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { Dialog } from '@fmby/v2-shared/ui';
+import { ConfirmDialog } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { isApiError } from '@fmby/v2-shared/types';
+import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@fmby/v2-shared/utils/pan115-cookie-app';
+import { queryKeys } from '@fmby/v2-shared/query';
 import { useImghostQrLogin } from '../hooks/useImghostQrLogin';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 

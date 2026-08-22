@@ -1,11 +1,11 @@
 import { Wand2 } from 'lucide-react';
-import { InlineBanner } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type {
   NamingCleanupReplayIdentifyResponse,
   NamingCleanupReplayScope,
-} from '@/domains/manage/naming';
-import type { ManageLibraryRecord } from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage/naming';
+import type { ManageLibraryRecord } from '@fmby/v2-shared/contracts/manage';
 import { REPLAY_SCOPE_OPTIONS } from '../helpers';
 import sharedStyles from '../../longtail-shared/ManageShared.module.css';
 import styles from '../../ManageNamingRulesPage.module.css';

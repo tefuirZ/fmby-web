@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
-import { browseApi } from '@/domains/browse';
-import { FeedbackState } from '@/shared/ui';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+import { browseApi } from '@fmby/v2-shared/contracts/browse';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './styles/shared.module.css';
 import libraryStyles from './styles/library.module.css';
 import { LibraryCinemaHero, LibraryDetailMediaCard } from './components';

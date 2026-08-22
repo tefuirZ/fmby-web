@@ -24,7 +24,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type {
   ManageMediaItemMetadataRecord,
   UpdateManageMediaItemMetadataRequest,
-} from '@/domains/manage/media-items';
+} from '@fmby/v2-shared/contracts/manage/media-items';
 import { toDateInputValue } from './formatters';
 
 export interface MetadataActorDraft {

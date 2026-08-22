@@ -1,6 +1,6 @@
-import type { ApiError } from '@/shared/types';
-import { isApiError } from '@/shared/types';
-import { isSessionInvalidationError, notifyAuthFailure } from '@/shared/session/authFailure';
+import type { ApiError } from '@fmby/v2-shared/types';
+import { isApiError } from '@fmby/v2-shared/types';
+import { isSessionInvalidationError, notifyAuthFailure } from '@fmby/v2-shared/errors/authFailure';
 
 /**
  * HTTP 客户端封装
@@ -384,7 +384,7 @@ function readCookie(name: string): string | null {
  *
  * @example
  * ```ts
- * import { httpClient } from '@/shared/api/client';
+ * import { httpClient } from '@fmby/v2-shared/api/client';
  *
  * const user = await httpClient.get<User>('/api/users/me');
  * await httpClient.post('/api/auth/login', { body: { username, password } });

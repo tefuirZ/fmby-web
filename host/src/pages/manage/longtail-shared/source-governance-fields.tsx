@@ -1,7 +1,7 @@
 import type {
   ManageSourcePathGrantInput,
   ManageSourcePathPolicyInput,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 
 import styles from './ManageShared.module.css';
 

@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { itemApi } from '@/domains/item';
-import { queryKeys } from '@/shared/query-keys';
+import { itemApi } from '@fmby/v2-shared/contracts/browse/item';
+import { queryKeys } from '@fmby/v2-shared/query';
 import { shouldLoadTechnicalFallback } from '../formUtils';
-import type { ItemDetailResponse } from '@/domains/item';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
 
 export function useItemDetailQueries(
   itemId: string | undefined,

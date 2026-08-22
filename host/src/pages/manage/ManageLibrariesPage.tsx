@@ -1,13 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { type ManageLibraryType } from '@/domains/manage';
-import { FeedbackState } from '@/shared/ui';
-import { SensitiveActionDialog } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
+import { type ManageLibraryType } from '@fmby/v2-shared/contracts/manage';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
 import styles from './ManagePages.module.css';
 import { ManagePageHeader, MetricCard } from './components';
-import { getErrorMessage } from '@/shared/utils/error';
-import type { BannerState } from '@/shared/types/ui';
-import { matchKeyword } from '@/shared/search/matchKeyword';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
+import { matchKeyword } from '@fmby/v2-shared/search/matchKeyword';
 import {
   type LibraryDrawerState,
   type LibraryFormState,

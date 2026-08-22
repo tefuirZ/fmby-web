@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Trash2, Upload } from 'lucide-react';
-import type { DangerousActionRequest } from '@/domains/manage';
-import type { ManageMediaItemSubtitleOverrideRecord } from '@/domains/manage/media-items';
-import { InlineBanner, SensitiveActionDialog, StatusBadge, useToast } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
+import type { ManageMediaItemSubtitleOverrideRecord } from '@fmby/v2-shared/contracts/manage/media-items';
+import { InlineBanner, SensitiveActionDialog, StatusBadge, useToast } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import sharedStyles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
 import { EM_DASH, formatFileSize, formatOperator, formatOptional } from '../formatters';

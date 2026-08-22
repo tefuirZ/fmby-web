@@ -3,9 +3,9 @@ import {
   taskCenterApi,
   type TaskCenterCategory,
   type TaskCenterAction,
-} from '@/domains/manage/task-center';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage/task-center';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 
 interface TaskCenterMutationsOptions {
   onSettledSuccess?: (message: string, redirectHint?: string) => void;

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import type { TaskCenterCategory, TaskCenterListQuery, TaskCenterStatus } from '@/domains/manage/task-center';
-import { FeedbackState } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+import type { TaskCenterCategory, TaskCenterListQuery, TaskCenterStatus } from '@fmby/v2-shared/contracts/manage/task-center';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './ManagePages.module.css';
 import { ManagePageHeader, ManageSectionCard } from './components';
 import {

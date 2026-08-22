@@ -6,11 +6,11 @@ import {
   type ResetUserPasswordRequest,
   type UpdateManageUserRequest,
   type UserStatus,
-} from '@/domains/manage';
-import { useCrudMutation } from '@/shared/hooks/useCrudMutation';
-import { queryKeys } from '@/shared/query-keys';
-import type { BannerState } from '@/shared/types/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage';
+import { useCrudMutation } from '@fmby/v2-shared/hooks/useCrudMutation';
+import { queryKeys } from '@fmby/v2-shared/query';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type { PendingUserAction, UserDrawerState } from '../types';
 
 export interface UseUserMutationsCallbacks {

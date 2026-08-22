@@ -2,11 +2,11 @@ import { useDeferredValue, useState } from 'react';
 import {
   type CreateRoleTemplateRequest,
   type RoleTemplateRecord,
-} from '@/domains/manage';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { SensitiveActionDialog } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader } from './longtail-shared/components';
 import {

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { DangerousActionRequest } from '@/domains/manage';
+import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
 import {
   mediaItemsApi,
   type ManageMediaItemDetailRecord,
@@ -8,8 +8,8 @@ import {
   type UpdateManageMediaItemMetadataRequest,
   type UploadManageMediaItemArtworkRequest,
   type UploadManageMediaItemSubtitleRequest,
-} from '@/domains/manage/media-items';
-import { queryKeys } from '@/shared/query-keys';
+} from '@fmby/v2-shared/contracts/manage/media-items';
+import { queryKeys } from '@fmby/v2-shared/query';
 
 function requireMediaItemId(itemId?: string) {
   if (!itemId) {

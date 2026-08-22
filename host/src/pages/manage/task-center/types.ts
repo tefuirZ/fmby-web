@@ -1,4 +1,4 @@
-import type { TaskCenterCategory } from '@/domains/manage/task-center';
+import type { TaskCenterCategory } from '@fmby/v2-shared/contracts/manage/task-center';
 
 export interface SelectedTaskRef {
   category: TaskCenterCategory;

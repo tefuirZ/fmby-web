@@ -7,8 +7,8 @@
  * - 检查初始化状态
  */
 
-import { httpClient } from '@/shared/api/client';
-import type { User } from '@/shared/types';
+import { httpClient } from '@fmby/v2-shared/api/client';
+import type { User } from '@fmby/v2-shared/types';
 
 /* ---- 请求类型 ---- */
 

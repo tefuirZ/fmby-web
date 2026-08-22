@@ -1,7 +1,7 @@
 import type {
   NamingScrapeSettings,
   UpdateNamingScrapeSettingsRequest,
-} from '@/domains/manage/naming';
+} from '@fmby/v2-shared/contracts/manage/naming';
 import { createEmptyDraft, normalizeDraftForSubmit } from './helpers';
 
 const DEFAULT_SCRAPE_DRAFT: UpdateNamingScrapeSettingsRequest = {

@@ -4,12 +4,12 @@ import {
   manageApi,
   type DangerousActionRequest,
   type SessionRecord,
-} from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { SensitiveActionDialog } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
+} from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from './longtail-shared/ManageShared.module.css';
 import {
   EmptyTableRow,
@@ -17,8 +17,8 @@ import {
   ManageSectionCard,
   getManageStatusVariant,
 } from './longtail-shared/components';
-import { getErrorMessage } from '@/shared/utils/error';
-import { formatDateTime } from '@/shared/utils/date';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { formatDateTime } from '@fmby/v2-shared/time';
 
 export function ManageSessionsPage() {
   const queryClient = useQueryClient();

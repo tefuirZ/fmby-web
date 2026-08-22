@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ArtworkSet } from '@/domains/assets';
+import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 
 type FallbackStage = 'primary' | 'thumb' | 'backdrop' | 'done';
 type BackdropStage = 'banner' | 'backdrop' | 'thumb' | 'poster' | 'done';

@@ -12,9 +12,9 @@
 import type {
   ManageMediaItemMetadataSourceType,
   ManageMediaItemMountStatus,
-} from '@/domains/manage/media-items';
-import type { StatusBadgeVariant } from '@/shared/ui';
-import { formatDuration } from '@/shared/utils/date';
+} from '@fmby/v2-shared/contracts/manage/media-items';
+import type { StatusBadgeVariant } from '@fmby/v2-shared/ui';
+import { formatDuration } from '@fmby/v2-shared/time';
 
 /** 缺值占位符，全页统一。 */
 export const EM_DASH = '—';

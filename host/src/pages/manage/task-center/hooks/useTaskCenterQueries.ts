@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { taskCenterApi, type TaskCenterListQuery } from '@/domains/manage/task-center';
-import { queryKeys } from '@/shared/query-keys';
+import { taskCenterApi, type TaskCenterListQuery } from '@fmby/v2-shared/contracts/manage/task-center';
+import { queryKeys } from '@fmby/v2-shared/query';
 import type { SelectedTaskRef } from '../types';
 
 export function useOverviewQuery() {

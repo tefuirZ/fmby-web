@@ -4,10 +4,10 @@ import {
   manageApi,
   type ManageMountProviderType,
   type ManageMountDirectoryBrowserResponse,
-} from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
-import type { BannerState } from '@/shared/types/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type { MountFormErrors } from '../types';
 import { getMountStatusLabel, isStructuredRemoteProvider } from '../formUtils';
 

@@ -4,11 +4,11 @@ import { Image as ImageIcon, Languages, ShieldAlert, Wand2 } from 'lucide-react'
 import type {
   NamingScrapeBatchRepairRequest,
   UpdateNamingScrapeSettingsRequest,
-} from '@/domains/manage/naming';
-import type { ManageLibraryRecord } from '@/domains/manage/types';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage/naming';
+import type { ManageLibraryRecord } from '@fmby/v2-shared/contracts/manage/types';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 
 import sharedStyles from '../longtail-shared/ManageShared.module.css';
 import styles from '../ManageNamingRulesPage.module.css';

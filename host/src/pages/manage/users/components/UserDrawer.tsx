@@ -5,14 +5,14 @@ import type {
   ManageUserRole,
   RoleTemplateRecord,
   UserStatus,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 import type React from 'react';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { Drawer } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { Drawer } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import { getManageStatusVariant } from '../../longtail-shared/components';
 import { ROLE_OPTIONS, type UserDrawerState, type UserFormState } from '../types';
@@ -51,8 +51,8 @@ interface UserDrawerProps {
   roleTemplates?: RoleTemplateRecord[];
   roleTemplatesLoading?: boolean;
   roleTemplatesError?: string;
-  createUserMutation: MutationShape<import('@/domains/manage').CreateManageUserRequest>;
-  updateUserMutation: MutationShape<{ userId: string; payload: import('@/domains/manage').UpdateManageUserRequest }>;
+  createUserMutation: MutationShape<import('@fmby/v2-shared/contracts/manage').CreateManageUserRequest>;
+  updateUserMutation: MutationShape<{ userId: string; payload: import('@fmby/v2-shared/contracts/manage').UpdateManageUserRequest }>;
   setDrawerState: (state: UserDrawerState | null) => void;
   onResetPassword: (user: ManageUserDetailRecord) => void;
   onClose: () => void;

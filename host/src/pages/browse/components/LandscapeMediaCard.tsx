@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { Play } from 'lucide-react';
 import { Link } from 'react-router';
-import { usePosterUrl, useBackdropUrl, generatePlaceholderColor } from '@/shared/hooks/usePosterUrl';
-import type { MediaCardSummary } from '@/domains/browse';
-import type { ArtworkSet } from '@/domains/assets';
+import { usePosterUrl, useBackdropUrl, generatePlaceholderColor } from '@fmby/v2-shared/hooks/usePosterUrl';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 import { buildCardProgressLabel, resolvePlayableTargetId } from './utils';
 import cardStyles from '../styles/cards.module.css';
 import sharedStyles from '../styles/shared.module.css';

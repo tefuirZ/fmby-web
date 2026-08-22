@@ -1,5 +1,5 @@
-import type { ManageMountDetailRecord } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
+import type { ManageMountDetailRecord } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import { ManageSectionCard } from '../../../../components';
 import { CAPABILITY_OPTIONS } from '../../../types';
 import styles from '../../../../ManagePages.module.css';

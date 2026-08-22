@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { Pan115ImghostUploadResponse } from '@/domains/manage/pan115Imghost';
+import type { Pan115ImghostUploadResponse } from '@fmby/v2-shared/contracts/manage/pan115Imghost';
 import { ManagePageHeader } from '@/pages/manage/longtail-shared/components';
 import { CredentialsCard } from './components/CredentialsCard';
 import { UploadZone } from './components/UploadZone';

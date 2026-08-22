@@ -3,11 +3,11 @@ import { Unlink } from 'lucide-react';
 import type {
   DangerousActionRequest,
   ManageProbeTaskStreamRecord,
-} from '@/domains/manage';
-import type { ManageMediaItemSourceRecord } from '@/domains/manage/media-items';
-import { FeedbackState, SensitiveActionDialog, StatusBadge, useToast } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage';
+import type { ManageMediaItemSourceRecord } from '@fmby/v2-shared/contracts/manage/media-items';
+import { FeedbackState, SensitiveActionDialog, StatusBadge, useToast } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import sharedStyles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
 import {

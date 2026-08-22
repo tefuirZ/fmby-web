@@ -1,11 +1,11 @@
 import { useDeferredValue, useEffect, useState } from 'react';
-import type { RegistrationCodeBatchRecord, RegistrationCodeStatus } from '@/domains/manage';
-import type { BannerState } from '@/shared/types/ui';
-import { Dialog } from '@/shared/ui';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { SensitiveActionDialog } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import type { RegistrationCodeBatchRecord, RegistrationCodeStatus } from '@fmby/v2-shared/contracts/manage';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
+import { Dialog } from '@fmby/v2-shared/ui';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import {

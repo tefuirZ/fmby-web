@@ -1,4 +1,4 @@
-import { isApiError } from '@/shared/types';
+import { isApiError } from '@fmby/v2-shared/types';
 
 /** 从任意 error 中提取用户可读的错误信息。 */
 export function getErrorMessage(error: unknown): string {

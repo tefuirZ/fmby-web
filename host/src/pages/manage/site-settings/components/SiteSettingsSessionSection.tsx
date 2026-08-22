@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { ServerSessionPolicySettings } from '@/domains/settings';
+import type { ServerSessionPolicySettings } from '@fmby/v2-shared/contracts/settings';
 import type { SiteSettingsDraft } from '../types';
 import { minutesFromSeconds, secondsFromMinutes } from '../formUtils';
 import { ManageSectionCard } from '../../longtail-shared/components';

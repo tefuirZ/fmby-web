@@ -1,0 +1,207 @@
+/*
+ * ============================================================
+ * Host 默认形象（docs/09 §6.5：主题产物未就绪时的兜底 token）
+ * ============================================================
+ *
+ * 目的：主题 tokens.css 是异步注入的（零主题阻塞）。在它到达之前，
+ * base.css / shared UI 组件 / 页面 CSS Module 读到的全部 CSS 变量
+ * 必须有值 —— 否则首屏是"无样式闪烁"。这里给出一套中性近黑的中性灰
+ * 默认值（不是任何主题的复制品）；主题 tokens 落地后整体覆盖同名变量。
+ *
+ * 变量命名与主题 token 语言保持一致（含旧皮肤兼容名 --glass-* /
+ * --aurora-* / --brand-gold），下游 CSS Module 不感知差异。
+ */
+
+:root {
+  /* ---- 画布 ---- */
+  --bg-base: #0b0c0f;
+  --bg-immersive: #050608;
+  --bg-raised: #14161b;
+  --bg-raised-strong: #1b1e24;
+
+  /* ---- 文本 ---- */
+  --text-1: #ececf1;
+  --text-2: #b4b6bf;
+  --text-3: #8b8e98;
+  --text-4: #63666f;
+  --text-primary: #ececf1;
+  --text-secondary: #b4b6bf;
+  --text-tertiary: #8b8e98;
+  --text-muted: #8b8e98;
+
+  /* ---- 边线 ---- */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-muted: rgba(255, 255, 255, 0.1);
+  --border-default: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --hairline: rgba(255, 255, 255, 0.05);
+
+  /* ---- 内容主色（默认中性；激活主题/封面主色后覆盖） ---- */
+  --content-accent: #9aa3b2;
+  --content-accent-rgb: 154 163 178;
+  --content-accent-soft: rgba(154, 163, 178, 0.16);
+  --content-accent-line: rgba(154, 163, 178, 0.35);
+  --accent: #8f9aa8;
+  --accent-blue: #7d97c0;
+  --accent-cyan: #78aab0;
+
+  /* ---- 旧皮肤兼容品牌色（默认降为中性地金色） ---- */
+  --brand-gold: #c8b48a;
+  --brand-gold-hover: #d3c199;
+  --brand-gold-active: #bda87c;
+  --safelight: #c8b48a;
+  --safelight-hover: #d3c199;
+  --safelight-active: #bda87c;
+  --safelight-line: rgba(200, 180, 138, 0.4);
+  --safelight-soft: rgba(200, 180, 138, 0.12);
+  --manage-cyan: #7fb3b8;
+  --manage-cyan-hover: #8fc1c6;
+  --manage-cyan-active: #6fa3a8;
+
+  /* ---- 语义色 ---- */
+  --danger: #e5697a;
+  --danger-glass-bg: rgba(229, 105, 122, 0.12);
+  --danger-glass-border: rgba(229, 105, 122, 0.3);
+  --success: #63b47a;
+  --success-glass-bg: rgba(99, 180, 122, 0.12);
+  --success-glass-border: rgba(99, 180, 122, 0.3);
+  --warning: #d9a05b;
+  --warning-glass-bg: rgba(217, 160, 91, 0.12);
+  --warning-glass-border: rgba(217, 160, 91, 0.3);
+  --warn-glass-bg: rgba(217, 160, 91, 0.12);
+  --warn-glass-border: rgba(217, 160, 91, 0.3);
+  --info: #7d97c0;
+  --info-glass-bg: rgba(125, 151, 192, 0.12);
+  --info-glass-border: rgba(125, 151, 192, 0.3);
+
+  /* ---- 玻璃/浮层（兼容名） ---- */
+  --glass-bg: rgba(20, 22, 27, 0.66);
+  --glass-bg-strong: rgba(20, 22, 27, 0.85);
+  --glass-blur: 12px;
+  --glass-blur-heavy: 24px;
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-glow: rgba(255, 255, 255, 0.16);
+  --glass-inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --neutral-glass-bg: rgba(20, 22, 27, 0.5);
+  --neutral-glass-border: rgba(255, 255, 255, 0.08);
+  --surface-1: #101216;
+  --surface-2: #15171c;
+  --surface-3: #1a1d23;
+
+  /* ---- 环境光层（默认形象不开灯；主题 aurora 层自行覆盖） ---- */
+  --ambient-strength: 0;
+  --aurora-1: rgba(255, 255, 255, 0.02);
+  --aurora-2: rgba(255, 255, 255, 0.015);
+  --aurora-3: rgba(255, 255, 255, 0.01);
+  --aurora-4: rgba(255, 255, 255, 0.008);
+
+  /* ---- 焦点/选中 ---- */
+  --glow-accent: 0 0 24px rgba(154, 163, 178, 0.18);
+  --glow-focus: 0 0 0 2px rgba(154, 163, 178, 0.45);
+  --ring-selected: rgba(154, 163, 178, 0.4);
+
+  /* ---- 阴影 ---- */
+  --shadow-l1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-l2: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-l3: 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  /* ---- 字体 ---- */
+  --font-sans: 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei UI',
+    'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'JetBrains Mono', Consolas,
+    'SF Mono', monospace;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* ---- 字号 ---- */
+  --text-display: 40px;
+  --text-h1: 30px;
+  --text-h2: 23px;
+  --text-h3: 18px;
+  --text-body-lg: 17px;
+  --text-body: 15px;
+  --text-body-sm: 13px;
+  --text-caption: 12px;
+  --text-mono: 13px;
+  --text-mobile-min: 12px;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.04em;
+  --tracking-widest: 0.12em;
+
+  /* ---- 间距 ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- 圆角 ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-card: 8px;
+  --radius-full: 999px;
+
+  /* ---- 动效 ---- */
+  --duration-micro: 90ms;
+  --duration-fast: 160ms;
+  --duration-panel: 260ms;
+  --duration-page: 420ms;
+  --duration-hero: 700ms;
+  --duration-ambient: 900ms;
+  --motion-fast: 160ms;
+  --motion-panel: 260ms;
+  --motion-page: 420ms;
+  --ease-default: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.4, 1);
+
+  /* ---- 层级 ---- */
+  --z-sticky: 900;
+  --z-dropdown: 1000;
+  --z-tooltip: 1100;
+  --z-modal: 1200;
+  --z-toast: 1300;
+
+  /* ---- 安全区/触控 ---- */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --touch-min: 44px;
+  --touch-min-comfortable: 48px;
+
+  /* ---- 结构尺寸 ---- */
+  --topbar-height-mobile: 56px;
+  --topbar-height-tablet: 60px;
+  --topbar-height-desktop: 64px;
+  --manage-rail-width: 240px;
+  --grid-gutter-mobile: 16px;
+  --grid-gutter-tablet: 20px;
+  --grid-gutter-desktop: 24px;
+  --grid-margin: 24px;
+  --grid-max-width: 1440px;
+
+  /* ---- 容器查询/断点（供 @container 用法） ---- */
+  --cq-xs: 320px;
+  --cq-sm: 480px;
+  --cq-md: 768px;
+  --cq-lg: 1024px;
+  --cq-xl: 1280px;
+  --bp-xs: 480px;
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1536px;
+  --bp-3xl: 1920px;
+}

@@ -13,9 +13,9 @@ import {
   type QueryKey,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { Button, FeedbackState, useToast } from '@/shared/ui';
-import { isApiError } from '@/shared/types';
-import { getErrorMessage } from '@/shared/utils/error';
+import { Button, FeedbackState, useToast } from '@fmby/v2-shared/ui';
+import { isApiError } from '@fmby/v2-shared/types';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './SettingsCenter.module.css';
 
 export function SettingsPageHeader({

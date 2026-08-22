@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { ManageMountProviderType } from '@/domains/manage';
+import type { ManageMountProviderType } from '@fmby/v2-shared/contracts/manage';
 import { ManageSectionCard } from '../../../../components';
 import { PROVIDER_OPTIONS } from '../../../types';
 import type { MountFormState, MountFormErrors } from '../../../types';

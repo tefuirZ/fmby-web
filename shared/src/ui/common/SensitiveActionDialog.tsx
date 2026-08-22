@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { settingsApi } from '@/domains/settings/api';
-import type { SensitiveActionConfirmation } from '@/domains/settings/types';
-import type { DangerousActionRequest } from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
+import { settingsApi } from '@fmby/v2-shared/contracts/settings/api';
+import type { SensitiveActionConfirmation } from '@fmby/v2-shared/contracts/settings/types';
+import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
 
 import { ConfirmDialog } from './ConfirmDialog';
 import styles from './SensitiveActionDialog.module.css';

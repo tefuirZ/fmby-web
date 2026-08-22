@@ -1,4 +1,4 @@
-import { FeedbackState } from '@/shared/ui';
+import { FeedbackState } from '@fmby/v2-shared/ui';
 
 interface PlaceholderPageProps {
   /** 页面标题（用于提示当前处于哪个页面） */

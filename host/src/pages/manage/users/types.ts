@@ -4,7 +4,7 @@ import type {
   ManageSourcePathGrantInput,
   ManageUserRole,
   UserStatus,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 
 export type UserDrawerMode = 'create' | 'view' | 'edit';
 export type UserRegistrationReviewAction = 'approve' | 'reject';

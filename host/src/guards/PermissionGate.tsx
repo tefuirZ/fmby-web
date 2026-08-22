@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { useSession } from '@/shared/session/SessionProvider';
-import type { Capability } from '@/shared/types';
+import { useSession } from '@/session/SessionProvider';
+import type { Capability } from '@fmby/v2-shared/types';
 
 interface PermissionGateProps {
   /** 需要的能力标识 */

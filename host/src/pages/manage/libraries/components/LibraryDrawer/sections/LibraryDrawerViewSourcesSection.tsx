@@ -1,4 +1,4 @@
-import type { ManageLibraryDetailRecord } from '@/domains/manage';
+import type { ManageLibraryDetailRecord } from '@fmby/v2-shared/contracts/manage';
 import { ManageSectionCard } from '../../../../components';
 import styles from '../../../../ManagePages.module.css';
 

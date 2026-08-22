@@ -1,5 +1,5 @@
 import { Activity, Film, Monitor, Play, Smartphone, Tv, UserCheck, XCircle } from 'lucide-react';
-import type { SessionRecord } from '@/domains/manage';
+import type { SessionRecord } from '@fmby/v2-shared/contracts/manage';
 import styles from '../ManageOverviewCockpit.module.css';
 
 interface LivePlaybackStreamsProps {

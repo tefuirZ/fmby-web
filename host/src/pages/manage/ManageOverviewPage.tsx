@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Cloud, HardDrive, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { manageApi } from '@/domains/manage';
-import { namingCleanupApi } from '@/domains/manage/naming';
-import { queryKeys } from '@/shared/query-keys';
-import { FeedbackState, InlineBanner, StatusBadge } from '@/shared/ui';
-import type { BannerState } from '@/shared/types/ui';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
+import { namingCleanupApi } from '@fmby/v2-shared/contracts/manage/naming';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
 import styles from './ManagePages.module.css';
 import guideStyles from './ManageOnboarding.module.css';
 import cockpitStyles from './overview/ManageOverviewCockpit.module.css';
@@ -25,8 +25,8 @@ import {
   ManageSectionCard,
   getManageStatusVariant,
 } from './components';
-import { getErrorMessage } from '@/shared/utils/error';
-import { formatDateTime } from '@/shared/utils/date';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildSetupGuide,
   mapSetupStepStatusLabel,

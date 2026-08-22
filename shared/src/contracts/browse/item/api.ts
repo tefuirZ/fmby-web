@@ -1,4 +1,4 @@
-import { httpClient } from '@/shared/api/client';
+import { httpClient } from '@fmby/v2-shared/api/client';
 import {
   asRecord,
   readArray,
@@ -6,10 +6,10 @@ import {
   readNumber,
   readString,
   readStringArray,
-} from '@/shared/api/mapping';
-import { mapArtwork } from '@/domains/assets';
-import { mapMediaCard } from '@/domains/browse/api';
-import type { MediaCardSummary } from '@/domains/browse';
+} from '@fmby/v2-shared/api/mapping';
+import { mapArtwork } from '@fmby/v2-shared/contracts/assets';
+import { mapMediaCard } from '@fmby/v2-shared/contracts/browse/api';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import type {
   ItemActor,
   ItemDetailResponse,

@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { TaskCenterItemRecord } from '@/domains/manage/task-center';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime, formatRelativeTime } from '@/shared/utils/date';
+import type { TaskCenterItemRecord } from '@fmby/v2-shared/contracts/manage/task-center';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
 import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, getManageStatusVariant } from '../../components';
 import { getCategoryLabel, getStatusLabel, mapStatusVariant } from '../utils';

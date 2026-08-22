@@ -1,5 +1,5 @@
 /**
- * 兼容 barrel：旧 `@/shared/types` 导出面
+ * 兼容 barrel：旧 `@fmby/v2-shared/types` 导出面
  *
  * v2 三层拆分后实体归位：
  * - User / Session* → contracts/auth（会话 DTO 合同）

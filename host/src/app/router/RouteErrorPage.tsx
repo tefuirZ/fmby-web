@@ -1,5 +1,5 @@
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router';
-import { GlassPanel, Button } from '@/shared/ui';
+import { GlassPanel, Button } from '@fmby/v2-shared/ui';
 
 interface ErrorInfo {
   code: string;

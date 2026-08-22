@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { ManageLibraryDetailRecord } from '@/domains/manage';
+import type { ManageLibraryDetailRecord } from '@fmby/v2-shared/contracts/manage';
 import { buildLibraryFormState } from '../../../formUtils';
 import type { LibraryDrawerState, LibraryFormState } from '../../../types';
 import styles from '../../../../ManagePages.module.css';

@@ -3,7 +3,7 @@
  * @description 全部读类 API (GET / list / detail / pipeline)
  */
 
-import { httpClient } from '@/shared/api/client';
+import { httpClient } from '@fmby/v2-shared/api/client';
 import type {
   ManageMediaItemDetailRecord,
   ManageMediaItemPipelineRecord,

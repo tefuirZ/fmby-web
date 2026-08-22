@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { RotateCcw } from 'lucide-react';
-import type { DangerousActionRequest } from '@/domains/manage';
-import type { ManageMediaItemDetailRecord } from '@/domains/manage/media-items';
-import { SensitiveActionDialog, useToast } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
+import type { ManageMediaItemDetailRecord } from '@fmby/v2-shared/contracts/manage/media-items';
+import { SensitiveActionDialog, useToast } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import sharedStyles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
 import { formatOperator } from '../formatters';

@@ -1,0 +1,16 @@
+{
+  "id": "template",
+  "version": "0.1.0",
+  "label": "模板主题",
+  "tokens": {
+    "cssFile": "tokens.css"
+  },
+  "entry": {
+    "mount": "index.ts"
+  },
+  "skins": {},
+  "nav": {
+    "items": []
+  },
+  "preload": false
+}

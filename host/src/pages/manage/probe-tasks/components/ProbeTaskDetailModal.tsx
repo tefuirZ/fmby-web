@@ -1,10 +1,10 @@
-import type { ManageProbeTaskDetailRecord, ManageProbeTaskStreamRecord } from '@/domains/manage';
-import { DetailModal } from '@/shared/ui';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+import type { ManageProbeTaskDetailRecord, ManageProbeTaskStreamRecord } from '@fmby/v2-shared/contracts/manage';
+import { DetailModal } from '@fmby/v2-shared/ui';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../ManagePages.module.css';
 import { ManageSectionCard, getManageStatusVariant } from '../../components';
 import {

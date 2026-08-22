@@ -1,4 +1,4 @@
-import { httpClient } from '@/shared/api/client';
+import { httpClient } from '@fmby/v2-shared/api/client';
 import {
   asRecord,
   clampProgress,
@@ -8,8 +8,8 @@ import {
   readString,
   readStringArray,
   ticksToSeconds,
-} from '@/shared/api/mapping';
-import { mapArtwork } from '@/domains/assets';
+} from '@fmby/v2-shared/api/mapping';
+import { mapArtwork } from '@fmby/v2-shared/contracts/assets';
 import type {
   BrowseHomeData,
   BrowseHero,

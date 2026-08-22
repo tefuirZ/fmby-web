@@ -2,7 +2,7 @@ import type {
   ManageMediaItemMediaType,
   ManageMediaItemSourceStatus,
   ManageMediaItemMetadataStatus,
-} from '@/domains/manage/media-items';
+} from '@fmby/v2-shared/contracts/manage/media-items';
 
 export type MediaTypeFilter = 'all' | ManageMediaItemMediaType;
 export type SourceStatusFilter = 'all' | ManageMediaItemSourceStatus;

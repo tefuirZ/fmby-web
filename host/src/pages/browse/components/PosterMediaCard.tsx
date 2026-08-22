@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
-import { usePosterUrl, generatePlaceholderColor } from '@/shared/hooks/usePosterUrl';
-import { formatCompactDuration } from '@/shared/utils/date';
-import type { MediaCardSummary } from '@/domains/browse';
+import { usePosterUrl, generatePlaceholderColor } from '@fmby/v2-shared/hooks/usePosterUrl';
+import { formatCompactDuration } from '@fmby/v2-shared/time';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import { PosterBadges, buildPosterBadgeModel } from '../PosterBadges';
 import cardStyles from '../styles/cards.module.css';
 import sharedStyles from '../styles/shared.module.css';

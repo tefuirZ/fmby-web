@@ -5,7 +5,7 @@ import { ManageLayout } from '@/app/layouts/ManageLayout';
 import { AuthGuard } from '@/app/guards/AuthGuard';
 import { CapabilityGuard } from '@/app/guards/CapabilityGuard';
 import { SettingsLayout } from '@/pages/settings';
-import { PAN115_IMGHOST_ENABLED } from '@/shared/featureFlags';
+import { PAN115_IMGHOST_ENABLED } from '@/featureFlags';
 import { RouteErrorPage } from './RouteErrorPage';
 
 function LegacyAdminRedirect() {

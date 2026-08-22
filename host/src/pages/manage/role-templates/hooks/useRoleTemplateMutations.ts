@@ -4,8 +4,8 @@ import {
   type CreateRoleTemplateRequest,
   type DangerousActionRequest,
   type UpdateRoleTemplateRequest,
-} from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
+} from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
 
 interface UseRoleTemplateMutationsOptions {
   onSettledSuccess: (message: string) => void;

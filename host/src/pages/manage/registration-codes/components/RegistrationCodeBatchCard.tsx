@@ -1,6 +1,6 @@
-import type { RegistrationCodeBatchRecord } from '@/domains/manage';
-import { formatDateTime } from '@/shared/utils/date';
-import { StatusBadge } from '@/shared/ui';
+import type { RegistrationCodeBatchRecord } from '@fmby/v2-shared/contracts/manage';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import { getBatchModeLabel } from '../formUtils';
 import type { RegistrationCodeBatchSummary } from '../types';

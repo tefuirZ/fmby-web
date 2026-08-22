@@ -1,6 +1,6 @@
-import { httpClient } from '@/shared/api/client';
-import { asRecord, readArray } from '@/shared/api/mapping';
-import { mapMediaCard } from '@/domains/browse/api';
+import { httpClient } from '@fmby/v2-shared/api/client';
+import { asRecord, readArray } from '@fmby/v2-shared/api/mapping';
+import { mapMediaCard } from '@fmby/v2-shared/contracts/browse/api';
 import type { HistoryEntry, HistoryOverviewResponse } from './types';
 
 export const historyApi = {

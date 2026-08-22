@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
-import type { Pan115ImghostAsset } from '@/domains/manage/pan115Imghost';
-import { StatusBadge } from '@/shared/ui';
-import type { StatusBadgeVariant } from '@/shared/ui';
+import type { Pan115ImghostAsset } from '@fmby/v2-shared/contracts/manage/pan115Imghost';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import type { StatusBadgeVariant } from '@fmby/v2-shared/ui';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 
 // ─── 常量 ─────────────────────────────────────────────────────────────────────

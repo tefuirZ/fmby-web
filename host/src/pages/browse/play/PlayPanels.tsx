@@ -2,9 +2,9 @@ import type { CSSProperties, ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 
-import type { MediaCardSummary } from '@/domains/browse';
-import type { ItemDetailResponse } from '@/domains/item';
-import { generatePlaceholderColor, usePosterUrl } from '@/shared/hooks/usePosterUrl';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
+import { generatePlaceholderColor, usePosterUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
 
 import styles from '../PlayPage.module.css';
 import { PosterBadges, buildPosterBadgeModel } from '../PosterBadges';

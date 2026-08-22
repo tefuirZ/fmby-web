@@ -7,9 +7,9 @@ import type {
   NamingScrapeBatchRepairRequest,
   NamingScrapeSettings,
   UpdateNamingScrapeSettingsRequest,
-} from '@/domains/manage/naming';
-import type { BannerState } from '@/shared/types/ui';
-import { useDebounce } from '@/shared/hooks/useDebounce';
+} from '@fmby/v2-shared/contracts/manage/naming';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
+import { useDebounce } from '@fmby/v2-shared/hooks/useDebounce';
 import { createEmptyCustomTerm, normalizeCleanupToken } from '../helpers';
 import {
   createEmptyScrapeDraft,

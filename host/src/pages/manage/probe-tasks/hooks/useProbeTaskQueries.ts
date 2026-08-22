@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { manageApi } from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
-import type { ManageProbeTaskStatus } from '@/domains/manage';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
+import type { ManageProbeTaskStatus } from '@fmby/v2-shared/contracts/manage';
 import { ACTIVE_PROBE_STATUSES } from '../types';
 
 export function useProbeTasksQuery({

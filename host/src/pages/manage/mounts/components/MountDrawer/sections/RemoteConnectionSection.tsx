@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { CredentialProbeStatus } from '@/shared/hooks/useCredentialProbe';
+import type { CredentialProbeStatus } from '@fmby/v2-shared/hooks/useCredentialProbe';
 import { ManageSectionCard } from '../../../../components';
 import type { MountFormState, MountFormErrors } from '../../../types';
 import { renderFieldError, renderCredentialProbeStatus } from '../../../formUtils';

@@ -1,4 +1,4 @@
-import type { ManageSourcePathGrantInput } from '@/domains/manage';
+import type { ManageSourcePathGrantInput } from '@fmby/v2-shared/contracts/manage';
 
 export interface RoleTemplateFormState {
   code: string;

@@ -4,9 +4,9 @@ import type {
   ManageUserRecord,
   ManageUserRole,
   UserStatus,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 import type React from 'react';
-import { Drawer } from '@/shared/ui';
+import { Drawer } from '@fmby/v2-shared/ui';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import { SourceGrantEditor } from '../../longtail-shared/source-governance-fields';
 import { ROLE_OPTIONS, type UserBatchEditFormState } from '../types';

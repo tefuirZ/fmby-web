@@ -7,7 +7,7 @@ import type {
   NamingCleanupReplayScope,
   NamingCleanupSettings,
   UpdateNamingCleanupSettingsRequest,
-} from '@/domains/manage/naming';
+} from '@fmby/v2-shared/contracts/manage/naming';
 
 export const LIBRARY_OPTIONS: Array<{ value: NamingCleanupLibraryType; label: string }> = [
   { value: 'movie', label: '电影' },

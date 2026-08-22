@@ -3,7 +3,7 @@
  * @description 全部写类 API (POST / PATCH / DELETE / upload / refresh / scan / scrape)
  */
 
-import { httpClient } from '@/shared/api/client';
+import { httpClient } from '@fmby/v2-shared/api/client';
 import { mapDangerousActionPayloadToApi } from '../../mapping';
 import type { DangerousActionRequest, ManageActionResult } from '../../types';
 import type {

@@ -5,7 +5,7 @@
  *
  * 用法：
  * ```ts
- * import { queryKeys } from '@/shared/query-keys';
+ * import { queryKeys } from '@fmby/v2-shared/query';
  * useQuery({ queryKey: queryKeys.manage.mounts.list(), ... });
  * queryClient.invalidateQueries({ queryKey: queryKeys.manage.mounts.list() });
  * ```

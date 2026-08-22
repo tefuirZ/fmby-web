@@ -1,6 +1,6 @@
-import type { RegistrationCodeRecord } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
+import type { RegistrationCodeRecord } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import { getManageStatusVariant } from '../../longtail-shared/components';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import {

@@ -1,5 +1,5 @@
-import type { ItemDetailResponse } from '@/domains/item';
-import type { MediaCardSummary } from '@/domains/browse';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import type { TechnicalCard, StreamInfo, StreamType } from './types';
 
 export function buildTechnicalCards(

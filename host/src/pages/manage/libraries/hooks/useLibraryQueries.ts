@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { manageApi } from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
 import type { LibraryDrawerState } from '../types';
 
 export function useLibrariesQuery() {

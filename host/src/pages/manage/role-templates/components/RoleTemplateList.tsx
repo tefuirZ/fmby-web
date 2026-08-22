@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { RoleTemplateRecord } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
+import type { RoleTemplateRecord } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import { ManageSectionCard, getManageStatusVariant } from '../../longtail-shared/components';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import type { RoleTemplateFormState } from '../types';

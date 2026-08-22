@@ -4,15 +4,15 @@
  * 含本机播放器内核（PlayerEngineId）本地开关。
  */
 import { useState } from 'react';
-import { InlineBanner, Select, Switch } from '@/shared/ui';
-import { settingsApi, type UserPlaybackSettings } from '@/domains/settings';
+import { InlineBanner, Select, Switch } from '@fmby/v2-shared/ui';
+import { settingsApi, type UserPlaybackSettings } from '@fmby/v2-shared/contracts/settings';
 import {
   resolvePlayerEngineId,
   setPlayerEngineId,
   type PlayerEngineId,
 } from '@/features/player';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './SettingsCenter.module.css';
 import {
   SettingsFeedbackGate,

@@ -1,9 +1,9 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { manageApi, type AuditLogRecord } from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
-import { FeedbackState } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
+import { manageApi, type AuditLogRecord } from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from './longtail-shared/ManageShared.module.css';
 import {
   EmptyTableRow,
@@ -11,9 +11,9 @@ import {
   ManageSectionCard,
   getManageStatusVariant,
 } from './longtail-shared/components';
-import { getErrorMessage } from '@/shared/utils/error';
-import { formatDateTime } from '@/shared/utils/date';
-import { matchKeyword } from '@/shared/search/matchKeyword';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { matchKeyword } from '@fmby/v2-shared/search/matchKeyword';
 
 export function ManageAuditLogsPage() {
   const [keyword, setKeyword] = useState('');

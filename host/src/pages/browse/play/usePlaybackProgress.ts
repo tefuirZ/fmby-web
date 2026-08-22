@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { playbackApi } from '@/domains/playback';
+import { playbackApi } from '@fmby/v2-shared/contracts/playback';
 import { clearLocalPosition, readLocalPosition, saveLocalPosition } from './playbackStorage';
 
 const PROGRESS_REPORT_INTERVAL = 15_000;

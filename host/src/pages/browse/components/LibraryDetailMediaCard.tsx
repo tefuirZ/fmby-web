@@ -1,4 +1,4 @@
-import type { MediaCardSummary } from '@/domains/browse';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import { LandscapeMediaCard } from './LandscapeMediaCard';
 import { PosterMediaCard } from './PosterMediaCard';
 

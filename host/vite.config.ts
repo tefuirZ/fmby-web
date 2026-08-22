@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
-import manifest from './manifest.json';
 
 function guardUnexpectedWebSocketUpgrades(): Plugin {
   return {
@@ -12,13 +11,13 @@ function guardUnexpectedWebSocketUpgrades(): Plugin {
           return;
         }
 
+        // 必须在 Vite 完成内部 server/ws 初始化之后再包一层 upgrade 监听，
+        // Vite 自己的 HMR 通道放行，其它第三方客户端误打的 WS 升级直接拒绝。
         const viteUpgradeListeners = server.httpServer.listeners('upgrade');
         if (viteUpgradeListeners.length === 0) {
           return;
         }
 
-        // 必须在 Vite 完成内部 server/ws 初始化之后再包一层 upgrade 监听，
-        // Vite 自己的 HMR 通道放行，其它第三方客户端误打的 WS 升级直接拒绝。
         server.httpServer.removeAllListeners('upgrade');
         server.httpServer.on('upgrade', (request, socket, head) => {
           const url = request.url ? new URL(request.url, 'http://localhost') : null;
@@ -43,13 +42,17 @@ export default defineConfig(({ mode }) => {
   const backend = env.FMBY_BACKEND ?? 'http://localhost:18098';
 
   return {
-    // 生产构建资源必须挂在 /_assets/{skin-name}/ 下（contract skin-package/build-output.md）
-    base: mode === 'production' ? `/_assets/${manifest.name}/` : '/',
+    base: '/',
     plugins: [react(), guardUnexpectedWebSocketUpgrades()],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
+    },
+    // workspace 源码包（shared / themes）不做依赖预打包：
+    // 它们以 TS 源码直接进模块图，CSS Module 与 ?url 资源需走 Vite 自身管线。
+    optimizeDeps: {
+      exclude: ['@fmby/v2-shared', '@fmby/v2-theme-darkroom', '@fmby/v2-theme-template'],
     },
     server: {
       port: 5180,
@@ -86,11 +89,25 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // 生成 .vite/manifest.json：scripts/check-frontend-size.mjs 依据它
+      // 计算入口静态闭包（首屏 JS）与主题 async chunk 的 gzip 体积红线。
+      manifest: true,
       rollupOptions: {
         output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router'],
-            query: ['@tanstack/react-query'],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (/[\\/]node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/.test(id)) {
+                return 'react-vendor';
+              }
+              if (id.includes('@tanstack/react-query')) {
+                return 'query';
+              }
+              return undefined;
+            }
+            if (id.includes('apps/shared')) {
+              return 'shared';
+            }
+            return undefined;
           },
         },
       },

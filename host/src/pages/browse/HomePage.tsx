@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { browseApi, type BrowseHero, type MediaCardSummary } from '@/domains/browse';
-import { manageApi } from '@/domains/manage';
-import { useDelayedTrigger, useViewportTrigger } from '@/shared/hooks';
-import { queryKeys } from '@/shared/query-keys';
-import { useSession } from '@/shared/session/SessionProvider';
-import { FeedbackState, InlineBanner } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import { browseApi, type BrowseHero, type MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
+import { useDelayedTrigger, useViewportTrigger } from '@fmby/v2-shared/hooks';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { useSession } from '@/session/SessionProvider';
+import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './styles/shared.module.css';
 import {
   BrowseLoadingState,

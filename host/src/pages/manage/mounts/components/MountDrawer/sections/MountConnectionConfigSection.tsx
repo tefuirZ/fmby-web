@@ -1,4 +1,4 @@
-import type { ManageMountDetailRecord } from '@/domains/manage';
+import type { ManageMountDetailRecord } from '@fmby/v2-shared/contracts/manage';
 import { ManageSectionCard } from '../../../../components';
 import { maskSensitiveConfig } from '../../../formUtils';
 import styles from '../../../../ManagePages.module.css';

@@ -3,8 +3,8 @@
  *
  * 用法：
  * ```ts
- * import { loginSchema, type LoginFormData } from '@/domains/auth/schemas';
- * import { useZodForm } from '@/shared/forms';
+ * import { loginSchema, type LoginFormData } from '@fmby/v2-shared/contracts/auth/schemas';
+ * import { useZodForm } from '@fmby/v2-shared/forms';
  *
  * const { register, handleSubmit, formState: { errors } } =
  *   useZodForm<LoginFormData>(loginSchema);

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { historyApi } from '@/domains/history';
-import { FeedbackState } from '@/shared/ui';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+import { historyApi } from '@fmby/v2-shared/contracts/browse/history';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './styles/shared.module.css';
 import cardStyles from './styles/cards.module.css';
 import {

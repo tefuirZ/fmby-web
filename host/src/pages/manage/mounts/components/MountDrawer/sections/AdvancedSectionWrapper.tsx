@@ -1,4 +1,4 @@
-import { StatusBadge } from '@/shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import disclosureStyles from '../MountDrawer.module.css';
 
 interface AdvancedSectionWrapperProps {

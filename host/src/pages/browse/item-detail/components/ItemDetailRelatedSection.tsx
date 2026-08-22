@@ -1,4 +1,4 @@
-import type { ItemDetailResponse } from '@/domains/item';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
 import { PosterMediaCard } from '../../components';
 import detailStyles from '../../styles/detail.module.css';
 import sharedStyles from '../../styles/shared.module.css';

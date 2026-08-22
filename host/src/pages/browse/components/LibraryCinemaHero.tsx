@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Info, Play, RefreshCw } from 'lucide-react';
-import type { LibrarySummary, MediaCardSummary } from '@/domains/browse';
+import type { LibrarySummary, MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import { CinemaHeroBackdrop } from './CinemaHeroBackdrop';
 import { CinemaFilmstrip } from './CinemaFilmstrip';
 import { buildMediaMeta, resolvePlayableTargetId } from './utils';

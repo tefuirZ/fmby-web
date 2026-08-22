@@ -1,4 +1,4 @@
-import type { RegistrationCodeBatchRecord } from '@/domains/manage';
+import type { RegistrationCodeBatchRecord } from '@fmby/v2-shared/contracts/manage';
 import styles from '../../longtail-shared/ManageShared.module.css';
 
 export interface RegistrationCodeBatchActionsBarProps {

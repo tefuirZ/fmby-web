@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { manageApi } from '@/domains/manage';
-import { namingCleanupApi } from '@/domains/manage/naming';
-import { queryKeys } from '@/shared/query-keys';
-import { FeedbackState } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
+import { namingCleanupApi } from '@fmby/v2-shared/contracts/manage/naming';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './ManagePages.module.css';
 import guideStyles from './ManageOnboarding.module.css';
 import { ManagePageHeader, ManageSectionCard } from './components';

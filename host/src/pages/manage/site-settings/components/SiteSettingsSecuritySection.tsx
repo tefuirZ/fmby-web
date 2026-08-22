@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { ServerSecuritySettings } from '@/domains/settings';
+import type { ServerSecuritySettings } from '@fmby/v2-shared/contracts/settings';
 import { ResetIpLoginRiskPanel } from './ResetIpLoginRiskPanel';
 import type { SiteSettingsDraft } from '../types';
 import { minutesFromSeconds, secondsFromMinutes } from '../formUtils';

@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
-import type { ManageMediaItemDetailRecord } from '@/domains/manage/media-items';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime, formatRelativeTime } from '@/shared/utils/date';
+import type { ManageMediaItemDetailRecord } from '@fmby/v2-shared/contracts/manage/media-items';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
 import sharedStyles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
 import {

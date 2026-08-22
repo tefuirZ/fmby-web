@@ -1,5 +1,5 @@
-import type { ItemDetailResponse } from '@/domains/item';
-import { HoverScrollArea } from '@/shared/ui';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
+import { HoverScrollArea } from '@fmby/v2-shared/ui';
 import detailStyles from '../../styles/detail.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import { PersonCard } from './PersonCard';

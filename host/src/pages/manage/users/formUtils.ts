@@ -1,5 +1,5 @@
-import type { ManageUserDetailRecord, ManageUserRecord, UserStatus } from '@/domains/manage';
-import { formatDateTimeLocalInput } from '@/shared/utils/date';
+import type { ManageUserDetailRecord, ManageUserRecord, UserStatus } from '@fmby/v2-shared/contracts/manage';
+import { formatDateTimeLocalInput } from '@fmby/v2-shared/time';
 import type {
   UserDrawerState,
   UserFormState,

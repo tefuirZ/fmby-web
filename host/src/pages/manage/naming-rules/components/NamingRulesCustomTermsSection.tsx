@@ -1,9 +1,9 @@
 import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
-import { StatusBadge } from '@/shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import type {
   NamingCleanupCustomTerm,
   NamingCleanupMatchMode,
-} from '@/domains/manage/naming';
+} from '@fmby/v2-shared/contracts/manage/naming';
 import { MATCH_MODE_OPTIONS } from '../helpers';
 import sharedStyles from '../../longtail-shared/ManageShared.module.css';
 import styles from '../../ManageNamingRulesPage.module.css';

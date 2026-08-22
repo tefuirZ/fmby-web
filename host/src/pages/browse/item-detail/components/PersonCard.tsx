@@ -1,4 +1,4 @@
-import type { ItemDetailResponse } from '@/domains/item';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
 import styles from '../../styles/detail.module.css';
 
 interface PersonCardProps {

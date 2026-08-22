@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { pan115ImghostApi } from '@/domains/manage/pan115Imghost';
-import type { Pan115ImghostAsset, Pan115ImghostUploadResponse } from '@/domains/manage/pan115Imghost';
+import { pan115ImghostApi } from '@fmby/v2-shared/contracts/manage/pan115Imghost';
+import type { Pan115ImghostAsset, Pan115ImghostUploadResponse } from '@fmby/v2-shared/contracts/manage/pan115Imghost';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { AssetCard } from './AssetCard';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 

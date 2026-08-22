@@ -1,8 +1,8 @@
 import { Link, useParams } from 'react-router';
 import { ArrowLeft, RefreshCw, ScanLine } from 'lucide-react';
-import { FeedbackState, InlineBanner, useToast } from '@/shared/ui';
-import { formatDateTime, formatRelativeTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+import { FeedbackState, InlineBanner, useToast } from '@fmby/v2-shared/ui';
+import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import sharedStyles from './ManagePages.module.css';
 import { ManagePageHeader } from './components';
 import {

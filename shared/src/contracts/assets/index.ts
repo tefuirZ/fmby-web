@@ -1,4 +1,4 @@
-import { asRecord, readString } from '@/shared/api/mapping';
+import { asRecord, readString } from '@fmby/v2-shared/api/mapping';
 
 export interface ArtworkSet {
   bannerUrl?: string;

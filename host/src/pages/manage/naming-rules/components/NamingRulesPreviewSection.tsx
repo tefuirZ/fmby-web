@@ -1,12 +1,12 @@
 import { Sparkles } from 'lucide-react';
-import { InlineBanner } from '@/shared/ui';
-import { FeedbackState } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type {
   NamingCleanupLibraryType,
   NamingCleanupPreviewResponse,
-} from '@/domains/manage/naming';
+} from '@fmby/v2-shared/contracts/manage/naming';
 import { LIBRARY_OPTIONS, buildPreviewHeadline, formatConfidence } from '../helpers';
 import sharedStyles from '../../longtail-shared/ManageShared.module.css';
 import styles from '../../ManageNamingRulesPage.module.css';

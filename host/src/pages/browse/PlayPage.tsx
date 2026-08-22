@@ -14,12 +14,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { itemApi } from '@/domains/item';
-import { playbackApi } from '@/domains/playback';
+import { itemApi } from '@fmby/v2-shared/contracts/browse/item';
+import { playbackApi } from '@fmby/v2-shared/contracts/playback';
 import { VideoPlayer } from '@/features/player';
-import { HoverScrollArea } from '@/shared/ui';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+import { HoverScrollArea } from '@fmby/v2-shared/ui';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './PlayPage.module.css';
 import { ExternalPlayerBar } from './play/ExternalPlayerBar';
 import {

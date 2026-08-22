@@ -1,4 +1,4 @@
-import type { ArtworkSet } from '@/domains/assets';
+import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 
 export interface PlaybackTrack {
   id: string;

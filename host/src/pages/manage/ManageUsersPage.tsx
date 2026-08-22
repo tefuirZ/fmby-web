@@ -1,16 +1,16 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { type ManageUserAccountKind, type UserStatus } from '@/domains/manage';
-import { manageApi } from '@/domains/manage';
-import { useSession } from '@/shared/hooks';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { SensitiveActionDialog } from '@/shared/ui';
-import { queryKeys } from '@/shared/query-keys';
+import { type ManageUserAccountKind, type UserStatus } from '@fmby/v2-shared/contracts/manage';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
+import { useSession } from '@fmby/v2-shared/hooks';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { queryKeys } from '@fmby/v2-shared/query';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader } from './longtail-shared/components';
-import { getErrorMessage } from '@/shared/utils/error';
-import type { BannerState } from '@/shared/types/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
 import {
   type PendingUserAction,
   type ResetPasswordDialogState,

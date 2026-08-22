@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Search, Film, Tv, Inbox } from 'lucide-react';
 import { Link } from 'react-router';
-import { searchApi, type SearchResultItem } from '@/domains/search';
-import { useDebounce } from '@/shared/hooks';
-import { generatePlaceholderColor } from '@/shared/hooks/usePosterUrl';
-import { queryKeys } from '@/shared/query-keys';
+import { searchApi, type SearchResultItem } from '@fmby/v2-shared/contracts/browse/search';
+import { useDebounce } from '@fmby/v2-shared/hooks';
+import { generatePlaceholderColor } from '@fmby/v2-shared/hooks/usePosterUrl';
+import { queryKeys } from '@fmby/v2-shared/query';
 import styles from './SearchOverlay.module.css';
 
 interface SearchOverlayProps {

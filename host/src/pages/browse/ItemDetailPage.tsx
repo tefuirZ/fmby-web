@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { useSession } from '@/shared/session/SessionProvider';
-import { FeedbackState } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import { useSession } from '@/session/SessionProvider';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { buildPosterBadgeModel } from './PosterBadges';
 import styles from './styles/shared.module.css';
 import { useItemDetailQueries } from './item-detail/hooks';
@@ -21,7 +21,7 @@ export function ItemDetailPage() {
   const { hasCapability } = useSession();
   const isAdmin = hasCapability('manage:access');
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>();
-  const [item, setItem] = useState<import('@/domains/item').ItemDetailResponse>();
+  const [item, setItem] = useState<import('@fmby/v2-shared/contracts/browse/item').ItemDetailResponse>();
 
   const { itemQuery, selectedSeasonQuery, technicalFallbackQuery } = useItemDetailQueries(
     itemId,

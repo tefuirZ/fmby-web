@@ -2,7 +2,7 @@ import type {
   CreateRoleTemplateRequest,
   RoleTemplateRecord,
   UpdateRoleTemplateRequest,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 import type { RoleTemplateFormState } from './types';
 
 export function createInitialFormState(): RoleTemplateFormState {

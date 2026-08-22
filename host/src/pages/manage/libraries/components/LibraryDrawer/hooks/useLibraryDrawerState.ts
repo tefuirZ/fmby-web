@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo } from 'react';
-import type { ManageLibraryDetailRecord, ManageUserRecord } from '@/domains/manage';
-import { matchKeyword } from '@/shared/search/matchKeyword';
+import type { ManageLibraryDetailRecord, ManageUserRecord } from '@fmby/v2-shared/contracts/manage';
+import { matchKeyword } from '@fmby/v2-shared/search/matchKeyword';
 import type { LibraryFormState } from '../../../types';
 
 interface UseLibraryDrawerStateProps {

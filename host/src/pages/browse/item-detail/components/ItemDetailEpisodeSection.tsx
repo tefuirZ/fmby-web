@@ -1,9 +1,9 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
-import type { ItemDetailResponse } from '@/domains/item';
-import type { MediaCardSummary } from '@/domains/browse';
-import { HoverScrollArea, InlineBanner } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import { HoverScrollArea, InlineBanner } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import detailStyles from '../../styles/detail.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import { EpisodeRow } from './EpisodeRow';

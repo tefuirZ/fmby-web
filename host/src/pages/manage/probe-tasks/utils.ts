@@ -1,4 +1,4 @@
-import type { ManageMountProviderType, ManageProbeTaskRecord, ManageProbeTaskStatus, ManageProbeTaskStreamRecord, ManageProbeTechnicalSummary } from '@/domains/manage';
+import type { ManageMountProviderType, ManageProbeTaskRecord, ManageProbeTaskStatus, ManageProbeTaskStreamRecord, ManageProbeTechnicalSummary } from '@fmby/v2-shared/contracts/manage';
 import { ACTIVE_PROBE_STATUSES } from './types';
 
 export const DETAIL_TECHNICAL_FIELDS: Array<{

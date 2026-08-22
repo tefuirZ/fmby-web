@@ -1,10 +1,10 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { browseApi } from '@/domains/browse';
-import { FeedbackState } from '@/shared/ui';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
-import { matchKeyword } from '@/shared/search/matchKeyword';
+import { browseApi } from '@fmby/v2-shared/contracts/browse';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { matchKeyword } from '@fmby/v2-shared/search/matchKeyword';
 import styles from './styles/shared.module.css';
 import cardStyles from './styles/cards.module.css';
 import libraryStyles from './styles/library.module.css';

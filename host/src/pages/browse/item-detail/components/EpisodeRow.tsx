@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { MediaCardSummary } from '@/domains/browse';
-import { useBackdropUrl } from '@/shared/hooks/usePosterUrl';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import { useBackdropUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
 import detailStyles from '../../styles/detail.module.css';
 import cardStyles from '../../styles/cards.module.css';
 import sharedStyles from '../../styles/shared.module.css';

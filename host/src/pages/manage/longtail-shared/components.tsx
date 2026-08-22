@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { StatusBadge, type StatusBadgeVariant } from '@/shared/ui';
+import { StatusBadge, type StatusBadgeVariant } from '@fmby/v2-shared/ui';
 import styles from './ManageShared.module.css';
 
 export function getManageStatusVariant(

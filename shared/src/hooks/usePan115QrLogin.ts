@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { isApiError } from '@/shared/types';
-import { getErrorMessage } from '@/shared/utils/error';
+import { isApiError } from '@fmby/v2-shared/types';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 
 export interface Pan115QrSession {
   sessionId: string;

@@ -1,4 +1,4 @@
-import type { ItemDetailResponse } from '@/domains/item';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
 
 export type StreamInfo = ItemDetailResponse['technical']['videoStreams'][number];
 export type StreamType = 'video' | 'audio' | 'subtitle';

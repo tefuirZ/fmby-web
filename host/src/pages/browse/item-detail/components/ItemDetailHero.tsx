@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { ItemDetailResponse } from '@/domains/item';
-import { usePosterUrl, useBackdropUrl, generatePlaceholderColor } from '@/shared/hooks/usePosterUrl';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
+import { usePosterUrl, useBackdropUrl, generatePlaceholderColor } from '@fmby/v2-shared/hooks/usePosterUrl';
 import { PosterBadges, buildPosterBadgeModel } from '../../PosterBadges';
 import { MediaProgressBar, SmallStat } from '../../components';
-import { InlineBanner } from '@/shared/ui';
-import { formatDateTime, formatDuration } from '@/shared/utils/date';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { formatDateTime, formatDuration } from '@fmby/v2-shared/time';
 import detailStyles from '../../styles/detail.module.css';
 import cardStyles from '../../styles/cards.module.css';
 import sharedStyles from '../../styles/shared.module.css';

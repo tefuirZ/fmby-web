@@ -2,7 +2,7 @@
  * Aurora Glass 共享 UI 组件入口
  *
  * 统一导出面向下游页面的全部组件。
- * import 路径约定：@/shared/ui
+ * import 路径约定：@fmby/v2-shared/ui
  */
 
 /* ---- 玻璃基础组件 ---- */

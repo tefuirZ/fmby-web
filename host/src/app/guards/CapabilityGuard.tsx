@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useSession } from '@/shared/session/SessionProvider';
+import { useSession } from '@/session/SessionProvider';
 
 interface CapabilityGuardProps {
   required: string;

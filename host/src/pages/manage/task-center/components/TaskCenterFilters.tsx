@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { TaskCenterCategory, TaskCenterStatus } from '@/domains/manage/task-center';
+import type { TaskCenterCategory, TaskCenterStatus } from '@fmby/v2-shared/contracts/manage/task-center';
 import styles from '../../ManagePages.module.css';
 import { CATEGORY_ORDER, STATUS_OPTIONS, RANGE_OPTIONS } from '../constants';
 import { getCategoryLabel } from '../utils';

@@ -1,7 +1,7 @@
 import type {
   ManageKpi,
   ManageOverviewResponse,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 
 export type SetupStepState = 'done' | 'current' | 'todo';
 

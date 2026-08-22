@@ -1,4 +1,4 @@
-import type { ManageLibraryRecord, ManageLibraryType } from '@/domains/manage';
+import type { ManageLibraryRecord, ManageLibraryType } from '@fmby/v2-shared/contracts/manage';
 
 export type LibraryHealthStatus = 'healthy' | 'attention' | 'critical';
 export type LibraryDrawerMode = 'create' | 'view' | 'edit';

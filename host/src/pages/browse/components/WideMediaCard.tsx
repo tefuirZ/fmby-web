@@ -1,9 +1,9 @@
 import { Clock3, Play } from 'lucide-react';
 import { Link } from 'react-router';
-import { StatusBadge } from '@/shared/ui';
-import { formatRelativeTime } from '@/shared/utils/date';
-import type { MediaCardSummary } from '@/domains/browse';
-import type { ArtworkSet } from '@/domains/assets';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatRelativeTime } from '@fmby/v2-shared/time';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 import { MediaProgressBar } from './MediaProgressBar';
 import { buildMediaMeta, buildCardProgressLabel, resolvePlayableTargetId } from './utils';
 import cardStyles from '../styles/cards.module.css';

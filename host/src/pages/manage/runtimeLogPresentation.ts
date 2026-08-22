@@ -1,4 +1,4 @@
-import type { RuntimeLogRecord } from '@/domains/manage';
+import type { RuntimeLogRecord } from '@fmby/v2-shared/contracts/manage';
 
 const TARGET_LABELS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /^http_access$/i, label: '网页请求' },

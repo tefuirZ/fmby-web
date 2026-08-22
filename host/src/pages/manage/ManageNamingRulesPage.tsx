@@ -1,11 +1,11 @@
 import { startTransition } from 'react';
 import { RotateCcw, Save, Wand2 } from 'lucide-react';
 
-import { ConfirmDialog } from '@/shared/ui';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import { ConfirmDialog } from '@fmby/v2-shared/ui';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 
 import sharedStyles from './longtail-shared/ManageShared.module.css';
 import styles from './ManageNamingRulesPage.module.css';

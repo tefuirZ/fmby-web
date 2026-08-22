@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { ManageMountDirectoryBrowserResponse, ManageMountProviderType } from '@/domains/manage';
-import type { BannerState } from '@/shared/types/ui';
+import type { ManageMountDirectoryBrowserResponse, ManageMountProviderType } from '@fmby/v2-shared/contracts/manage';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
 import type { MountDrawerState, MountFormState, MountFormErrors, MountRemoteAuthMode } from '../../../types';
 import type { MountDetailQueryShape, MutationShape } from '../types';
 import {

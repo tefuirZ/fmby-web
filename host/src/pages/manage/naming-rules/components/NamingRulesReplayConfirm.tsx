@@ -1,6 +1,6 @@
-import { ConfirmDialog } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
-import type { NamingCleanupReplayScope } from '@/domains/manage/naming';
+import { ConfirmDialog } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import type { NamingCleanupReplayScope } from '@fmby/v2-shared/contracts/manage/naming';
 
 export function NamingRulesReplayConfirm({
   open,

@@ -1,5 +1,5 @@
-import type { MediaCardSummary } from '@/domains/browse';
-import type { ItemDetailResponse } from '@/domains/item';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
 
 const DETAIL_QUERY_IDLE_TIMEOUT = 1_200;
 const DETAIL_QUERY_FALLBACK_DELAY = 250;

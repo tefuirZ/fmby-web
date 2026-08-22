@@ -4,12 +4,12 @@ import type {
   ManageMountRecord,
   ManageUserRecord,
   CreateManageLibraryRequest,
-} from '@/domains/manage';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
-import { SideDrawer } from '@/shared/ui';
-import type { BannerState } from '@/shared/types/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { SideDrawer } from '@fmby/v2-shared/ui';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../../ManagePages.module.css';
 import { buildPendingLibraryDeleteState, buildCreateLibraryPayload, getDrawerDescription, getDrawerTitle, validateLibraryForm } from '../../formUtils';
 import type { LibraryDrawerState, LibraryFormState, PendingLibraryDeleteState } from '../../types';

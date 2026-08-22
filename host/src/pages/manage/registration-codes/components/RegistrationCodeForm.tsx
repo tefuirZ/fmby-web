@@ -4,9 +4,9 @@ import type {
   RegistrationCodeBatchMode,
   RegistrationCodeBatchRecord,
   RoleTemplateRecord,
-} from '@/domains/manage';
-import { InlineBanner } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import { ROLE_OPTIONS, BATCH_MODE_LABELS, BATCH_MODE_DESCRIPTIONS } from '../constants';
 import {

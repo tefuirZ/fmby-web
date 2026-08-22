@@ -1,6 +1,6 @@
 import { AlertOctagon, AlertTriangle, CheckCircle, Info, ShieldAlert, Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
-import type { ManageTodoItem } from '@/domains/manage';
+import type { ManageTodoItem } from '@fmby/v2-shared/contracts/manage';
 import styles from '../ManageOverviewCockpit.module.css';
 
 interface RiskRadarPanelProps {

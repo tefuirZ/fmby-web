@@ -1,5 +1,5 @@
-import type { ManageLibraryDetailRecord } from '@/domains/manage';
-import { formatDateTime } from '@/shared/utils/date';
+import type { ManageLibraryDetailRecord } from '@fmby/v2-shared/contracts/manage';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import { ManageSectionCard } from '../../../../components';
 import styles from '../../../../ManagePages.module.css';
 

@@ -5,12 +5,12 @@ import type {
   TaskCenterItemRecord,
   TaskCenterCategory,
   TaskCenterAction,
-} from '@/domains/manage/task-center';
-import { SideDrawer } from '@/shared/ui';
-import { FeedbackState } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage/task-center';
+import { SideDrawer } from '@fmby/v2-shared/ui';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../ManagePages.module.css';
 import { ManageSectionCard, getManageStatusVariant } from '../../components';
 import { getCategoryLabel, getStatusLabel, mapStatusVariant, buildTaskActions } from '../utils';

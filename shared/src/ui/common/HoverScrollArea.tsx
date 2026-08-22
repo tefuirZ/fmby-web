@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { useHoverWheelScroll } from '@/shared/hooks';
+import { useHoverWheelScroll } from '@fmby/v2-shared/hooks';
 
 interface HoverScrollAreaProps
   extends Omit<ComponentPropsWithoutRef<'div'>, 'children'> {

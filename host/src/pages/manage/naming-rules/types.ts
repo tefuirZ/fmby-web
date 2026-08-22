@@ -1,5 +1,5 @@
-import type { ManageLibraryRecord } from '@/domains/manage';
-import type { NamingCleanupPreviewResponse } from '@/domains/manage/naming';
+import type { ManageLibraryRecord } from '@fmby/v2-shared/contracts/manage';
+import type { NamingCleanupPreviewResponse } from '@fmby/v2-shared/contracts/manage/naming';
 
 /**
  * 指标项目类型

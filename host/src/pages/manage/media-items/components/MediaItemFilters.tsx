@@ -7,9 +7,9 @@ import type {
   MetadataStatusFilter,
   OverrideFilter,
 } from '../types';
-import type { ManageLibrariesResponse } from '@/domains/manage';
-import { InlineBanner } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import type { ManageLibrariesResponse } from '@fmby/v2-shared/contracts/manage';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { ManageSectionCard } from '../../components';
 import sharedStyles from '../../ManagePages.module.css';
 import styles from '../../ManageMediaItemsPage.module.css';

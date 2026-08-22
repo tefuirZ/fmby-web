@@ -1,4 +1,4 @@
-import { httpClient } from '@/shared/api/client';
+import { httpClient } from '@fmby/v2-shared/api/client';
 import type {
   Pan115ImghostActivateRequest,
   Pan115ImghostAsset,

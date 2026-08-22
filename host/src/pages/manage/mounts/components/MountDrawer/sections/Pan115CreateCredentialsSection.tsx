@@ -2,13 +2,13 @@
 // 创建抽屉里 mount 还未生成 mount_id，因此扫码完成 / cookie 填写完毕只把 pending 状态报告给父组件，
 // 待 createMountMutation 成功拿到 mount_id 后再统一调 activate。
 import { useEffect, useState } from 'react';
-import { pan115Api } from '@/domains/manage/pan115';
-import type { Pan115QrcodeStatus } from '@/domains/manage/pan115';
+import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
+import type { Pan115QrcodeStatus } from '@fmby/v2-shared/contracts/manage/pan115';
 import { ManageSectionCard } from '../../../../components';
-import { InlineBanner } from '@/shared/ui';
-import { DetailModal } from '@/shared/ui';
-import { usePan115QrLogin } from '@/shared/hooks/usePan115QrLogin';
-import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@/shared/utils/pan115-cookie-app';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { DetailModal } from '@fmby/v2-shared/ui';
+import { usePan115QrLogin } from '@fmby/v2-shared/hooks/usePan115QrLogin';
+import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@fmby/v2-shared/utils/pan115-cookie-app';
 import styles from '../../../../ManagePages.module.css';
 
 export type Pan115CreatePendingActivation =

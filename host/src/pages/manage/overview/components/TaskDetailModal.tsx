@@ -13,7 +13,7 @@ import {
   Sparkles,
   XCircle,
 } from 'lucide-react';
-import { DetailModal } from '@/shared/ui';
+import { DetailModal } from '@fmby/v2-shared/ui';
 import styles from '../ManageOverviewCockpit.module.css';
 
 export interface TaskSubItem {

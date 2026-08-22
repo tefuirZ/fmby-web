@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { Link } from 'react-router';
-import { usePosterUrl, useBackdropUrl, generatePlaceholderColor } from '@/shared/hooks/usePosterUrl';
-import { useHoverWheelScroll } from '@/shared/hooks/useHoverWheelScroll';
-import type { BrowseHero } from '@/domains/browse';
+import { usePosterUrl, useBackdropUrl, generatePlaceholderColor } from '@fmby/v2-shared/hooks/usePosterUrl';
+import { useHoverWheelScroll } from '@fmby/v2-shared/hooks/useHoverWheelScroll';
+import type { BrowseHero } from '@fmby/v2-shared/contracts/browse';
 import { PosterBadges, buildPosterBadgeModel } from '../PosterBadges';
 import { MediaProgressBar } from './MediaProgressBar';
 import { AdaptiveWideBackdrop } from './AdaptiveWideBackdrop';

@@ -15,7 +15,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
-import { useSession } from '@/shared/hooks';
+import { useSession } from '@fmby/v2-shared/hooks';
 import {
   authApi,
   loginSchema,
@@ -24,11 +24,11 @@ import {
   type LoginFormData,
   type RegisterFormData,
   type SetupFormData,
-} from '@/domains/auth';
-import { useZodForm } from '@/shared/forms';
-import { queryKeys } from '@/shared/query-keys';
-import type { User } from '@/shared/types';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/auth';
+import { useZodForm } from '@fmby/v2-shared/forms';
+import { queryKeys } from '@fmby/v2-shared/query';
+import type { User } from '@fmby/v2-shared/types';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 
 import styles from './LoginPage.module.css';
 

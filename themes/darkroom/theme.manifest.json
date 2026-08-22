@@ -1,0 +1,17 @@
+{
+  "id": "darkroom",
+  "version": "0.1.0",
+  "label": "暗房",
+  "tokens": {
+    "cssFile": "tokens.css",
+    "extraCssFiles": ["aurora.css"]
+  },
+  "entry": {
+    "mount": "index.ts"
+  },
+  "skins": {},
+  "nav": {
+    "items": []
+  },
+  "preload": false
+}

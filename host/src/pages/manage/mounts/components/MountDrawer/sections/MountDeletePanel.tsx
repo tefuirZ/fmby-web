@@ -1,4 +1,4 @@
-import type { ManageMountDetailRecord } from '@/domains/manage';
+import type { ManageMountDetailRecord } from '@fmby/v2-shared/contracts/manage';
 import { formatMountReferenceSummary, hasHiddenMountReferences } from '../../../formUtils';
 import styles from '../../../../ManagePages.module.css';
 

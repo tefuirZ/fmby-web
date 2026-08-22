@@ -1,7 +1,7 @@
 import { RefreshCw, Wand2 } from 'lucide-react';
-import { FeedbackState, InlineBanner, StatusBadge, useToast } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
-import { getErrorMessage } from '@/shared/utils/error';
+import { FeedbackState, InlineBanner, StatusBadge, useToast } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import sharedStyles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
 import {

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { RegistrationCodeStatus } from '@/domains/manage';
+import type { RegistrationCodeStatus } from '@fmby/v2-shared/contracts/manage';
 import styles from '../../longtail-shared/ManageShared.module.css';
 
 export interface RegistrationCodeFiltersProps {

@@ -2,7 +2,7 @@ import type {
   ServerGeneralSettings,
   ServerSecuritySettings,
   ServerSessionPolicySettings,
-} from '@/domains/settings';
+} from '@fmby/v2-shared/contracts/settings';
 
 export interface SiteSettingsDraft {
   general: ServerGeneralSettings;

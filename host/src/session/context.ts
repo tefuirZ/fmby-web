@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { SessionState } from '@/shared/types';
+import type { SessionState } from '@fmby/v2-shared/types';
 
 /**
  * 将 SessionContext 提取到稳定模块，避免开发时 HMR 造成

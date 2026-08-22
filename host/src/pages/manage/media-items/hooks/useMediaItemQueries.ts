@@ -1,11 +1,11 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { manageApi } from '@/domains/manage';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
 import {
   mediaItemsApi,
   type ManageMediaItemsQuery,
   type ManageMediaItemPipelineRecord,
-} from '@/domains/manage/media-items';
-import { queryKeys } from '@/shared/query-keys';
+} from '@fmby/v2-shared/contracts/manage/media-items';
+import { queryKeys } from '@fmby/v2-shared/query';
 
 function requireMediaItemId(itemId?: string) {
   if (!itemId) {

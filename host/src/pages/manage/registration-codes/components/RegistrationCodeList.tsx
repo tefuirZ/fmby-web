@@ -1,4 +1,4 @@
-import type { RegistrationCodeBatchRecord, RegistrationCodeRecord } from '@/domains/manage';
+import type { RegistrationCodeBatchRecord, RegistrationCodeRecord } from '@fmby/v2-shared/contracts/manage';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import type { RegistrationCodeBatchSummary } from '../types';
 import { RegistrationCodeBatchCard } from './RegistrationCodeBatchCard';

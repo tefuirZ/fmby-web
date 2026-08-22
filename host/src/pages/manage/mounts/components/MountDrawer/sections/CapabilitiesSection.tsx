@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { ManageStorageCapabilitiesState } from '@/domains/manage';
+import type { ManageStorageCapabilitiesState } from '@fmby/v2-shared/contracts/manage';
 import { ManageSectionCard } from '../../../../components';
 import { CAPABILITY_OPTIONS } from '../../../types';
 import type { MountFormState } from '../../../types';

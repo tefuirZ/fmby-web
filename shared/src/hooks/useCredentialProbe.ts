@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDebounce } from './useDebounce';
-import { httpClient } from '@/shared/api/client';
-import { isApiError } from '@/shared/types';
+import { httpClient } from '@fmby/v2-shared/api/client';
+import { isApiError } from '@fmby/v2-shared/types';
 
 export type CredentialProbeStatus = 'idle' | 'probing' | 'success' | 'error';
 

@@ -1,4 +1,4 @@
-import type { TaskCenterCategory, TaskCenterStatus } from '@/domains/manage/task-center';
+import type { TaskCenterCategory, TaskCenterStatus } from '@fmby/v2-shared/contracts/manage/task-center';
 import type { RangePreset } from './types';
 
 export const PAGE_SIZE = 20;

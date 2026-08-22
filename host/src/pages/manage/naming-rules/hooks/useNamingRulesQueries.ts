@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { manageApi } from '@/domains/manage/api';
-import { namingCleanupApi } from '@/domains/manage/naming';
-import { queryKeys } from '@/shared/query-keys';
+import { manageApi } from '@fmby/v2-shared/contracts/manage/api';
+import { namingCleanupApi } from '@fmby/v2-shared/contracts/manage/naming';
+import { queryKeys } from '@fmby/v2-shared/query';
 import type {
   NamingCleanupLibraryType,
   UpdateNamingScrapeSettingsRequest,
-} from '@/domains/manage/naming';
+} from '@fmby/v2-shared/contracts/manage/naming';
 
 export function useNamingRulesSettingsQuery() {
   return useQuery({

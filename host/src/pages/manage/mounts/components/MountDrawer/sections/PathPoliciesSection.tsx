@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { ManageSourcePathPolicyInput } from '@/domains/manage';
+import type { ManageSourcePathPolicyInput } from '@fmby/v2-shared/contracts/manage';
 import { ManageSectionCard } from '../../../../components';
 import { SourcePathPolicyEditor } from '../../../../longtail-shared/source-governance-fields';
 import type { MountFormState } from '../../../types';

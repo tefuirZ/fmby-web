@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { ChevronDown, LogOut, Search, Settings, ShieldCheck, User } from 'lucide-react';
-import { useSession } from '@/shared/session/SessionProvider';
+import { useSession } from '@/session/SessionProvider';
 import { SearchOverlay } from '@/pages/browse/SearchOverlay';
 import styles from './TopBar.module.css';
 

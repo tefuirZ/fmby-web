@@ -1,5 +1,5 @@
 import { Children, type ReactNode } from 'react';
-import { HoverScrollArea } from '@/shared/ui';
+import { HoverScrollArea } from '@fmby/v2-shared/ui';
 import styles from '../styles/shared.module.css';
 
 export function BrowseRail({

@@ -6,20 +6,20 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { authApi } from '@/domains/auth';
-import { SessionContext } from '@/shared/session/context';
+import { authApi } from '@fmby/v2-shared/contracts/auth';
+import { SessionContext } from '@/session/context';
 import {
   type User,
   type Capability,
   type SessionState,
   type SessionStatus,
-} from '@/shared/types';
+} from '@fmby/v2-shared/types';
 import {
   isSessionInvalidationError,
   subscribeAuthFailure,
-} from '@/shared/session/authFailure';
-import { getErrorMessage } from '@/shared/utils/error';
-import { logger } from '@/shared/utils/logger';
+} from '@fmby/v2-shared/errors/authFailure';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { logger } from '@fmby/v2-shared/utils/logger';
 
 interface SessionProviderProps {
   children: ReactNode;

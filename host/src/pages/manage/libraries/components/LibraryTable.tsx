@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
-import type { ManageLibraryRecord, ManageLibraryType } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
+import type { ManageLibraryRecord, ManageLibraryType } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, ManageSectionCard, getManageStatusVariant } from '../../components';
 import { LIBRARY_TYPE_OPTIONS, type LibraryHealthStatus } from '../types';

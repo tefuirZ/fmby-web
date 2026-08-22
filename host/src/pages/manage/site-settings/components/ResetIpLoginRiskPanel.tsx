@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
-import { manageApi, type DangerousActionRequest } from '@/domains/manage';
-import { SensitiveActionDialog } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+import { manageApi, type DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
+import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 
 interface ResetIpLoginRiskPanelProps {
   wrapperClassName: string;

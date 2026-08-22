@@ -1,5 +1,5 @@
-import type { ManageMountDetailRecord } from '@/domains/manage';
-import { InlineBanner } from '@/shared/ui';
+import type { ManageMountDetailRecord } from '@fmby/v2-shared/contracts/manage';
+import { InlineBanner } from '@fmby/v2-shared/ui';
 import { isStructuredRemoteProvider, hasHiddenMountReferences } from '../../../formUtils';
 
 interface MountViewWarningBannersProps {

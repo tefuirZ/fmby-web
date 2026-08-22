@@ -2,7 +2,7 @@ import type {
   CreateManageLibraryRequest,
   ManageLibraryDetailRecord,
   ManageLibraryRecord,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 import type {
   LibraryDrawerState,
   LibraryFormState,

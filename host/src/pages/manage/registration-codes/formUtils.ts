@@ -6,9 +6,9 @@ import type {
   RegistrationCodeStatus,
   RoleTemplateRecord,
   UpdateRegistrationCodeBatchRequest,
-} from '@/domains/manage';
-import type { BannerState } from '@/shared/types/ui';
-import { formatDateTimeLocalInput } from '@/shared/utils/date';
+} from '@fmby/v2-shared/contracts/manage';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
+import { formatDateTimeLocalInput } from '@fmby/v2-shared/time';
 import type { RegistrationCodeFormState } from './types';
 import { BATCH_MODE_LABELS } from './constants';
 

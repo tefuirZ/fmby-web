@@ -4,9 +4,9 @@ import type {
   ManageMountRecord,
   ManageSourcePathGrantInput,
   RoleTemplateRecord,
-} from '@/domains/manage';
-import { InlineBanner } from '@/shared/ui';
-import { getErrorMessage } from '@/shared/utils/error';
+} from '@fmby/v2-shared/contracts/manage';
+import { InlineBanner } from '@fmby/v2-shared/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { ManageSectionCard } from '../../longtail-shared/components';
 import { SourceGrantEditor } from '../../longtail-shared/source-governance-fields';
 import styles from '../../longtail-shared/ManageShared.module.css';

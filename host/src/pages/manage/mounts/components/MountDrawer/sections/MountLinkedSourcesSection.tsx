@@ -1,6 +1,6 @@
-import type { ManageMountDetailRecord } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
+import type { ManageMountDetailRecord } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import { ManageSectionCard, getManageStatusVariant } from '../../../../components';
 import { getMountStatusLabel } from '../../../formUtils';
 import styles from '../../../../ManagePages.module.css';

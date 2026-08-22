@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { generatePlaceholderColor, useBackdropUrl } from '@/shared/hooks/usePosterUrl';
-import type { MediaCardSummary } from '@/domains/browse';
+import { generatePlaceholderColor, useBackdropUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import styles from '../styles/cinema-hero.module.css';
 
 /**

@@ -1,4 +1,4 @@
-import { isApiError } from '@/shared/types';
+import { isApiError } from '@fmby/v2-shared/types';
 
 type AuthFailureListener = () => void;
 

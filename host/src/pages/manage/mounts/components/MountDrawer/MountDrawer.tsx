@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { pan115Api } from '@/domains/manage/pan115';
-import { FeedbackState } from '@/shared/ui';
-import { SideDrawer } from '@/shared/ui';
-import { useCredentialProbe } from '@/shared/hooks/useCredentialProbe';
-import { getErrorMessage } from '@/shared/utils/error';
-import { logger } from '@/shared/utils/logger';
+import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { SideDrawer } from '@fmby/v2-shared/ui';
+import { useCredentialProbe } from '@fmby/v2-shared/hooks/useCredentialProbe';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { logger } from '@fmby/v2-shared/utils/logger';
 import styles from '../../../ManagePages.module.css';
 import type { MountDrawerProps } from './types';
 import {

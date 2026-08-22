@@ -2,7 +2,7 @@ import type {
   ManageSourcePathPolicyInput,
   ManageMountProviderType,
   ManageStorageCapabilitiesState,
-} from '@/domains/manage';
+} from '@fmby/v2-shared/contracts/manage';
 
 export type MountHealthStatus = 'healthy' | 'attention' | 'critical';
 export type MountDrawerMode = 'create' | 'view' | 'edit';

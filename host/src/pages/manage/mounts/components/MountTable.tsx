@@ -1,6 +1,6 @@
-import type { ManageMountProviderType, ManageMountRecord } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
+import type { ManageMountProviderType, ManageMountRecord } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, ManageSectionCard, getManageStatusVariant } from '../../components';
 import { PROVIDER_OPTIONS, type MountHealthStatus } from '../types';

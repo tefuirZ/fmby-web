@@ -1,6 +1,6 @@
-import { mapArtwork } from '@/domains/assets';
-import { httpClient } from '@/shared/api/client';
-import { asRecord, readArray, readNumber, readString } from '@/shared/api/mapping';
+import { mapArtwork } from '@fmby/v2-shared/contracts/assets';
+import { httpClient } from '@fmby/v2-shared/api/client';
+import { asRecord, readArray, readNumber, readString } from '@fmby/v2-shared/api/mapping';
 import type { SearchResultItem } from './types';
 
 export const searchApi = {

@@ -1,11 +1,11 @@
 import { useDeferredValue, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { FeedbackState } from '@/shared/ui';
-import { InlineBanner } from '@/shared/ui';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { InlineBanner } from '@fmby/v2-shared/ui';
 import styles from './ManagePages.module.css';
 import { ManagePageHeader, MetricCard } from './components';
-import { getErrorMessage } from '@/shared/utils/error';
-import type { BannerState } from '@/shared/types/ui';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import type { BannerState } from '@fmby/v2-shared/ui/types';
 import { useProbeTasksQuery, useProbeTaskDetailQuery, useProbeTaskMutations } from './probe-tasks/hooks';
 import { ProbeTaskTable, ProbeTaskDetailModal } from './probe-tasks/components';
 import { buildScopeLabel } from './probe-tasks/utils';

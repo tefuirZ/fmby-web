@@ -1,17 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { manageApi } from '@/domains/manage';
-import { queryKeys } from '@/shared/query-keys';
-import { FeedbackState } from '@/shared/ui';
-import { StatusBadge } from '@/shared/ui';
+import { manageApi } from '@fmby/v2-shared/contracts/manage';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { FeedbackState } from '@fmby/v2-shared/ui';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from './longtail-shared/ManageShared.module.css';
 import {
   ManagePageHeader,
   ManageSectionCard,
   getManageStatusVariant,
 } from './longtail-shared/components';
-import { getErrorMessage } from '@/shared/utils/error';
-import { formatDateTime } from '@/shared/utils/date';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { formatDateTime } from '@fmby/v2-shared/time';
 
 export function ManageAdvancedPage() {
   const advancedQuery = useQuery({

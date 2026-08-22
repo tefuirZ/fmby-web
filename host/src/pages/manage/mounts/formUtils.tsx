@@ -4,8 +4,8 @@ import type {
   ManageMountRecord,
   ManageMountProviderType,
   ManageStorageCapabilitiesState,
-} from '@/domains/manage';
-import type { CredentialProbeStatus } from '@/shared/hooks/useCredentialProbe';
+} from '@fmby/v2-shared/contracts/manage';
+import type { CredentialProbeStatus } from '@fmby/v2-shared/hooks/useCredentialProbe';
 import styles from '../ManagePages.module.css';
 import type {
   MountDrawerMode,

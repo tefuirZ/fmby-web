@@ -3,8 +3,8 @@ import type {
   ManageMediaItemSourceRecord,
   ManageMediaItemSourceStatus,
   ManageMediaItemMetadataStatus,
-} from '@/domains/manage/media-items';
-import type { StatusBadgeVariant } from '@/shared/ui';
+} from '@fmby/v2-shared/contracts/manage/media-items';
+import type { StatusBadgeVariant } from '@fmby/v2-shared/ui';
 
 export function getSourceStatusLabel(status: ManageMediaItemSourceStatus) {
   switch (status) {

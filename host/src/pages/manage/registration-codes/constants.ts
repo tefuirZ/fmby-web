@@ -1,4 +1,4 @@
-import type { ManageUserRole, RegistrationCodeBatchMode } from '@/domains/manage';
+import type { ManageUserRole, RegistrationCodeBatchMode } from '@fmby/v2-shared/contracts/manage';
 
 export const ROLE_OPTIONS: Array<{
   value: ManageUserRole;

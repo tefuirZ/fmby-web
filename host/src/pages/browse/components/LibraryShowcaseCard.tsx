@@ -1,8 +1,8 @@
 import { FolderOpen } from 'lucide-react';
 import { Link } from 'react-router';
-import { formatRelativeTime } from '@/shared/utils/date';
-import type { LibrarySummary } from '@/domains/browse';
-import type { ArtworkSet } from '@/domains/assets';
+import { formatRelativeTime } from '@fmby/v2-shared/time';
+import type { LibrarySummary } from '@fmby/v2-shared/contracts/browse';
+import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 import { buildSafeBackgroundStyle } from './utils';
 import cardStyles from '../styles/cards.module.css';
 import sharedStyles from '../styles/shared.module.css';

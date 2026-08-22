@@ -1,8 +1,8 @@
 import type {
   ManageMountDirectoryBrowserResponse,
   ManageMountProviderType,
-} from '@/domains/manage';
-import { DirectoryBrowser } from '@/shared/ui';
+} from '@fmby/v2-shared/contracts/manage';
+import { DirectoryBrowser } from '@fmby/v2-shared/ui';
 import styles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
 import {

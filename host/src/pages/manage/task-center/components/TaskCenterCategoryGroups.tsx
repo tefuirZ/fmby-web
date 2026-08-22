@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type {
   TaskCenterCategory,
   TaskCenterOverviewRecord,
-} from '@/domains/manage/task-center';
+} from '@fmby/v2-shared/contracts/manage/task-center';
 import styles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
 import { CATEGORY_GROUPS } from '../constants';

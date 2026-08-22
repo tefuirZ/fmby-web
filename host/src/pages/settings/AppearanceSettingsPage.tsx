@@ -2,10 +2,10 @@
  * 外观设置页（暗房）
  * 数据逻辑移植自旧 UI src/pages/settings/AppearanceSettingsPage.tsx。
  */
-import { InlineBanner, Select, Switch } from '@/shared/ui';
-import { settingsApi, type UserAppearanceSettings } from '@/domains/settings';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+import { InlineBanner, Select, Switch } from '@fmby/v2-shared/ui';
+import { settingsApi, type UserAppearanceSettings } from '@fmby/v2-shared/contracts/settings';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './SettingsCenter.module.css';
 import {
   SettingsFeedbackGate,

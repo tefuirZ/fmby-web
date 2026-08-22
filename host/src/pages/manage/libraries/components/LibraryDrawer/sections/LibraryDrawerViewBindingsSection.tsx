@@ -1,5 +1,5 @@
-import type { ManageLibraryDetailRecord } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
+import type { ManageLibraryDetailRecord } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
 import { ManageSectionCard, getManageStatusVariant } from '../../../../components';
 import styles from '../../../../ManagePages.module.css';
 

@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { Link } from 'react-router';
-import type { ManageMountRecord } from '@/domains/manage';
+import type { ManageMountRecord } from '@fmby/v2-shared/contracts/manage';
 import { ManageSectionCard } from '../../../../components';
 import { nextScanPriority } from '../../../formUtils';
 import type { LibraryFormState } from '../../../types';

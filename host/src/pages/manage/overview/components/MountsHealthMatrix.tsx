@@ -1,6 +1,6 @@
 import { AlertTriangle, Cloud, Database, Folder, HardDrive, RefreshCw, Server, ShieldAlert, Zap } from 'lucide-react';
 import { Link } from 'react-router';
-import type { ManageUnavailableSourceSummary } from '@/domains/manage';
+import type { ManageUnavailableSourceSummary } from '@fmby/v2-shared/contracts/manage';
 import styles from '../ManageOverviewCockpit.module.css';
 
 interface MountOverviewItem {

@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { namingCleanupApi } from '@/domains/manage/naming';
-import { queryKeys } from '@/shared/query-keys';
+import { namingCleanupApi } from '@fmby/v2-shared/contracts/manage/naming';
+import { queryKeys } from '@fmby/v2-shared/query';
 import type {
   NamingCleanupReplayScope,
   NamingScrapeBatchRepairRequest,
   UpdateNamingScrapeSettingsRequest,
-} from '@/domains/manage/naming';
+} from '@fmby/v2-shared/contracts/manage/naming';
 
 interface UseNamingRulesMutationsCallbacks {
   onSaveSuccess: (message: string) => void;

@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { Link } from 'react-router';
-import type { ManageLibraryDetailRecord } from '@/domains/manage';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime } from '@/shared/utils/date';
+import type { ManageLibraryDetailRecord } from '@fmby/v2-shared/contracts/manage';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import { ManageSectionCard, getManageStatusVariant } from '../../../../components';
 import { buildLibraryBindingHint, buildLibraryBindingSummary, buildLibraryFormState, getLibraryStatusLabel } from '../../../formUtils';
 import type { LibraryDrawerState, LibraryFormState } from '../../../types';

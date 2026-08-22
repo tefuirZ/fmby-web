@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router';
-import { useSession } from '@/shared/session/SessionProvider';
-import { Button, FeedbackState } from '@/shared/ui';
+import { useSession } from '@/session/SessionProvider';
+import { Button, FeedbackState } from '@fmby/v2-shared/ui';
 
 interface AuthGuardProps {
   children: ReactNode;

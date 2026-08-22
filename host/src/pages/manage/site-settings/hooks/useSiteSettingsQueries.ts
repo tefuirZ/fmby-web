@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { settingsApi } from '@/domains/settings';
-import { queryKeys } from '@/shared/query-keys';
+import { settingsApi } from '@fmby/v2-shared/contracts/settings';
+import { queryKeys } from '@fmby/v2-shared/query';
 import type { SiteSettingsDraft } from '../types';
 
 export function useSiteSettingsQuery() {

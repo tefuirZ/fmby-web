@@ -2,10 +2,10 @@
  * 个人资料设置页（暗房）
  * 数据逻辑移植自旧 UI src/pages/settings/ProfileSettingsPage.tsx。
  */
-import { InlineBanner, Input, Select, Textarea } from '@/shared/ui';
-import { settingsApi, type UserProfileSettings } from '@/domains/settings';
-import { queryKeys } from '@/shared/query-keys';
-import { getErrorMessage } from '@/shared/utils/error';
+import { InlineBanner, Input, Select, Textarea } from '@fmby/v2-shared/ui';
+import { settingsApi, type UserProfileSettings } from '@fmby/v2-shared/contracts/settings';
+import { queryKeys } from '@fmby/v2-shared/query';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './SettingsCenter.module.css';
 import {
   SettingsFeedbackGate,

@@ -3,7 +3,7 @@ import type {
   TaskCenterCategory,
   TaskCenterItemRecord,
   TaskCenterStatus,
-} from '@/domains/manage/task-center';
+} from '@fmby/v2-shared/contracts/manage/task-center';
 import type { FlashState, RangePreset } from './types';
 import { CST_OFFSET_MS } from './constants';
 

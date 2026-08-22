@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { MediaCardSummary } from '@/domains/browse';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 
 export function buildMediaMeta(item: MediaCardSummary) {
   const runtimeLabel =

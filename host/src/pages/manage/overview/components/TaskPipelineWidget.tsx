@@ -1,6 +1,6 @@
 import { Clock, FolderPlus, KeyRound, ListFilter, PlayCircle, Settings, Users } from 'lucide-react';
 import { Link } from 'react-router';
-import type { ManageActivityItem, ManageQuickLink } from '@/domains/manage';
+import type { ManageActivityItem, ManageQuickLink } from '@fmby/v2-shared/contracts/manage';
 import styles from '../ManageOverviewCockpit.module.css';
 
 interface TaskPipelineWidgetProps {

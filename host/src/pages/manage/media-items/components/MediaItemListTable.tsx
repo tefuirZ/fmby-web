@@ -1,9 +1,9 @@
 import { Link } from 'react-router';
 import { Trash2 } from 'lucide-react';
-import type { ManageMediaItemListRecord } from '@/domains/manage/media-items';
+import type { ManageMediaItemListRecord } from '@fmby/v2-shared/contracts/manage/media-items';
 import type { PendingSourceDeleteState } from '../types';
-import { StatusBadge } from '@/shared/ui';
-import { formatDateTime, formatRelativeTime } from '@/shared/utils/date';
+import { StatusBadge } from '@fmby/v2-shared/ui';
+import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
 import {
   getSourceStatusLabel,
   getSourceStatusVariant,

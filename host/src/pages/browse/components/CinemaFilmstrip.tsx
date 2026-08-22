@@ -1,7 +1,7 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
-import { generatePlaceholderColor, usePosterUrl } from '@/shared/hooks/usePosterUrl';
-import { useHoverWheelScroll } from '@/shared/hooks/useHoverWheelScroll';
-import type { MediaCardSummary } from '@/domains/browse';
+import { generatePlaceholderColor, usePosterUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
+import { useHoverWheelScroll } from '@fmby/v2-shared/hooks/useHoverWheelScroll';
+import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import styles from '../styles/cinema-hero.module.css';
 
 function FilmThumb({
