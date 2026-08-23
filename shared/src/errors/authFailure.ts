@@ -55,7 +55,7 @@ export function isSessionInvalidationError(error: unknown): boolean {
     return false;
   }
 
-  if (AUTH_FAILURE_CODES.has(error.code)) {
+  if (AUTH_FAILURE_CODES.has(error.code) || error.code === 'HTTP_401' || error.code === 'HTTP_404') {
     return true;
   }
 

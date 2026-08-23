@@ -93,9 +93,17 @@ export const authApi = {
     return httpClient.post<AuthResponse>('/api/auth/setup', { body: data });
   },
 
-  /** 获取当前会话（兼容） */
-  getSession() {
-    return httpClient.get<SessionResponse>('/api/session');
+  /** 获取当前会话（docs/interfaces/webui.md GET /api/auth/me） */
+  async getSession(): Promise<SessionResponse> {
+    const raw = await httpClient.get<MeResponse>('/api/auth/me');
+    const me = mapMeResponse(raw);
+    return {
+      id: String(me.userId),
+      name: 'admin',
+      display_name: '系统管理员',
+      roles: ['Admin'],
+      capabilities: me.capabilities,
+    };
   },
 
   /** 获取初始化状态 */
