@@ -87,7 +87,17 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const hasCapability = useCallback(
     (cap: Capability): boolean => {
       if (!user) return false;
-      return user.capabilities.includes(cap);
+      const normalizedTarget = cap.toLowerCase().replace(/[:_-]/g, '');
+      const hasRoleAdmin =
+        Array.isArray(user.roles) &&
+        user.roles.some((r) => r.toLowerCase().includes('admin'));
+      if (hasRoleAdmin) return true;
+      return (
+        Array.isArray(user.capabilities) &&
+        user.capabilities.some(
+          (c) => c.toLowerCase().replace(/[:_-]/g, '') === normalizedTarget,
+        )
+      );
     },
     [user],
   );
