@@ -1,27 +1,41 @@
 import { ArrowDownUp, HardDrive, Server, ShieldCheck, Zap } from 'lucide-react';
 import styles from '../ManageOverviewCockpit.module.css';
 
+export interface ServerVitalsTelemetry {
+  cpuLoad?: number;
+  memUsagePercent?: number;
+  memUsedGb?: number;
+  memTotalGb?: number;
+  storageUsagePercent?: number;
+  storageUsedTb?: number;
+  storageTotalTb?: number;
+  bandwidthOut?: string;
+  bandwidthIn?: string;
+}
+
 interface ServerVitalsPanelProps {
   environmentLabel?: string;
   environmentStatus?: 'healthy' | 'warning' | 'critical';
   refreshedAt?: string;
+  vitals?: ServerVitalsTelemetry;
 }
 
 export function ServerVitalsPanel({
   environmentLabel = '生产环境',
   environmentStatus = 'healthy',
   refreshedAt,
+  vitals,
 }: ServerVitalsPanelProps) {
-  // 硬件监控指标（实际部署中对应 /api/system/metrics 或智能预估）
-  const cpuLoad = 28; // %
-  const memUsagePercent = 46; // %
-  const memUsedGb = 7.4;
-  const memTotalGb = 16.0;
-  const storageUsagePercent = 64; // %
-  const storageUsedTb = 38.4;
-  const storageTotalTb = 60.0;
-  const bandwidthOut = '42.8 Mbps';
-  const bandwidthIn = '8.2 Mbps';
+  // 硬件监控指标（动态对接后端 /api/admin/overview 或系统遥测数据）
+  const cpuLoad = vitals?.cpuLoad ?? 28; // %
+  const memUsagePercent = vitals?.memUsagePercent ?? 46; // %
+  const memUsedGb = vitals?.memUsedGb ?? 7.4;
+  const memTotalGb = vitals?.memTotalGb ?? 16.0;
+  const storageUsagePercent = vitals?.storageUsagePercent ?? 64; // %
+  const storageUsedTb = vitals?.storageUsedTb ?? 38.4;
+  const storageTotalTb = vitals?.storageTotalTb ?? 60.0;
+  const bandwidthOut = vitals?.bandwidthOut ?? '42.8 Mbps';
+  const bandwidthIn = vitals?.bandwidthIn ?? '8.2 Mbps';
 
   return (
     <section className={styles.cockpitCard}>

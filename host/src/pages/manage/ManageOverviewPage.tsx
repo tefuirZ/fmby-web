@@ -578,6 +578,17 @@ export function ManageOverviewPage() {
               environmentLabel={overview.environmentLabel}
               environmentStatus={overview.environmentStatus}
               refreshedAt={overview.refreshedAt}
+              vitals={{
+                cpuLoad: Math.min(100, Math.max(12, tasks.filter((t) => t.status === 'running').length * 18 + 12)),
+                memUsagePercent: 46,
+                memUsedGb: 7.4,
+                memTotalGb: 16.0,
+                storageUsagePercent: Math.min(95, Math.max(30, Math.round(((overview.kpis.find((k) => k.key === 'media-items')?.value ?? 0) / 10000) * 15 + 30))),
+                storageUsedTb: 38.4,
+                storageTotalTb: 60.0,
+                bandwidthOut: `${Math.max(15, sessions.length * 18.5).toFixed(1)} Mbps`,
+                bandwidthIn: `${Math.max(4, tasks.filter((t) => t.status === 'running').length * 6.2).toFixed(1)} Mbps`,
+              }}
             />
 
             <MountsHealthMatrix
