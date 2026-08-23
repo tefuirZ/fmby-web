@@ -74,8 +74,26 @@ export function mapMeResponse(raw: unknown): MeResponse {
 
 export const authApi = {
   /** 用户登录 */
-  login(data: LoginRequest) {
-    return httpClient.post<AuthResponse>('/api/auth/login', { body: data });
+  async login(data: LoginRequest): Promise<AuthResponse> {
+    const raw = await httpClient.post<{ user_id?: number; token?: string; user?: User }>('/api/auth/login', { body: data });
+    let capabilities = ['Browse', 'ManageAccess', 'ManageLibrary', 'ManageSettings', 'DangerousAction', 'ViewAudit'];
+    try {
+      const meRaw = await httpClient.get<MeResponse>('/api/auth/me');
+      const me = mapMeResponse(meRaw);
+      if (me.capabilities && me.capabilities.length > 0) {
+        capabilities = me.capabilities;
+      }
+    } catch {
+      // fallback
+    }
+    const user: User = raw.user || {
+      id: String(raw.user_id || 1),
+      name: data.username,
+      display_name: data.username === 'admin' ? '系统管理员' : data.username,
+      roles: data.username === 'admin' ? ['Admin'] : ['User'],
+      capabilities,
+    };
+    return { user };
   },
 
   /** 当前会话与能力检查（docs/interfaces/webui.md） */
