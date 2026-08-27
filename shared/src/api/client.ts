@@ -7,7 +7,7 @@ import { isSessionInvalidationError, notifyAuthFailure } from '@fmby/v2-shared/e
  *
  * 特性：
  * - 统一 base URL 处理
- * - 当前只附带浏览器请求标识 header，真正的 CSRF token 仍待接入
+ * - 写方法自动回显 CSRF 双提交 header（fmby_csrf cookie → x-csrf-token）
  * - 统一错误映射为 ApiError
  * - JSON 请求/响应自动处理
  * - 支持 AbortSignal、请求超时、指数退避重试、请求/响应/错误拦截器
@@ -15,6 +15,29 @@ import { isSessionInvalidationError, notifyAuthFailure } from '@fmby/v2-shared/e
 
 /** 默认请求超时（毫秒），0 或负数表示不超时 */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * CSRF 双提交 cookie 名（与后端 middleware/csrf.rs CSRF_COOKIE_NAME 一致）。
+ * 登录成功后端签发（无 HttpOnly，值 = HMAC(session_token, origin)），前端在
+ * 写方法上读取并经 x-csrf-token header 回显，与 cookie 回带构成双匹配。
+ */
+const CSRF_COOKIE_NAME = 'fmby_csrf';
+
+/** CSRF 回显 header 名（与后端 middleware/csrf.rs CSRF_HEADER_NAME 一致）。 */
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+/** 读取指定 cookie 值（无该 cookie 或值为空返回 null；SSR 环境防御性返回 null）。 */
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  for (const pair of document.cookie.split(';')) {
+    const t = pair.trim();
+    if (t.startsWith(`${name}=`)) {
+      const v = t.slice(name.length + 1).trim();
+      return v === '' ? null : decodeURIComponent(v);
+    }
+  }
+  return null;
+}
 
 /** 重试相关默认值 */
 export const DEFAULT_RETRY_BASE_MS = 300;
@@ -296,8 +319,16 @@ async function executeOnce<T>(
     headers.set('Content-Type', 'application/json');
   }
   headers.set('X-Requested-With', 'FMBY-Web');
-  // CSRF 由后端统一执行：same-origin + FMBY_TRUSTED_ORIGINS canonical 白名单；
-  // 前端不再发送未形成校验闭环的伪 token 头。
+  // CSRF 双提交回显（P1-04 F-1 接线）：Origin 闸由后端统一执行；写方法再读取
+  // 登录签发的 fmby_csrf cookie 并经 x-csrf-token 回显，与浏览器自动回带的
+  // cookie 构成双匹配（middleware/csrf.rs）。安全方法无需回显；cookie 缺失
+  //（未登录/已登出）时不发头——渐进式校验下无工件即不强制，登录后自然生效。
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    const csrf = readCookie(CSRF_COOKIE_NAME);
+    if (csrf && !headers.has(CSRF_HEADER_NAME)) {
+      headers.set(CSRF_HEADER_NAME, csrf);
+    }
+  }
 
   // 组合超时 signal
   const effectiveTimeout = timeout === undefined ? DEFAULT_REQUEST_TIMEOUT_MS : timeout;
