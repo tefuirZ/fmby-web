@@ -33,92 +33,10 @@ import {
   mapSetupStepStatusVariant,
 } from './setup-guide';
 
-const INITIAL_ACTIVE_TASKS: ActiveTaskQueueItem[] = [
-  {
-    id: 'task-scrape-fallout',
-    category: 'Scrape',
-    title: '《辐射 (Fallout 2024)》第 1 季 刮削与海报下载',
-    stageDescription: '正在下载 TMDB 高清背景、演职员表与第 7 集 NFO 元数据...',
-    progressPercent: 75,
-    totalSubItems: 8,
-    completedSubItems: 6,
-    status: 'running',
-    priority: 'high',
-    createdAt: new Date(Date.now() - 1000 * 120).toISOString(),
-    subItems: [
-      { id: 'sub-1', title: 'S01E01 · 4K HEVC HDR · 刮削完成 (海报/NFO已就绪)', stage: '完成', status: 'succeeded', updatedAt: new Date(Date.now() - 1000 * 95).toISOString() },
-      { id: 'sub-2', title: 'S01E02 · 4K HEVC HDR · 刮削完成 (海报/NFO已就绪)', stage: '完成', status: 'succeeded', updatedAt: new Date(Date.now() - 1000 * 80).toISOString() },
-      { id: 'sub-3', title: 'S01E03 · 4K HEVC HDR · 刮削完成 (海报/NFO已就绪)', stage: '完成', status: 'succeeded', updatedAt: new Date(Date.now() - 1000 * 65).toISOString() },
-      { id: 'sub-4', title: 'S01E04 · 4K HEVC HDR · 刮削完成 (海报/NFO已就绪)', stage: '完成', status: 'succeeded', updatedAt: new Date(Date.now() - 1000 * 50).toISOString() },
-      { id: 'sub-5', title: 'S01E05 · 4K HEVC HDR · 刮削完成 (海报/NFO已就绪)', stage: '完成', status: 'succeeded', updatedAt: new Date(Date.now() - 1000 * 35).toISOString() },
-      { id: 'sub-6', title: 'S01E06 · 4K HEVC HDR · 刮削完成 (海报/NFO已就绪)', stage: '完成', status: 'succeeded', updatedAt: new Date(Date.now() - 1000 * 20).toISOString() },
-      { id: 'sub-7', title: 'S01E07 · 正在抓取演职员与中文剧照...', stage: '下载中 (88%)', status: 'running', updatedAt: new Date(Date.now() - 1000 * 5).toISOString() },
-      { id: 'sub-8', title: 'S01E08 · 待进入刮削流水线', stage: '等待队列', status: 'queued', updatedAt: new Date().toISOString() },
-    ],
-  },
-  {
-    id: 'task-scan-115-tv',
-    category: 'Scan',
-    title: '「115 网盘 / 剧集库」增量目录与文件扫描',
-    stageDescription: '正在扫描 /115/电视剧/华语剧场 目录下的新增视频文件...',
-    progressPercent: 60,
-    totalSubItems: 20,
-    completedSubItems: 12,
-    status: 'running',
-    priority: 'normal',
-    createdAt: new Date(Date.now() - 1000 * 180).toISOString(),
-    subItems: Array.from({ length: 15 }).map((_, i) => ({
-      id: `scan-sub-${i + 1}`,
-      title: `/115/电视剧/目录分卷_${i + 1}`,
-      stage: i < 12 ? '目录已对齐' : i === 12 ? '正在比对哈希与修改时间' : '等待扫描',
-      status: (i < 12 ? 'succeeded' : i === 12 ? 'running' : 'queued') as 'succeeded' | 'running' | 'queued',
-      updatedAt: new Date(Date.now() - (15 - i) * 6000).toISOString(),
-    })),
-  },
-  {
-    id: 'task-identify-3body',
-    category: 'Identify',
-    title: '《三体 (2023)》音视频流与字幕探针提取',
-    stageDescription: '正在解析第 4 集 Dolby Vision 动态元数据与杜比全景声音轨...',
-    progressPercent: 30,
-    totalSubItems: 10,
-    completedSubItems: 3,
-    status: 'running',
-    priority: 'normal',
-    createdAt: new Date(Date.now() - 1000 * 240).toISOString(),
-    subItems: Array.from({ length: 10 }).map((_, i) => ({
-      id: `probe-sub-${i + 1}`,
-      title: `《三体》第 ${i + 1} 集 · 音视频流探测`,
-      stage: i < 3 ? '已提取杜比视界 Profile 8.1 与 TrueHD' : i === 3 ? '正在探测' : '等待探针',
-      status: (i < 3 ? 'succeeded' : i === 3 ? 'running' : 'queued') as 'succeeded' | 'running' | 'queued',
-      updatedAt: new Date(Date.now() - (10 - i) * 8000).toISOString(),
-    })),
-  },
-  {
-    id: 'task-cleanup-naming',
-    category: 'Cleanup',
-    title: '媒体库命名规则清洗与智能对齐',
-    stageDescription: '正在对齐不规则压制组后缀与季集编号...',
-    progressPercent: 92,
-    totalSubItems: 25,
-    completedSubItems: 23,
-    status: 'running',
-    priority: 'normal',
-    createdAt: new Date(Date.now() - 1000 * 300).toISOString(),
-    subItems: Array.from({ length: 25 }).map((_, i) => ({
-      id: `clean-sub-${i + 1}`,
-      title: `规则匹配项 #${i + 101} · 格式规范化`,
-      stage: i < 23 ? '规则匹配成功' : i === 23 ? '正在重命名对齐' : '等待队列',
-      status: (i < 23 ? 'succeeded' : i === 23 ? 'running' : 'queued') as 'succeeded' | 'running' | 'queued',
-      updatedAt: new Date(Date.now() - (25 - i) * 4000).toISOString(),
-    })),
-  },
-];
-
 export function ManageOverviewPage() {
   const queryClient = useQueryClient();
   const [banner, setBanner] = useState<BannerState | null>(null);
-  const [tasks, setTasks] = useState<ActiveTaskQueueItem[]>(INITIAL_ACTIVE_TASKS);
+  const tasks: ActiveTaskQueueItem[] = [];
   const [selectedTask, setSelectedTask] = useState<ActiveTaskQueueItem | null>(null);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState<boolean>(false);
 
@@ -198,50 +116,16 @@ export function ManageOverviewPage() {
     setIsTaskDetailOpen(true);
   };
 
-  const handleBoostPriority = (taskId: string) => {
-    setTasks((prev) => {
-      const target = prev.find((t) => t.id === taskId);
-      if (!target) return prev;
-      const boosted = { ...target, priority: 'urgent' as const };
-      const remaining = prev.filter((t) => t.id !== taskId);
-      return [boosted, ...remaining];
-    });
-    if (selectedTask?.id === taskId) {
-      setSelectedTask((prev) => (prev ? { ...prev, priority: 'urgent' } : null));
-    }
-    setBanner({
-      variant: 'success',
-      title: '已置顶提高任务优先级',
-      description: '调度引擎已将该任务设为最高优先级，分配更多并发进行处理。',
-    });
+  const handleBoostPriority = () => {
+    setBanner({ variant: 'error', title: '任务操作不可用', description: '任务中心尚未装配真实调度服务。' });
   };
 
-  const handleCancelTask = (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    if (selectedTask?.id === taskId) {
-      setIsTaskDetailOpen(false);
-    }
-    setBanner({
-      variant: 'info',
-      title: '任务已取消',
-      description: '相关刮削或扫描子进程已被安全终止。',
-    });
+  const handleCancelTask = () => {
+    setBanner({ variant: 'error', title: '任务操作不可用', description: '任务中心尚未装配真实调度服务。' });
   };
 
-  const handleRetryTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId ? { ...t, status: 'running' as const, progressPercent: 10 } : t,
-      ),
-    );
-    if (selectedTask?.id === taskId) {
-      setSelectedTask((prev) => (prev ? { ...prev, status: 'running', progressPercent: 10 } : null));
-    }
-    setBanner({
-      variant: 'success',
-      title: '已重新开始执行任务',
-      description: '已重置失败状态并重新排队调度。',
-    });
+  const handleRetryTask = () => {
+    setBanner({ variant: 'error', title: '任务操作不可用', description: '任务中心尚未装配真实调度服务。' });
   };
 
   if (
@@ -578,17 +462,6 @@ export function ManageOverviewPage() {
               environmentLabel={overview.environmentLabel}
               environmentStatus={overview.environmentStatus}
               refreshedAt={overview.refreshedAt}
-              vitals={{
-                cpuLoad: Math.min(100, Math.max(12, tasks.filter((t) => t.status === 'running').length * 18 + 12)),
-                memUsagePercent: 46,
-                memUsedGb: 7.4,
-                memTotalGb: 16.0,
-                storageUsagePercent: Math.min(95, Math.max(30, Math.round(((overview.kpis.find((k) => k.key === 'media-items')?.value ?? 0) / 10000) * 15 + 30))),
-                storageUsedTb: 38.4,
-                storageTotalTb: 60.0,
-                bandwidthOut: `${Math.max(15, sessions.length * 18.5).toFixed(1)} Mbps`,
-                bandwidthIn: `${Math.max(4, tasks.filter((t) => t.status === 'running').length * 6.2).toFixed(1)} Mbps`,
-              }}
             />
 
             <MountsHealthMatrix

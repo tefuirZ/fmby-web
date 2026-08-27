@@ -27,15 +27,15 @@ export function ServerVitalsPanel({
   vitals,
 }: ServerVitalsPanelProps) {
   // 硬件监控指标（动态对接后端 /api/admin/overview 或系统遥测数据）
-  const cpuLoad = vitals?.cpuLoad ?? 28; // %
-  const memUsagePercent = vitals?.memUsagePercent ?? 46; // %
-  const memUsedGb = vitals?.memUsedGb ?? 7.4;
-  const memTotalGb = vitals?.memTotalGb ?? 16.0;
-  const storageUsagePercent = vitals?.storageUsagePercent ?? 64; // %
-  const storageUsedTb = vitals?.storageUsedTb ?? 38.4;
-  const storageTotalTb = vitals?.storageTotalTb ?? 60.0;
-  const bandwidthOut = vitals?.bandwidthOut ?? '42.8 Mbps';
-  const bandwidthIn = vitals?.bandwidthIn ?? '8.2 Mbps';
+  const cpuLoad = vitals?.cpuLoad;
+  const memUsagePercent = vitals?.memUsagePercent;
+  const memUsedGb = vitals?.memUsedGb;
+  const memTotalGb = vitals?.memTotalGb;
+  const storageUsagePercent = vitals?.storageUsagePercent;
+  const storageUsedTb = vitals?.storageUsedTb;
+  const storageTotalTb = vitals?.storageTotalTb;
+  const bandwidthOut = vitals?.bandwidthOut;
+  const bandwidthIn = vitals?.bandwidthIn;
 
   return (
     <section className={styles.cockpitCard}>
@@ -60,12 +60,12 @@ export function ServerVitalsPanel({
               <Zap size={14} style={{ color: 'var(--manage-cyan)' }} />
               CPU 负载
             </span>
-            <span className={styles.vitalValue}>{cpuLoad}%</span>
+            <span className={styles.vitalValue}>{cpuLoad === undefined ? '不可用' : `${cpuLoad}%`}</span>
           </div>
           <div className={styles.gaugeTrack}>
             <div
-              className={`${styles.gaugeFill} ${cpuLoad > 80 ? styles.rose : cpuLoad > 60 ? styles.amber : styles.cyan}`}
-              style={{ width: `${cpuLoad}%` }}
+              className={`${styles.gaugeFill} ${cpuLoad === undefined ? styles.cyan : cpuLoad > 80 ? styles.rose : cpuLoad > 60 ? styles.amber : styles.cyan}`}
+              style={{ width: cpuLoad === undefined ? '0%' : `${cpuLoad}%` }}
             />
           </div>
         </div>
@@ -78,13 +78,13 @@ export function ServerVitalsPanel({
               内存占用
             </span>
             <span className={styles.vitalValue}>
-              {memUsedGb} GB / {memTotalGb} GB ({memUsagePercent}%)
+              {memUsedGb === undefined || memTotalGb === undefined || memUsagePercent === undefined ? '不可用' : `${memUsedGb} GB / ${memTotalGb} GB (${memUsagePercent}%)`}
             </span>
           </div>
           <div className={styles.gaugeTrack}>
             <div
               className={`${styles.gaugeFill} ${styles.purple}`}
-              style={{ width: `${memUsagePercent}%` }}
+              style={{ width: memUsagePercent === undefined ? '0%' : `${memUsagePercent}%` }}
             />
           </div>
         </div>
@@ -97,13 +97,13 @@ export function ServerVitalsPanel({
               媒体存储池
             </span>
             <span className={styles.vitalValue}>
-              {storageUsedTb} TB / {storageTotalTb} TB ({storageUsagePercent}%)
+              {storageUsedTb === undefined || storageTotalTb === undefined || storageUsagePercent === undefined ? '不可用' : `${storageUsedTb} TB / ${storageTotalTb} TB (${storageUsagePercent}%)`}
             </span>
           </div>
           <div className={styles.gaugeTrack}>
             <div
-              className={`${styles.gaugeFill} ${storageUsagePercent > 90 ? styles.rose : styles.emerald}`}
-              style={{ width: `${storageUsagePercent}%` }}
+              className={`${styles.gaugeFill} ${storageUsagePercent === undefined ? styles.emerald : storageUsagePercent > 90 ? styles.rose : styles.emerald}`}
+              style={{ width: storageUsagePercent === undefined ? '0%' : `${storageUsagePercent}%` }}
             />
           </div>
         </div>
@@ -116,7 +116,7 @@ export function ServerVitalsPanel({
               实时网络推流吞吐
             </span>
             <span className={styles.vitalValue}>
-              ↑ {bandwidthOut} · ↓ {bandwidthIn}
+              ↑ {bandwidthOut ?? '不可用'} · ↓ {bandwidthIn ?? '不可用'}
             </span>
           </div>
           <div className={styles.gaugeTrack}>

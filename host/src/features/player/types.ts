@@ -13,6 +13,8 @@ export interface VideoPlayerProps {
   autoplay?: boolean;
   /** Resume position in seconds */
   resumePosition?: number;
+  /** Episode navigation rendered in the player control bar */
+  episodeNavigation?: EpisodeNavigationControls;
   /** Called periodically with current playback time */
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   /** Called when video starts playing */
@@ -49,6 +51,7 @@ export interface PlayerEngineCreateOptions extends PlayerEngineCallbacks {
   theme: string;
   autoplay: boolean;
   resumePosition?: number;
+  episodeNavigation?: EpisodeNavigationControls;
 }
 
 export interface PlayerEngine {
@@ -58,8 +61,20 @@ export interface PlayerEngine {
   pause(): void;
   setSpeed(rate: number): void;
   setVolume(value: number): void;
+  setEpisodeNavigation?(navigation?: EpisodeNavigationControls): void;
 }
 
 export interface PlayerEngineAdapter {
   create(options: PlayerEngineCreateOptions): Promise<PlayerEngine>;
+}
+
+export interface EpisodeNavigationAction {
+  enabled: boolean;
+  label: string;
+  onActivate: () => void;
+}
+
+export interface EpisodeNavigationControls {
+  previous: EpisodeNavigationAction;
+  next: EpisodeNavigationAction;
 }

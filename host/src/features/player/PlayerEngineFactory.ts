@@ -1,23 +1,16 @@
 import { ArtPlayerEngineAdapter } from './engines/ArtPlayerEngine';
 import { DPlayerEngineAdapter } from './engines/DPlayerEngine';
 import { resolvePlayerEngineId } from './playerConfig';
-import type { PlayerEngine, PlayerEngineCreateOptions } from './types';
+import type { PlayerEngine, PlayerEngineAdapter, PlayerEngineCreateOptions, PlayerEngineId } from './types';
 
-const artPlayerAdapter = new ArtPlayerEngineAdapter();
-const dplayerAdapter = new DPlayerEngineAdapter();
-
-export { resolvePlayerEngineId } from './playerConfig';
+const playerEngineRegistry: Record<PlayerEngineId, PlayerEngineAdapter> = {
+  dplayer: new DPlayerEngineAdapter(),
+  artplayer: new ArtPlayerEngineAdapter(),
+};
 
 export async function createPlayerEngine(
   options: PlayerEngineCreateOptions,
+  engineId: PlayerEngineId = resolvePlayerEngineId(),
 ): Promise<PlayerEngine> {
-  const engineId = resolvePlayerEngineId();
-
-  switch (engineId) {
-    case 'artplayer':
-      return artPlayerAdapter.create(options);
-    case 'dplayer':
-    default:
-      return dplayerAdapter.create(options);
-  }
+  return playerEngineRegistry[engineId].create(options);
 }

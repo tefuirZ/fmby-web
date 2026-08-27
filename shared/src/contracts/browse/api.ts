@@ -33,6 +33,7 @@ interface LibraryDetailParams {
   resolution?: string;
   watched?: string;
   sort?: string;
+  cursor?: string;
 }
 
 export const browseApi = {
@@ -123,6 +124,7 @@ export const browseApi = {
         resolution: params.resolution,
         watched: params.watched,
         sort: params.sort,
+        cursor: params.cursor,
       },
     });
     const record = asRecord(raw);
@@ -143,6 +145,8 @@ export const browseApi = {
       items,
       filters: mapFilterSet(record.filters, items),
       total: readNumber(record.total, record.item_count, record.itemCount, record.total_items, record.totalItems) ?? items.length,
+      nextCursor: readString(record.next_cursor, record.nextCursor),
+      hasMore: readBoolean(record.has_more, record.hasMore),
     };
   },
 };

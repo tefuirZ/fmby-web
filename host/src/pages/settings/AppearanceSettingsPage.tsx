@@ -6,6 +6,7 @@ import { InlineBanner, Select, Switch } from '@fmby/v2-shared/ui';
 import { settingsApi, type UserAppearanceSettings } from '@fmby/v2-shared/contracts/settings';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { useTheme } from '@/theme/ThemeProvider';
 import styles from './SettingsCenter.module.css';
 import {
   SettingsFeedbackGate,
@@ -17,6 +18,7 @@ import {
 } from './components';
 
 export function AppearanceSettingsPage() {
+  const { activeThemeId, status: themeStatus, switchTheme } = useTheme();
   const settings = useEditableSettings<UserAppearanceSettings>({
     queryKey: queryKeys.settings.appearance(),
     load: () => settingsApi.getUserAppearance(),
@@ -74,6 +76,19 @@ export function AppearanceSettingsPage() {
 
       <SettingsSectionCard title="视觉模式" description="主题与信息密度直接影响浏览体验。">
         <div className={styles.fieldGrid}>
+          <div className={styles.field}>
+            界面皮肤
+            <Select
+              aria-label="界面皮肤"
+              value={activeThemeId ?? 'darkroom'}
+              disabled={themeStatus === 'activating'}
+              onValueChange={(value) => void switchTheme(value)}
+              options={[
+                { value: 'darkroom', label: '暗房主题' },
+                { value: 'template', label: '模板主题' },
+              ]}
+            />
+          </div>
           <div className={styles.field}>
             主题
             <Select

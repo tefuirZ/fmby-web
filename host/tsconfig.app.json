@@ -19,8 +19,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noEmit": true
+    "noEmit": true,
+    "composite": true
   },
   "files": ["src/vite-env.d.ts", "src/types/dplayer.d.ts"],
-  "include": ["src"]
+  "include": ["src", "../shared/src/**/*"]
 }

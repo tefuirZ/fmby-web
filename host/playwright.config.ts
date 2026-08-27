@@ -10,13 +10,13 @@ export default defineConfig({
   expect: {
     timeout: 5_000,
   },
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:5180',
+    baseURL: 'http://127.0.0.1:5180',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -27,9 +27,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5180',
-    reuseExistingServer: !process.env.CI,
+    command: 'node e2e/start.mjs',
+    url: 'http://127.0.0.1:5180',
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

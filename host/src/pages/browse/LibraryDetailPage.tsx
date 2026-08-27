@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import { browseApi } from '@fmby/v2-shared/contracts/browse';
@@ -7,15 +7,10 @@ import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './styles/shared.module.css';
 import libraryStyles from './styles/library.module.css';
-import { LibraryCinemaHero, LibraryDetailMediaCard } from './components';
+import { LibraryCinemaHero } from './components';
+import { VirtualizedLibraryDetailGrid } from './library-detail/VirtualizedLibraryDetailGrid';
 
 const LIBRARY_PAGE_SIZE = 20;
-/** 超过该数量后启用简单窗口化渲染，避免长列表 DOM 全量布局 */
-const WINDOWING_THRESHOLD = 100;
-const windowedItemStyle: CSSProperties = {
-  contentVisibility: 'auto',
-  containIntrinsicSize: '340px',
-};
 
 export function LibraryDetailPage() {
   const { libraryId } = useParams();
@@ -27,20 +22,14 @@ export function LibraryDetailPage() {
 
   const libraryQuery = useInfiniteQuery({
     queryKey: queryKeys.browse.library(libraryId ?? ''),
-    initialPageParam: 1,
+    initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       browseApi.getLibraryDetail(libraryId ?? '', {
-        page: pageParam,
+        cursor: pageParam,
         pageSize: LIBRARY_PAGE_SIZE,
       }),
     enabled: Boolean(libraryId),
-    getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0);
-      if (loaded >= lastPage.total) {
-        return undefined;
-      }
-      return allPages.length + 1;
-    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 
   useEffect(() => {
@@ -158,8 +147,6 @@ export function LibraryDetailPage() {
     loadedItems.length < data.total
       ? `已加载 ${loadedItems.length}/${data.total}`
       : `已展开 ${loadedItems.length} 个`;
-  const useWindowing = items.length > WINDOWING_THRESHOLD;
-
   const isFiltered = mediaType !== 'all' || resolution !== 'all' || watched !== 'all' || sort !== 'recent';
 
   return (
@@ -233,17 +220,14 @@ export function LibraryDetailPage() {
           description="可以试试放宽筛选条件，看看更多条目。"
         />
       ) : (
-        <div className={libraryStyles.libraryDetailGrid}>
-          {items.map((item) =>
-            useWindowing ? (
-              <div key={item.id} style={windowedItemStyle}>
-                <LibraryDetailMediaCard item={item} />
-              </div>
-            ) : (
-              <LibraryDetailMediaCard key={item.id} item={item} />
-            ),
-          )}
-        </div>
+        <VirtualizedLibraryDetailGrid
+          items={items}
+          onNearTail={() => {
+            if (libraryQuery.hasNextPage && !libraryQuery.isFetchingNextPage) {
+              void libraryQuery.fetchNextPage();
+            }
+          }}
+        />
       )}
 
       <div ref={loadMoreRef} className={styles.loadMoreHintCard}>

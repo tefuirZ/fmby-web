@@ -70,6 +70,15 @@ function RouteHydrateFallback() {
  */
 export const router = createBrowserRouter([
   {
+    path: '/install',
+    errorElement: <RouteErrorPage />,
+    hydrateFallbackElement: <RouteHydrateFallback />,
+    lazy: async () => {
+      const { InstallPage } = await import('@/pages/install/InstallPage');
+      return { Component: InstallPage };
+    },
+  },
+  {
     path: '/login',
     errorElement: <RouteErrorPage />,
     hydrateFallbackElement: <RouteHydrateFallback />,

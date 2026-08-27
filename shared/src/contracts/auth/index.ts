@@ -15,6 +15,10 @@ export type {
   SetupRequest,
   AuthResponse,
   SetupStatusResponse,
+  InstallDatabaseKind,
+  InstallStatusResponse,
+  DatabaseProbeRequest,
+  DatabaseProbeResponse,
   MeResponse,
 } from './api';
 export {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { createPlayerEngine } from './PlayerEngineFactory';
 import type { PlayerEngine, VideoPlayerProps } from './types';
 
@@ -6,8 +6,9 @@ import type { PlayerEngine, VideoPlayerProps } from './types';
  * Engine-factory based video player wrapper for React.
  * Keeps PlayPage independent from the concrete player implementation.
  */
-export function VideoPlayer({
-  url,
+const VideoPlayerImpl = forwardRef<PlayerEngine | null, VideoPlayerProps>(function VideoPlayer(
+  {
+    url,
   poster,
   subtitleUrl,
   subtitleLabel,
@@ -15,6 +16,7 @@ export function VideoPlayer({
   theme = '#ffffff',
   autoplay = true,
   resumePosition,
+  episodeNavigation,
   onTimeUpdate,
   onPlay,
   onPause,
@@ -22,9 +24,14 @@ export function VideoPlayer({
   onError,
   onSeeked,
   className,
-}: VideoPlayerProps) {
+  }: VideoPlayerProps,
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<PlayerEngine | null>(null);
+  useImperativeHandle(ref, () => engineRef.current!, []);
+  const episodeNavigationRef = useRef(episodeNavigation);
+  episodeNavigationRef.current = episodeNavigation;
   const callbackRefs = useRef({ onTimeUpdate, onPlay, onPause, onEnded, onError, onSeeked });
   callbackRefs.current = { onTimeUpdate, onPlay, onPause, onEnded, onError, onSeeked };
 
@@ -44,6 +51,7 @@ export function VideoPlayer({
       theme,
       autoplay,
       resumePosition,
+      episodeNavigation: episodeNavigationRef.current,
       onTimeUpdate: (currentTime, duration) => {
         callbackRefs.current.onTimeUpdate?.(currentTime, duration);
       },
@@ -80,14 +88,23 @@ export function VideoPlayer({
     return () => {
       disposed = true;
       currentEngine?.destroy();
+      currentEngine = null;
       engineRef.current = null;
     };
     // Only re-create when media identity or engine input changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, poster, subtitleUrl, subtitleLabel, theme, autoplay, resumePosition]);
 
+  useEffect(() => {
+    engineRef.current?.setEpisodeNavigation?.(episodeNavigation);
+  }, [episodeNavigation]);
+
+  // 剧集导航按钮由播放器内核（ArtPlayer control）在容器内渲染；
+  // 此前容器外还挂过一组同名 data-testid 的游离按钮，导致测试选择器重复，已删除。
   return <div ref={containerRef} className={className} />;
-}
+});
+
+export const VideoPlayer = VideoPlayerImpl;
 
 /** Expose imperative API for parent components */
 export function useVideoPlayerRef() {

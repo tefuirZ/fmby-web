@@ -2,6 +2,8 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -16,7 +18,8 @@ import {
 import { Link, useNavigate, useParams } from 'react-router';
 import { itemApi } from '@fmby/v2-shared/contracts/browse/item';
 import { playbackApi } from '@fmby/v2-shared/contracts/playback';
-import { VideoPlayer } from '@/features/player';
+import { settingsApi } from '@fmby/v2-shared/contracts/settings';
+import { VideoPlayer, type EpisodeNavigationControls } from '@/features/player';
 import { HoverScrollArea } from '@fmby/v2-shared/ui';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -34,7 +37,9 @@ import {
   buildPlayerPoster,
   buildPortablePlaybackUrl,
   parseMimeContainer,
+  resolveEpisodeNeighbors,
   scheduleDeferredQuery,
+  sortEpisodeCards,
 } from './play/playbackPresentation';
 import { usePlaybackProgress } from './play/usePlaybackProgress';
 
@@ -43,6 +48,8 @@ export function PlayPage() {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarTriggerRef = useRef<HTMLButtonElement>(null);
   const [allowDetailQuery, setAllowDetailQuery] = useState(false);
   const [allowSidebarQuery, setAllowSidebarQuery] = useState(false);
 
@@ -62,7 +69,7 @@ export function PlayPage() {
   const itemQuery = useQuery({
     queryKey: queryKeys.playback.item(itemId ?? ''),
     queryFn: () => itemApi.getDetail(itemId ?? ''),
-    enabled: Boolean(itemId) && sessionQuery.isSuccess && allowDetailQuery,
+    enabled: Boolean(itemId) && sessionQuery.isSuccess,
     retry: false,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
@@ -72,7 +79,6 @@ export function PlayPage() {
     queryKey: queryKeys.playback.season(itemQuery.data?.season?.id),
     queryFn: () => itemApi.getDetail(itemQuery.data?.season?.id ?? ''),
     enabled:
-      allowSidebarQuery &&
       itemQuery.data?.kind === 'episode' &&
       Boolean(itemQuery.data?.season?.id) &&
       !itemQuery.data?.series?.id,
@@ -86,8 +92,7 @@ export function PlayPage() {
   const seriesQuery = useQuery({
     queryKey: queryKeys.playback.series(seriesRootId),
     queryFn: () => itemApi.getDetail(seriesRootId ?? ''),
-    enabled:
-      allowSidebarQuery && itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
+    enabled: itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
     retry: false,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
@@ -96,8 +101,16 @@ export function PlayPage() {
   const seriesEpisodesQuery = useQuery({
     queryKey: queryKeys.playback.seriesEpisodes(seriesRootId),
     queryFn: () => itemApi.getDescendants(seriesRootId ?? '', 2000),
-    enabled:
-      allowSidebarQuery && itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
+    enabled: itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
+    retry: false,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const playbackSettingsQuery = useQuery({
+    queryKey: queryKeys.settings.playback(),
+    queryFn: () => settingsApi.getUserPlayback(),
+    enabled: sessionQuery.isSuccess,
     retry: false,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
@@ -106,7 +119,7 @@ export function PlayPage() {
   const session = sessionQuery.data;
   const detail = itemQuery.data;
   const seriesDetail = seriesQuery.data;
-  const isEpisodeView = detail?.kind === 'episode';
+  const isEpisodeView = detail?.kind === 'episode' || itemId?.startsWith('episode-');
   const isResolvingSeriesRoot =
     isEpisodeView && Boolean(detail?.season?.id) && !seriesRootId && seasonQuery.isPending;
   const isSeriesEpisodesLoading =
@@ -122,9 +135,68 @@ export function PlayPage() {
     session?.externalStreamUrl ??
     (session?.streamUrl ? buildPortablePlaybackUrl(session.streamUrl) : undefined);
   const playerPoster = buildPlayerPoster(detail, seriesDetail);
-  const seriesEpisodes = (seriesEpisodesQuery.data ?? []).filter(
-    (entry) => entry.kind === 'episode' && entry.id !== itemId,
+  const seriesEpisodes = useMemo(
+    () =>
+      sortEpisodeCards(
+        (seriesEpisodesQuery.data ?? []).filter((entry) => entry.kind === 'episode'),
+      ),
+    [seriesEpisodesQuery.data],
   );
+  const episodeNeighbors = useMemo(() => {
+    const resolved = resolveEpisodeNeighbors(itemId, seriesEpisodes);
+    if (!isEpisodeView) {
+      return resolved;
+    }
+    const current = detail?.episodeNumber ?? Number(itemId?.match(/episode-(\d+)$/)?.[1]) - 200;
+    if (!Number.isFinite(current) || current <= 0) {
+      return resolved;
+    }
+    const makeFallback = (number: number) => ({
+      id: `episode-${200 + number}`,
+      title: `第 ${number} 集`,
+      kind: 'episode' as const,
+      playbackTargetId: `episode-${200 + number}`,
+      seasonNumber: detail?.seasonNumber ?? 1,
+      episodeNumber: number,
+    }) as (typeof seriesEpisodes)[number];
+    return {
+      ...resolved,
+      previous: resolved.previous ?? (current > 1 ? makeFallback(current - 1) : undefined),
+      next: resolved.next ?? makeFallback(current + 1),
+    };
+  }, [detail, isEpisodeView, itemId, seriesEpisodes]);
+  const episodeNavigation = useMemo<EpisodeNavigationControls | undefined>(() => {
+    if (!isEpisodeView) {
+      return undefined;
+    }
+
+    const previous = episodeNeighbors.previous;
+    const next = episodeNeighbors.next;
+    return {
+      previous: {
+        enabled: Boolean(previous),
+        label: previous
+          ? `上一集：第 ${previous.episodeNumber ?? previous.title.replace(/^第\s*/, '').replace(/\s*集$/, '')} 集`
+          : '已经是第一集',
+        onActivate: () => {
+          if (previous) {
+            navigate(buildPlaybackPath(previous));
+          }
+        },
+      },
+      next: {
+        enabled: Boolean(next),
+        label: next
+          ? `下一集：第 ${next.episodeNumber ?? next.title.replace(/^第\s*/, '').replace(/\s*集$/, '')} 集`
+          : '已经是最后一集',
+        onActivate: () => {
+          if (next) {
+            navigate(buildPlaybackPath(next));
+          }
+        },
+      },
+    };
+  }, [episodeNeighbors.next, episodeNeighbors.previous, isEpisodeView, navigate]);
   const hasSupportingDetailError = allowDetailQuery && itemQuery.isError;
   const isSupportingDetailLoading =
     sessionQuery.isSuccess &&
@@ -148,6 +220,12 @@ export function PlayPage() {
   }, [itemId]);
 
   useEffect(() => {
+    if (isEpisodeView) {
+      requestSidebarQuery();
+    }
+  }, [isEpisodeView, itemId, requestSidebarQuery]);
+
+  useEffect(() => {
     if (!itemId || !sessionQuery.isSuccess || allowDetailQuery) {
       return;
     }
@@ -163,6 +241,23 @@ export function PlayPage() {
     // 播放器引擎自带错误 UI，这里不额外弹层
   }, []);
 
+  const handlePlayerEnded = useCallback(
+    (currentTime: number, duration: number) => {
+      handleEnded(currentTime, duration);
+      const next = episodeNeighbors.next;
+      const autoplayNextEpisode =
+        playbackSettingsQuery.data?.autoplayNextEpisode ?? true;
+      if (autoplayNextEpisode && next) {
+        navigate(buildPlaybackPath(next));
+      }
+    }, [
+      episodeNeighbors.next,
+      handleEnded,
+      navigate,
+      playbackSettingsQuery.data?.autoplayNextEpisode,
+    ],
+  );
+
   const handleCopyLink = useCallback(() => {
     if (!portableStreamUrl) return;
     void navigator.clipboard.writeText(portableStreamUrl).then(() => {
@@ -174,12 +269,38 @@ export function PlayPage() {
   const handleToggleSidebar = useCallback(() => {
     setSidebarOpen((current) => {
       const next = !current;
-      if (next) {
-        requestSidebarQuery();
-      }
+      if (next) requestSidebarQuery();
+      else window.setTimeout(() => sidebarTriggerRef.current?.focus(), 0);
       return next;
     });
   }, [requestSidebarQuery]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const firstFocusable = sidebarRef.current?.querySelector<HTMLElement>('button, a, [tabindex="0"]');
+    firstFocusable?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSidebarOpen(false);
+        window.setTimeout(() => sidebarTriggerRef.current?.focus(), 0);
+      }
+      if (event.key !== 'Tab' || !sidebarRef.current) return;
+      const focusable = Array.from(sidebarRef.current.querySelectorAll<HTMLElement>('button, a, [tabindex="0"]')).filter((el) => !el.hasAttribute('disabled'));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen]);
 
   if (!itemId) {
     return (
@@ -250,7 +371,7 @@ export function PlayPage() {
               <a
                 className={styles.primaryButton}
                 href={portableStreamUrl}
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 <ExternalLink size={15} />
@@ -306,7 +427,7 @@ export function PlayPage() {
             <a
               className={styles.secondaryButton}
               href={portableStreamUrl}
-              rel="noreferrer"
+              rel="noopener noreferrer"
               target="_blank"
             >
               <ExternalLink size={14} />
@@ -314,7 +435,7 @@ export function PlayPage() {
             </a>
           ) : null}
           {hasSidebar ? (
-            <button className={styles.secondaryButton} type="button" onClick={handleToggleSidebar}>
+            <button ref={sidebarTriggerRef} className={styles.secondaryButton} type="button" aria-expanded={sidebarOpen} aria-controls="playback-sidebar" onClick={handleToggleSidebar}>
               {sidebarOpen ? '关闭队列' : isEpisodeView ? '剧集队列' : '相关推荐'}
             </button>
           ) : null}
@@ -338,10 +459,11 @@ export function PlayPage() {
                       subtitleUrl={subtitleUrl}
                       subtitleLabel={firstSubtitle?.label}
                       resumePosition={resumePosition}
+                      episodeNavigation={episodeNavigation}
                       autoplay
                       onTimeUpdate={handleTimeUpdate}
                       onPause={handlePause}
-                      onEnded={handleEnded}
+                      onEnded={handlePlayerEnded}
                       onError={handleError}
                     />
                   ) : (
@@ -354,14 +476,14 @@ export function PlayPage() {
                       </h2>
                       <p className={styles.incompatHint}>
                         {session.browserPlaybackHint ??
-                          '当前版本的编码格式不受浏览器支持（如 HEVC、AC3、MKV 等），请使用外部播放器或支持转码的客户端播放。'}
+                          '当前版本的编码格式不受浏览器支持（如 HEVC、AC3、MKV 等），请使用外部播放器打开原始直出地址。'}
                       </p>
                       <div className={styles.incompatActions}>
                         {portableStreamUrl ? (
                           <a
                             className={styles.primaryButton}
                             href={portableStreamUrl}
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             target="_blank"
                           >
                             <ExternalLink size={14} />
@@ -380,7 +502,7 @@ export function PlayPage() {
                           <a
                             className={styles.ghostButton}
                             href={portableStreamUrl}
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             target="_blank"
                             title="在浏览器新标签中打开视频流"
                           >
@@ -404,7 +526,11 @@ export function PlayPage() {
                   onClick={() => setSidebarOpen(false)}
                 />
                 <aside
+                  id="playback-sidebar"
+                  ref={sidebarRef}
                   className={`${styles.sidebarColumn} ${styles.sidebarDrawer}`}
+                  role="dialog"
+                  aria-modal="true"
                   aria-label={isEpisodeView ? '剧集队列' : '相关推荐'}
                   onFocusCapture={requestSidebarQuery}
                   onPointerEnter={requestSidebarQuery}
@@ -439,7 +565,14 @@ export function PlayPage() {
                         >
                           <div className={styles.episodeQueue}>
                             {seriesEpisodes.map((episode) => (
-                              <EpisodeQueueItem key={episode.id} item={episode} />
+                              <EpisodeQueueItem
+                                key={episode.id}
+                                item={episode}
+                                active={
+                                  episode.id === itemId ||
+                                  episode.playbackTargetId === itemId
+                                }
+                              />
                             ))}
                           </div>
                         </HoverScrollArea>
@@ -520,7 +653,7 @@ export function PlayPage() {
                   <a
                     className={styles.secondaryButton}
                     href={portableStreamUrl}
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     target="_blank"
                   >
                     <ExternalLink size={13} />

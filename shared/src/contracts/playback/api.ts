@@ -142,6 +142,10 @@ function mapPlaybackSession(raw: unknown, requestedItemId: string): PlaybackSess
     record.externalPlayerAvailable,
   ) ?? Boolean(externalStreamUrl ?? externalPlaybackUrl);
   const browserPlayback = assessBrowserPlayback(activeSource);
+  const explicitBrowserCapability = readBoolean(
+    record.can_direct_play_in_browser,
+    record.canDirectPlayInBrowser,
+  );
   const browserPlaybackHint = browserPlayback.hint
     ? appendBrowserFallbackAction(browserPlayback.hint, canUseExternalPlayer)
     : undefined;
@@ -176,7 +180,10 @@ function mapPlaybackSession(raw: unknown, requestedItemId: string): PlaybackSess
       record.positionSeconds,
     ) ?? ticksToSeconds(record.position_ticks ?? record.positionTicks),
     canUseExternalPlayer,
-    canDirectPlayInBrowser: Boolean(streamUrl) && browserPlayback.supported,
+    // 后端明确给出能力判定时，以真实源探测合同为准；缺失时才本地
+    // fail-closed 探测，避免 mock/未知 MIME 被误报为可播。
+    canDirectPlayInBrowser:
+      Boolean(streamUrl) && (explicitBrowserCapability ?? browserPlayback.supported),
     browserPlaybackHint,
     fallbackHint: readString(record.fallback_hint, record.fallbackHint, record.message) ?? browserPlaybackHint,
     artwork: mapArtwork(item.artwork ?? item.images ?? item, { itemId }),
@@ -231,7 +238,11 @@ function mapMimeType(raw: Record<string, unknown> | undefined) {
 
 function assessBrowserPlayback(source: PlaybackSourceRecord | undefined): BrowserPlaybackAssessment {
   if (!source) {
-    return { supported: true, confident: false };
+    return {
+      supported: false,
+      confident: false,
+      hint: '播放源没有提供容器或编码信息，网页端无法安全确认兼容性，请使用外部播放器。',
+    };
   }
 
   const container = normalizeToken(readString(source.container));
@@ -240,6 +251,21 @@ function assessBrowserPlayback(source: PlaybackSourceRecord | undefined): Browse
 
   const testNode = document.createElement('video');
   const mimeCandidates = buildMimeCandidates(source, videoCodec, audioCodec);
+  if (mimeCandidates.length === 0) {
+    return {
+      supported: false,
+      confident: false,
+      hint: buildBrowserRiskHint(source, {
+        riskyContainer: Boolean(container && RISKY_CONTAINERS.has(container)),
+        riskyAudioCodec: Boolean(
+          audioCodec &&
+            (RISKY_AUDIO_CODECS.has(audioCodec) || audioCodec.startsWith('pcm')),
+        ),
+        missingMimeCandidates: true,
+      }),
+    };
+  }
+
   const canPlayNatively = mimeCandidates.some((candidate) => {
     const result = testNode.canPlayType(candidate);
     return result === 'maybe' || result === 'probably';
@@ -250,7 +276,7 @@ function assessBrowserPlayback(source: PlaybackSourceRecord | undefined): Browse
   }
 
   return {
-    supported: true,
+    supported: false,
     confident: false,
     hint: buildBrowserRiskHint(source, {
       riskyContainer: Boolean(container && RISKY_CONTAINERS.has(container)),
@@ -258,7 +284,7 @@ function assessBrowserPlayback(source: PlaybackSourceRecord | undefined): Browse
         audioCodec &&
           (RISKY_AUDIO_CODECS.has(audioCodec) || audioCodec.startsWith('pcm')),
       ),
-      missingMimeCandidates: mimeCandidates.length === 0,
+      missingMimeCandidates: false,
     }),
   };
 }

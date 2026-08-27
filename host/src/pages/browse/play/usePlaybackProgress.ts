@@ -4,6 +4,12 @@ import { clearLocalPosition, readLocalPosition, saveLocalPosition } from './play
 
 const PROGRESS_REPORT_INTERVAL = 15_000;
 
+function reportInBackground(request: Promise<unknown>) {
+  void request.catch(() => {
+    // Playback telemetry must not create an unhandled rejection or interrupt playback.
+  });
+}
+
 interface UsePlaybackProgressOptions {
   itemId?: string;
   sessionId?: string;
@@ -27,11 +33,11 @@ export function usePlaybackProgress({
       if (current <= 0) return;
       if (Date.now() - lastReportedRef.current < 10_000) return;
       lastReportedRef.current = Date.now();
-      void playbackApi.reportProgress(sessionId, {
+      reportInBackground(playbackApi.reportProgress(sessionId, {
         positionSeconds: current,
         durationSeconds: duration > 0 ? duration : undefined,
         paused: false,
-      });
+      }));
     }, PROGRESS_REPORT_INTERVAL);
 
     return () => window.clearInterval(interval);
@@ -41,11 +47,11 @@ export function usePlaybackProgress({
     return () => {
       if (!sessionId) return;
       const { current, duration } = latestTimeRef.current;
-      void playbackApi.stopSession(sessionId, {
+      reportInBackground(playbackApi.stopSession(sessionId, {
         positionSeconds: current,
         durationSeconds: duration > 0 ? duration : undefined,
         completed: duration > 0 && current / duration >= 0.95,
-      });
+      }));
     };
   }, [sessionId]);
 
@@ -63,11 +69,11 @@ export function usePlaybackProgress({
     (currentTime: number, duration: number) => {
       if (!sessionId) return;
       lastReportedRef.current = Date.now();
-      void playbackApi.reportProgress(sessionId, {
+      reportInBackground(playbackApi.reportProgress(sessionId, {
         positionSeconds: currentTime,
         durationSeconds: duration > 0 ? duration : undefined,
         paused: true,
-      });
+      }));
     },
     [sessionId],
   );
@@ -75,11 +81,11 @@ export function usePlaybackProgress({
   const handleEnded = useCallback(
     (currentTime: number, duration: number) => {
       if (!sessionId) return;
-      void playbackApi.stopSession(sessionId, {
+      reportInBackground(playbackApi.stopSession(sessionId, {
         positionSeconds: currentTime,
         durationSeconds: duration > 0 ? duration : undefined,
         completed: true,
-      });
+      }));
       if (itemId) {
         clearLocalPosition(itemId);
       }

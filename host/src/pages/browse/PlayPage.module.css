@@ -703,6 +703,11 @@
   background: var(--surface-1);
 }
 
+.episodeQueueItem[data-active='true'] {
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--content-accent);
+}
+
 .episodeQueuePoster,
 .episodeQueuePosterFallback {
   width: 64px;
@@ -756,6 +761,11 @@
 
 .episodeQueueItem:hover .episodeQueueTitle {
   color: var(--text-1);
+}
+
+.episodeQueueItem[data-active='true'] .episodeQueueTitle {
+  color: var(--text-1);
+  font-weight: var(--font-weight-medium);
 }
 
 .episodeQueueMeta {

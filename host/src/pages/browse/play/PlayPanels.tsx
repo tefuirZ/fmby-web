@@ -226,8 +226,10 @@ export function SidebarMediaCard({
 
 export function EpisodeQueueItem({
   item,
+  active = false,
 }: {
   item: MediaCardSummary;
+  active?: boolean;
 }) {
   const { url, onError } = usePosterUrl(buildEpisodeListArtwork(item));
   const badges = buildPosterBadgeModel({
@@ -242,7 +244,12 @@ export function EpisodeQueueItem({
   });
 
   return (
-    <Link className={styles.episodeQueueItem} to={buildPlaybackPath(item)}>
+    <Link
+      aria-current={active ? 'page' : undefined}
+      className={styles.episodeQueueItem}
+      data-active={active ? 'true' : 'false'}
+      to={buildPlaybackPath(item)}
+    >
       <div className={styles.episodeQueuePosterWrap}>
         {url ? (
           <img

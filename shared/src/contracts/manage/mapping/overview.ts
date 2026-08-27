@@ -1,62 +1,96 @@
 import type { ManageOverviewResponse } from "../types";
 import type {
+  RawAuditLogRecord,
   RawManageOverviewResponse,
   RawUnavailableLibrarySourceSummary,
 } from "../raw-types";
 import { QUICK_LINKS, mapEnvironmentLabel } from "../labels";
-import { buildAuditSummary, mapEnvironmentStatus } from "./shared";
+import {
+  buildAuditSummary,
+  isRecord,
+  mapEnvironmentStatus,
+  readArray,
+  readNonNegativeInteger,
+  readString,
+} from "./shared";
 
-export function mapOverview(
-  rawInput: RawManageOverviewResponse,
-): ManageOverviewResponse {
-  const raw = (typeof rawInput === 'object' && rawInput !== null ? rawInput : {}) as Record<string, any>;
-  const rawKpis = (typeof raw.kpis === 'object' && raw.kpis !== null ? raw.kpis : {}) as Record<string, any>;
-  const rawAlerts = (typeof raw.alerts === 'object' && raw.alerts !== null ? raw.alerts : {}) as Record<string, any>;
+type UnknownRecord = Record<string, unknown>;
 
-  const totalItems = typeof raw.total_items === 'number' ? raw.total_items : typeof rawKpis.total_media_items === 'number' ? rawKpis.total_media_items : 0;
-  const totalLibraries = typeof raw.total_libraries === 'number' ? raw.total_libraries : typeof rawKpis.total_libraries === 'number' ? rawKpis.total_libraries : 0;
-  const totalMounts = typeof raw.total_mounts === 'number' ? raw.total_mounts : typeof rawKpis.total_mounts === 'number' ? rawKpis.total_mounts : 0;
-  const remoteMounts = typeof rawKpis.remote_mounts === 'number' ? rawKpis.remote_mounts : totalMounts;
-  const healthyRemoteMounts = typeof rawKpis.healthy_remote_mounts === 'number' ? rawKpis.healthy_remote_mounts : remoteMounts;
-  const movieCount = typeof rawKpis.movie_count === 'number' ? rawKpis.movie_count : Math.round(totalItems * 0.6);
-  const seriesCount = typeof rawKpis.series_count === 'number' ? rawKpis.series_count : Math.round(totalItems * 0.4);
-  const episodeCount = typeof rawKpis.episode_count === 'number' ? rawKpis.episode_count : seriesCount * 12;
+const FALLBACK_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 
+function optionalNonNegativeInteger(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.floor(value));
+  }
+  return undefined;
+}
+
+/**
+ * 运行时 JSON 不可信：HTTP 客户端的泛型只描述合同，不能替后端做校验。
+ * 这里统一把 unknown 归一化后再交给领域映射，避免坏字段把管理页炸成白屏。
+ */
+export function mapOverview(rawInput: RawManageOverviewResponse | unknown): ManageOverviewResponse {
+  const raw = asRecord(rawInput);
+  const rawKpis = asRecord(raw.kpis);
+  const rawAlerts = asRecord(raw.alerts);
+  const totalItems = firstNonNegativeInteger(
+    raw.total_items,
+    rawKpis.total_media_items,
+  );
+  const totalLibraries = firstNonNegativeInteger(
+    raw.total_libraries,
+    rawKpis.total_libraries,
+  );
+  const totalMounts = firstNonNegativeInteger(raw.total_mounts, rawKpis.total_mounts);
+  const remoteMounts = firstNonNegativeInteger(rawKpis.remote_mounts, totalMounts);
+  const healthyRemoteMounts = Math.min(
+    remoteMounts,
+    firstNonNegativeInteger(rawKpis.healthy_remote_mounts, remoteMounts),
+  );
+  const movieCount = optionalNonNegativeInteger(rawKpis.movie_count);
+  const seriesCount = optionalNonNegativeInteger(rawKpis.series_count);
+  const episodeCount = optionalNonNegativeInteger(rawKpis.episode_count);
+  const environmentStatus = readString(raw.environment_status) ?? "healthy";
+  const unavailableLibrarySources = readNonNegativeInteger(
+    rawAlerts.unavailable_library_sources,
+  );
+  const unreachableMounts = readNonNegativeInteger(rawAlerts.unreachable_mounts);
+  const disabledMounts = readNonNegativeInteger(rawAlerts.disabled_mounts);
   const hasRemoteMounts = remoteMounts > 0;
-  const unhealthyRemoteMounts = remoteMounts - healthyRemoteMounts;
+  const unhealthyRemoteMounts = Math.max(0, remoteMounts - healthyRemoteMounts);
   const remoteMountStatus =
-    (rawAlerts.unreachable_mounts || 0) > 0
+    unreachableMounts > 0
       ? "critical"
-      : unhealthyRemoteMounts > 0 || (rawAlerts.disabled_mounts || 0) > 0
+      : unhealthyRemoteMounts > 0 || disabledMounts > 0
         ? "attention"
         : "healthy";
 
   return {
-    environmentLabel: mapEnvironmentLabel(raw.environment_status || 'healthy'),
-    environmentStatus: mapEnvironmentStatus(raw.environment_status || 'healthy'),
-    refreshedAt: raw.refreshed_at || new Date().toISOString(),
+    environmentLabel: mapEnvironmentLabel(environmentStatus),
+    environmentStatus: mapEnvironmentStatus(environmentStatus),
+    refreshedAt: readString(raw.refreshed_at) ?? FALLBACK_TIMESTAMP,
     primaryActionLabel: "查看媒体库",
     kpis: [
       {
         key: "media-items",
         label: "资源总数",
         value: totalItems,
-        trend: `电影 ${movieCount} · 剧集 ${seriesCount} · 单集 ${episodeCount}`,
+        trend: `电影 ${movieCount ?? "不可用"} · 剧集 ${seriesCount ?? "不可用"} · 单集 ${episodeCount ?? "不可用"}`,
         status: totalItems > 0 ? "healthy" : "attention",
       },
       {
         key: "movies",
         label: "电影数",
-        value: movieCount,
-        trend: `${totalLibraries} 个媒体库`,
-        status: movieCount > 0 ? "healthy" : "attention",
+        value: movieCount ?? 0,
+        trend: movieCount === undefined ? "数据不可用" : `${totalLibraries} 个媒体库`,
+        status: movieCount !== undefined && movieCount > 0 ? "healthy" : "attention",
       },
       {
         key: "series",
         label: "剧集数",
-        value: seriesCount,
-        trend: `已入库 ${episodeCount} 集`,
-        status: seriesCount > 0 ? "healthy" : "attention",
+        value: seriesCount ?? 0,
+        trend: episodeCount === undefined ? "数据不可用" : `已入库 ${episodeCount} 集`,
+        status: seriesCount !== undefined && seriesCount > 0 ? "healthy" : "attention",
       },
       {
         key: "remote-mounts",
@@ -68,64 +102,81 @@ export function mapOverview(
         status: remoteMountStatus,
       },
     ],
-    todoItems: buildOverviewTodos(raw),
+    todoItems: buildOverviewTodos(raw, rawKpis, rawAlerts),
     quickLinks: [...QUICK_LINKS],
-    activities: Array.isArray(raw.recent_audit_logs)
-      ? raw.recent_audit_logs.map((item: any) => ({
-          id: String(item.id || '1'),
-          title: item.summary || '系统运行正常',
-          summary: buildAuditSummary(item),
-          createdAt: item.created_at || new Date().toISOString(),
-        }))
-      : [],
-    unavailableLibrarySources: rawAlerts.unavailable_library_sources ?? 0,
-    unavailableSourceSummaries: (rawAlerts.unavailable_source_summaries ?? []).map(
-      mapUnavailableSourceSummary,
-    ),
+    activities: readArray(raw.recent_audit_logs)
+      .map(normalizeAuditLog)
+      .filter((item): item is RawAuditLogRecord => item !== undefined)
+      .map((item) => ({
+        id: item.id,
+        title: item.summary,
+        summary: buildAuditSummary(item),
+        createdAt: item.created_at,
+      })),
+    unavailableLibrarySources,
+    unavailableSourceSummaries: readArray(rawAlerts.unavailable_source_summaries)
+      .map(normalizeUnavailableSourceSummary)
+      .filter(
+        (item): item is RawUnavailableLibrarySourceSummary => item !== undefined,
+      )
+      .map(mapUnavailableSourceSummary),
   };
 }
 
-function buildOverviewTodos(rawInput: any) {
-  const raw = rawInput || {};
-  const rawKpis = raw.kpis || {};
-  const rawAlerts = raw.alerts || {};
-  const totalLibraries = typeof raw.total_libraries === 'number' ? raw.total_libraries : (rawKpis.total_libraries ?? 0);
-  const totalMediaItems = typeof raw.total_items === 'number' ? raw.total_items : (rawKpis.total_media_items ?? 0);
-  const items = [];
+function buildOverviewTodos(
+  raw: UnknownRecord,
+  rawKpis: UnknownRecord,
+  rawAlerts: UnknownRecord,
+) {
+  const totalLibraries = firstNonNegativeInteger(
+    raw.total_libraries,
+    rawKpis.total_libraries,
+  );
+  const totalMediaItems = firstNonNegativeInteger(
+    raw.total_items,
+    rawKpis.total_media_items,
+  );
+  const unavailableLibrarySources = readNonNegativeInteger(
+    rawAlerts.unavailable_library_sources,
+  );
+  const unreachableMounts = readNonNegativeInteger(rawAlerts.unreachable_mounts);
+  const emptyLibraries = readNonNegativeInteger(rawAlerts.empty_libraries);
+  const disabledMounts = readNonNegativeInteger(rawAlerts.disabled_mounts);
+  const items: ManageOverviewResponse["todoItems"] = [];
 
-  if ((rawAlerts.unavailable_library_sources ?? 0) > 0) {
+  if (unavailableLibrarySources > 0) {
     items.push({
       id: "unavailable-library-sources",
       title: "存在已隐藏的失效数据源",
-      description: `当前有 ${rawAlerts.unavailable_library_sources} 个媒体来源因为连续失败被隐藏，普通浏览和播放链路已经开始收口。`,
-      level: "critical" as const,
+      description: `当前有 ${unavailableLibrarySources} 个媒体来源因为连续失败被隐藏，普通浏览和播放链路已经开始收口。`,
+      level: "critical",
     });
   }
 
-  if ((rawAlerts.unreachable_mounts ?? 0) > 0) {
+  if (unreachableMounts > 0) {
     items.push({
       id: "unreachable-mounts",
       title: "存在不可达挂载",
-      description: `当前共有 ${rawAlerts.unreachable_mounts} 个挂载无法访问，播放和扫描链路都可能直接受影响。`,
-      level: "critical" as const,
+      description: `当前共有 ${unreachableMounts} 个挂载无法访问，播放和扫描链路都可能直接受影响。`,
+      level: "critical",
     });
   }
 
-  if ((rawAlerts.empty_libraries ?? 0) > 0) {
+  if (emptyLibraries > 0) {
     items.push({
       id: "empty-libraries",
       title: "存在空媒体库",
-      description: `当前有 ${rawAlerts.empty_libraries} 个媒体库还没有资源，建议检查来源绑定、扫描任务或筛选规则。`,
-      level: "warning" as const,
+      description: `当前有 ${emptyLibraries} 个媒体库还没有资源，建议检查来源绑定、扫描任务或筛选规则。`,
+      level: "warning",
     });
   }
 
-  if ((rawAlerts.disabled_mounts ?? 0) > 0) {
+  if (disabledMounts > 0) {
     items.push({
       id: "disabled-mounts",
       title: "存在停用挂载",
-      description: `当前有 ${rawAlerts.disabled_mounts} 个挂载处于停用状态，确认这是不是你的预期收口。`,
-      level: "info" as const,
+      description: `当前有 ${disabledMounts} 个挂载处于停用状态，确认这是不是你的预期收口。`,
+      level: "info",
     });
   }
 
@@ -137,11 +188,59 @@ function buildOverviewTodos(rawInput: any) {
         totalLibraries === 0
           ? "当前还没有媒体库，首页再怎么展示也只能是空壳，先把媒体库和挂载接起来。"
           : "已经有媒体库，但资源总数还是 0，优先检查扫描链路和挂载可达性。",
-      level: "warning" as const,
+      level: "warning",
     });
   }
 
   return items;
+}
+
+function normalizeAuditLog(value: unknown): RawAuditLogRecord | undefined {
+  const raw = asRecord(value);
+  const id = readString(raw.id);
+  if (!id) {
+    return undefined;
+  }
+  return {
+    id,
+    user_id: readString(raw.user_id),
+    username: readString(raw.username),
+    display_name: readString(raw.display_name),
+    action: readString(raw.action) ?? "unknown",
+    summary: readString(raw.summary) ?? "系统活动",
+    target_type: readString(raw.target_type),
+    target_id: readString(raw.target_id),
+    detail_json: isRecord(raw.detail_json) ? raw.detail_json : null,
+    ip_address: readString(raw.ip_address),
+    created_at: readString(raw.created_at) ?? FALLBACK_TIMESTAMP,
+  };
+}
+
+function normalizeUnavailableSourceSummary(
+  value: unknown,
+): RawUnavailableLibrarySourceSummary | undefined {
+  const raw = asRecord(value);
+  const librarySourceId = readString(raw.library_source_id);
+  if (!librarySourceId) {
+    return undefined;
+  }
+  return {
+    library_source_id: librarySourceId,
+    library_id: readString(raw.library_id) ?? "unknown",
+    library_name: readString(raw.library_name) ?? "未命名媒体库",
+    mount_id: readString(raw.mount_id) ?? "unknown",
+    mount_name: readString(raw.mount_name) ?? "未命名挂载",
+    sub_path: readString(raw.sub_path) ?? "/",
+    consecutive_unavailable_failures: readNonNegativeInteger(
+      raw.consecutive_unavailable_failures,
+    ),
+    last_failure_kind: readString(raw.last_failure_kind),
+    last_failure_message: readString(raw.last_failure_message),
+    last_failure_at: readString(raw.last_failure_at),
+    last_success_at: readString(raw.last_success_at),
+    hidden_at: readString(raw.hidden_at),
+    updated_at: readString(raw.updated_at) ?? FALLBACK_TIMESTAMP,
+  };
 }
 
 function mapUnavailableSourceSummary(raw: RawUnavailableLibrarySourceSummary) {
@@ -152,7 +251,7 @@ function mapUnavailableSourceSummary(raw: RawUnavailableLibrarySourceSummary) {
     mountId: raw.mount_id,
     mountName: raw.mount_name,
     subPath: raw.sub_path,
-    consecutiveUnavailableFailures: raw.consecutive_unavailable_failures ?? 0,
+    consecutiveUnavailableFailures: raw.consecutive_unavailable_failures,
     lastFailureKind: raw.last_failure_kind ?? undefined,
     lastFailureMessage: raw.last_failure_message ?? undefined,
     lastFailureAt: raw.last_failure_at ?? undefined,
@@ -160,4 +259,17 @@ function mapUnavailableSourceSummary(raw: RawUnavailableLibrarySourceSummary) {
     hiddenAt: raw.hidden_at ?? undefined,
     updatedAt: raw.updated_at,
   };
+}
+
+function asRecord(value: unknown): UnknownRecord {
+  return isRecord(value) ? value : {};
+}
+
+function firstNonNegativeInteger(...values: unknown[]): number {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.max(0, Math.floor(value));
+    }
+  }
+  return 0;
 }

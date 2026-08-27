@@ -44,6 +44,33 @@ export interface SetupStatusResponse {
   registration_requires_code: boolean;
 }
 
+export type InstallDatabaseKind = 'sqlite' | 'postgresql';
+
+export interface InstallStatusResponse {
+  state?: string;
+  needs_install?: boolean;
+  database_configured?: boolean;
+  can_probe?: boolean;
+}
+
+export interface DatabaseProbeRequest {
+  kind: InstallDatabaseKind;
+  path?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  username?: string;
+  password?: string;
+  url?: string;
+}
+
+export interface DatabaseProbeResponse {
+  kind?: string;
+  reachable?: boolean;
+  ok?: boolean;
+  message?: string;
+}
+
 export interface LogoutResponse {
   ok: boolean;
 }
@@ -72,25 +99,67 @@ export function mapMeResponse(raw: unknown): MeResponse {
 
 /* ---- API 方法 ---- */
 
+/**
+ * 会话用户名本地缓存。
+ *
+ * 后端契约限制：/api/auth/login 与 /api/auth/me 均只返回 user_id + capabilities
+ * （见 fmby-v2-http routes/auth.rs 的 LoginResponse / MeResponse），不提供用户名。
+ * 页面刷新后通过 Cookie 恢复会话时，用户名只能来自登录时本地缓存；
+ * 拿不到时宁可为空，也不得回退到 'admin'/'系统管理员' 之类的硬编码默认身份。
+ */
+const SESSION_USERNAME_STORAGE_KEY = 'fmby:v2:session-username';
+
+let cachedSessionUsername: string | null = null;
+
+function persistSessionUsername(username: string): void {
+  cachedSessionUsername = username;
+  try {
+    sessionStorage.setItem(SESSION_USERNAME_STORAGE_KEY, username);
+  } catch {
+    // sessionStorage 不可用（隐私模式/禁用）时仅保留内存缓存
+  }
+}
+
+function readSessionUsername(): string | null {
+  if (cachedSessionUsername === null) {
+    try {
+      cachedSessionUsername = sessionStorage.getItem(SESSION_USERNAME_STORAGE_KEY);
+    } catch {
+      cachedSessionUsername = null;
+    }
+  }
+  return cachedSessionUsername;
+}
+
+function clearSessionUsername(): void {
+  cachedSessionUsername = null;
+  try {
+    sessionStorage.removeItem(SESSION_USERNAME_STORAGE_KEY);
+  } catch {
+    // 清理失败不影响安全语义：内存缓存已置空
+  }
+}
+
 export const authApi = {
   /** 用户登录 */
   async login(data: LoginRequest): Promise<AuthResponse> {
     const raw = await httpClient.post<{ user_id?: number; token?: string; user?: User }>('/api/auth/login', { body: data });
-    let capabilities = ['Browse', 'ManageAccess', 'ManageLibrary', 'ManageSettings', 'DangerousAction', 'ViewAudit'];
+    // 登录成功后缓存用户名，供后续会话恢复（getSession）使用
+    persistSessionUsername(data.username);
+    let capabilities: string[] = [];
     try {
       const meRaw = await httpClient.get<MeResponse>('/api/auth/me');
-      const me = mapMeResponse(meRaw);
-      if (me.capabilities && me.capabilities.length > 0) {
-        capabilities = me.capabilities;
-      }
+      capabilities = mapMeResponse(meRaw).capabilities;
     } catch {
-      // fallback
+      // A failed capability lookup must fail closed; never infer admin access from the username.
     }
     const user: User = raw.user || {
       id: String(raw.user_id || 1),
       name: data.username,
-      display_name: data.username === 'admin' ? '系统管理员' : data.username,
-      roles: data.username === 'admin' ? ['Admin'] : ['User'],
+      display_name: data.username,
+      // 后端登录契约不返回 roles；禁止从用户名推断 Admin，统一空列表 fail-closed，
+      // 权限判断只信任 capabilities。
+      roles: [],
       capabilities,
     };
     return { user };
@@ -115,11 +184,14 @@ export const authApi = {
   async getSession(): Promise<SessionResponse> {
     const raw = await httpClient.get<MeResponse>('/api/auth/me');
     const me = mapMeResponse(raw);
+    const username = readSessionUsername();
     return {
       id: String(me.userId),
-      name: 'admin',
-      display_name: '系统管理员',
-      roles: ['Admin'],
+      // 用户名来自登录时的本地缓存；后端契约不提供时宁可为空，也不伪造默认身份。
+      name: username ?? '',
+      display_name: username ?? undefined,
+      // 后端契约不返回 roles；空列表 fail-closed，权限判断只信任 capabilities。
+      roles: [],
       capabilities: me.capabilities,
     };
   },
@@ -129,12 +201,22 @@ export const authApi = {
     return httpClient.get<SetupStatusResponse>('/api/auth/entry/status');
   },
 
+  getInstallStatus() {
+    return httpClient.get<InstallStatusResponse>('/api/install/status');
+  },
+
+  probeDatabase(data: DatabaseProbeRequest) {
+    return httpClient.post<DatabaseProbeResponse>('/api/install/probe/database', { body: data });
+  },
+
   /** 登出当前会话（docs/interfaces/webui.md POST /api/auth/logout） */
   async logout() {
     try {
       await httpClient.post<void>('/api/auth/logout');
     } catch {
       await httpClient.delete<LogoutResponse>('/api/auth/logout');
+    } finally {
+      clearSessionUsername();
     }
   },
 };

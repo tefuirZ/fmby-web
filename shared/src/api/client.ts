@@ -80,8 +80,6 @@ export interface RequestConfig extends Omit<RequestInit, 'body' | 'signal'> {
   retry?: RetryConfig;
 }
 
-const UNSAFE_HTTP_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-
 function isRawBodyInit(value: unknown): value is BodyInit {
   return (
     typeof value === 'string' ||
@@ -135,30 +133,67 @@ function buildUrl(path: string, params?: RequestConfig['params']): string {
   return url.toString();
 }
 
+type ApiErrorWithHttpMetadata = ApiError & {
+  /** 原始 HTTP 状态码，便于调用方区分业务错误和传输错误。 */
+  status: number;
+  /** 原始 HTTP 状态文本。 */
+  statusText: string;
+};
+
+type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function withHttpMetadata(
+  error: ApiError,
+  response: Response,
+): ApiErrorWithHttpMetadata {
+  return {
+    ...error,
+    status: response.status,
+    statusText: response.statusText,
+  };
+}
+
 /**
  * 将 fetch Response 映射为 ApiError
  */
-async function mapResponseToApiError(response: Response): Promise<ApiError> {
+async function mapResponseToApiError(response: Response): Promise<ApiErrorWithHttpMetadata> {
   // 尝试解析服务端返回的错误结构
   try {
-    const body = await response.json();
+    const body: unknown = await response.json();
     if (isApiError(body)) {
-      return body;
+      return withHttpMetadata(body, response);
     }
-    // 服务端返回了 JSON 但不符合 ApiError 结构
-    return {
-      code: `HTTP_${response.status}`,
-      message: body.message || response.statusText,
-      retryable: response.status >= 500,
-      traceId: body.traceId || body.trace_id,
-    };
+
+    // 未知 JSON body 可能是 null、数组或原始值，不能直接读取其属性。
+    const record = isJsonRecord(body) ? body : undefined;
+    return withHttpMetadata(
+      {
+        code: `HTTP_${response.status}`,
+        message: typeof record?.message === 'string' ? record.message : response.statusText,
+        retryable: response.status >= 500,
+        traceId:
+          typeof record?.traceId === 'string'
+            ? record.traceId
+            : typeof record?.trace_id === 'string'
+              ? record.trace_id
+              : undefined,
+      },
+      response,
+    );
   } catch {
     // 无法解析 JSON
-    return {
-      code: `HTTP_${response.status}`,
-      message: response.statusText || '请求失败',
-      retryable: response.status >= 500,
-    };
+    return withHttpMetadata(
+      {
+        code: `HTTP_${response.status}`,
+        message: response.statusText || '请求失败',
+        retryable: response.status >= 500,
+      },
+      response,
+    );
   }
 }
 
@@ -261,11 +296,8 @@ async function executeOnce<T>(
     headers.set('Content-Type', 'application/json');
   }
   headers.set('X-Requested-With', 'FMBY-Web');
-
-  if (UNSAFE_HTTP_METHODS.has(method) && !headers.has('X-CSRF-Token')) {
-    const csrfToken = readCookie('fmby_csrf');
-    if (csrfToken) headers.set('X-CSRF-Token', csrfToken);
-  }
+  // CSRF 由后端统一执行：same-origin + FMBY_TRUSTED_ORIGINS canonical 白名单；
+  // 前端不再发送未形成校验闭环的伪 token 头。
 
   // 组合超时 signal
   const effectiveTimeout = timeout === undefined ? DEFAULT_REQUEST_TIMEOUT_MS : timeout;
@@ -322,6 +354,11 @@ async function executeOnce<T>(
         currentErr = nextErr;
       }
     }
+    // 标记请求来源路径，供 isSessionInvalidationError 区分
+    // “登录接口 401（凭据错误）”与“其他接口 401（会话失效）”。
+    if (isApiError(currentErr)) {
+      (currentErr as ApiError & { requestPath?: string }).requestPath = path;
+    }
     if (isSessionInvalidationError(currentErr)) {
       notifyAuthFailure();
     }
@@ -360,23 +397,6 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
       attempt += 1;
     }
   }
-}
-
-function readCookie(name: string): string | null {
-  const cookieSource = typeof document === 'undefined' ? '' : document.cookie;
-  if (!cookieSource) {
-    return null;
-  }
-
-  for (const pair of cookieSource.split(';')) {
-    const trimmed = pair.trim();
-    if (trimmed.startsWith(`${name}=`)) {
-      const value = trimmed.slice(name.length + 1).trim();
-      return value === '' ? null : decodeURIComponent(value);
-    }
-  }
-
-  return null;
 }
 
 /**

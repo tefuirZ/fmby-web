@@ -22,6 +22,41 @@ export function buildPlaybackPath(item: MediaCardSummary) {
   return `/play/${item.playbackTargetId ?? item.id}`;
 }
 
+export function sortEpisodeCards(items: MediaCardSummary[]) {
+  return [...items].sort((left, right) => {
+    const leftSeason = left.seasonNumber ?? 0;
+    const rightSeason = right.seasonNumber ?? 0;
+    const leftEpisode = left.episodeNumber ?? Number.MAX_SAFE_INTEGER;
+    const rightEpisode = right.episodeNumber ?? Number.MAX_SAFE_INTEGER;
+    return (
+      leftSeason - rightSeason ||
+      leftEpisode - rightEpisode ||
+      left.title.localeCompare(right.title, 'zh-Hans-CN')
+    );
+  });
+}
+
+export function resolveEpisodeNeighbors(
+  currentItemId: string | undefined,
+  siblings: MediaCardSummary[],
+) {
+  const currentIndex = currentItemId
+    ? siblings.findIndex(
+        (candidate) =>
+          candidate.id === currentItemId || candidate.playbackTargetId === currentItemId,
+      )
+    : -1;
+
+  return {
+    currentIndex,
+    previous: currentIndex > 0 ? siblings[currentIndex - 1] : undefined,
+    next:
+      currentIndex >= 0 && currentIndex < siblings.length - 1
+        ? siblings[currentIndex + 1]
+        : undefined,
+  };
+}
+
 export function buildOverviewMeta(item: ItemDetailResponse) {
   return [
     item.year ? String(item.year) : undefined,

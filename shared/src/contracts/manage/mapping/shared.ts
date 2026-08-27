@@ -332,3 +332,17 @@ export function extractTraceId(detail?: Record<string, unknown> | null) {
 export function readString(value: unknown) {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function readArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+export function readNonNegativeInteger(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : 0;
+}

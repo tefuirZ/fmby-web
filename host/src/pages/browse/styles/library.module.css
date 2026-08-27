@@ -103,6 +103,24 @@
   gap: var(--space-8) var(--space-5);
 }
 
+.libraryVirtualizedGrid {
+  position: relative;
+  width: 100%;
+}
+
+.libraryVirtualizedCanvas {
+  position: relative;
+  width: 100%;
+}
+
+.libraryVirtualizedRow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  align-items: stretch;
+}
+
 @media (max-width: 640px) {
   .libraryDetailGrid {
     grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));

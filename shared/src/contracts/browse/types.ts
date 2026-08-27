@@ -97,4 +97,6 @@ export interface LibraryDetailResponse {
   items: MediaCardSummary[];
   filters: LibraryFilterSet;
   total: number;
+  nextCursor?: string;
+  hasMore?: boolean;
 }

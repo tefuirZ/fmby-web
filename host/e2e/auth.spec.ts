@@ -1,39 +1,61 @@
 import { test, expect } from '@playwright/test';
+import { resetBackend } from './fixtures/helpers';
 
 test.describe('Auth Flow E2E', () => {
-  test('renders login page with username & password inputs', async ({ page }) => {
-    await page.goto('/login');
-    await expect(page.locator('input[name="username"], input#username')).toBeVisible();
-    await expect(page.locator('input[name="password"], input#password')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+  test.beforeEach(async () => {
+    await resetBackend();
   });
 
-  test('validates form on empty submit', async ({ page }) => {
+  test('renders login form with accessible fields', async ({ page }) => {
     await page.goto('/login');
-    await page.locator('button[type="submit"]').click();
-    // 应当显示表单校验错误提示
-    const errors = page.locator('.error, [role="alert"], text=请输入');
-    await expect(errors.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(page.getByRole('heading', { name: 'FMBY' })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '用户名' })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '密码' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '登录', exact: true })).toBeVisible();
   });
 
-  test('handles invalid credentials with 401 error notification', async ({ page }) => {
+  test('shows both required-field errors on empty submit', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[name="username"], input#username', 'wronguser');
-    await page.fill('input[name="password"], input#password', 'wrongpass');
-    await page.locator('button[type="submit"]').click();
-
-    // 错误横幅/提示出现
-    const banner = page.locator('text=错误, text=失败, text=凭据');
-    await expect(banner.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page.getByText('请输入用户名', { exact: true })).toBeVisible();
+    await expect(page.getByText('请输入密码', { exact: true })).toBeVisible();
   });
 
-  test('successfully logs in with valid credentials', async ({ page }) => {
+  test('renders server error for invalid credentials', async ({ page }) => {
     await page.goto('/login');
-    await page.fill('input[name="username"], input#username', 'admin');
-    await page.fill('input[name="password"], input#password', 'admin123');
-    await page.locator('button[type="submit"]').click();
+    await page.getByRole('textbox', { name: '用户名' }).fill('wronguser');
+    await page.getByRole('textbox', { name: '密码' }).fill('wrongpass');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page.getByText('unauthorized', { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
+  });
 
-    // 登录成功跳转至根路径
-    await expect(page).toHaveURL(/\/(?:home)?$/, { timeout: 10000 }).catch(() => {});
+  test('logs in, restores session after reload, and logs out', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByRole('textbox', { name: '用户名' }).fill('admin');
+    await page.getByRole('textbox', { name: '密码' }).fill('admin');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await page.waitForURL(/\/$/);
+    await expect(page.getByRole('heading', { name: '最近入库' })).toBeVisible();
+
+    const meAfterLogin = await page.evaluate(async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      return res.status;
+    });
+    expect(meAfterLogin).toBe(200);
+
+    await page.reload();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { name: '最近入库' })).toBeVisible();
+
+    // P0-08④：getSession 不再硬编码“系统管理员”，TopBar 显示登录用户名（本用例为 admin）
+    await page.getByRole('button', { name: /admin/ }).click();
+    await page.getByRole('menuitem', { name: '退出登录' }).click();
+    await page.waitForURL(/\/login/);
+    const meAfterLogout = await page.evaluate(async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      return res.status;
+    });
+    expect(meAfterLogout).toBe(401);
   });
 });

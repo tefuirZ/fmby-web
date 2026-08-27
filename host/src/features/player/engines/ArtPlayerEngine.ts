@@ -5,6 +5,7 @@ import type {
   PlayerEngineAdapter,
   PlayerEngineCreateOptions,
 } from '../types';
+import { createEpisodeNavigationControlSet } from '../episodeNavigation';
 
 type ArtPlayerConstructor = typeof Artplayer;
 
@@ -14,6 +15,7 @@ export class ArtPlayerEngineAdapter implements PlayerEngineAdapter {
   async create(options: PlayerEngineCreateOptions): Promise<PlayerEngine> {
     const ArtPlayer = await loadArtPlayerConstructor();
     options.container.innerHTML = '';
+    const episodeNavigationControls = createEpisodeNavigationControlSet();
 
     const artOptions: Option = {
       container: options.container,
@@ -40,6 +42,7 @@ export class ArtPlayerEngineAdapter implements PlayerEngineAdapter {
       airplay: true,
       autoPlayback: false,
       subtitleOffset: true,
+      controls: episodeNavigationControls.controls,
       moreVideoAttr: {
         preload: 'metadata',
       },
@@ -66,6 +69,7 @@ export class ArtPlayerEngineAdapter implements PlayerEngineAdapter {
     }
 
     const art = new ArtPlayer(artOptions);
+    episodeNavigationControls.update(options.episodeNavigation);
     let resumed = false;
 
     art.on('video:loadedmetadata', () => {
@@ -115,6 +119,7 @@ export class ArtPlayerEngineAdapter implements PlayerEngineAdapter {
       setVolume: (value) => {
         art.volume = Math.max(0, Math.min(1, value));
       },
+      setEpisodeNavigation: episodeNavigationControls.update,
     };
   }
 }

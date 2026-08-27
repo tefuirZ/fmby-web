@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "test:e2e": "node e2e/runner.mjs"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fmby/v2-shared": "workspace:*",
@@ -39,6 +39,7 @@
     "zod": "^3.25.20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.0",
     "@tanstack/react-table": "^8.21.3",
     "@types/node": "^25.6.0",
     "@types/react": "^19.1.4",

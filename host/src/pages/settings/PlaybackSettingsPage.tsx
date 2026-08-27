@@ -1,16 +1,9 @@
 /**
  * 播放偏好设置页（暗房）
- * 数据逻辑移植自旧 UI src/pages/settings/PlaybackSettingsPage.tsx，
- * 含本机播放器内核（PlayerEngineId）本地开关。
+ * 数据逻辑移植自旧 UI src/pages/settings/PlaybackSettingsPage.tsx。
  */
-import { useState } from 'react';
 import { InlineBanner, Select, Switch } from '@fmby/v2-shared/ui';
 import { settingsApi, type UserPlaybackSettings } from '@fmby/v2-shared/contracts/settings';
-import {
-  resolvePlayerEngineId,
-  setPlayerEngineId,
-  type PlayerEngineId,
-} from '@/features/player';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './SettingsCenter.module.css';
@@ -43,9 +36,6 @@ function SwitchItem({ label, hint, checked, onCheckedChange }: SwitchItemProps) 
 }
 
 export function PlaybackSettingsPage() {
-  const [playerEngine, setPlayerEngine] = useState<PlayerEngineId>(() =>
-    resolvePlayerEngineId(),
-  );
   const settings = useEditableSettings<UserPlaybackSettings>({
     queryKey: queryKeys.settings.playback(),
     load: () => settingsApi.getUserPlayback(),
@@ -70,11 +60,6 @@ export function PlaybackSettingsPage() {
     settings.setSuccess(null);
     settings.setDraft({ ...draft, ...partial });
   };
-  const handlePlayerEngineChange = (engineId: PlayerEngineId) => {
-    setPlayerEngine(engineId);
-    setPlayerEngineId(engineId);
-  };
-
   const languageOptions = draft.availableLanguages.map((language) => ({
     value: language.value,
     label: language.label,
@@ -157,34 +142,6 @@ export function PlaybackSettingsPage() {
             checked={draft.preferExternalPlayer}
             onCheckedChange={(checked) => patch({ preferExternalPlayer: checked })}
           />
-        </div>
-      </SettingsSectionCard>
-
-      <SettingsSectionCard
-        title="网页播放器内核"
-        description="这是本机实验开关，立即影响当前浏览器，不改后端媒体链路。"
-      >
-        <div className={styles.fieldGrid}>
-          <div className={styles.field}>
-            播放器引擎
-            <Select
-              aria-label="播放器引擎"
-              value={playerEngine}
-              onValueChange={(value) => handlePlayerEngineChange(value as PlayerEngineId)}
-              options={[
-                { value: 'dplayer', label: 'DPlayer（稳定回退）' },
-                { value: 'artplayer', label: 'ArtPlayer（实验）' },
-              ]}
-            />
-          </div>
-          <div className={styles.field}>
-            当前策略
-            <span className={styles.fieldHint}>
-              {playerEngine === 'artplayer'
-                ? '已在本机启用 ArtPlayer。若遇到格式兼容问题，可随时切回 DPlayer 或使用外部播放器。'
-                : '当前使用 DPlayer，ArtPlayer 可作为实验内核灰度启用。'}
-            </span>
-          </div>
         </div>
       </SettingsSectionCard>
 
