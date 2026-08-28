@@ -189,7 +189,7 @@ function resolveErrorState(error: unknown): 'forbidden' | 'unauthorized' | 'erro
     if (
       error.code === 'HTTP_401' ||
       error.code === 'UNAUTHORIZED' ||
-      error.code === 'AUTH_EXPIRED'
+      error.code === 'unauthorized'
     ) {
       return 'unauthorized';
     }

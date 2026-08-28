@@ -3,19 +3,8 @@ import type { ApiError } from '@fmby/v2-shared/types';
 
 type AuthFailureListener = () => void;
 
-const AUTH_FAILURE_CODES = new Set(['unauthorized', 'AUTH_REQUIRED', 'AUTH_EXPIRED']);
-const AUTH_NON_SESSION_CODES = new Set([
-  'credential_invalid',
-  'dependency_rate_limited',
-  'AUTH_INVALID_CREDENTIALS',
-  'AUTH_RATE_LIMITED',
-  'AUTH_ACCOUNT_LOCKED',
-  'AUTH_ACCOUNT_INACTIVE',
-  'AUTH_ACCOUNT_NOT_YET_VALID',
-  'AUTH_ACCOUNT_EXPIRED',
-  'AUTH_PASSWORD_CHANGE_REQUIRED',
-  'AUTH_INTERACTIVE_LOGIN_DISABLED',
-]);
+const AUTH_FAILURE_CODES = new Set(['unauthorized']);
+const AUTH_NON_SESSION_CODES = new Set(['credential_invalid', 'dependency_rate_limited']);
 const AUTH_FAILURE_HTTP_CODES = new Set(['HTTP_401']);
 const AUTH_FAILURE_MESSAGE_PATTERNS = [
   '缺少认证令牌',

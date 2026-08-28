@@ -43,12 +43,12 @@ test('路径前缀相似但不等于登录接口时不被误豁免', () => {
 });
 
 test('业务非会话错误码（凭据无效等）不判定为会话失效', () => {
-  const error = makeApiError({ code: 'AUTH_INVALID_CREDENTIALS' });
+  const error = makeApiError({ code: 'credential_invalid' });
   assert.equal(isSessionInvalidationError(error), false);
 });
 
-test('显式会话失效业务码仍判定为会话失效', () => {
-  const expired = makeApiError({ code: 'AUTH_EXPIRED', requestPath: '/api/auth/login' });
+test('后端 unauthorized 业务码判定为会话失效', () => {
+  const expired = makeApiError({ code: 'unauthorized' });
   assert.equal(isSessionInvalidationError(expired), true);
 });
 
