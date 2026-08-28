@@ -2,29 +2,49 @@
  * 错误类型定义
  */
 
-/** 统一 API 错误结构 */
+/** 统一 API 错误结构（归一化后使用 camelCase，来源兼容后端 snake_case）。 */
 export interface ApiError {
-  /** 错误码（业务层面，例如 "AUTH_EXPIRED", "NOT_FOUND"） */
+  /** 后端 ErrorBody.error_code 的稳定 snake_case slug。 */
   code: string;
-  /** 面向用户的错误描述 */
   message: string;
-  /** 面向开发者的提示信息 */
-  hint?: string;
-  /** 是否可重试 */
-  retryable: boolean;
-  /** 服务端追踪 ID，便于排查 */
   traceId?: string;
+  /** 仅由错误码/HTTP 状态推导，不信任服务端任意布尔字段。 */
+  retryable: boolean;
 }
 
-/**
- * 判断是否为 ApiError
- */
+export interface BackendErrorBody {
+  error_code: string;
+  message: string;
+  trace_id?: string;
+}
+
+const RETRYABLE_CODES = new Set([
+  'dependency_timeout',
+  'dependency_unavailable',
+  'dependency_rate_limited',
+  'retryable_storage',
+  'internal',
+]);
+
 export function isApiError(error: unknown): error is ApiError {
   return (
     typeof error === 'object' &&
     error !== null &&
-    'code' in error &&
-    'message' in error &&
-    'retryable' in error
+    typeof (error as { code?: unknown }).code === 'string' &&
+    typeof (error as { message?: unknown }).message === 'string' &&
+    typeof (error as { retryable?: unknown }).retryable === 'boolean'
   );
+}
+
+export function isBackendErrorBody(value: unknown): value is BackendErrorBody {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { error_code?: unknown }).error_code === 'string' &&
+    typeof (value as { message?: unknown }).message === 'string'
+  );
+}
+
+export function retryableForCode(code: string, status: number): boolean {
+  return status >= 500 || RETRYABLE_CODES.has(code);
 }

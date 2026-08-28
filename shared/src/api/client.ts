@@ -1,6 +1,7 @@
 import type { ApiError } from '@fmby/v2-shared/types';
 import { isApiError } from '@fmby/v2-shared/types';
 import { isSessionInvalidationError, notifyAuthFailure } from '@fmby/v2-shared/errors/authFailure';
+import { isBackendErrorBody, retryableForCode } from '@fmby/v2-shared/errors/error';
 
 /**
  * HTTP 客户端封装
@@ -187,11 +188,21 @@ async function mapResponseToApiError(response: Response): Promise<ApiErrorWithHt
   // 尝试解析服务端返回的错误结构
   try {
     const body: unknown = await response.json();
+    if (isBackendErrorBody(body)) {
+      return withHttpMetadata(
+        {
+          code: body.error_code === 'unauthorized' && response.status === 401 ? 'HTTP_401' : body.error_code,
+          message: body.message,
+          retryable: retryableForCode(body.error_code, response.status),
+          traceId: body.trace_id,
+        },
+        response,
+      );
+    }
     if (isApiError(body)) {
       return withHttpMetadata(body, response);
     }
 
-    // 未知 JSON body 可能是 null、数组或原始值，不能直接读取其属性。
     const record = isJsonRecord(body) ? body : undefined;
     return withHttpMetadata(
       {

@@ -3,8 +3,10 @@ import type { ApiError } from '@fmby/v2-shared/types';
 
 type AuthFailureListener = () => void;
 
-const AUTH_FAILURE_CODES = new Set(['AUTH_REQUIRED', 'AUTH_EXPIRED']);
+const AUTH_FAILURE_CODES = new Set(['unauthorized', 'AUTH_REQUIRED', 'AUTH_EXPIRED']);
 const AUTH_NON_SESSION_CODES = new Set([
+  'credential_invalid',
+  'dependency_rate_limited',
   'AUTH_INVALID_CREDENTIALS',
   'AUTH_RATE_LIMITED',
   'AUTH_ACCOUNT_LOCKED',

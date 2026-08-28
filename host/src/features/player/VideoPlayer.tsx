@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { createPlayerEngine } from './PlayerEngineFactory';
 import type { PlayerEngine, VideoPlayerProps } from './types';
+import { createPlayerEngineHandle } from './playerHandle';
 
 /**
  * Engine-factory based video player wrapper for React.
@@ -29,7 +30,7 @@ const VideoPlayerImpl = forwardRef<PlayerEngine | null, VideoPlayerProps>(functi
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<PlayerEngine | null>(null);
-  useImperativeHandle(ref, () => engineRef.current!, []);
+  useImperativeHandle(ref, () => createPlayerEngineHandle(() => engineRef.current), []);
   const episodeNavigationRef = useRef(episodeNavigation);
   episodeNavigationRef.current = episodeNavigation;
   const callbackRefs = useRef({ onTimeUpdate, onPlay, onPause, onEnded, onError, onSeeked });
