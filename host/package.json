@@ -1,6 +1,6 @@
 {
   "name": "@fmby/v2-host",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "FMBY v2 宿主壳：路由、会话、页面域骨架、主题分发（不承载共享契约；契约见 @fmby/v2-shared）。",
