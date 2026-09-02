@@ -3,7 +3,8 @@
  *
  * 特性：
  * - 统一 base URL 处理
- * - 当前只附带浏览器请求标识 header，真正的 CSRF token 仍待接入
+ * - CSRF 双提交：写方法读取 `fmby_csrf` cookie 并经 `x-csrf-token` header 回显
+ *   （与后端 middleware/csrf.rs 双匹配契约一致）
  * - 统一错误映射为 ApiError
  * - JSON 请求/响应自动处理
  * - 支持 AbortSignal、请求超时、指数退避重试、请求/响应/错误拦截器
