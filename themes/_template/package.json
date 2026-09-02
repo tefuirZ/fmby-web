@@ -1,6 +1,6 @@
 {
   "name": "@fmby/v2-theme-template",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "private": true,
   "type": "module",
   "description": "主题模板（docs/09 §1 themes/_template）：新主题脚手架。灰蓝画布最小 token 集，用于验证 tokens 热替换契约。",
