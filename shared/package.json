@@ -1,6 +1,6 @@
 {
   "name": "@fmby/v2-shared",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "private": true,
   "type": "module",
   "description": "FMBY v2 前端共享层（唯一）：contracts(DTO+mapper) / api client / query keys / 错误模型 / Asia-Shanghai 时间 / 主题协议 / UI 基座。见 docs/09-webui.md §2。",

@@ -1,6 +1,6 @@
 {
   "id": "template",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "label": "模板主题",
   "tokens": {
     "cssFile": "tokens.css"
