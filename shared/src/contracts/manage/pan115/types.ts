@@ -64,4 +64,8 @@ export interface Pan115BrowseResponse {
   mountId: string;
   currentPath: string;
   entries: Pan115BrowseEntry[];
+  /** P2-07-E：全量条目数（服务端分页窗口的 total）。 */
+  totalCount: number;
+  /** P2-07-E：下一页起点；末页 null（nextOffset <= offset 视为不可推进）。 */
+  nextOffset: number | null;
 }

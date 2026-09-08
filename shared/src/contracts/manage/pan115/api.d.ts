@@ -6,7 +6,7 @@ export declare const pan115Api: {
     getAccount(mountId: string): Promise<Pan115AccountInfo>;
     refreshOpenToken(mountId: string): Promise<void>;
     healthCheck(mountId: string): Promise<Pan115HealthReport>;
-    browseDirectory(mountId: string, path?: string): Promise<Pan115BrowseResponse>;
+    browseDirectory(mountId: string, path?: string, offset?: number, limit?: number): Promise<Pan115BrowseResponse>;
     unbind(mountId: string): Promise<void>;
 };
 //# sourceMappingURL=api.d.ts.map

@@ -11,7 +11,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { MountDirectoryBrowserCard } from '../../MountDirectoryBrowserCard';
 import { PAN115_CREDENTIAL_HINT } from '../../../formUtils';
 
-/** 单页目录条数（服务端 browse 无分页参数，客户端按页切片，见下方 toPaged）。 */
+/** 单页目录条数（P2-07-E：服务端分页窗口大小，经 browse offset/limit 透传）。 */
 const PAGE_SIZE = 50;
 
 interface Pan115DirectoryBrowserSectionProps {
@@ -63,12 +63,14 @@ export function Pan115DirectoryBrowserSection({
   const [browseResult, setBrowseResult] = useState<Pan115BrowseResponse | null>(null);
   const [browseError, setBrowseError] = useState<string | null>(null);
 
+  // P2-07-E：服务端分页——browse 带 offset/limit 窗口（缺省 = 全量向后兼容）；
+  // 页号 → offset = (page-1) * PAGE_SIZE；total/nextOffset 由服务端返回。
   const browseMutation = useMutation({
-    mutationFn: (path: string) => pan115Api.browseDirectory(mountId, path),
+    mutationFn: ({ path, offset }: { path: string; offset: number }) =>
+      pan115Api.browseDirectory(mountId, path, offset, PAGE_SIZE),
     onSuccess: (data) => {
       setBrowseResult(data);
       setBrowseError(null);
-      setPage(1);
     },
     onError: (error) => {
       setBrowseResult(null);
@@ -77,14 +79,23 @@ export function Pan115DirectoryBrowserSection({
   });
 
   const browser = browseResult ? toBrowserResponse(browseResult) : null;
-  // 契约缺口：browse 端点无 offset/limit，服务端全量返回；此处客户端按页切片。
-  const total = browser?.directories.length ?? 0;
+  // 服务端已按窗口切片（totalCount 为全量），无需客户端再 slice。
+  const total = browseResult?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const paged = useMemo<ManageMountDirectoryBrowserResponse | null>(() => {
     if (!browser) return null;
-    const start = (page - 1) * PAGE_SIZE;
-    return { ...browser, directories: browser.directories.slice(start, start + PAGE_SIZE) };
-  }, [browser, page]);
+    return browser;
+  }, [browser]);
+
+  const handleBrowse = (path?: string) => {
+    setPage(1);
+    browseMutation.mutate({ path: path || '/', offset: 0 });
+  };
+  const handlePageChange = (nextPage: number) => {
+    setPage(nextPage);
+    const currentPath = browseResult?.currentPath ?? '/';
+    browseMutation.mutate({ path: currentPath, offset: (nextPage - 1) * PAGE_SIZE });
+  };
 
   return (
     <MountDirectoryBrowserCard
@@ -94,11 +105,11 @@ export function Pan115DirectoryBrowserSection({
       error={browseError ?? undefined}
       disabled={disabled}
       isLoading={browseMutation.isPending}
-      onBrowse={(path) => browseMutation.mutate(path || '/')}
+      onBrowse={handleBrowse}
       onChange={onChange}
       pagination={
         total > PAGE_SIZE
-          ? { page, pageSize: PAGE_SIZE, total, totalPages, onPageChange: setPage }
+          ? { page, pageSize: PAGE_SIZE, total, totalPages, onPageChange: handlePageChange }
           : undefined
       }
     />
