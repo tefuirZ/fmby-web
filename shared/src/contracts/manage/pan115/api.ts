@@ -45,6 +45,10 @@ interface RawBrowseResponse {
   mount_id: string;
   current_path: string;
   entries: RawBrowseEntry[];
+  /** P2-07-E：全量条目数（服务端分页窗口的 total）。 */
+  total_count: number;
+  /** P2-07-E：下一页起点；末页 null。 */
+  next_offset: number | null;
 }
 
 interface RawActivate {
@@ -131,10 +135,15 @@ export const pan115Api = {
     );
   },
 
-  async browseDirectory(mountId: string, path?: string): Promise<Pan115BrowseResponse> {
+  async browseDirectory(
+    mountId: string,
+    path?: string,
+    offset?: number,
+    limit?: number,
+  ): Promise<Pan115BrowseResponse> {
     const raw = await httpClient.post<RawBrowseResponse>(
       `/api/manage/pan115/accounts/${encodeURIComponent(mountId)}/browse`,
-      { body: { path } },
+      { body: { path, offset, limit } },
     );
     return {
       mountId: raw.mount_id,
@@ -146,6 +155,8 @@ export const pan115Api = {
         size: e.size ?? null,
         modifiedAt: e.modified_at ?? null,
       })),
+      totalCount: raw.total_count,
+      nextOffset: raw.next_offset ?? null,
     };
   },
 
