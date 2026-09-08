@@ -36,6 +36,7 @@ import {
   AdvancedSectionWrapper,
   Pan115CredentialsSection,
   Pan115CreateCredentialsSection,
+  Pan115DirectoryBrowserSection,
   type Pan115CreatePendingActivation,
 } from './sections';
 
@@ -293,6 +294,18 @@ export function MountDrawer({
               disabled={isSaving}
               isLoading={isBrowsingDirectories}
               onBrowse={handleBrowseDirectories}
+              onChange={(path) => {
+                setFormErrors((prev) => ({ ...prev, rootPath: undefined }));
+                setFormState((prev) => ({ ...prev, rootPath: path }));
+              }}
+            />
+          ) : null}
+          {/* 115 走 accounts browse（已绑定凭据），不走 mount 级 browse（凭据不在 config_json）。 */}
+          {formState.providerType === 'pan115' && currentDetail ? (
+            <Pan115DirectoryBrowserSection
+              mountId={currentDetail.mount.id}
+              value={formState.rootPath}
+              disabled={isSaving}
               onChange={(path) => {
                 setFormErrors((prev) => ({ ...prev, rootPath: undefined }));
                 setFormState((prev) => ({ ...prev, rootPath: path }));

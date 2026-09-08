@@ -316,6 +316,15 @@ export function supportsDirectoryBrowser(providerType: ManageMountProviderType) 
   return providerType === 'local' || isStructuredRemoteProvider(providerType);
 }
 
+/**
+ * 115 凭据缺失/失效时的统一引导文案。
+ *
+ * 凭据面（Pan115CredentialsSection）与目录浏览面（Pan115DirectoryBrowserSection）共用，
+ * 避免同一引导在多处分叉（frontend-dupes 闸）。
+ */
+export const PAN115_CREDENTIAL_HINT =
+  '尚未绑定 115 账号或登录态已失效，请先在「115 网盘凭据」卡片完成扫码绑定后再操作。';
+
 export function isStructuredRemoteProvider(providerType: ManageMountProviderType) {
   return providerType === 'alist' || providerType === 'openlist';
 }

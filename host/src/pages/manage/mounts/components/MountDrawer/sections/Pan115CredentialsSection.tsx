@@ -4,6 +4,7 @@ import type { ManageMountDetailRecord } from '@fmby/v2-shared/contracts/manage';
 import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
 import type { Pan115BrowseEntry, Pan115HealthReport, Pan115QrcodeStatus } from '@fmby/v2-shared/contracts/manage/pan115';
 import { ManageSectionCard } from '../../../../components';
+import { PAN115_CREDENTIAL_HINT } from '../../../formUtils';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { DetailModal } from '@fmby/v2-shared/ui';
 import { ConfirmDialog } from '@fmby/v2-shared/ui';
@@ -30,8 +31,19 @@ const STATUS_LABELS: Record<Pan115QrcodeStatus, string> = {
   unknown: '未知状态',
 };
 
+/**
+ * 未绑定判定：后端 error_code 为稳定 **小写** snake_case（`not_found`）。
+ *
+ * 此前按大写 'NOT_FOUND' 判定永不命中，导致"未绑定"被当成"读取失败"，
+ * 未绑定来源拿不到扫码绑定引导（P2-09 修复）。
+ */
 function isNotFound(err: unknown): boolean {
-  return isApiError(err) && err.code === 'NOT_FOUND';
+  return isApiError(err) && err.code === 'not_found';
+}
+
+/** 凭据缺失/失效（后端 credential_invalid）→ 引导重新绑定，而非泛化报错。 */
+function isCredentialError(err: unknown): boolean {
+  return isApiError(err) && err.code === 'credential_invalid';
 }
 
 export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSectionProps) {
@@ -87,7 +99,11 @@ export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSec
       queryClient.invalidateQueries({ queryKey: accountQueryKey });
     },
     onError: (err) => {
-      setHealthReport({ ok: false, reason: getErrorMessage(err) });
+      // 凭据缺失/失效不泛化报错，直接给可执行的重新绑定引导。
+      setHealthReport({
+        ok: false,
+        reason: isCredentialError(err) ? PAN115_CREDENTIAL_HINT : getErrorMessage(err),
+      });
     },
   });
 
@@ -293,7 +309,7 @@ export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSec
         open={browseOpen}
         eyebrow="目录浏览"
         title="115 网盘目录浏览"
-        description={`当前路径：${browsePath}（点击文件夹进入；该接口走 mount 凭据 prime + Pan115Provider.list_directory）`}
+        description={`当前路径：${browsePath}（点击文件夹进入；走已绑定凭据的 accounts browse 端点，大目录为全量返回）`}
         onOpenChange={(next) => { if (!next) closeBrowseDialog(); }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 480, overflow: 'auto' }}>

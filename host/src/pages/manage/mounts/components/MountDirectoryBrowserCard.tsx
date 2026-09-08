@@ -10,6 +10,14 @@ import {
   getDirectoryBrowserHint,
 } from '../formUtils';
 
+interface MountDirectoryBrowserPagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
 interface MountDirectoryBrowserCardProps {
   providerType: ManageMountProviderType;
   value: string;
@@ -17,6 +25,11 @@ interface MountDirectoryBrowserCardProps {
   error?: string;
   disabled?: boolean;
   isLoading?: boolean;
+  /**
+   * 客户端分页控件（可选）。115 等无服务端分页参数的来源传入；
+   * local / alist 等保持 undefined，行为与改动前完全一致。
+   */
+  pagination?: MountDirectoryBrowserPagination;
   onBrowse: (path?: string) => void;
   onChange: (path: string) => void;
 }
@@ -28,6 +41,7 @@ export function MountDirectoryBrowserCard({
   error,
   disabled = false,
   isLoading = false,
+  pagination,
   onBrowse,
   onChange,
 }: MountDirectoryBrowserCardProps) {
@@ -79,6 +93,29 @@ export function MountDirectoryBrowserCard({
           selectCurrentActionLabel: '选择当前目录',
         }}
       />
+      {pagination && pagination.totalPages > 1 ? (
+        <div className={styles.rowActions}>
+          <button
+            className={styles.smallButton}
+            type="button"
+            disabled={disabled || pagination.page <= 1}
+            onClick={() => pagination.onPageChange(pagination.page - 1)}
+          >
+            上一页
+          </button>
+          <span className={styles.mutedText}>
+            第 {pagination.page} / {pagination.totalPages} 页 · 共 {pagination.total} 个目录
+          </span>
+          <button
+            className={styles.smallButton}
+            type="button"
+            disabled={disabled || pagination.page >= pagination.totalPages}
+            onClick={() => pagination.onPageChange(pagination.page + 1)}
+          >
+            下一页
+          </button>
+        </div>
+      ) : null}
     </ManageSectionCard>
   );
 }
