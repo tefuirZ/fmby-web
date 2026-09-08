@@ -39,6 +39,11 @@ export interface Pan115ActivateResponse {
 
 export interface Pan115AccountInfo {
   mountId: string;
+  /**
+   * 绑定账号 UID（P2-07-D）。可空：后端由 SecretBox cookie 行解析，
+   * 无 cookie 行或解析不到时为 null —— 表示「已绑定但 uid 不可得」，**非错误态**。
+   */
+  uid?: string;
   status: string;
   hasCookie: boolean;
   hasOpenToken: boolean;

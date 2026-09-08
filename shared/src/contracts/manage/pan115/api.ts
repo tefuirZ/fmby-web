@@ -12,6 +12,8 @@ import type {
 
 interface RawAccountInfo {
   mount_id: string;
+  /** P2-07-D：后端 `Option<String>`，缺失/解析不到时为 null。 */
+  uid?: string | null;
   status: string;
   has_cookie: boolean;
   has_open_token: boolean;
@@ -71,6 +73,8 @@ function normalizeQrStatus(value: unknown): Pan115QrStatusResponse['status'] {
 function fromAccount(r: RawAccountInfo): Pan115AccountInfo {
   return {
     mountId: r.mount_id,
+    // 后端 null（uid 不可得）归一为 undefined，对齐 `uid?: string` 可选契约。
+    uid: r.uid ?? undefined,
     status: r.status,
     hasCookie: r.has_cookie,
     hasOpenToken: r.has_open_token,

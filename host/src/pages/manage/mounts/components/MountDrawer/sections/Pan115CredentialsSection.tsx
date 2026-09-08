@@ -235,6 +235,11 @@ export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSec
       ) : account ? (
         <div className={styles.fieldRow}>
           <div className={styles.stackText}>
+            <span className={styles.mutedText}>账号 UID</span>
+            {/* uid 不可得 = 已绑定但解析不到（后端 Option 为 null），fail-safe 展示非报错。 */}
+            <span>{account.uid ?? '已绑定（uid 不可得）'}</span>
+          </div>
+          <div className={styles.stackText}>
             <span className={styles.mutedText}>账号状态</span>
             <StatusBadge label={account.status} variant={account.status.toLowerCase() === 'active' ? 'success' : 'warning'} />
           </div>
