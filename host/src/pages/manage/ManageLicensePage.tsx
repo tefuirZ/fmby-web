@@ -28,6 +28,22 @@ function formatEpochMs(value: number | null | undefined): string {
   return new Date(value).toLocaleString('zh-CN', { hour12: false });
 }
 
+/** 复制到剪贴板：https 安全上下文用异步 API；http/非安全上下文回退到临时 textarea。 */
+async function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+}
+
 /**
  * 授权与订阅管理页。
  *
@@ -284,7 +300,20 @@ export function ManageLicensePage() {
             <div className={styles.fieldRow}>
               <div className={styles.stackText}>
                 <span className={styles.mutedText}>用户码</span>
-                <span>{status.deviceFlow.userCode}</span>
+                <div className={styles.rowActions}>
+                  <span>{status.deviceFlow.userCode}</span>
+                  <button
+                    className={styles.smallButton}
+                    type="button"
+                    onClick={() =>
+                      void copyToClipboard(status.deviceFlow!.userCode)
+                        .then(() => toast.success({ title: '用户码已复制' }))
+                        .catch(() => setActionError('复制失败，请手动选择文本。'))
+                    }
+                  >
+                    复制
+                  </button>
+                </div>
               </div>
               <div className={styles.stackText}>
                 <span className={styles.mutedText}>过期时间</span>
@@ -293,7 +322,20 @@ export function ManageLicensePage() {
             </div>
             <div className={styles.stackText}>
               <span className={styles.mutedText}>授权地址</span>
-              <span>{status.deviceFlow.verificationUriComplete ?? status.deviceFlow.verificationUri}</span>
+              <div className={styles.rowActions}>
+                <span>{status.deviceFlow.verificationUriComplete ?? status.deviceFlow.verificationUri}</span>
+                <button
+                  className={styles.smallButton}
+                  type="button"
+                  onClick={() =>
+                    void copyToClipboard(status.deviceFlow!.verificationUriComplete ?? status.deviceFlow!.verificationUri)
+                      .then(() => toast.success({ title: '授权地址已复制' }))
+                      .catch(() => setActionError('复制失败，请手动选择文本。'))
+                  }
+                >
+                  复制
+                </button>
+              </div>
             </div>
             <div className={styles.rowActions}>
               <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => pollMutation.mutate()}>
