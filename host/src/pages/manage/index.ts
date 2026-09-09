@@ -3,6 +3,7 @@ export { ManageAdvancedPage } from './ManageAdvancedPage';
 export { ManageAuditLogsPage } from './ManageAuditLogsPage';
 export { ManageCollectionsPage } from './ManageCollectionsPage';
 export { ManageLibrariesPage } from './ManageLibrariesPage';
+export { ManageLicensePage } from './ManageLicensePage';
 export { ManageMediaItemDetailPage } from './ManageMediaItemDetailPage';
 export { ManageMediaItemsPage } from './ManageMediaItemsPage';
 export { ManageMountsPage } from './ManageMountsPage';

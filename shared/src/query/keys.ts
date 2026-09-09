@@ -172,6 +172,11 @@ export const queryKeys = {
       status: () => ['manage', 'telegram-bot', 'status'] as const,
     },
 
+    license: {
+      status: () => ['manage', 'license', 'status'] as const,
+      deviceFlow: () => ['manage', 'license', 'device-flow'] as const,
+    },
+
     secrets: {
       status: () => ['manage', 'secrets', 'status'] as const,
     },
