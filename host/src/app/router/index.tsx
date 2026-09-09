@@ -277,6 +277,13 @@ export const router = createBrowserRouter([
                 path: 'naming-cleanup',
                 element: <Navigate replace to="../naming-scrape" />,
               },
+              {
+                path: 'collections',
+                lazy: async () => {
+                  const { ManageCollectionsPage } = await import('@/pages/manage/ManageCollectionsPage');
+                  return { Component: ManageCollectionsPage };
+                },
+              },
             ],
           },
           {
@@ -312,6 +319,13 @@ export const router = createBrowserRouter([
                     lazy: async () => {
                       const { ManageRoleTemplatesPage } = await import('@/pages/manage/ManageRoleTemplatesPage');
                       return { Component: ManageRoleTemplatesPage };
+                    },
+                  },
+                  {
+                    path: 'rewards',
+                    lazy: async () => {
+                      const { ManageRewardsPage } = await import('@/pages/manage/ManageRewardsPage');
+                      return { Component: ManageRewardsPage };
                     },
                   },
                 ],
@@ -366,6 +380,13 @@ export const router = createBrowserRouter([
                     element: <ManageLegacyRedirect to="/manage/site/settings" />,
                   },
                 ],
+              },
+              {
+                path: 'telegram-bot',
+                lazy: async () => {
+                  const { ManageTelegramPage } = await import('@/pages/manage/ManageTelegramPage');
+                  return { Component: ManageTelegramPage };
+                },
               },
               {
                 path: 'settings',

@@ -148,6 +148,30 @@ export const queryKeys = {
       list: () => ['manage', 'registration-codes'] as const,
     },
 
+    collections: {
+      all: () => ['manage', 'collections'] as const,
+      list: () => ['manage', 'collections', 'list'] as const,
+      detail: (id?: string) =>
+        id
+          ? (['manage', 'collections', 'detail', id] as const)
+          : (['manage', 'collections', 'detail'] as const),
+    },
+
+    rewards: {
+      account: (userId?: string) =>
+        userId
+          ? (['manage', 'rewards', 'account', userId] as const)
+          : (['manage', 'rewards', 'account'] as const),
+      ledger: (userId?: string, limit?: number) =>
+        userId
+          ? (['manage', 'rewards', 'ledger', userId, limit ?? null] as const)
+          : (['manage', 'rewards', 'ledger'] as const),
+    },
+
+    telegramBot: {
+      status: () => ['manage', 'telegram-bot', 'status'] as const,
+    },
+
     roleTemplates: {
       list: () => ['manage', 'role-templates'] as const,
     },
