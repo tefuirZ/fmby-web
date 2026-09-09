@@ -1,6 +1,6 @@
 {
   "id": "darkroom",
-  "version": "0.1.73",
+  "version": "0.1.74",
   "label": "暗房",
   "tokens": {
     "cssFile": "tokens.css",
