@@ -8,7 +8,7 @@
  * 版本：统一版本号逻辑（docs/03-releases.md）——与后端/前端包用同一个版本号。
  */
 
-export const CONTRACT_VERSION = '0.1.59';
+export const CONTRACT_VERSION = '0.1.60';
 
 export * from './auth';
 export * from './browse';
