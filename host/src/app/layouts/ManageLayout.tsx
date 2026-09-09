@@ -80,6 +80,7 @@ const manageNavTree: ManageNavNode[] = [
       },
       { id: 'site-settings', label: '站点设置', icon: Settings, to: '/manage/site/settings' },
       { id: 'site-telegram-bot', label: 'Telegram Bot 状态', icon: Send, to: '/manage/site/telegram-bot' },
+      { id: 'site-secrets', label: '密钥链管理', icon: KeyRound, to: '/manage/site/secrets' },
       { id: 'site-advanced', label: '高级维护', icon: SlidersHorizontal, to: '/manage/site/advanced' },
     ],
   },

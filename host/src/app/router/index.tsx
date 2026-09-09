@@ -389,6 +389,13 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                path: 'secrets',
+                lazy: async () => {
+                  const { ManageSecretsPage } = await import('@/pages/manage/ManageSecretsPage');
+                  return { Component: ManageSecretsPage };
+                },
+              },
+              {
                 path: 'settings',
                 lazy: async () => {
                   const { ManageSiteSettingsPage } = await import('@/pages/manage/ManageSiteSettingsPage');

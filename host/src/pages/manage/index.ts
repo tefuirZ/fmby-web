@@ -13,6 +13,7 @@ export { ManageRegistrationCodesPage } from './ManageRegistrationCodesPage';
 export { ManageRewardsPage } from './ManageRewardsPage';
 export { ManageRoleTemplatesPage } from './ManageRoleTemplatesPage';
 export { ManageRuntimeLogsPage } from './ManageRuntimeLogsPage';
+export { ManageSecretsPage } from './ManageSecretsPage';
 export { ManageSessionsPage } from './ManageSessionsPage';
 export { ManageSiteSettingsPage } from './ManageSiteSettingsPage';
 export { ManageTaskCenterPage } from './ManageTaskCenterPage';

@@ -8,6 +8,11 @@ import type {
   RewardsAccountSummaryRecord,
   RewardsLedgerEntryRecord,
   RewardsPointAccountRecord,
+  SecretSourceKind,
+  SecretStatusEntryRecord,
+  SecretsOverrideResultRecord,
+  SecretsOverrideWriteInput,
+  SecretsStatusRecord,
   TelegramBotStatusRecord,
 } from "./types";
 
@@ -77,6 +82,32 @@ interface RawTelegramBotStatus {
   allowed_chat_count: number;
   custom_api_base: boolean;
   generated_at: number;
+}
+
+interface RawSecretStatusEntry {
+  key: string;
+  source: string;
+  configured: boolean;
+}
+
+interface RawSecretsStatus {
+  entries: RawSecretStatusEntry[];
+  overrides_file: string;
+  microsoft_editions: string[];
+}
+
+interface RawSecretsOverrideResponse {
+  ok: boolean;
+  applied: RawSecretStatusEntry[];
+  restart_required: boolean;
+}
+
+function fromSecretEntry(r: RawSecretStatusEntry): SecretStatusEntryRecord {
+  return {
+    key: r.key,
+    source: r.source as SecretSourceKind,
+    configured: r.configured,
+  };
 }
 
 function fromCollection(r: RawManagedCollection): ManagedCollectionRecord {
@@ -222,6 +253,36 @@ export const peripheralsApi = {
       allowedChatCount: raw.allowed_chat_count,
       customApiBase: raw.custom_api_base,
       generatedAt: raw.generated_at,
+    };
+  },
+
+  /** P2-09 延伸：密钥链状态（零明文——各键当前生效来源层）。 */
+  async getSecretsStatus(): Promise<SecretsStatusRecord> {
+    const raw = await httpClient.get<RawSecretsStatus>("/api/manage/secrets/status");
+    return {
+      entries: raw.entries.map(fromSecretEntry),
+      overridesFile: raw.overrides_file,
+      microsoftEditions: raw.microsoft_editions,
+    };
+  },
+
+  /** P2-09 延伸：覆盖写盘（confirmed 由端点 query 强制；进程重启后生效）。 */
+  async applySecretsOverrides(input: SecretsOverrideWriteInput): Promise<SecretsOverrideResultRecord> {
+    const overrides: Record<string, string | null> = {};
+    for (const item of input.overrides) {
+      overrides[item.key] = item.value;
+    }
+    const raw = await httpClient.put<RawSecretsOverrideResponse>(
+      "/api/manage/secrets/overrides",
+      {
+        params: { confirmed: true },
+        body: { overrides },
+      },
+    );
+    return {
+      ok: raw.ok,
+      applied: raw.applied.map(fromSecretEntry),
+      restartRequired: raw.restart_required,
     };
   },
 };

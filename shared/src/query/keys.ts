@@ -172,6 +172,10 @@ export const queryKeys = {
       status: () => ['manage', 'telegram-bot', 'status'] as const,
     },
 
+    secrets: {
+      status: () => ['manage', 'secrets', 'status'] as const,
+    },
+
     roleTemplates: {
       list: () => ['manage', 'role-templates'] as const,
     },

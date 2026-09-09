@@ -99,3 +99,35 @@ export interface TelegramBotStatusRecord {
   customApiBase: boolean;
   generatedAt: number;
 }
+
+/** 密钥来源层（三层链 env > secrets 文件 > 内置 > 未配置；P2-09 延伸）。 */
+export type SecretSourceKind = 'env' | 'secrets_file' | 'builtin' | 'unset';
+
+/** 单键状态（零明文：只有来源层与是否已配置，无值）。 */
+export interface SecretStatusEntryRecord {
+  /** 白名单键（TOML 路径形态，如 `providers.tmdb.api_key`）。 */
+  key: string;
+  source: SecretSourceKind;
+  configured: boolean;
+}
+
+/** 密钥链状态总览。 */
+export interface SecretsStatusRecord {
+  entries: SecretStatusEntryRecord[];
+  /** 覆盖写入目标文件路径（非敏感）。 */
+  overridesFile: string;
+  /** 微软双版本内置自建应用凭据形态（Global / China21Vianet）。 */
+  microsoftEditions: string[];
+}
+
+/** 覆盖写入输入：`value = undefined` 表示删除该键覆盖（恢复下层回退）。 */
+export interface SecretsOverrideWriteInput {
+  overrides: Array<{ key: string; value: string | null }>;
+}
+
+/** 覆盖写入结果：`applied` 为写盘后的预测来源层（重启后生效）。 */
+export interface SecretsOverrideResultRecord {
+  ok: boolean;
+  applied: SecretStatusEntryRecord[];
+  restartRequired: boolean;
+}
