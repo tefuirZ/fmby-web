@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import {
+  isServiceUnwiredError,
   type CollectionVisibility,
   type ManagedCollectionRecord,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
@@ -85,6 +86,33 @@ export function ManageCollectionsPage() {
   }
 
   if (collectionsQuery.isError) {
+    if (isServiceUnwiredError(collectionsQuery.error)) {
+      return (
+        <div className={styles.page}>
+          <ManagePageHeader
+            title="收藏合集管理"
+            description="手工合集的创建、改名与上下线都在这里；豆瓣同步与预设合集只读维护。"
+          />
+          <ManageSectionCard
+            title="合集端口未装配"
+            description="GET /api/manage/collections 当前不可用。"
+          >
+            <InlineBanner
+              variant="info"
+              title="等待后端装配"
+              description="合集管理端点尚未提供或端口未注入。本页不伪造空合集列表。"
+            />
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              onClick={() => void collectionsQuery.refetch()}
+            >
+              重新检测
+            </button>
+          </ManageSectionCard>
+        </div>
+      );
+    }
     return (
       <FeedbackState
         variant="error"

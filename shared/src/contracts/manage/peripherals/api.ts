@@ -6,6 +6,8 @@ import type {
   ManagedCollectionRecord,
   ManagedCollectionWriteInput,
   RewardsAccountSummaryRecord,
+  RewardsEventConfigRecord,
+  RewardsEventConfigWriteInput,
   RewardsLedgerEntryRecord,
   RewardsPointAccountRecord,
   SecretSourceKind,
@@ -13,8 +15,11 @@ import type {
   SecretsOverrideResultRecord,
   SecretsOverrideWriteInput,
   SecretsStatusRecord,
+  TelegramBotConfigRecord,
+  TelegramBotConfigWriteInput,
   TelegramBotStatusRecord,
 } from "./types";
+import { isApiError } from "@fmby/v2-shared/errors";
 
 interface RawManagedCollection {
   id: string;
@@ -84,6 +89,64 @@ interface RawTelegramBotStatus {
   generated_at: number;
 }
 
+interface RawTelegramBotConfig {
+  enabled: boolean;
+  api_base: string | null;
+  allowed_chat_ids: string[];
+}
+
+interface RawRewardsEventConfig {
+  checkin_enabled: boolean;
+  daily_checkin_points: number;
+  streak_bonus_points: number;
+  max_streak_days: number;
+}
+
+/**
+ * 后端未装配 / 能力未实现时的 fail-closed 判定。
+ *
+ * 已落地端点未注入端口返回 500 `internal`；G6-F8 未实现能力返回 501
+ * `not_implemented`；契约先行端点不存在则 404 `not_found` / `HTTP_404`。
+ * 调用方不得把这些状态当成空配置并伪造成功数据。
+ */
+export function isBackendUnavailableError(error: unknown): boolean {
+  if (!isApiError(error)) {
+    return false;
+  }
+  if (
+    error.code === "not_found" ||
+    error.code === "NOT_FOUND" ||
+    error.code === "HTTP_404" ||
+    error.code === "not_implemented" ||
+    error.code === "NOT_IMPLEMENTED" ||
+    error.code === "HTTP_501" ||
+    error.code === "internal" ||
+    error.code === "HTTP_500"
+  ) {
+    return true;
+  }
+  const status = (error as { status?: unknown }).status;
+  return status === 404 || status === 501 || status === 500;
+}
+
+/** 已落地端口未注入（500 internal）或能力未实现（501）。不含业务 404。 */
+export function isServiceUnwiredError(error: unknown): boolean {
+  if (!isApiError(error)) {
+    return false;
+  }
+  if (
+    error.code === "not_implemented" ||
+    error.code === "NOT_IMPLEMENTED" ||
+    error.code === "HTTP_501" ||
+    error.code === "internal" ||
+    error.code === "HTTP_500"
+  ) {
+    return true;
+  }
+  const status = (error as { status?: unknown }).status;
+  return status === 501 || status === 500;
+}
+
 interface RawSecretStatusEntry {
   key: string;
   source: string;
@@ -150,11 +213,29 @@ function fromAccount(r: RawRewardsAccount): RewardsPointAccountRecord {
   };
 }
 
+function fromTelegramConfig(r: RawTelegramBotConfig): TelegramBotConfigRecord {
+  return {
+    enabled: r.enabled,
+    apiBase: r.api_base,
+    allowedChatIds: Array.isArray(r.allowed_chat_ids) ? r.allowed_chat_ids : [],
+  };
+}
+
+function fromRewardsConfig(r: RawRewardsEventConfig): RewardsEventConfigRecord {
+  return {
+    checkinEnabled: r.checkin_enabled,
+    dailyCheckinPoints: r.daily_checkin_points,
+    streakBonusPoints: r.streak_bonus_points,
+    maxStreakDays: r.max_streak_days,
+  };
+}
+
 /**
  * 周边管理面 API（P6-04）。
  *
- * 三组端点分别对应 collections / rewards / telegram-bot 状态；错误语义
- * fail-closed：后端 400/404/500 由 httpClient 统一抛错，前端不吞。
+ * 已落地端点：collections CRUD / rewards 账户流水 / telegram-bot 状态。
+ * 前端冻结写端口：telegram-bot/config、rewards/config。
+ * 错误语义 fail-closed：后端 400/404/500/501 由 httpClient 统一抛错，前端不吞、不伪造。
  */
 export const peripheralsApi = {
   async listCollections(): Promise<ManagedCollectionRecord[]> {
@@ -254,6 +335,47 @@ export const peripheralsApi = {
       customApiBase: raw.custom_api_base,
       generatedAt: raw.generated_at,
     };
+  },
+
+  /**
+   * Telegram Bot 配置读写（前端冻结）。后端未装配时 httpClient 抛错，
+   * 页面用 isBackendUnavailableError 走 fail-closed，不伪造默认配置。
+   */
+  async getTelegramBotConfig(): Promise<TelegramBotConfigRecord> {
+    const raw = await httpClient.get<RawTelegramBotConfig>("/api/manage/telegram-bot/config");
+    return fromTelegramConfig(raw);
+  },
+
+  async putTelegramBotConfig(
+    input: TelegramBotConfigWriteInput,
+  ): Promise<TelegramBotConfigRecord> {
+    const raw = await httpClient.put<RawTelegramBotConfig>("/api/manage/telegram-bot/config", {
+      body: {
+        enabled: input.enabled,
+        api_base: input.apiBase,
+        allowed_chat_ids: input.allowedChatIds,
+      },
+    });
+    return fromTelegramConfig(raw);
+  },
+
+  async getRewardsEventConfig(): Promise<RewardsEventConfigRecord> {
+    const raw = await httpClient.get<RawRewardsEventConfig>("/api/manage/rewards/config");
+    return fromRewardsConfig(raw);
+  },
+
+  async putRewardsEventConfig(
+    input: RewardsEventConfigWriteInput,
+  ): Promise<RewardsEventConfigRecord> {
+    const raw = await httpClient.put<RawRewardsEventConfig>("/api/manage/rewards/config", {
+      body: {
+        checkin_enabled: input.checkinEnabled,
+        daily_checkin_points: input.dailyCheckinPoints,
+        streak_bonus_points: input.streakBonusPoints,
+        max_streak_days: input.maxStreakDays,
+      },
+    });
+    return fromRewardsConfig(raw);
   },
 
   /** P2-09 延伸：密钥链状态（零明文——各键当前生效来源层）。 */

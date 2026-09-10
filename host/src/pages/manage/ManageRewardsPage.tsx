@@ -1,8 +1,12 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { peripheralsApi } from '@fmby/v2-shared/contracts/manage/peripherals';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  isBackendUnavailableError,
+  peripheralsApi,
+  type RewardsEventConfigRecord,
+} from '@fmby/v2-shared/contracts/manage/peripherals';
 import { queryKeys } from '@fmby/v2-shared/query';
-import { InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
+import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
@@ -22,9 +26,48 @@ function formatDelta(delta: number): string {
 }
 
 export function ManageRewardsPage() {
+  const queryClient = useQueryClient();
   const [userIdInput, setUserIdInput] = useState('');
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
   const [ledgerLimit, setLedgerLimit] = useState<number>(LEDGER_LIMIT_DEFAULT);
+  const [configDraft, setConfigDraft] = useState<RewardsEventConfigRecord | null>(null);
+  const [configBanner, setConfigBanner] = useState<string | null>(null);
+
+  const rewardsConfigKey = ['manage', 'rewards', 'config'] as const;
+
+  const configQuery = useQuery({
+    queryKey: rewardsConfigKey,
+    queryFn: async () => {
+      try {
+        return await peripheralsApi.getRewardsEventConfig();
+      } catch (err) {
+        if (isBackendUnavailableError(err)) {
+          return null;
+        }
+        throw err;
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (configQuery.data) {
+      setConfigDraft(configQuery.data);
+    }
+  }, [configQuery.data]);
+
+  const saveConfigMutation = useMutation({
+    mutationFn: () => {
+      if (!configDraft) {
+        throw new Error('配置草稿尚未就绪');
+      }
+      return peripheralsApi.putRewardsEventConfig(configDraft);
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData(rewardsConfigKey, saved);
+      setConfigDraft(saved);
+      setConfigBanner('签到/积分事件配置已写入。');
+    },
+  });
 
   const summaryQuery = useQuery({
     queryKey: queryKeys.manage.rewards.account(activeUserId ?? undefined),
@@ -50,18 +93,151 @@ export function ManageRewardsPage() {
     setActiveUserId(trimmed);
   }
 
+  if (configQuery.isPending) {
+    return (
+      <FeedbackState
+        variant="loading"
+        title="正在读取积分与签到配置"
+        description="正在检测签到/积分事件配置端口。"
+      />
+    );
+  }
+
+  if (configQuery.isError) {
+    return (
+      <FeedbackState
+        variant="error"
+        title="积分与签到配置读取失败"
+        description={getErrorMessage(configQuery.error)}
+        action={
+          <button className={styles.primaryButton} type="button" onClick={() => void configQuery.refetch()}>
+            重试
+          </button>
+        }
+      />
+    );
+  }
+
+  const configUnavailable = configQuery.data === null;
+
   if (activeUserId === null) {
     return (
       <div className={styles.page}>
         <ManagePageHeader
           title="积分与签到"
-          description="按用户查询积分账户与签到流水；只读视图，积分变更一律走签到/消耗链路，不提供手工调账。"
+          description="配置签到/积分事件规则；按用户查询积分账户与签到流水。积分变更一律走签到/消耗链路，不提供手工调账，也不伪造账户数据。"
           meta={
             <span className={styles.metaText}>
               输入用户 ID 后加载账户汇总与最近流水
             </span>
           }
         />
+        {configUnavailable || !configDraft ? (
+          <ManageSectionCard
+            title="事件配置未装配"
+            description="GET/PUT /api/manage/rewards/config 由本卡冻结，后端规则端口另行开卡。"
+          >
+            <InlineBanner
+              variant="info"
+              title="等待后端装配"
+              description="签到/积分事件配置端点尚未提供。本页不以零积分默认值冒充已生效规则。"
+            />
+            <button className={styles.secondaryButton} type="button" onClick={() => void configQuery.refetch()}>
+              重新检测
+            </button>
+          </ManageSectionCard>
+        ) : (
+          <ManageSectionCard title="签到/积分事件配置" description="规则写入后由签到链路消费；管理面不直接改账户余额。">
+            {configBanner ? <InlineBanner variant="success" title={configBanner} /> : null}
+            {saveConfigMutation.isError ? (
+              <InlineBanner
+                variant="error"
+                title="保存失败"
+                description={getErrorMessage(saveConfigMutation.error)}
+              />
+            ) : null}
+            <form
+              className={styles.fieldGroup}
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveConfigMutation.mutate();
+              }}
+            >
+              <label className={styles.checkboxRow}>
+                <input
+                  className={styles.checkbox}
+                  type="checkbox"
+                  checked={configDraft.checkinEnabled}
+                  onChange={(event) =>
+                    setConfigDraft((current) =>
+                      current ? { ...current, checkinEnabled: event.target.checked } : current,
+                    )
+                  }
+                />
+                <span>启用每日签到</span>
+              </label>
+              <div className={styles.fieldRow}>
+                <label className={styles.label}>
+                  每日签到积分
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min={0}
+                    value={configDraft.dailyCheckinPoints}
+                    onChange={(event) =>
+                      setConfigDraft((current) =>
+                        current
+                          ? { ...current, dailyCheckinPoints: Number(event.target.value) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className={styles.label}>
+                  连续签到奖励积分
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min={0}
+                    value={configDraft.streakBonusPoints}
+                    onChange={(event) =>
+                      setConfigDraft((current) =>
+                        current
+                          ? { ...current, streakBonusPoints: Number(event.target.value) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+                <label className={styles.label}>
+                  连续签到上限天数
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min={0}
+                    value={configDraft.maxStreakDays}
+                    onChange={(event) =>
+                      setConfigDraft((current) =>
+                        current
+                          ? { ...current, maxStreakDays: Number(event.target.value) }
+                          : current,
+                      )
+                    }
+                  />
+                </label>
+              </div>
+              <div className={styles.buttonRow}>
+                <button
+                  className={styles.primaryButton}
+                  type="submit"
+                  disabled={saveConfigMutation.isPending}
+                >
+                  {saveConfigMutation.isPending ? '保存中…' : '保存事件配置'}
+                </button>
+              </div>
+            </form>
+          </ManageSectionCard>
+        )}
         <ManageSectionCard title="查询用户" description="用户 ID 即管理面「用户账号」页中的 ID。">
           <form className={styles.fieldGroup} onSubmit={submitQuery}>
             <label className={styles.label}>
