@@ -50,7 +50,7 @@ const manageNavTree: ManageNavNode[] = [
       { id: 'media-mounts', label: '媒体来源', icon: HardDrive, to: '/manage/media/mounts' },
       { id: 'media-probe-tasks', label: '媒体信息检测', icon: Search, to: '/manage/media/probe-tasks' },
       { id: 'media-naming-scrape', label: '命名与刮削', icon: SlidersHorizontal, to: '/manage/media/naming-scrape' },
-      { id: 'media-collections', label: '收藏合集', icon: FolderHeart, to: '/manage/media/collections' },
+      { id: 'media-collections', label: '收藏合集', icon: FolderHeart, to: '/manage/collections' },
     ],
   },
   {
@@ -66,7 +66,7 @@ const manageNavTree: ManageNavNode[] = [
           { id: 'site-registration-codes', label: '邀请与注册码', icon: KeyRound, to: '/manage/site/users/registration-codes' },
           { id: 'site-accounts', label: '用户账号', icon: Users, to: '/manage/site/users/accounts' },
           { id: 'site-role-templates', label: '权限模板', icon: Library, to: '/manage/site/users/role-templates' },
-          { id: 'site-rewards', label: '积分与签到', icon: CalendarCheck, to: '/manage/site/users/rewards' },
+          { id: 'site-rewards', label: '积分与签到', icon: CalendarCheck, to: '/manage/site/rewards' },
         ],
       },
       {
@@ -81,7 +81,7 @@ const manageNavTree: ManageNavNode[] = [
       },
       { id: 'site-settings', label: '站点设置', icon: Settings, to: '/manage/site/settings' },
       { id: 'site-license', label: '授权与订阅', icon: ShieldCheck, to: '/manage/site/license' },
-      { id: 'site-telegram-bot', label: 'Telegram Bot 状态', icon: Send, to: '/manage/site/telegram-bot' },
+      { id: 'site-telegram-bot', label: 'Telegram Bot 配置', icon: Send, to: '/manage/site/telegram' },
       { id: 'site-secrets', label: '密钥链管理', icon: KeyRound, to: '/manage/site/secrets' },
       { id: 'site-advanced', label: '高级维护', icon: SlidersHorizontal, to: '/manage/site/advanced' },
     ],

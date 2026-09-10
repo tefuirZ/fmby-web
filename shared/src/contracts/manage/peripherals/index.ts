@@ -1,2 +1,6 @@
 export * from "./types";
-export { peripheralsApi } from "./api";
+export {
+  peripheralsApi,
+  isBackendUnavailableError,
+  isServiceUnwiredError,
+} from "./api";

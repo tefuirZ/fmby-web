@@ -66,6 +66,9 @@ function RouteHydrateFallback() {
  * - /manage/site/security/runtime-logs    运行日志
  * - /manage/site/settings                 站点设置
  * - /manage/site/advanced                 高级设置
+ * - /manage/site/telegram                 Telegram Bot 配置（P6-04）
+ * - /manage/site/rewards                  积分与签到（P6-04）
+ * - /manage/collections                   收藏合集（P6-04）
  * - /manage/tools/pan115-imghost          图床工具（VITE_FEATURE_PAN115_IMGHOST=1 时启用）
  */
 export const router = createBrowserRouter([
@@ -279,10 +282,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'collections',
-                lazy: async () => {
-                  const { ManageCollectionsPage } = await import('@/pages/manage/ManageCollectionsPage');
-                  return { Component: ManageCollectionsPage };
-                },
+                element: <ManageLegacyRedirect to="/manage/collections" />,
               },
             ],
           },
@@ -323,10 +323,7 @@ export const router = createBrowserRouter([
                   },
                   {
                     path: 'rewards',
-                    lazy: async () => {
-                      const { ManageRewardsPage } = await import('@/pages/manage/ManageRewardsPage');
-                      return { Component: ManageRewardsPage };
-                    },
+                    element: <ManageLegacyRedirect to="/manage/site/rewards" />,
                   },
                 ],
               },
@@ -382,10 +379,21 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                path: 'telegram-bot',
+                path: 'telegram',
                 lazy: async () => {
                   const { ManageTelegramPage } = await import('@/pages/manage/ManageTelegramPage');
                   return { Component: ManageTelegramPage };
+                },
+              },
+              {
+                path: 'telegram-bot',
+                element: <ManageLegacyRedirect to="/manage/site/telegram" />,
+              },
+              {
+                path: 'rewards',
+                lazy: async () => {
+                  const { ManageRewardsPage } = await import('@/pages/manage/ManageRewardsPage');
+                  return { Component: ManageRewardsPage };
                 },
               },
               {
@@ -480,6 +488,13 @@ export const router = createBrowserRouter([
           {
             path: 'runtime-logs',
             element: <ManageLegacyRedirect to="/manage/site/security/runtime-logs" />,
+          },
+          {
+            path: 'collections',
+            lazy: async () => {
+              const { ManageCollectionsPage } = await import('@/pages/manage/ManageCollectionsPage');
+              return { Component: ManageCollectionsPage };
+            },
           },
           {
             path: 'advanced',
