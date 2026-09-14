@@ -8,6 +8,8 @@
 
 import type { ComponentType } from 'react';
 
+export * from './capabilities';
+
 /**
  * 页面域（WEB-C1 粗粒度定版，ADR-001 §3）。
  *
