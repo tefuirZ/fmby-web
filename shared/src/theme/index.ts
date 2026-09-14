@@ -8,6 +8,8 @@
 
 import type { ComponentType } from 'react';
 
+import type { ThemeCapabilitiesDeclaration } from './capabilities';
+
 export * from './capabilities';
 
 /**
@@ -123,6 +125,11 @@ export interface ThemeEntryModule {
    * 点落地前，此映射被忽略（零行为）。
    */
   componentSkins?: Record<string, ComponentType<SkinProps>>;
+  /**
+   * 能力面声明（WEB-GOV ④）：声明了 manifest.skins 的 domain 必须覆盖
+   * 对应能力面；由 scripts/check-theme-parity.mjs 强制（声明即负责）。
+   */
+  capabilities?: ThemeCapabilitiesDeclaration;
 }
 
 /** host 侧注册表项（加载契约：manifest URL + 资源 URL 映射 + 懒入口） */

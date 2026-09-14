@@ -7,16 +7,29 @@
  * 不含 API client / mapper / query keys / 权限判断 / 业务数据预加载。
  */
 
-import type { ThemeEntryModule, ThemeManifest } from '@fmby/v2-shared/theme';
+import type {
+  ThemeCapabilitiesDeclaration,
+  ThemeEntryModule,
+  ThemeManifest,
+} from '@fmby/v2-shared/theme';
 import { LibrarySkin } from './skins/LibrarySkin';
 import manifestRaw from '../theme.manifest.json';
 
 const manifest = manifestRaw as unknown as ThemeManifest;
+
+// 能力面声明（WEB-GOV ④ + WEB-PERF-01）：声明 browse.library 即必须覆盖四项
+// 能力面；LibrarySkin 已实现（realtime subscribe / CSS 移动端 / forbidden 态 /
+// Asia-Shanghai 时间派生），由 check-theme-parity 门禁强制。
+const capabilities: ThemeCapabilitiesDeclaration = {
+  global: ['realtime', 'mobile', 'timezone', 'authorization'],
+};
 const theme: ThemeEntryModule = {
   manifest,
   domainSkins: {
     'browse.library': LibrarySkin,
   },
+  capabilities,
 };
+
 
 export default theme;
