@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { login, resetBackend } from './fixtures/helpers';
+import { login, resetBackend, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/helpers';
+
+test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
 test.describe('Browse Flow E2E', () => {
   test.beforeEach(async ({ page }) => {
