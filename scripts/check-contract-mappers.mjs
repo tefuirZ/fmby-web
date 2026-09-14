@@ -18,9 +18,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const CONTRACTS_DIR = path.join(REPO_ROOT, 'apps', 'shared', 'src', 'contracts');
-const HOST_PAGES_DIR = path.join(REPO_ROOT, 'apps', 'host', 'src', 'pages');
-const THEMES_DIR = path.join(REPO_ROOT, 'apps', 'themes');
+const CONTRACTS_DIR = path.join(REPO_ROOT, 'shared', 'src', 'contracts');
+const HOST_PAGES_DIR = path.join(REPO_ROOT, 'host', 'src', 'pages');
+const THEMES_DIR = path.join(REPO_ROOT, 'themes');
 
 const REQUIRED_DOMAINS = ['auth', 'browse', 'playback', 'manage', 'settings', 'theme', 'assets'];
 

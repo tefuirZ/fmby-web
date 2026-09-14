@@ -22,9 +22,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const THEMES_DIR = path.join(REPO_ROOT, 'apps', 'themes');
-const HOST_PAGES_DIR = path.join(REPO_ROOT, 'apps', 'host', 'src', 'pages');
-const APPS_DIR = path.join(REPO_ROOT, 'apps');
+const THEMES_DIR = path.join(REPO_ROOT, 'themes');
+const HOST_PAGES_DIR = path.join(REPO_ROOT, 'host', 'src', 'pages');
+const APPS_DIR = REPO_ROOT;
 
 const violations = [];
 
@@ -146,7 +146,12 @@ function checkRawDtoInPages() {
  */
 function checkSingleImplementations() {
   console.log('[3] Checking Single Source of Truth Implementations...');
-  const allAppFiles = walkFiles(APPS_DIR);
+  // 前端仓：只扫 host/shared/themes（不含 scripts/ 自身与根配置）
+  const allAppFiles = [
+    ...walkFiles(path.join(REPO_ROOT, 'host')),
+    ...walkFiles(path.join(REPO_ROOT, 'shared')),
+    ...walkFiles(path.join(REPO_ROOT, 'themes')),
+  ];
 
   for (const file of allAppFiles) {
     const relPath = getRelativePath(file);

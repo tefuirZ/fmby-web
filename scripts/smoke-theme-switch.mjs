@@ -18,9 +18,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const THEMES_DIR = path.join(REPO_ROOT, 'apps', 'themes');
-const HOST_THEME_REGISTRY = path.join(REPO_ROOT, 'apps', 'host', 'src', 'theme', 'registry.ts');
-const HOST_THEME_PROVIDER = path.join(REPO_ROOT, 'apps', 'host', 'src', 'theme', 'ThemeProvider.tsx');
+const THEMES_DIR = path.join(REPO_ROOT, 'themes');
+const HOST_THEME_REGISTRY = path.join(REPO_ROOT, 'host', 'src', 'theme', 'registry.ts');
+const HOST_THEME_PROVIDER = path.join(REPO_ROOT, 'host', 'src', 'theme', 'ThemeProvider.tsx');
 
 let passed = true;
 

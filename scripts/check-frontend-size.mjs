@@ -19,9 +19,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const HOST_DIST = path.join(REPO_ROOT, 'apps', 'host', 'dist');
+const HOST_DIST = path.join(REPO_ROOT, 'host', 'dist');
 const MANIFEST_PATH = path.join(HOST_DIST, '.vite', 'manifest.json');
-const THEMES_DIR = path.join(REPO_ROOT, 'apps', 'themes');
+const THEMES_DIR = path.join(REPO_ROOT, 'themes');
 
 // 红线常数
 const MAX_INITIAL_JS_GZIP = 300 * 1024; // 300KB
