@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Loader2, Search, Film, Tv, Inbox } from 'lucide-react';
 import { Link } from 'react-router';
-import { searchApi, type SearchResultItem } from '@fmby/v2-shared/contracts/browse/search';
+import type { SearchResultItem } from '@fmby/v2-shared/contracts/browse/search';
+import { useSearchOverlay } from '@fmby/v2-shared/viewmodels';
 import { useDebounce } from '@fmby/v2-shared/hooks';
 import { generatePlaceholderColor } from '@fmby/v2-shared/hooks/usePosterUrl';
-import { queryKeys } from '@fmby/v2-shared/query';
 import styles from './SearchOverlay.module.css';
 
 interface SearchOverlayProps {
@@ -25,12 +24,8 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query.trim(), 300);
 
-  const searchQuery = useQuery({
-    queryKey: queryKeys.search.results(debouncedQuery),
-    queryFn: () => searchApi.search(debouncedQuery),
-    enabled: debouncedQuery.length >= 2,
-    staleTime: 30_000,
-  });
+  // WEB-B1：搜索取数上移至 viewmodel。
+  const search = useSearchOverlay({ keyword: debouncedQuery });
 
   // 打开时聚焦输入框
   useEffect(() => {
@@ -67,10 +62,10 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
 
   if (!open) return null;
 
-  const results = searchQuery.data ?? [];
-  const isSearching = searchQuery.isFetching;
+  const results: SearchResultItem[] = search.data.results;
+  const isSearching = search.data.isSearching;
   const hasQuery = debouncedQuery.length >= 2;
-  const hasSearchError = searchQuery.isError;
+  const hasSearchError = search.state === 'error' || search.state === 'forbidden';
 
   // 按类型分组
   const grouped = groupResults(results);

@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { browseApi } from '@fmby/v2-shared/contracts/browse';
 import { FeedbackState } from '@fmby/v2-shared/ui';
-import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { useLibraryDetail } from '@fmby/v2-shared/viewmodels';
 import styles from './styles/shared.module.css';
 import libraryStyles from './styles/library.module.css';
 import { LibraryCinemaHero } from './components';
 import { VirtualizedLibraryDetailGrid } from './library-detail/VirtualizedLibraryDetailGrid';
-
-const LIBRARY_PAGE_SIZE = 20;
 
 export function LibraryDetailPage() {
   const { libraryId } = useParams();
@@ -18,75 +14,16 @@ export function LibraryDetailPage() {
   const [resolution, setResolution] = useState('all');
   const [watched, setWatched] = useState('all');
   const [sort, setSort] = useState('recent');
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const libraryQuery = useInfiniteQuery({
-    queryKey: queryKeys.browse.library(libraryId ?? ''),
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      browseApi.getLibraryDetail(libraryId ?? '', {
-        cursor: pageParam,
-        pageSize: LIBRARY_PAGE_SIZE,
-      }),
-    enabled: Boolean(libraryId),
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  // WEB-B1：分页取数 + 筛选排序 + 哨兵加载全部上移至 viewmodel。
+  const { data: vm, state, error, actions, loadMoreRef } = useLibraryDetail({
+    libraryId,
+    mediaType,
+    resolution,
+    watched,
+    sort,
   });
-
-  useEffect(() => {
-    const sentinel = loadMoreRef.current;
-    if (!sentinel) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry?.isIntersecting && libraryQuery.hasNextPage && !libraryQuery.isFetchingNextPage) {
-          void libraryQuery.fetchNextPage();
-        }
-      },
-      {
-        rootMargin: '320px 0px',
-        threshold: 0.1,
-      },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [libraryQuery.fetchNextPage, libraryQuery.hasNextPage, libraryQuery.isFetchingNextPage]);
-
-  const pages = libraryQuery.data?.pages ?? [];
-  const data = pages[0];
-  const loadedItems = useMemo(() => pages.flatMap((page) => page.items), [pages]);
-  const items = useMemo(() => {
-    const nextItems = [...loadedItems].filter((item) => {
-      if (mediaType !== 'all' && item.kind !== mediaType) {
-        return false;
-      }
-      if (resolution !== 'all' && item.resolutionLabel !== resolution) {
-        return false;
-      }
-      if (watched === 'unfinished' && item.progress?.completed) {
-        return false;
-      }
-      if (watched === 'completed' && !item.progress?.completed) {
-        return false;
-      }
-      return true;
-    });
-
-    nextItems.sort((left, right) => {
-      if (sort === 'title') {
-        return left.title.localeCompare(right.title, 'zh-CN');
-      }
-      if (sort === 'year') {
-        return (right.year ?? 0) - (left.year ?? 0);
-      }
-      return new Date(right.addedAt ?? 0).getTime() - new Date(left.addedAt ?? 0).getTime();
-    });
-
-    return nextItems;
-  }, [loadedItems, mediaType, resolution, watched, sort]);
+  const { library, heroSummary, filters, items, loadedCount } = vm;
 
   if (!libraryId) {
     return (
@@ -103,7 +40,7 @@ export function LibraryDetailPage() {
     );
   }
 
-  if (libraryQuery.isPending) {
+  if (state === 'loading') {
     return (
       <FeedbackState
         variant="loading"
@@ -113,14 +50,14 @@ export function LibraryDetailPage() {
     );
   }
 
-  if (libraryQuery.isError) {
+  if (state === 'error' || state === 'forbidden') {
     return (
       <FeedbackState
         variant="error"
-        title="媒体库内容加载失败"
-        description={getErrorMessage(libraryQuery.error)}
+        title={state === 'forbidden' ? '没有访问该媒体库的权限' : '媒体库内容加载失败'}
+        description={getErrorMessage(error)}
         action={
-          <button className={styles.primaryButton} type="button" onClick={() => libraryQuery.refetch()}>
+          <button className={styles.primaryButton} type="button" onClick={actions.refresh}>
             重试
           </button>
         }
@@ -128,7 +65,7 @@ export function LibraryDetailPage() {
     );
   }
 
-  if (!data || loadedItems.length === 0) {
+  if (!library || loadedCount === 0) {
     return (
       <FeedbackState
         variant="empty"
@@ -144,47 +81,47 @@ export function LibraryDetailPage() {
   }
 
   const loadedLabel =
-    loadedItems.length < data.total
-      ? `已加载 ${loadedItems.length}/${data.total}`
-      : `已展开 ${loadedItems.length} 个`;
+    loadedCount < vm.totalItems
+      ? `已加载 ${loadedCount}/${vm.totalItems}`
+      : `已展开 ${loadedCount} 个`;
   const isFiltered = mediaType !== 'all' || resolution !== 'all' || watched !== 'all' || sort !== 'recent';
 
   return (
     <div className={styles.page}>
       <LibraryCinemaHero
-        library={data.library}
-        items={loadedItems}
-        heroSummary={data.heroSummary}
+        library={library}
+        items={items}
+        heroSummary={heroSummary}
         loadedLabel={loadedLabel}
-        onRefresh={() => void libraryQuery.refetch()}
+        onRefresh={actions.refresh}
       />
 
       <section className={libraryStyles.libraryControlPanel}>
         <div className={styles.toolbar}>
           <div className={styles.filterGroup}>
             <select className={styles.select} value={mediaType} onChange={(event) => setMediaType(event.target.value)}>
-              {data.filters.mediaTypes.map((option) => (
+              {filters?.mediaTypes.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
             <select className={styles.select} value={resolution} onChange={(event) => setResolution(event.target.value)}>
-              {data.filters.resolutions.map((option) => (
+              {filters?.resolutions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
             <select className={styles.select} value={watched} onChange={(event) => setWatched(event.target.value)}>
-              {data.filters.watchedStates.map((option) => (
+              {filters?.watchedStates.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
             <select className={styles.select} value={sort} onChange={(event) => setSort(event.target.value)}>
-              {data.filters.sortOptions.map((option) => (
+              {filters?.sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -208,7 +145,7 @@ export function LibraryDetailPage() {
           </div>
           <span className={styles.metaText}>
             当前结果：{items.length} 个
-            {loadedItems.length < data.total ? ` · 已加载 ${loadedItems.length}/${data.total}` : ` · 已全部加载 ${loadedItems.length} 个`}
+            {loadedCount < vm.totalItems ? ` · 已加载 ${loadedCount}/${vm.totalItems}` : ` · 已全部加载 ${loadedCount} 个`}
           </span>
         </div>
       </section>
@@ -222,21 +159,17 @@ export function LibraryDetailPage() {
       ) : (
         <VirtualizedLibraryDetailGrid
           items={items}
-          onNearTail={() => {
-            if (libraryQuery.hasNextPage && !libraryQuery.isFetchingNextPage) {
-              void libraryQuery.fetchNextPage();
-            }
-          }}
+          onNearTail={actions.loadMore}
         />
       )}
 
       <div ref={loadMoreRef} className={styles.loadMoreHintCard}>
         <div className={styles.metaText}>
-          {libraryQuery.isFetchingNextPage
+          {vm.isFetchingNextPage
             ? '正在继续加载剩余内容...'
-            : libraryQuery.hasNextPage
+            : vm.hasNextPage
               ? '继续下滑，自动加载后续内容'
-              : `这个媒体库的 ${data.total} 个条目已经全部展开了`}
+              : `这个媒体库的 ${vm.totalItems} 个条目已经全部展开了`}
         </div>
       </div>
     </div>

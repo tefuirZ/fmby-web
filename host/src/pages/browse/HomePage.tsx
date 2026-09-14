@@ -1,11 +1,6 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { browseApi, type BrowseHero, type MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
-import { manageApi } from '@fmby/v2-shared/contracts/manage';
-import { useDelayedTrigger, useViewportTrigger } from '@fmby/v2-shared/hooks';
-import { queryKeys } from '@fmby/v2-shared/query';
 import { useSession } from '@/session/SessionProvider';
+import { useHome } from '@fmby/v2-shared/viewmodels';
 import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './styles/shared.module.css';
@@ -17,90 +12,53 @@ import {
   LandscapeMediaCard,
   LibraryShowcaseCard,
   PosterMediaCard,
-  buildMediaMeta,
 } from './components';
 
 export function HomePage() {
   const { hasCapability, user } = useSession();
   const isAdmin = hasCapability('manage:access');
 
-  const homeDataQuery = useQuery({
-    queryKey: queryKeys.browse.home(),
-    queryFn: () => browseApi.getHomeData({ hot: 8, recentlyAdded: 14, continueWatching: 12 }),
-    staleTime: 60_000,
-  });
+  // WEB-B1：首页取数、门控加载、hero 派生、管理提醒状态全部上移至 viewmodel。
+  const {
+    data,
+    state,
+    error,
+    actions,
+    librariesSectionRef,
+  } = useHome({ isAdmin });
+  const {
+    heroSlides,
+    continueItems,
+    addedItems,
+    libraries,
+    librariesState,
+    librariesError,
+    hasHomeContent,
+    overview,
+    adminReminder,
+    hasPrimaryError,
+  } = data;
+  const shouldLoadLibraries = actions.shouldRenderLibrariesSection;
 
-  const hotItems = homeDataQuery.data?.hotItems ?? [];
-  const continueItems = homeDataQuery.data?.continueWatching ?? [];
-  const addedItems = homeDataQuery.data?.recentlyAdded ?? [];
-  const hasPrimaryRows = continueItems.length > 0 || addedItems.length > 0 || Boolean(homeDataQuery.data?.hero);
-  const shouldDelayLibraries = !homeDataQuery.isPending && !hasPrimaryRows;
-  const shouldEnableAdminReminder = isAdmin && !homeDataQuery.isPending;
-  const delayedLibrariesTrigger = useDelayedTrigger({
-    delayMs: 1_200,
-    enabled: shouldDelayLibraries,
-  });
-  const delayedAdminReminderTrigger = useDelayedTrigger({
-    delayMs: 900,
-    enabled: shouldEnableAdminReminder,
-  });
-  const { ref: librariesSectionRef, isTriggered: librariesSectionVisible } =
-    useViewportTrigger<HTMLDivElement>({
-      rootMargin: '320px 0px',
-      threshold: 0.15,
-    });
-  const shouldLoadLibraries = librariesSectionVisible || delayedLibrariesTrigger;
+  // 管理提醒 payload（overview 为 viewmodel 透出的管理概览；此处只做展示取值）。
+  const todoItems = (overview as { todoItems?: Array<{ level?: string; title?: string; description?: string }> } | undefined)
+    ?.todoItems ?? [];
+  const hasTodoItems = todoItems.length > 0;
 
-  const librariesQuery = useQuery({
-    queryKey: queryKeys.browse.librariesHome(),
-    queryFn: () => browseApi.getLibraries(),
-    enabled: shouldLoadLibraries,
-    staleTime: 5 * 60_000,
-  });
-  const overviewQuery = useQuery({
-    queryKey: queryKeys.manage.overviewHome(),
-    queryFn: () => manageApi.getOverview(),
-    enabled: delayedAdminReminderTrigger,
-    staleTime: 60_000,
-  });
-  const heroSlides = useMemo(
-    () => buildHomeHeroSlides(homeDataQuery.data?.hero ?? null, hotItems, addedItems, continueItems),
-    [addedItems, continueItems, homeDataQuery.data?.hero, hotItems],
-  );
-
-  if (homeDataQuery.isPending) {
+  if (state === 'loading') {
     return <BrowseLoadingState />;
   }
 
-  const libraries = librariesQuery.data ?? [];
-
   const fallbackHero = heroSlides[0] ?? null;
 
-  const hasHomeContent =
-    Boolean(fallbackHero) ||
-    continueItems.length > 0 ||
-    addedItems.length > 0;
-  const showFullEmptyState =
-    !homeDataQuery.isError &&
-    !hasHomeContent &&
-    librariesQuery.isSuccess &&
-    libraries.length === 0;
-
-  if (homeDataQuery.isError && shouldLoadLibraries && librariesQuery.isError) {
+  if (state === 'error' || state === 'forbidden') {
     return (
       <FeedbackState
         variant="error"
-        title="首页暂时打不开"
-        description={getErrorMessage(homeDataQuery.error ?? librariesQuery.error)}
+        title={state === 'forbidden' ? '没有访问首页内容的权限' : '首页暂时打不开'}
+        description={getErrorMessage(error)}
         action={
-          <button
-            className={styles.primaryButton}
-            type="button"
-            onClick={() => {
-              void homeDataQuery.refetch();
-              void librariesQuery.refetch();
-            }}
-          >
+          <button className={styles.primaryButton} type="button" onClick={actions.retry}>
             重试
           </button>
         }
@@ -108,7 +66,7 @@ export function HomePage() {
     );
   }
 
-  if (showFullEmptyState) {
+  if (state === 'empty') {
     return (
       <FeedbackState
         variant="empty"
@@ -132,17 +90,17 @@ export function HomePage() {
 
   return (
     <div className={styles.page}>
-      {homeDataQuery.isError ? (
+      {hasPrimaryError ? (
         <InlineBanner
           variant="error"
           title="首页核心内容加载失败"
-          description={getErrorMessage(homeDataQuery.error)}
+          description={getErrorMessage(error)}
           actions={
             <div className={styles.buttonRow}>
               <button
                 className={styles.secondaryButton}
                 type="button"
-                onClick={() => homeDataQuery.refetch()}
+                onClick={actions.refresh}
               >
                 重试
               </button>
@@ -156,7 +114,7 @@ export function HomePage() {
           hero={fallbackHero}
           slides={heroSlides}
           adminReminder={
-            !isAdmin ? undefined : !delayedAdminReminderTrigger ? undefined : overviewQuery.isPending ? (
+            adminReminder === 'hidden' ? undefined : adminReminder === 'pending' ? (
               <InlineBanner
                 variant="info"
                 title="正在同步管理提醒"
@@ -169,17 +127,17 @@ export function HomePage() {
                   </div>
                 }
               />
-            ) : overviewQuery.isError ? (
+            ) : adminReminder === 'error' ? (
               <InlineBanner
                 variant="warning"
                 title="管理提醒加载失败"
-                description={getErrorMessage(overviewQuery.error)}
+                description={getErrorMessage(error)}
                 actions={
                   <div className={styles.buttonRow}>
                     <button
                       className={styles.secondaryButton}
                       type="button"
-                      onClick={() => overviewQuery.refetch()}
+                      onClick={actions.retryOverview}
                     >
                       重试
                     </button>
@@ -189,15 +147,15 @@ export function HomePage() {
                   </div>
                 }
               />
-            ) : overviewQuery.data && overviewQuery.data.todoItems.length > 0 ? (
+            ) : adminReminder === 'ready' && hasTodoItems ? (
               <InlineBanner
                 variant={
-                  overviewQuery.data.todoItems.some((item) => item.level === 'critical')
+                  todoItems.some((item) => item.level === 'critical')
                     ? 'warning'
                     : 'info'
                 }
-                title={overviewQuery.data.todoItems[0]?.title ?? '管理中心有新的提醒'}
-                description={overviewQuery.data.todoItems[0]?.description}
+                title={todoItems[0]?.title ?? '管理中心有新的提醒'}
+                description={todoItems[0]?.description}
                 actions={
                   <div className={styles.buttonRow}>
                     <Link className={styles.secondaryButton} to="/manage">
@@ -206,7 +164,7 @@ export function HomePage() {
                   </div>
                 }
               />
-            ) : isAdmin ? (
+            ) : adminReminder === 'empty' ? (
               <InlineBanner
                 variant="info"
                 title="管理中心今天一切正常"
@@ -230,17 +188,17 @@ export function HomePage() {
         action={<Link to="/history">查看全部</Link>}
         variant="shelf"
       >
-        {homeDataQuery.isError ? (
+        {hasPrimaryError ? (
           <InlineBanner
             variant="error"
             title="继续观看加载失败"
-            description={getErrorMessage(homeDataQuery.error)}
+            description={getErrorMessage(error)}
             actions={
               <div className={styles.buttonRow}>
                 <button
                   className={styles.secondaryButton}
                   type="button"
-                  onClick={() => homeDataQuery.refetch()}
+                  onClick={actions.refresh}
                 >
                   重试
                 </button>
@@ -265,11 +223,11 @@ export function HomePage() {
         description="先扫一眼最近刚进库的片子，挑到就直接进。"
         action={<Link to="/libraries">浏览媒体库</Link>}
       >
-        {homeDataQuery.isError ? (
+        {hasPrimaryError ? (
           <InlineBanner
             variant="error"
             title="最近入库加载失败"
-            description={getErrorMessage(homeDataQuery.error)}
+            description={getErrorMessage(error)}
           />
         ) : addedItems.length === 0 ? (
           <div className={styles.emptyGrid}>最近没有新的入库内容。</div>
@@ -290,23 +248,23 @@ export function HomePage() {
         >
           {!shouldLoadLibraries ? (
             <div className={styles.emptyGrid}>
-              {shouldDelayLibraries
+              {!hasHomeContent
                 ? '正在准备媒体库入口，马上就会补上。'
                 : '继续往下滑到这里时，再展开媒体库入口。'}
             </div>
-          ) : librariesQuery.isPending ? (
+          ) : librariesState === 'loading' ? (
             <div className={styles.emptyGrid}>正在加载媒体库入口...</div>
-          ) : librariesQuery.isError ? (
+          ) : librariesState === 'error' || librariesState === 'forbidden' ? (
             <InlineBanner
               variant="error"
-              title="媒体库列表加载失败"
-              description={getErrorMessage(librariesQuery.error)}
+              title={librariesState === 'forbidden' ? '没有访问媒体库的权限' : '媒体库列表加载失败'}
+              description={getErrorMessage(librariesError)}
               actions={
                 <div className={styles.buttonRow}>
                   <button
                     className={styles.secondaryButton}
                     type="button"
-                    onClick={() => librariesQuery.refetch()}
+                    onClick={actions.retry}
                   >
                     重试
                   </button>
@@ -326,72 +284,4 @@ export function HomePage() {
       </div>
     </div>
   );
-}
-
-function buildHomeHeroSlides(
-  primaryHero: BrowseHero | null,
-  hotItems: MediaCardSummary[],
-  addedItems: MediaCardSummary[],
-  continueItems: MediaCardSummary[],
-): BrowseHero[] {
-  const slides: BrowseHero[] = [];
-  const seen = new Set<string>();
-
-  const pushHero = (hero: BrowseHero | null) => {
-    if (!hero || seen.has(hero.item.id)) {
-      return;
-    }
-    seen.add(hero.item.id);
-    slides.push(hero);
-  };
-
-  const pushItem = (item: MediaCardSummary, source: 'resume' | 'hot') => {
-    if (seen.has(item.id)) {
-      return;
-    }
-    seen.add(item.id);
-    slides.push(buildHomeHeroFromItem(item, source));
-  };
-
-  hotItems.forEach((item) => pushItem(item, 'hot'));
-  pushHero(primaryHero);
-  addedItems.forEach((item) => pushItem(item, 'hot'));
-  continueItems.slice(0, 2).forEach((item) => pushItem(item, 'resume'));
-
-  const limitedSlides = slides.slice(0, 6);
-  const visualSlides = limitedSlides.filter((slide) => hasHeroArtwork(slide.item));
-  return visualSlides.length > 0 ? visualSlides : limitedSlides;
-}
-
-function hasHeroArtwork(item: MediaCardSummary) {
-  return Boolean(
-    item.artwork.bannerUrl ??
-      item.artwork.backdropUrl ??
-      item.artwork.thumbUrl ??
-      item.artwork.posterUrl,
-  );
-}
-
-function buildHomeHeroFromItem(item: MediaCardSummary, source: 'resume' | 'hot'): BrowseHero {
-  const primaryPlaybackTargetId = item.availabilityNotice
-    ? undefined
-    : item.playbackTargetId ?? (item.hasPlayableSource ? item.id : undefined);
-
-  return {
-    item,
-    description:
-      item.description ??
-      (source === 'resume'
-        ? '上次看到这里，打开就能继续接上。'
-        : '最近大家都在看，先放进热播轮播里占个好位置。'),
-    meta: buildMediaMeta(item),
-    primaryActionLabel: primaryPlaybackTargetId
-      ? item.progress
-        ? '继续播放'
-        : '立即播放'
-      : '查看详情',
-    primaryActionTo: primaryPlaybackTargetId ? `/play/${primaryPlaybackTargetId}` : `/item/${item.id}`,
-    secondaryActionLabel: primaryPlaybackTargetId ? '查看详情' : undefined,
-    secondaryActionTo: primaryPlaybackTargetId ? `/item/${item.id}` : undefined,
-  };
 }
