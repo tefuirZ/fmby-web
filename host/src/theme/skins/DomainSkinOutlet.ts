@@ -87,8 +87,6 @@ function SkinConsumer(props: {
   realtime: ReturnType<typeof useSkinRealtime>;
 }) {
   const { Skin, realtime } = props;
-  const { data, state } = useDomainSkinData();
-  // actions：WEB-B1 前主题侧动作面尚未开放（空表；键语义随首个 skin 落地冻结）。
-  const actions: SkinProps['actions'] = {};
+  const { data, state, actions } = useDomainSkinData();
   return createElement(Skin, { data, state, actions, realtime });
 }

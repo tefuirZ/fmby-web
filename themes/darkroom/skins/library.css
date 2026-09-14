@@ -1,0 +1,167 @@
+/* darkroom LibrarySkin（WEB-C2 L3 示范）——主题自持外观层。
+ * 布局与 host 默认页刻意不同：居中面板 + 分组条 + 双列卡墙 + 底部悬浮条。
+ * 移动端（<768px）单列。 */
+
+[data-darkroom~='library-skin'] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 96px;
+}
+
+[data-darkroom~='library-head-panel'] {
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+}
+
+[data-darkroom~='library-head'] {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+[data-darkroom~='library-head'] h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+[data-darkroom~='badge'] {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  color: var(--text-muted, rgba(255, 255, 255, 0.64));
+}
+
+[data-darkroom~='badge'][data-tone='live'] {
+  color: var(--accent, #7fd1b9);
+  border-color: var(--accent, #7fd1b9);
+}
+
+[data-darkroom~='kind-groups'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-darkroom~='kind-group'] {
+  font-size: 0.78rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.14));
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+
+[data-darkroom~='card-wall'] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+[data-darkroom~='card'] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+}
+
+[data-darkroom~='card'] strong {
+  font-weight: 600;
+}
+
+[data-darkroom~='card-meta'] {
+  font-size: 0.75rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+}
+
+[data-darkroom~='floating-bar'] {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+[data-darkroom~='ghost-button'],
+[data-darkroom~='primary-button'] {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
+[data-darkroom~='ghost-button'] {
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.16));
+  color: var(--text-body, rgba(255, 255, 255, 0.86));
+}
+
+[data-darkroom~='primary-button'] {
+  background: var(--accent, #7fd1b9);
+  border: none;
+  color: #06110d;
+}
+
+[data-darkroom~='feedback'] {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+[data-darkroom~='feedback'] h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+[data-darkroom~='feedback'] p {
+  margin: 0;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+}
+
+[data-darkroom~='skeleton-line'] {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: darkroom-shimmer 1.4s ease infinite;
+}
+
+@keyframes darkroom-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* 移动端：单列卡墙 + 面板贴边（layoutForViewport CSS 承载分支）。 */
+@media (max-width: 767px) {
+  [data-darkroom~='card-wall'] {
+    grid-template-columns: 1fr;
+  }
+
+  [data-darkroom~='library-skin'] {
+    padding: 16px 12px 96px;
+  }
+}

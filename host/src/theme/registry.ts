@@ -12,6 +12,7 @@ import type { ThemeRegistration } from '@fmby/v2-shared/theme';
 import darkroomManifestUrl from '@fmby/v2-theme-darkroom/theme.manifest.json?url';
 import darkroomTokensUrl from '@fmby/v2-theme-darkroom/tokens.css?url';
 import darkroomAmbientUrl from '@fmby/v2-theme-darkroom/aurora.css?url';
+import darkroomLibrarySkinUrl from '@fmby/v2-theme-darkroom/skins/library.css?url';
 import templateManifestUrl from '@fmby/v2-theme-template/theme.manifest.json?url';
 import templateTokensUrl from '@fmby/v2-theme-template/tokens.css?url';
 
@@ -24,6 +25,7 @@ export const THEME_REGISTRY: Record<string, ThemeRegistration> = {
     assets: {
       'tokens.css': darkroomTokensUrl,
       'aurora.css': darkroomAmbientUrl,
+      'skins/library.css': darkroomLibrarySkinUrl,
     },
     loadEntry: () => import('@fmby/v2-theme-darkroom').then((m) => m.default),
   },
