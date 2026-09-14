@@ -1,0 +1,18 @@
+{
+  "name": "fmby-web",
+  "private": true,
+  "version": "0.1.107",
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "pnpm --filter @fmby/v2-host dev",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm --filter @fmby/v2-host build",
+    "build:themes": "pnpm -r --filter './themes/*' build",
+    "preview": "pnpm --filter @fmby/v2-host preview",
+    "size": "node scripts/check-frontend-size.mjs",
+    "dupes": "node scripts/check-frontend-dupes.mjs",
+    "contracts": "node scripts/check-contract-mappers.mjs",
+    "e2e": "pnpm --filter @fmby/v2-host test:e2e",
+    "verify": "pnpm typecheck && pnpm build && pnpm size && pnpm dupes && pnpm contracts"
+  }
+}
