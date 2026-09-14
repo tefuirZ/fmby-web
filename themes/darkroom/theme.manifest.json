@@ -4,12 +4,17 @@
   "label": "暗房",
   "tokens": {
     "cssFile": "tokens.css",
-    "extraCssFiles": ["aurora.css"]
+    "extraCssFiles": [
+      "aurora.css",
+      "skins/library.css"
+    ]
   },
   "entry": {
     "mount": "index.ts"
   },
-  "skins": {},
+  "skins": {
+    "browse.library": "LibrarySkin"
+  },
   "nav": {
     "items": []
   },

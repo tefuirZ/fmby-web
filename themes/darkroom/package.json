@@ -8,13 +8,19 @@
     ".": "./src/index.ts",
     "./theme.manifest.json": "./theme.manifest.json",
     "./tokens.css": "./tokens.css",
-    "./aurora.css": "./aurora.css"
+    "./aurora.css": "./aurora.css",
+    "./skins/library.css": "./skins/library.css"
   },
   "scripts": {
-    "typecheck": "tsc -p . --noEmit"
+    "typecheck": "tsc -p . --noEmit",
+    "test": "node --import ../../shared/tests/register-resolver.mjs --test tests/*.test.ts"
   },
   "devDependencies": {
     "@fmby/v2-shared": "workspace:*",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "react": "^19.1.0",
+    "@types/react": "^19.1.4",
+    "react-dom": "^19.1.0",
+    "@types/react-dom": "^19.1.4"
   }
 }
