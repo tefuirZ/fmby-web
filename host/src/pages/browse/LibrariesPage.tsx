@@ -1,10 +1,8 @@
-import { useDeferredValue, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { browseApi } from '@fmby/v2-shared/contracts/browse';
+import { useMemo, useState } from 'react';
 import { FeedbackState } from '@fmby/v2-shared/ui';
-import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { matchKeyword } from '@fmby/v2-shared/search/matchKeyword';
+import { useLibraryList } from '@fmby/v2-shared/viewmodels';
 import styles from './styles/shared.module.css';
 import cardStyles from './styles/cards.module.css';
 import libraryStyles from './styles/library.module.css';
@@ -13,14 +11,11 @@ import { LibraryShowcaseCard } from './components';
 export function LibrariesPage() {
   const [keyword, setKeyword] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const deferredKeyword = useDeferredValue(keyword.trim());
+  const deferredKeyword = useMemo(() => keyword.trim(), [keyword]);
 
-  const librariesQuery = useQuery({
-    queryKey: queryKeys.browse.libraries(),
-    queryFn: () => browseApi.getLibraries(),
-  });
-  const libraries = librariesQuery.data ?? [];
-  const typeOptions = ['all', ...new Set(libraries.map((item) => item.typeLabel))];
+  // WEB-B1：取数与派生上移至 viewmodel；页面只消费 { data, state, actions, error }。
+  const { data, state, error, actions } = useLibraryList({ keyword, typeFilter });
+  const { libraries, typeOptions, totalItems, typeCount, latestLibrary } = data;
   const filteredLibraries = useMemo(() => {
     return libraries.filter((library) => {
       const matchesKeyword = matchKeyword(
@@ -33,18 +28,13 @@ export function LibrariesPage() {
       return matchesKeyword && matchesType;
     });
   }, [deferredKeyword, libraries, typeFilter]);
-  const totalItems = libraries.reduce((sum, library) => sum + library.itemCount, 0);
-  const typeCount = new Set(libraries.map((library) => library.typeLabel)).size;
-  const latestLibrary = [...libraries]
-    .filter((library) => Boolean(library.updatedAt))
-    .sort((left, right) => new Date(right.updatedAt ?? 0).getTime() - new Date(left.updatedAt ?? 0).getTime())[0];
   const activeFilterCount = Number(Boolean(deferredKeyword)) + Number(typeFilter !== 'all');
   const clearFilters = () => {
     setKeyword('');
     setTypeFilter('all');
   };
 
-  if (librariesQuery.isPending) {
+  if (state === 'loading') {
     return (
       <FeedbackState
         variant="loading"
@@ -54,14 +44,14 @@ export function LibrariesPage() {
     );
   }
 
-  if (librariesQuery.isError) {
+  if (state === 'error' || state === 'forbidden') {
     return (
       <FeedbackState
         variant="error"
-        title="媒体库加载失败"
-        description={getErrorMessage(librariesQuery.error)}
+        title={state === 'forbidden' ? '没有访问媒体库的权限' : '媒体库加载失败'}
+        description={getErrorMessage(error)}
         action={
-          <button className={styles.primaryButton} type="button" onClick={() => librariesQuery.refetch()}>
+          <button className={styles.primaryButton} type="button" onClick={actions.refresh}>
             重试
           </button>
         }
@@ -137,7 +127,7 @@ export function LibrariesPage() {
                 清空筛选
               </button>
             ) : null}
-            <button className={styles.secondaryButton} type="button" onClick={() => librariesQuery.refetch()}>
+            <button className={styles.secondaryButton} type="button" onClick={actions.refresh}>
               刷新
             </button>
           </div>

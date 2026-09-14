@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { historyApi } from '@fmby/v2-shared/contracts/browse/history';
 import { FeedbackState } from '@fmby/v2-shared/ui';
-import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { useHistory, type HistoryTimeRange } from '@fmby/v2-shared/viewmodels';
 import styles from './styles/shared.module.css';
 import cardStyles from './styles/cards.module.css';
 import {
@@ -14,19 +12,15 @@ import {
   WideMediaCard,
 } from './components';
 
-type TimeRange = 'all' | '7d' | '30d' | '365d';
-
 export function HistoryPage() {
   const [typeFilter, setTypeFilter] = useState('all');
-  const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const [timeRange, setTimeRange] = useState<HistoryTimeRange>('30d');
   const [stateFilter, setStateFilter] = useState<'all' | 'unfinished' | 'completed'>('all');
 
-  const historyQuery = useQuery({
-    queryKey: queryKeys.history.overview(),
-    queryFn: () => historyApi.getOverview(),
-  });
+  // WEB-B1：取数与本地筛选上移至 viewmodel；页面只消费 { data, state, actions, error }。
+  const { data, state, error, actions } = useHistory({ typeFilter, stateFilter, timeRange });
 
-  if (historyQuery.isPending) {
+  if (state === 'loading') {
     return (
       <FeedbackState
         variant="loading"
@@ -36,14 +30,14 @@ export function HistoryPage() {
     );
   }
 
-  if (historyQuery.isError) {
+  if (state === 'error' || state === 'forbidden') {
     return (
       <FeedbackState
         variant="error"
-        title="历史记录加载失败"
-        description={getErrorMessage(historyQuery.error)}
+        title={state === 'forbidden' ? '没有访问播放历史的权限' : '历史记录加载失败'}
+        description={getErrorMessage(error)}
         action={
-          <button className={styles.primaryButton} type="button" onClick={() => historyQuery.refetch()}>
+          <button className={styles.primaryButton} type="button" onClick={actions.retry}>
             重试
           </button>
         }
@@ -51,60 +45,10 @@ export function HistoryPage() {
     );
   }
 
-  const data = historyQuery.data;
-  const allItems = [...data.continueWatching, ...data.recentlyPlayed, ...data.completed];
+  const { continueWatching, recentlyPlayed, completed, typeOptions } = data;
+  const allItems = [...continueWatching, ...recentlyPlayed, ...completed];
 
-  const typeOptions = ['all', ...new Set(allItems.map((item) => item.kind))];
-
-  const filterItems = <T extends { kind: string; progress?: { completed: boolean }; lastPlayedAt?: string; playedAt?: string; completedAt?: string }>(
-    items: T[],
-  ) =>
-    items.filter((item) => {
-      if (typeFilter !== 'all' && item.kind !== typeFilter) {
-        return false;
-      }
-
-      if (stateFilter === 'unfinished' && item.progress?.completed) {
-        return false;
-      }
-
-      if (stateFilter === 'completed' && !item.progress?.completed) {
-        return false;
-      }
-
-      if (timeRange === 'all') {
-        return true;
-      }
-
-      const target =
-        item.completedAt ?? item.playedAt ?? item.lastPlayedAt;
-      if (!target) {
-        return true;
-      }
-
-      const time = new Date(target).getTime();
-      if (Number.isNaN(time)) {
-        return true;
-      }
-
-      const thresholds: Record<Exclude<TimeRange, 'all'>, number> = {
-        '7d': 7,
-        '30d': 30,
-        '365d': 365,
-      };
-
-      return Date.now() - time <= thresholds[timeRange] * 24 * 60 * 60 * 1000;
-    });
-
-  const continueWatching = filterItems(data.continueWatching);
-  const recentlyPlayed = filterItems(data.recentlyPlayed);
-  const completed = filterItems(data.completed);
-
-  if (
-    data.continueWatching.length === 0 &&
-    data.recentlyPlayed.length === 0 &&
-    data.completed.length === 0
-  ) {
+  if (!data.hasAny) {
     return (
       <FeedbackState
         variant="empty"
@@ -126,7 +70,7 @@ export function HistoryPage() {
         description="优先帮你找到刚看过的、没看完的和值得继续看的内容。"
         meta={<span className={styles.metaText}>共整理出 {allItems.length} 条记录</span>}
         actions={
-          <button className={styles.secondaryButton} type="button" onClick={() => historyQuery.refetch()}>
+          <button className={styles.secondaryButton} type="button" onClick={actions.refresh}>
             刷新
           </button>
         }
@@ -151,7 +95,7 @@ export function HistoryPage() {
                 </option>
               ))}
             </select>
-            <select className={styles.select} value={timeRange} onChange={(event) => setTimeRange(event.target.value as TimeRange)}>
+            <select className={styles.select} value={timeRange} onChange={(event) => setTimeRange(event.target.value as HistoryTimeRange)}>
               <option value="all">全部时间</option>
               <option value="7d">最近 7 天</option>
               <option value="30d">最近 30 天</option>

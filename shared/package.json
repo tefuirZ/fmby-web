@@ -1,6 +1,6 @@
 {
   "name": "@fmby/v2-shared",
-  "version": "0.1.107",
+  "version": "0.1.108",
   "private": true,
   "type": "module",
   "description": "FMBY v2 前端共享层（唯一）：contracts(DTO+mapper) / api client / query keys / 错误模型 / Asia-Shanghai 时间 / 主题协议 / UI 基座。见 docs/09-webui.md §2。",
@@ -20,6 +20,8 @@
     "./theme": "./src/theme/index.ts",
     "./ui": "./src/ui/index.ts",
     "./ui/*": "./src/ui/*",
+    "./viewmodels": "./src/viewmodels/index.ts",
+    "./viewmodels/*": "./src/viewmodels/*",
     "./forms": "./src/forms/index.ts",
     "./hooks": "./src/hooks/index.ts",
     "./hooks/*": "./src/hooks/*",
@@ -29,7 +31,8 @@
     "./types": "./src/types.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p . --noEmit"
+    "typecheck": "tsc -p . --noEmit",
+    "test": "node --import ./tests/register-resolver.mjs --test tests/*.test.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

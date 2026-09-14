@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   ArrowLeft,
@@ -16,13 +15,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { itemApi } from '@fmby/v2-shared/contracts/browse/item';
-import { playbackApi } from '@fmby/v2-shared/contracts/playback';
-import { settingsApi } from '@fmby/v2-shared/contracts/settings';
 import { VideoPlayer, type EpisodeNavigationControls } from '@/features/player';
 import { HoverScrollArea } from '@fmby/v2-shared/ui';
-import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { usePlaybackSession } from '@fmby/v2-shared/viewmodels';
 import styles from './PlayPage.module.css';
 import { ExternalPlayerBar } from './play/ExternalPlayerBar';
 import {
@@ -59,91 +55,38 @@ export function PlayPage() {
     });
   }, []);
 
-  const sessionQuery = useQuery({
-    queryKey: queryKeys.playback.info(itemId ?? ''),
-    queryFn: () => playbackApi.createSession(itemId ?? ''),
-    enabled: Boolean(itemId),
-    retry: false,
-  });
+  // WEB-B1：播放会话、详情、剧集链、播放设置取数全部上移至 viewmodel。
+  const playback = usePlaybackSession({ itemId });
+  const {
+    session,
+    detail,
+    season,
+    series,
+    seriesEpisodes,
+    isEpisodeView,
+    isResolvingSeriesRoot,
+    isSeriesEpisodesLoading,
+    isSessionReady,
+    isDetailFetching,
+    autoplayNextEpisode,
+  } = playback.data;
+  const seriesDetail = series;
 
-  const itemQuery = useQuery({
-    queryKey: queryKeys.playback.item(itemId ?? ''),
-    queryFn: () => itemApi.getDetail(itemId ?? ''),
-    enabled: Boolean(itemId) && sessionQuery.isSuccess,
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const seasonQuery = useQuery({
-    queryKey: queryKeys.playback.season(itemQuery.data?.season?.id),
-    queryFn: () => itemApi.getDetail(itemQuery.data?.season?.id ?? ''),
-    enabled:
-      itemQuery.data?.kind === 'episode' &&
-      Boolean(itemQuery.data?.season?.id) &&
-      !itemQuery.data?.series?.id,
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const seriesRootId = itemQuery.data?.series?.id || seasonQuery.data?.series?.id;
-
-  const seriesQuery = useQuery({
-    queryKey: queryKeys.playback.series(seriesRootId),
-    queryFn: () => itemApi.getDetail(seriesRootId ?? ''),
-    enabled: itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const seriesEpisodesQuery = useQuery({
-    queryKey: queryKeys.playback.seriesEpisodes(seriesRootId),
-    queryFn: () => itemApi.getDescendants(seriesRootId ?? '', 2000),
-    enabled: itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const playbackSettingsQuery = useQuery({
-    queryKey: queryKeys.settings.playback(),
-    queryFn: () => settingsApi.getUserPlayback(),
-    enabled: sessionQuery.isSuccess,
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const session = sessionQuery.data;
-  const detail = itemQuery.data;
-  const seriesDetail = seriesQuery.data;
-  const isEpisodeView = detail?.kind === 'episode' || itemId?.startsWith('episode-');
-  const isResolvingSeriesRoot =
-    isEpisodeView && Boolean(detail?.season?.id) && !seriesRootId && seasonQuery.isPending;
-  const isSeriesEpisodesLoading =
-    isEpisodeView &&
-    Boolean(seriesRootId) &&
-    (seriesEpisodesQuery.isPending || seriesEpisodesQuery.isFetching);
   const episodeSeriesTitle =
     seriesDetail?.title ??
-    seasonQuery.data?.series?.name ??
+    season?.series?.name ??
     detail?.series?.name ??
     '当前剧集';
   const portableStreamUrl =
     session?.externalStreamUrl ??
     (session?.streamUrl ? buildPortablePlaybackUrl(session.streamUrl) : undefined);
   const playerPoster = buildPlayerPoster(detail, seriesDetail);
-  const seriesEpisodes = useMemo(
-    () =>
-      sortEpisodeCards(
-        (seriesEpisodesQuery.data ?? []).filter((entry) => entry.kind === 'episode'),
-      ),
-    [seriesEpisodesQuery.data],
+  const episodeList = useMemo(
+    () => sortEpisodeCards(seriesEpisodes.filter((entry) => entry.kind === 'episode')),
+    [seriesEpisodes],
   );
   const episodeNeighbors = useMemo(() => {
-    const resolved = resolveEpisodeNeighbors(itemId, seriesEpisodes);
+    const resolved = resolveEpisodeNeighbors(itemId, episodeList);
     if (!isEpisodeView) {
       return resolved;
     }
@@ -197,11 +140,10 @@ export function PlayPage() {
       },
     };
   }, [episodeNeighbors.next, episodeNeighbors.previous, isEpisodeView, navigate]);
-  const hasSupportingDetailError = allowDetailQuery && itemQuery.isError;
+  const hasSupportingDetailError =
+    allowDetailQuery && (playback.state === 'error' || playback.state === 'forbidden');
   const isSupportingDetailLoading =
-    sessionQuery.isSuccess &&
-    !hasSupportingDetailError &&
-    (!allowDetailQuery || itemQuery.isPending || itemQuery.isFetching);
+    isSessionReady && !hasSupportingDetailError && (!allowDetailQuery || isDetailFetching);
   const {
     resumePosition,
     handleTimeUpdate,
@@ -226,7 +168,7 @@ export function PlayPage() {
   }, [isEpisodeView, itemId, requestSidebarQuery]);
 
   useEffect(() => {
-    if (!itemId || !sessionQuery.isSuccess || allowDetailQuery) {
+    if (!itemId || !isSessionReady || allowDetailQuery) {
       return;
     }
 
@@ -235,7 +177,7 @@ export function PlayPage() {
         setAllowDetailQuery(true);
       });
     });
-  }, [allowDetailQuery, itemId, sessionQuery.isSuccess]);
+  }, [allowDetailQuery, itemId, isSessionReady]);
 
   const handleError = useCallback(() => {
     // 播放器引擎自带错误 UI，这里不额外弹层
@@ -245,8 +187,6 @@ export function PlayPage() {
     (currentTime: number, duration: number) => {
       handleEnded(currentTime, duration);
       const next = episodeNeighbors.next;
-      const autoplayNextEpisode =
-        playbackSettingsQuery.data?.autoplayNextEpisode ?? true;
       if (autoplayNextEpisode && next) {
         navigate(buildPlaybackPath(next));
       }
@@ -254,7 +194,7 @@ export function PlayPage() {
       episodeNeighbors.next,
       handleEnded,
       navigate,
-      playbackSettingsQuery.data?.autoplayNextEpisode,
+      autoplayNextEpisode,
     ],
   );
 
@@ -318,7 +258,7 @@ export function PlayPage() {
     );
   }
 
-  if (sessionQuery.isPending) {
+  if (playback.state === 'loading') {
     return (
       <div className={styles.loadingPanel}>
         <div className={styles.panelCard}>
@@ -329,17 +269,17 @@ export function PlayPage() {
     );
   }
 
-  if (sessionQuery.isError) {
+  if (playback.state === 'error' || playback.state === 'forbidden') {
     return (
       <div className={styles.errorPanel}>
         <div className={styles.panelCard}>
-          <h1>暂时无法开始播放</h1>
-          <p className={styles.metaText}>{getErrorMessage(sessionQuery.error)}</p>
+          <h1>{playback.state === 'forbidden' ? '没有播放权限' : '暂时无法开始播放'}</h1>
+          <p className={styles.metaText}>{getErrorMessage(playback.error)}</p>
           <div className={styles.panelActions}>
             <button
               className={styles.primaryButton}
               type="button"
-              onClick={() => sessionQuery.refetch()}
+              onClick={playback.actions.retry}
             >
               重试
             </button>
@@ -549,13 +489,9 @@ export function PlayPage() {
                         />
                       ) : isResolvingSeriesRoot || isSeriesEpisodesLoading ? (
                         <div className={styles.sidebarEmpty}>正在加载本剧剧集...</div>
-                      ) : !seriesRootId ? (
+                      ) : !series?.id ? (
                         <div className={styles.sidebarEmpty}>
                           暂时无法定位当前剧集所属剧集，请稍后刷新重试。
-                        </div>
-                      ) : seriesEpisodesQuery.isError ? (
-                        <div className={styles.sidebarEmpty}>
-                          剧集列表加载失败：{getErrorMessage(seriesEpisodesQuery.error)}
                         </div>
                       ) : seriesEpisodes.length > 0 ? (
                         <HoverScrollArea
@@ -680,13 +616,13 @@ export function PlayPage() {
                     内容信息补齐失败
                   </strong>
                   <p className={styles.playbackNoticeText}>
-                    {getErrorMessage(itemQuery.error)}
+                    {getErrorMessage(playback.error)}
                   </p>
                   <div className={styles.externalActions}>
                     <button
                       className={styles.secondaryButton}
                       type="button"
-                      onClick={() => itemQuery.refetch()}
+                      onClick={playback.actions.retry}
                     >
                       重试详情信息
                     </button>
