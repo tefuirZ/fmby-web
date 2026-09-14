@@ -1,20 +1,25 @@
-// node:test 模块别名 loader（仅测试基建，不参与构建产物）。
-// 项目未引入 vitest/jest，node 原生跑 TS 单测时需要把
-// `@fmby/v2-shared/*` 包别名映射到 monorepo 源码，并为
-// moduleResolution: bundler 风格的无扩展名相对导入补全 `.ts`。
+// host 模块别名 loader（仅测试基建）。在 shared loader 基础上追加 host
+// `@/*` → src/* 解析（TS 无扩展名补全 + 目录 index 回退）。
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const loaderDir = fileURLToPath(new URL('.', import.meta.url));
-const sharedSrcUrl = pathToFileURL(`${loaderDir}../src/`).href;
+const hostSrcUrl = pathToFileURL(`${loaderDir}../src/`).href;
+const sharedSrcUrl = pathToFileURL(`${loaderDir}../../shared/src/`).href;
 
 export async function resolve(specifier, context, nextResolve) {
+  if (specifier.startsWith('@/')) {
+    const rest = specifier.slice(2);
+    try {
+      return await nextResolve(`${hostSrcUrl}${rest}.ts`, context);
+    } catch {
+      return nextResolve(`${hostSrcUrl}${rest}/index.ts`, context);
+    }
+  }
   if (specifier === '@fmby/v2-shared') {
     return nextResolve(`${sharedSrcUrl}index.ts`, context);
   }
   if (specifier.startsWith('@fmby/v2-shared/')) {
     const rest = specifier.slice('@fmby/v2-shared/'.length);
-    // 子路径可能是目录（theme/ browse/ 等以 index.ts 形态导出）：
-    // 先试文件形态，解析失败回退目录 index.ts。
     try {
       return await nextResolve(`${sharedSrcUrl}${rest}.ts`, context);
     } catch {
@@ -24,8 +29,7 @@ export async function resolve(specifier, context, nextResolve) {
   if (specifier.startsWith('.')) {
     try {
       return await nextResolve(specifier, context);
-    } catch (error) {
-      // TS 源内 './error' 这类无扩展名导入，node ESM 解析失败时补 .ts 重试
+    } catch {
       return nextResolve(`${specifier}.ts`, context);
     }
   }
