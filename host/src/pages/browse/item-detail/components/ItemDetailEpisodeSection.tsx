@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { UseQueryResult } from '@tanstack/react-query';
 import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
+import type { ItemDetailQueryLike } from '../hooks/useItemDetailQueries';
 import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import { HoverScrollArea, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -15,7 +15,7 @@ interface ItemDetailEpisodeSectionProps {
   episodeOptions: MediaCardSummary[];
   selectedSeasonId: string | undefined;
   setSelectedSeasonId: Dispatch<SetStateAction<string | undefined>>;
-  selectedSeasonQuery: UseQueryResult<ItemDetailResponse | undefined>;
+  selectedSeasonQuery: ItemDetailQueryLike;
 }
 
 export function ItemDetailEpisodeSection({

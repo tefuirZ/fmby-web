@@ -20,6 +20,8 @@
     "./theme": "./src/theme/index.ts",
     "./ui": "./src/ui/index.ts",
     "./ui/*": "./src/ui/*",
+    "./viewmodels": "./src/viewmodels/index.ts",
+    "./viewmodels/*": "./src/viewmodels/*",
     "./forms": "./src/forms/index.ts",
     "./hooks": "./src/hooks/index.ts",
     "./hooks/*": "./src/hooks/*",
@@ -29,7 +31,8 @@
     "./types": "./src/types.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p . --noEmit"
+    "typecheck": "tsc -p . --noEmit",
+    "test": "node --import ./tests/register-resolver.mjs --test tests/*.test.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
