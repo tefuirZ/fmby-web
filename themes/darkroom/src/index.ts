@@ -13,6 +13,7 @@ import type {
   ThemeManifest,
 } from '@fmby/v2-shared/theme';
 import { LibrarySkin } from './skins/LibrarySkin';
+import { ItemSkin } from './skins/ItemSkin';
 import manifestRaw from '../theme.manifest.json';
 
 const manifest = manifestRaw as unknown as ThemeManifest;
@@ -27,6 +28,7 @@ const theme: ThemeEntryModule = {
   manifest,
   domainSkins: {
     'browse.library': LibrarySkin,
+    'browse.item': ItemSkin,
   },
   capabilities,
 };

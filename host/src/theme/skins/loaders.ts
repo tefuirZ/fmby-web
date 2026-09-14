@@ -12,7 +12,7 @@
 
 import { createContext, createElement, useContext, type ReactNode } from 'react';
 
-import { useLibraryDetail } from '@fmby/v2-shared/viewmodels';
+import { useItemDetail, useLibraryDetail } from '@fmby/v2-shared/viewmodels';
 import type { LayoutHint, ViewState } from '@fmby/v2-shared/viewmodels';
 import type { SkinProps } from '@fmby/v2-shared/theme';
 
@@ -74,6 +74,33 @@ function BrowseLibrarySkinDataProvider({
 }
 
 /**
+ * browse.item 装配组件：`useItemDetail` viewmodel 桥（WEB-C3 第二域）。
+ */
+function BrowseItemSkinDataProvider({
+  params,
+  children,
+}: DomainSkinParamsProps & { children: ReactNode }) {
+  const itemId = params.itemId ?? '';
+  const vm = useItemDetail({
+    itemId: itemId || undefined,
+    selectedSeasonId: undefined,
+  });
+
+  const value: DomainSkinData = {
+    data: vm.data,
+    state: vm.state,
+    error: vm.error,
+    layout: vm.layout,
+    actions: {
+      retry: vm.actions.retry,
+      refresh: vm.actions.refresh,
+    },
+  };
+
+  return createElement(DomainSkinDataContext.Provider, { value }, children);
+}
+
+/**
  * 域 → 数据源装配组件注册表（键与 shared PageDomain 值一一对应）。
  *
  * 未注册（undefined）的 domain：即使主题声明了 skin 也拿不到 data ——
@@ -86,7 +113,7 @@ export const DOMAIN_SKIN_DATA_REGISTRY: {
 } = {
   'browse.home': undefined,
   'browse.library': BrowseLibrarySkinDataProvider,
-  'browse.item': undefined,
+  'browse.item': BrowseItemSkinDataProvider,
   'browse.play': undefined,
   manage: undefined,
   settings: undefined,

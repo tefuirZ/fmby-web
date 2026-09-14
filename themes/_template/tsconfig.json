@@ -20,5 +20,5 @@
       "@fmby/v2-shared/*": ["../../shared/src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../../shared/src/global.d.ts"]
 }
