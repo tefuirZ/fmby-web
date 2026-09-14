@@ -10,9 +10,7 @@
  */
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -26,22 +24,11 @@ import {
   type ThemeRegistration,
 } from '@fmby/v2-shared/theme';
 import { logger } from '@fmby/v2-shared/utils/logger';
+import { ThemeContext, useTheme, type ThemeContextValue, type ThemeStatus } from './themeContext';
 import { DEFAULT_THEME_ID, THEME_REGISTRY } from './registry';
 
 /** 持久化键。theme_mode 是站点级管理决策（docs/07）：后端 /api/settings 就绪后改为服务端下发，键保留做离线兜底。 */
 const THEME_STORAGE_KEY = 'fmby:theme';
-
-type ThemeStatus = 'default' | 'activating' | 'active' | 'error';
-
-interface ThemeContextValue {
-  activeThemeId: string | null;
-  status: ThemeStatus;
-  availableThemeIds: string[];
-  /** 切换主题：tokens 热替换；同 id 幂等；失败回落当前主题，不重载页面。 */
-  switchTheme: (id: string) => Promise<void>;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readPersistedThemeId(): string {
   try {
@@ -196,9 +183,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       activeThemeId,
       status,
       availableThemeIds: Object.keys(THEME_REGISTRY),
+      entry,
       switchTheme,
     }),
-    [activeThemeId, status, switchTheme],
+    [activeThemeId, status, entry, switchTheme],
   );
 
   const Skin = entry?.Skin;
@@ -212,10 +200,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useTheme(): ThemeContextValue {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme 必须在 ThemeProvider 内使用');
-  }
-  return context;
-}
+export { useTheme };
