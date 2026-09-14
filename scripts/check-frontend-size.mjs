@@ -179,6 +179,91 @@ function runSizeCheck() {
     }
   }
 
+  // 5. WEB-PERF-01 ①：主题 chunk 隔离——host 首屏闭包**不得**包含任何主题
+  //    动态入口（vite manifest 的 isDynamicEntry 且 src 指向 apps/themes/）。
+  //    与 [3] 的"文件名启发式"互补：此处按 manifest 归属精确判定，防止主题
+  //    代码因 chunk 改名/合并而悄悄进入主包。
+  console.log('\n[5] Verifying theme chunks are isolated async chunks (not in host bundle)...');
+  const themeEntryFiles = new Set();
+  for (const [key, item] of Object.entries(manifest)) {
+    const isThemeSource = key.includes('themes/') || key.includes('themes\\');
+    if (isThemeSource && item.file && item.file.endsWith('.js')) {
+      themeEntryFiles.add(item.file);
+    }
+  }
+  if (themeEntryFiles.size === 0) {
+    console.log('  - 未发现主题 JS 动态入口（纯 CSS 主题）→ 跳过隔离断言');
+  } else {
+    for (const relFile of themeEntryFiles) {
+      const inClosure = initialClosureFiles.has(relFile);
+      const isDynamic = Object.values(manifest).some(
+        (item) => item.file === relFile && item.isDynamicEntry,
+      );
+      if (inClosure) {
+        console.error(
+          `  [FAIL] 主题 chunk 被首屏闭包引用（未隔离）: ${relFile}`,
+        );
+        hasFailure = true;
+      } else if (!isDynamic) {
+        console.error(
+          `  [FAIL] 主题 chunk 不是独立 async chunk（isDynamicEntry=false）: ${relFile}`,
+        );
+        hasFailure = true;
+      } else {
+        console.log(`  [PASS] 主题 chunk 为独立 async chunk 且不进首屏: ${relFile}`);
+      }
+    }
+    if (!hasFailure) {
+      console.log('  [PASS] All theme chunks isolated from host initial bundle.');
+    }
+  }
+
+  // 6. WEB-PERF-01 ②：首屏不加载主题——dist/index.html 直接引用的脚本
+  //    （<script src> / <link rel=modulepreload>）不得含 LibrarySkin / 主题代码。
+  console.log('\n[6] Verifying index.html direct scripts contain no theme/skin code...');
+  const indexPath = path.join(HOST_DIST, 'index.html');
+  if (!fs.existsSync(indexPath)) {
+    console.error(`  [FAIL] dist/index.html not found: ${indexPath}`);
+    hasFailure = true;
+  } else {
+    const html = fs.readFileSync(indexPath, 'utf-8');
+    // 收集 index.html 直接引用的脚本资源
+    const referenced = new Set();
+    for (const m of html.matchAll(/<script[^>]+src=["']([^"']+)["']/g)) referenced.add(m[1]);
+    for (const m of html.matchAll(/<link[^>]+rel=["']modulepreload["'][^>]+href=["']([^"']+)["']/g)) {
+      referenced.add(m[1]);
+    }
+    for (const m of html.matchAll(/href=["']([^"']+)["']/g)) {
+      if (/\.js$/.test(m[1])) referenced.add(m[1]);
+    }
+
+    console.log(`  - index.html 直接引用脚本 ${referenced.size} 个`);
+    let htmlClean = true;
+    for (const src of referenced) {
+      const rel = src.replace(/^\.?\//, '');
+      const full = path.join(HOST_DIST, rel);
+      if (!fs.existsSync(full)) continue;
+      const content = fs.readFileSync(full, 'utf-8');
+      // 主题/L3 skin **代码**标识（注意：不含主题 id 字符串——host registry
+      // 的 DEFAULT_THEME_ID / manifestUrl 等元数据本就属于主包，属合法引用）。
+      for (const marker of ['LibrarySkin', 'DomainSkin', 'SkinProps']) {
+        if (content.includes(marker)) {
+          console.error(`  [FAIL] 首屏脚本含主题/skin 代码: ${rel}（标识 ${marker}）`);
+          hasFailure = true;
+          htmlClean = false;
+        }
+      }
+      if (themeEntryFiles.has(rel)) {
+        console.error(`  [FAIL] 首屏脚本直接引用主题 chunk: ${rel}`);
+        hasFailure = true;
+        htmlClean = false;
+      }
+    }
+    if (htmlClean) {
+      console.log('  [PASS] 首屏直接引用脚本不含 LibrarySkin / 主题代码。');
+    }
+  }
+
   console.log('\n=============================================');
   if (hasFailure) {
     console.error('Frontend size check FAILED.');

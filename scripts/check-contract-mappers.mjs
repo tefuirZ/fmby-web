@@ -6,7 +6,7 @@
  * 前端合同对齐与 Mapper 门禁（docs/09-webui.md §2, §7 & docs/plans/tasks/gemini-frontend-002.md §3.4）：
  * 1. 契约覆盖度：auth / browse / playback / manage / settings / theme / assets 各域完备；
  * 2. 双件套契约：每个核心契约域均导出对应 domain mapper 或 mapping helper；
- * 3. raw DTO 零泄漏：host/src/pages/** 严禁直接引用 raw-types；
+ * 3. raw DTO 零泄漏：apps/host/src/pages/** 严禁直接引用 raw-types；
  * 4. 零自建 HTTP Client：页面域与主题域严禁自建 fetch/axios 实例。
  */
 
@@ -66,9 +66,9 @@ function checkDomainCoverage() {
     if (!fs.existsSync(domainPath)) {
       violations.push({
         rule: 'Missing Contract Domain',
-        file: `shared/src/contracts/${domain}`,
+        file: `apps/shared/src/contracts/${domain}`,
         line: 1,
-        reason: `Required domain '${domain}' missing from shared/src/contracts/`,
+        reason: `Required domain '${domain}' missing from apps/shared/src/contracts/`,
       });
     } else {
       console.log(`  [PASS] Domain '${domain}' present.`);
@@ -100,7 +100,7 @@ function checkMappersPresence() {
     if (!hasMapperOrTransform) {
       violations.push({
         rule: 'Missing Domain Mapper',
-        file: `shared/src/contracts/${domain}`,
+        file: `apps/shared/src/contracts/${domain}`,
         line: 1,
         reason: `Domain '${domain}' must provide raw DTO mapping functions or validation helpers.`,
       });
@@ -114,7 +114,7 @@ function checkMappersPresence() {
  * 3. 校验 raw DTO 零泄漏到页面
  */
 function checkRawDtoIsolation() {
-  console.log('\n[3] Verifying Raw DTO Zero-Leakage in host pages (host/src/pages/**)...');
+  console.log('\n[3] Verifying Raw DTO Zero-Leakage in host pages (apps/host/src/pages/**)...');
   const pageFiles = walkFiles(HOST_PAGES_DIR);
 
   for (const file of pageFiles) {
@@ -171,7 +171,7 @@ function checkNoAdhocFetch() {
           file: getRelativePath(file),
           line: lineNum,
           content: line.trim(),
-          reason: `Ad-hoc HTTP calls forbidden in pages/themes. All requests must go through shared API clients.`,
+          reason: `Ad-hoc HTTP calls forbidden in pages/themes. All requests must go through apps/shared API clients.`,
         });
       }
     });

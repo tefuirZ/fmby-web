@@ -4,14 +4,14 @@
  * scripts/check-frontend-dupes.mjs
  *
  * 前端重复实现与架构边界门禁（docs/09-webui.md §2, §3, §6.4 & docs/plans/tasks/zcode-frontend-001-gemini.md §5.3）：
- * 1. 主题纯度（Theme Purity）：themes/** 只允许 import @fmby/v2-shared/theme 与相对导入；
+ * 1. 主题纯度（Theme Purity）：apps/themes/** 只允许 import @fmby/v2-shared/theme 与相对导入；
  *    禁止引入 api client / query / contracts / errors / permission。
- * 2. raw DTO 不透页面：host/src/pages/** 禁止直接 import raw-types 或 contracts 下的底层 api/raw-types。
+ * 2. raw DTO 不透页面：apps/host/src/pages/** 禁止直接 import raw-types 或 contracts 下的底层 api/raw-types。
  * 3. 唯一实现（Single Source of Truth）：
- *    - Asia/Shanghai / Intl.DateTimeFormat 代码仅在 shared/src/time/**；
- *    - new Headers 封装仅在 shared/src/api/**；
- *    - query key 工厂定义仅在 shared/src/query/**；
- *    - 豁免 host/src/styles/defaults.css（host 默认形象，交接文档 §3.2）。
+ *    - Asia/Shanghai / Intl.DateTimeFormat 代码仅在 apps/shared/src/time/**；
+ *    - new Headers 封装仅在 apps/shared/src/api/**；
+ *    - query key 工厂定义仅在 apps/shared/src/query/**；
+ *    - 豁免 apps/host/src/styles/defaults.css（host 默认形象，交接文档 §3.2）。
  */
 
 import fs from 'node:fs';
@@ -62,10 +62,16 @@ function getRelativePath(fullPath) {
  * 1. 检查主题纯度
  */
 function checkThemePurity() {
-  console.log('[1] Checking Theme Purity (themes/**)...');
+  console.log('[1] Checking Theme Purity (apps/themes/**)...');
   const themeFiles = walkFiles(THEMES_DIR);
 
   for (const file of themeFiles) {
+    // WEB-C2：主题测试（tests/**，node:test 形态）不属于主题运行时字节，
+    // 纯度扫描豁免（体量红线另行由 check-theme-budget 承担）。
+    const relFile = getRelativePath(file);
+    if (relFile.includes('/tests/')) {
+      continue;
+    }
     const content = fs.readFileSync(file, 'utf-8');
     const lines = content.split('\n');
 
@@ -78,8 +84,15 @@ function checkThemePurity() {
         if (importSpecifier.startsWith('.')) {
           return;
         }
-        // 允许 @fmby/v2-shared/theme
-        if (importSpecifier === '@fmby/v2-shared/theme' || importSpecifier.startsWith('@fmby/v2-shared/theme/')) {
+        // ADR-001 §3 L3 授权面：shared/theme（契约）+ shared/ui（组件复用）+
+        // shared/viewmodels（视图模型类型）。主题仍禁 contracts/api-client/
+        // query keys（禁取数纪律由下方关键字扫描兜底）。
+        const L3_ALLOWED_SHARED = /^@fmby\/v2-shared\/(theme|ui|viewmodels)(\/.*)?$/;
+        if (L3_ALLOWED_SHARED.test(importSpecifier)) {
+          return;
+        }
+        // React 运行时（L3 皮肤是 React 组件形态；禁取数由关键字扫描兜底）。
+        if (importSpecifier === 'react' || importSpecifier.startsWith('react/')) {
           return;
         }
 
@@ -111,7 +124,7 @@ function checkThemePurity() {
  * 2. 检查 raw DTO 不透页面
  */
 function checkRawDtoInPages() {
-  console.log('[2] Checking Raw DTO Boundary (host/src/pages/**)...');
+  console.log('[2] Checking Raw DTO Boundary (apps/host/src/pages/**)...');
   const pageFiles = walkFiles(HOST_PAGES_DIR);
 
   for (const file of pageFiles) {
@@ -161,7 +174,7 @@ function checkSingleImplementations() {
     lines.forEach((line, lineIdx) => {
       const lineNum = lineIdx + 1;
 
-      // 3.1 时区 Intl.DateTimeFormat 实例化只允许在 shared/src/time/**
+      // 3.1 时区 Intl.DateTimeFormat 实例化只允许在 apps/shared/src/time/**
       if (/new\s+Intl\.DateTimeFormat\(/.test(line)) {
         if (!relPath.startsWith('shared/src/time/')) {
           violations.push({
@@ -174,7 +187,7 @@ function checkSingleImplementations() {
         }
       }
 
-      // 3.2 timeZone: 'Asia/Shanghai' 配置只允许在 shared/src/time/**
+      // 3.2 timeZone: 'Asia/Shanghai' 配置只允许在 apps/shared/src/time/**
       if (/timeZone:\s*['"]Asia\/Shanghai['"]/.test(line)) {
         if (!relPath.startsWith('shared/src/time/')) {
           violations.push({
@@ -187,7 +200,7 @@ function checkSingleImplementations() {
         }
       }
 
-      // 3.3 new Headers 构造只允许在 shared/src/api/**
+      // 3.3 new Headers 构造只允许在 apps/shared/src/api/**
       if (/new\s+Headers\(/.test(line)) {
         if (!relPath.startsWith('shared/src/api/')) {
           violations.push({
@@ -200,7 +213,7 @@ function checkSingleImplementations() {
         }
       }
 
-      // 3.4 queryKeys 工厂定义只允许在 shared/src/query/**
+      // 3.4 queryKeys 工厂定义只允许在 apps/shared/src/query/**
       if (/export\s+const\s+queryKeys\s*=/.test(line)) {
         if (!relPath.startsWith('shared/src/query/')) {
           violations.push({
