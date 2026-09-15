@@ -67,6 +67,34 @@ test('ready 态：重排布局断言（玻璃面板库头 + 类型分组条 + �
   assert.match(html, /流浪地球2/);
 });
 
+test('导航（BUG-SKIN-NAV-01）：host 注入 openItem/itemHref → 卡片为真实 <a href> 锚点', () => {
+  const html = renderSkin({
+    state: 'ready',
+    data: READY_DATA,
+    actions: { openItem: () => {}, itemHref: (id: string) => `/item/${id}` },
+  });
+  // 每个条目一张可导航锚点，指向 host 构造的 href（主题不自建路由）。
+  assert.match(html, /<a[^>]*data-darkroom="card-open"[^>]*href="\/item\/i1"/);
+  assert.match(html, /<a[^>]*href="\/item\/i2"/);
+  assert.equal((html.match(/<a[^>]*data-darkroom="card-open"/g) ?? []).length, 2, '两条目 → 两锚点');
+});
+
+test('导航回退：无 openItem（旧 host）→ 静态展示，不崩不伪造链接', () => {
+  const html = renderSkin({ state: 'ready', data: READY_DATA });
+  assert.doesNotMatch(html, /<a[^>]*data-darkroom="card-open"/, '无注入时不谎报可点');
+  assert.match(html, /data-darkroom="card-static"/, '退化为静态展示');
+});
+
+test('导航回退：仅 openItem 无 itemHref → <button> 锚点（保持可点语义）', () => {
+  const html = renderSkin({
+    state: 'ready',
+    data: READY_DATA,
+    actions: { openItem: () => {} },
+  });
+  assert.match(html, /<button[^>]*data-darkroom="card-open"/);
+  assert.doesNotMatch(html, /<a[^>]*data-darkroom="card-open"/, '无 href 构造器时不伪造链接');
+});
+
 test('移动端分支：layout hint 由主题消费（卡墙容器样式钩子恒在，窄屏单列由 CSS 承担）', () => {
   // viewmodel layout hint 不会直接传给 skin（SkinProps 契约只有
   // data/state/actions/realtime）——主题的移动端分支 = CSS 媒体查询 +

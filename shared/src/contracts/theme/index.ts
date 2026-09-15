@@ -15,6 +15,7 @@ export {
   type ThemeNavItem,
   type SkinState,
   type SkinProps,
+  type SkinActions,
   type SkinRealtime,
 } from '../../theme';
 

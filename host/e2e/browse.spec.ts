@@ -36,26 +36,20 @@ test.describe('Browse Flow E2E', () => {
     await expect(page.getByText('星际穿越', { exact: true }).first()).toBeVisible();
   });
 
-  // ⚠️ 已知产品缺陷 PRODUCT-DEFECT-01（实测 A/B 证实，登记性质：回主代理立卡）。
-  //
-  // 默认主题 darkroom 的 `LibrarySkin` 把媒体库条目卡片渲染为 `<article>`
-  // （无 `<Link>` / `onClick`），用户**无法从媒体库进入条目**。对照 A/B 探针
-  // （同一 /libraries/1，登录态一致）：
+  // BUG-SKIN-NAV-01（已修复）：默认主题 darkroom 的 `LibrarySkin` 曾把媒体库
+  // 条目卡片渲染为裸 `<article>`（无 `<Link>` / `onClick`），用户**无法从媒体库
+  // 进入条目**。修复前 A/B 实测（同 /libraries/1，登录态一致）：
   //   - darkroom（默认主题，走 skin）：卡墙 6 张，`a[href^="/item/"]` = 0；
   //   - template（无 browse.library skin → 回落 host 默认页）：`a[href^="/item/"]` = 7。
-  // 即 host 默认页与主题回落路径均可导航，唯 darkroom skin 断链。
-  //
-  // 另注（契约面）：host 侧 `BrowseLibrarySkinDataProvider` 下发给 skin 的
-  // `actions` 只有 `refresh` / `loadMore`，未提供「打开条目」动作；skins 契约
-  // `SkinProps.actions` 也没有导航语义键——缺陷是双侧的（皮肤未渲染导航 +
-  // host 动作面未给导航入口）。
-  //
-  // 此处用 `test.fail()` 显式登记：「期望失败」→ 全绿；bug 修复后该用例会因
-  // 「意外通过」而红，自动提醒移除本标注。期望行为：卡片可导航到 /item/101。
-  test('从媒体库进入条目（已知缺陷登记：darkroom skin 卡片不可导航）', async ({ page }) => {
-    test.fail(true, 'PRODUCT-DEFECT-01: darkroom LibrarySkin 卡片不可导航（应为 /item/101 链接）');
+  // 修复（双侧）：① `SkinProps.actions` 增 `openItem(id)` / `itemHref(id)` 语义键
+  //（MINOR 兼容，host 注入）；② host loaders 注入 `navigate(\`/item/${id}\`)` +
+  // href 构造器；③ darkroom 两皮肤卡片接该回调渲染真实 `<a href>`（主题不自建
+  // 路由字面量，保持禁取数/禁路由纯度）。
+  test('从媒体库进入条目（darkroom skin 卡片导航）', async ({ page }) => {
     await page.goto('/libraries/1');
     await expect(page.getByText('星际穿越', { exact: true }).first()).toBeVisible();
+    // 卡墙必须有真实条目锚点（BUG-SKIN-NAV-01 回归锁定：≥ 1）。
+    await expect(page.locator('a[href^="/item/"]')).not.toHaveCount(0);
     const link = page.getByRole('link', { name: /星际穿越/ }).first();
     await expect(link).toBeVisible({ timeout: 10_000 });
     await link.click();

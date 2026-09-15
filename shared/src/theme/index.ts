@@ -76,10 +76,43 @@ export interface SkinProps {
   /** 数据就绪态（四态全覆盖 + ready） */
   state: SkinState;
   /** 动作回调（语义键名 → host 注入的处理函数；主题不得自建副作用） */
-  actions: Record<string, (...args: never[]) => void>;
+  actions: SkinActions;
   /** 实时状态源（WEB-C1 ④：接口先行，当前 host 轮询兑底） */
   realtime: SkinRealtime;
 }
+
+/**
+ * 皮肤动作面（`SkinProps.actions`）。
+ *
+ * 基座是开放式语义键表（`Record<string, (...args: never[]) => void>`）——
+ * 各域 viewmodel 的动作经 host 桥接注入，主题按需取用；host 未注入的键为
+ * `undefined`，主题必须以 `?.` / `typeof === 'function'` 守卫（向后兼容）。
+ *
+ * BUG-SKIN-NAV-01：显式登记**跨域通用导航语义键**——`openItem(id)`。此前
+ * 主题只有 `refresh`/`loadMore`/`retry`，即使想渲染导航也无入口，导致
+ * darkroom 媒体库卡墙成为不可导航的裸 `<article>`（核心链路断）。此键为
+ * MINOR 兼容新增：不改变既有键，旧 skin 忽略它不崩。
+ *
+ * `itemHref(id)` 是 `openItem` 的**必配孪生键**：`openItem` 是 void 导航
+ * 回调，无法产出 `href`；而可访问性（`role=link`）与 E2E 验收
+ * （`a[href^="/item/"]` ≥ 1）要求真实锚点。host 是唯一持有路由形态的一侧，
+ * 故 href 也由 host 注入——主题不拼接路由字面量（保持禁路由纯度）。
+ */
+export type SkinActions = Record<string, (...args: never[]) => void> & {
+  /**
+   * 打开条目详情（host 注入 `navigate(\`/item/${id}\`)`；主题不得自建路由）。
+   *
+   * 主题契约：仅在 `typeof actions.openItem === 'function'` 时接该回调，
+   * 保持「皮肤不碰路由」纯度——路由形态由 host 决定。
+   */
+  openItem?: (id: string) => void;
+  /**
+   * 条目详情 href 构造器（与 `openItem` 同源注入）。主题据此渲染真实
+   * `<a href>`（可访问性 + 新窗口/中键/右键可用）；点击仍走 `openItem`
+   * 做 SPA 导航（preventDefault）。缺少时主题退化为 `role=link` 锚点。
+   */
+  itemHref?: (id: string) => string;
+};
 
 /** 主题导航贡献项（由 host 合并进全局导航） */
 export interface ThemeNavItem {
