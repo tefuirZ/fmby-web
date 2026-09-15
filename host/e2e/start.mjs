@@ -1,16 +1,24 @@
 /**
- * 真实 E2E 启动器：启动真实 fmby-v2-server（FMBY_E2E_SEED=1 种真实数据）+ Vite 前端。
- * 禁 mock：所有 /api 请求经 Vite proxy 打到真实 server + 真实 SQLite。
+ * 真实 E2E 启动器：前种子数据（真实迁移 + admin/media）→ 启动真实 fmby-v2-server
+ * → 启动 Vite 前端（/api 经 Vite proxy 打到真实 server + 真实 SQLite）。
+ * 禁 mock：全部走真实 HTTP / 真实数据库。
  *
- * WEB-GOV ③：二进制路径改为**跨平台解析**（原硬编码 `fmby-v2-server.exe` 为
- * Windows 残留，Linux/macOS 下必然 spawn 失败）。解析优先级：
- *   1. 环境变量 `FMBY_E2E_SERVER_BIN` / `FMBY_E2E_SEED_BIN`（显式覆盖，最高优先）；
- *   2. `<repo>/target/<profile>/fmby-v2-server${exeSuffix}`（`exeSuffix` 在 Windows
- *      为 `.exe`，其余平台为空串；profile 由 `FMBY_E2E_PROFILE` 控制，默认 debug）。
+ * WEB-E2E-FULL 两处修复：
  *
- * 无服务端二进制时**跳过而非失败**（`resolveBinary` 返回 null → 退出码 0 且不拉起
- * Vite），配合 playwright 的 `skip: !hasBinary` 让 CI/本机无 Rust 产物时 e2e 被
- * 安全跳过，而不是红一片。
+ * ① **二进制解析（前端仓无 target/）**：前端仓 `fmby-web` 不含 Rust 产物，
+ *    解析优先级为：
+ *      1. 环境变量 `FMBY_E2E_SERVER_BIN` / `FMBY_E2E_SEED_BIN`（显式覆盖）；
+ *      2. `<repo>/target/<profile>/...`（前端仓内，历史形态）；
+ *      3. **主仓 FMBY-V2 默认路径**：`FMBY_E2E_MAIN_REPO`（默认
+ *         `/home/tefuir/rustproject/FMBY-V2`）下的 `target/release|debug/...`。
+ *    平台后缀 win32 → `.exe`；无二进制 → 跳过（退出 0），由 playwright skip 同步。
+ *
+ * ② **启动顺序（真缺陷修复）**：原实现「先起 server 再跑 seed」——server 启动即
+ *    `bootstrap_multi` 打开三库并持有连接，随后 seed 再 `bootstrap_multi` 同库
+ *    → SQLite 写锁竞争 → `E2E seed bootstrap failed`（本卡实测复现）。
+ *    正确顺序（对齐 `full_chain_e2e` 先例：bootstrap → seed → server）：
+ *    **先 seed（seed 自带 bootstrap_multi 建三库 + 种数据），再起 server**——
+ *    server 打开已建好的库，无并发写竞争。
  */
 
 import { spawn } from 'node:child_process';
@@ -18,10 +26,13 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, '..', '..', '..');
+// host/e2e → host → 前端仓根
+const webRepoRoot = join(here, '..', '..');
+// 主仓（Rust 产物所在）；可用 FMBY_E2E_MAIN_REPO 覆盖
+const mainRepoRoot = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
 
 const backendPort = Number(process.env.FMBY_E2E_BACKEND_PORT ?? 18099);
 const workDir = mkdtempSync(join(tmpdir(), 'fmby-e2e-real-'));
@@ -38,18 +49,19 @@ process.env.FMBY_TRUSTED_ORIGINS = 'http://127.0.0.1:5180';
 const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
 
 /**
- * 解析二进制路径（跨平台 + 环境变量覆盖）。不存在则回退为**无后缀再试一次**
- * （兼容某些构建脚本产出无扩展名产物），仍无则返回 null（表示不可用）。
+ * 解析二进制路径（环境变量覆盖 > 前端仓 target/ > 主仓 target/，跨 release+debug）。
+ * 优先 release（真实构建产物），其次 debug。仍无 → null（不可用，跳过）。
  */
 function resolveBinary(envKey, baseName) {
   const overridden = process.env[envKey];
-  const profile = process.env.FMBY_E2E_PROFILE ?? 'debug';
-  const candidates = [
-    overridden,
-    join(repoRoot, 'target', profile, `${baseName}${EXE_SUFFIX}`),
-    join(repoRoot, 'target', profile, baseName),
-  ].filter((value) => typeof value === 'string' && value.length > 0);
-
+  const profiles = ['release', 'debug'];
+  const candidates = [overridden].filter((v) => typeof v === 'string' && v.length > 0);
+  for (const root of [webRepoRoot, mainRepoRoot]) {
+    for (const profile of profiles) {
+      candidates.push(join(root, 'target', profile, `${baseName}${EXE_SUFFIX}`));
+      candidates.push(join(root, 'target', profile, baseName));
+    }
+  }
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       return candidate;
@@ -61,26 +73,43 @@ function resolveBinary(envKey, baseName) {
 const serverBin = resolveBinary('FMBY_E2E_SERVER_BIN', 'fmby-v2-server');
 const seedBin = resolveBinary('FMBY_E2E_SEED_BIN', 'fmby-e2e-seed');
 
-if (!serverBin) {
-  // 无服务端二进制：跳过（退出 0），由 playwright 侧 skip 判定同步。
-  console.warn(
-    `[real-server] SKIP: fmby-v2-server binary not found ` +
-      `(tried FMBY_E2E_SERVER_BIN / target/${process.env.FMBY_E2E_PROFILE ?? 'debug'}/fmby-v2-server${EXE_SUFFIX}). ` +
-      `Build it with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SERVER_BIN.`,
-  );
-  rmSync(workDir, { recursive: true, force: true });
-  process.exit(0);
-}
-if (!seedBin) {
-  console.warn(
-    `[real-server] SKIP: fmby-e2e-seed binary not found ` +
-      `(tried FMBY_E2E_SEED_BIN / target/${process.env.FMBY_E2E_PROFILE ?? 'debug'}/fmby-e2e-seed${EXE_SUFFIX}). ` +
-      `Build it with 'cargo build -p fmby-e2e-seed' or set FMBY_E2E_SEED_BIN.`,
-  );
+function skip(reason) {
+  console.warn(`[real-server] SKIP: ${reason}`);
   rmSync(workDir, { recursive: true, force: true });
   process.exit(0);
 }
 
+if (!serverBin) {
+  skip(
+    `fmby-v2-server binary not found (FMBY_E2E_SERVER_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
+      `Build it with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SERVER_BIN.`,
+  );
+}
+if (!seedBin) {
+  skip(
+    `fmby-e2e-seed binary not found (FMBY_E2E_SEED_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
+      `Build it with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SEED_BIN.`,
+  );
+}
+
+// ---- ① 先 seed（seed 自带 bootstrap_multi 建三库 + 种 admin/media）----
+// server 尚未启动，无并发写锁竞争（WEB-E2E-FULL 真缺陷修复）。
+function runSeed() {
+  return new Promise((resolve) => {
+    const seed = spawn(seedBin, [dbPath, dataDir], { stdio: 'inherit', env: process.env });
+    seed.once('exit', (code) => resolve(code ?? 1));
+  });
+}
+
+const seedExit = await runSeed();
+if (seedExit !== 0) {
+  console.error('[real-server] explicit E2E seed failed');
+  rmSync(workDir, { recursive: true, force: true });
+  process.exit(1);
+}
+console.log('[real-server] explicit E2E seed complete');
+
+// ---- ② 再起 server（打开已建好的三库）----
 const backend = spawn(serverBin, [], {
   stdio: 'inherit',
   env: process.env,
@@ -90,15 +119,50 @@ backend.on('exit', (code) => {
   process.exit(code ?? 1);
 });
 
-const vite = await createServer({
-  root: process.cwd(),
-  server: {
-    host: '127.0.0.1',
-    port: 5180,
-    strictPort: true,
-  },
-});
-await vite.listen();
+// ---- ③ 起前端（默认服务**已构建产物** host/dist，对齐卡面真实栈口径）----
+// 卡面：「主仓二进制 + 前端 host/dist（已构建）」。dev server 会开 React
+// StrictMode 双调用（仅 dev），在 VideoPlayer 的异步挂载上暴露竞态
+// （实测：dev 下播放页 <video> 不挂载；产物构建无此双调用 → 正常挂载）。
+// 产物不存在时先 build；`FMBY_E2E_DEV=1` 可回落到 dev server（调试用）。
+const useDevServer = process.env.FMBY_E2E_DEV === '1';
+const distIndex = join(webRepoRoot, 'host', 'dist', 'index.html');
+
+let vite;
+if (useDevServer) {
+  vite = await createServer({
+    root: join(webRepoRoot, 'host'),
+    server: {
+      host: '127.0.0.1',
+      port: 5180,
+      strictPort: true,
+    },
+  });
+  await vite.listen();
+} else {
+  if (!existsSync(distIndex)) {
+    console.log('[real-server] host/dist 缺失，先执行 vite build …');
+    const built = await new Promise((resolve) => {
+      const p = spawn(
+        process.execPath,
+        [join(webRepoRoot, 'host', 'node_modules', '.bin', 'vite'), 'build'],
+        { cwd: join(webRepoRoot, 'host'), stdio: 'inherit', env: process.env },
+      );
+      p.once('exit', (code) => resolve(code ?? 1));
+    });
+    if (built !== 0 || !existsSync(distIndex)) {
+      console.error('[real-server] vite build 失败或产物仍缺失');
+      await stop(1);
+    }
+  }
+  vite = await preview({
+    root: join(webRepoRoot, 'host'),
+    preview: {
+      host: '127.0.0.1',
+      port: 5180,
+      strictPort: true,
+    },
+  });
+}
 
 let stopping = false;
 async function stop(exitCode = 0) {
@@ -113,7 +177,7 @@ async function stop(exitCode = 0) {
 process.on('SIGINT', () => void stop());
 process.on('SIGTERM', () => void stop());
 
-// 等待真实 server 就绪（/api/auth/entry/status 应 200）
+// ---- 等 server 就绪（/api/auth/entry/status 应 200）----
 const readyUrl = `http://127.0.0.1:${backendPort}/api/auth/entry/status`;
 let ready = false;
 for (let i = 0; i < 100; i++) {
@@ -133,10 +197,3 @@ if (!ready) {
   console.error('[real-server] backend did not become ready in time');
   await stop(1);
 }
-
-const seed = spawn(seedBin, [dbPath, dataDir], { stdio: 'inherit', env: process.env });
-const seedExit = await new Promise((resolve) => seed.once('exit', resolve));
-if (seedExit !== 0) {
-  await stop(1);
-}
-console.log('[real-server] explicit E2E seed complete');
