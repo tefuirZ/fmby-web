@@ -30,6 +30,9 @@ export const queryKeys = {
 
   item: {
     detail: (id: string) => ['item', id] as const,
+    // V1F-10：人物面（/people/:personId 数据面；路径 `/api/items/people/{id}`）。
+    person: (id: string) => ['item', 'person', id] as const,
+    personItems: (id: string) => ['item', 'person-items', id] as const,
     seasonEpisodes: (seasonId: string) => ['item', 'season-episodes', seasonId] as const,
     technicalFallback: (id?: string) => ['item', 'technical-fallback', id] as const,
   },
