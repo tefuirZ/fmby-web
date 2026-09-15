@@ -1,0 +1,192 @@
+/* darkroom ItemSkin（WEB-C3 L3 第二域）——主题自持外观层。
+ * 布局与 host 默认详情页实质不同：横向双栏（海报墙 | 元数据栏）+ 底部横滑带。
+ * 移动端（<768px）退化为单列。 */
+
+[data-darkroom~='item-skin'] {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+/* 横向双栏：桌面 2fr/3fr，移动端单列（布局分支核心）。 */
+[data-darkroom~='item-columns'] {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) 3fr;
+  gap: 24px;
+  align-items: start;
+}
+
+[data-darkroom~='poster-wall'] {
+  position: sticky;
+  top: 16px;
+}
+
+[data-darkroom~='poster-frame'] {
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+    var(--bg-elevated, rgba(255, 255, 255, 0.02));
+}
+
+[data-darkroom~='meta-column'] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-darkroom~='meta-column'] h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+}
+
+[data-darkroom~='source-badge'] {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent, #7fd1b9);
+  color: var(--accent, #7fd1b9);
+}
+
+[data-darkroom~='tagline'] {
+  margin: 0;
+  font-style: italic;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+
+[data-darkroom~='meta-line'] {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+
+[data-darkroom~='progress-track'] {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+[data-darkroom~='progress-fill'] {
+  height: 100%;
+  background: var(--accent, #7fd1b9);
+}
+
+[data-darkroom~='description'] {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text-body, rgba(255, 255, 255, 0.86));
+}
+
+[data-darkroom~='genres'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+[data-darkroom~='genres'] span {
+  font-size: 0.74rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.16));
+  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+}
+
+[data-darkroom~='actors'] {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+}
+
+[data-darkroom~='hstrip'] h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+[data-darkroom~='hstrip-track'] {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+[data-darkroom~='hstrip-card'] {
+  flex: 0 0 auto;
+  min-width: 140px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+}
+
+[data-darkroom~='hstrip-card'] strong {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+[data-darkroom~='skeleton-poster'] {
+  aspect-ratio: 2 / 3;
+  width: min(320px, 100%);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+[data-darkroom~='skeleton-line'],
+[data-darkroom~='skeleton-poster'] {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: darkroom-shimmer 1.4s ease infinite;
+}
+
+[data-darkroom~='item-feedback'] {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+[data-darkroom~='item-feedback'] h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+[data-darkroom~='item-feedback'] p {
+  margin: 0;
+  color: var(--text-muted, rgba(255, 255, 255, 0.55));
+}
+
+[data-darkroom~='primary-button'] {
+  margin-top: 14px;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  background: var(--accent, #7fd1b9);
+  color: #06110d;
+}
+
+/* 移动端：单列（海报墙在上，元数据在下）。 */
+@media (max-width: 767px) {
+  [data-darkroom~='item-columns'] {
+    grid-template-columns: 1fr;
+  }
+
+  [data-darkroom~='poster-wall'] {
+    position: static;
+  }
+
+  [data-darkroom~='item-skin'] {
+    padding: 16px 12px 48px;
+  }
+}

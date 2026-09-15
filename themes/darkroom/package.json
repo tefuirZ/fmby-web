@@ -9,7 +9,8 @@
     "./theme.manifest.json": "./theme.manifest.json",
     "./tokens.css": "./tokens.css",
     "./aurora.css": "./aurora.css",
-    "./skins/library.css": "./skins/library.css"
+    "./skins/library.css": "./skins/library.css",
+    "./skins/item.css": "./skins/item.css"
   },
   "scripts": {
     "typecheck": "tsc -p . --noEmit",

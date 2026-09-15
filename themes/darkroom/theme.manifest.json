@@ -6,14 +6,16 @@
     "cssFile": "tokens.css",
     "extraCssFiles": [
       "aurora.css",
-      "skins/library.css"
+      "skins/library.css",
+      "skins/item.css"
     ]
   },
   "entry": {
     "mount": "index.ts"
   },
   "skins": {
-    "browse.library": "LibrarySkin"
+    "browse.library": "LibrarySkin",
+    "browse.item": "ItemSkin"
   },
   "nav": {
     "items": []
