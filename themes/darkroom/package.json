@@ -1,6 +1,6 @@
 {
   "name": "@fmby/v2-theme-darkroom",
-  "version": "0.1.109",
+  "version": "0.1.110",
   "private": true,
   "type": "module",
   "description": "FMBY v2 主主题「暗房」：纯黑画布，层级只靠细线与留白；纯外观（tokens + 环境光层），无任何业务逻辑。",
