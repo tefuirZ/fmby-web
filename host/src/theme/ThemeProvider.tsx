@@ -57,8 +57,18 @@ function teardownThemeStyles(): void {
     .forEach((link) => link.remove());
 }
 
-/** 按 manifest 声明注入 tokens + 附加样式层；返回是否全部命中注册表。 */
-function injectThemeStyles(registration: ThemeRegistration, cssFiles: string[]): boolean {
+
+/**
+ * 双缓冲样式切换（FE-OPT-01 ③ 零闪烁）：
+ *
+ * 旧实现 teardownThemeStyles() 先卸旧 <link>再注入新 <link>——新 CSS 下载
+ * 完成前的空窗里 :root 的 --bg-base 回落到 defaults.css 的 #0b0c0f，画布
+ * 闪一次「非当前主题色」（实测 ~100 帧/500 帧，约 200ms）。改为：先注入
+ * 新 link，等全部加载完成（onload/error）再卸旧层。新旧 tokens 同变量名
+ * （兼容旧版 token 命名），切换瞬间新层覆盖旧层，无回落帧。
+ */
+async function activateNextStyles(registration: ThemeRegistration, cssFiles: string[]): Promise<boolean> {
+  const pending: Promise<void>[] = [];
   for (const file of cssFiles) {
     const url = registration.assets[file];
     if (!url) {
@@ -69,8 +79,16 @@ function injectThemeStyles(registration: ThemeRegistration, cssFiles: string[]):
     link.rel = 'stylesheet';
     link.href = url;
     link.dataset.themeStyle = registration.id;
+    link.dataset.themeRole = 'next';
+    pending.push(
+      new Promise<void>((resolve) => {
+        link.addEventListener('load', () => resolve(), { once: true });
+        link.addEventListener('error', () => resolve(), { once: true }); // 错误也继续，让上层激活失败路径处理
+      }),
+    );
     document.head.appendChild(link);
   }
+  await Promise.all(pending);
   return true;
 }
 
@@ -98,10 +116,21 @@ async function activateTheme(registration: ThemeRegistration): Promise<Activated
   }
 
   const cssFiles = [parsed.tokens.cssFile, ...(parsed.tokens.extraCssFiles ?? [])];
-  teardownThemeStyles();
-  if (!injectThemeStyles(registration, cssFiles)) {
+  // 双缓冲：新样式全部加载完成后才卸旧层（零闪烁，见 activateNextStyles）。
+  if (!(await activateNextStyles(registration, cssFiles))) {
     throw new Error(`theme assets missing in registry: ${registration.id}`);
   }
+  // 新层已生效：卸掉**旧主题**的样式层；新层的 next 标记转正为 active。
+  document.head
+    .querySelectorAll('link[data-theme-style]')
+    .forEach((link) => {
+      const el = link as HTMLLinkElement;
+      if (el.dataset.themeStyle !== registration.id) {
+        el.remove();
+      } else {
+        delete el.dataset.themeRole; // next → active（保留生效）
+      }
+    });
 
   const entry = await registration.loadEntry();
   document.documentElement.dataset.theme = parsed.id;

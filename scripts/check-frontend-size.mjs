@@ -171,15 +171,24 @@ function runSizeCheck() {
       hasFailure = true;
     } else {
       const raw = fs.readFileSync(entryFile, 'utf-8');
-      // 产物必须是 ESM（export default）且不含打包进去的 react（external 生效）
-      if (!raw.includes('export')) {
-        console.error(`  [FAIL] themes/${themeId}/dist/index.js 非 ESM 产物（无 export）`);
+      // THEME-BUILD-01/FE-OPT-01：产物为 IIFE（var FmbyTheme = ...，react 由
+      // 宿主全局提供，浏览器无 importmap 时 IIFE 是唯一可执行形态）。断言：
+      // ① IIFE 全局赋值存在；② react 未被打包进产物（外部化纪律——打包进
+      // 去会引入第二份 react 实例，hooks 语义崩坏）。
+      const isIife = /(?:var|const)\s+FmbyTheme\s*=/.test(raw);
+      if (!isIife) {
+        console.error(`  [FAIL] themes/${themeId}/dist/index.js 非 IIFE 产物（缺 FmbyTheme 全局赋值）`);
         hasFailure = true;
-      } else if (/\bfunction _?s\(/.test(raw) && raw.includes('useState') && raw.length > 100_000) {
-        console.error(`  [FAIL] themes/${themeId}/dist/index.js 疑似打包了 react（external 失效）`);
-        hasFailure = true;
+      } else if (raw.length > 150_000 || /createElement\("div"\)/.test(raw) === false && raw.includes('react-dom') === false && raw.includes('__SECRET_INTERNALS') ) {
+        // 粗检：react 被内联的典型特征是体积暴涨 + 内部 API 字串
+        if (raw.includes('__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED') || raw.length > 150_000) {
+          console.error(`  [FAIL] themes/${themeId}/dist/index.js 疑似打包了 react（external 失效，${raw.length} bytes）`);
+          hasFailure = true;
+        } else {
+          console.log(`  [PASS] themes/${themeId}/dist/index.js IIFE 产物且 react 外部化`);
+        }
       } else {
-        console.log(`  [PASS] themes/${themeId}/dist/index.js 存在且为 ESM library 产物`);
+        console.log(`  [PASS] themes/${themeId}/dist/index.js IIFE 产物且 react 外部化`);
       }
     }
   }

@@ -27,7 +27,10 @@ export default defineConfig({
         }
         throw new Error(`主题入口未找到（尝试过 ${candidates.join(' / ')}）`);
       })(),
-      formats: ['es'],
+      // IIFE + globals：产物可经 <script> 注入执行（浏览器无 importmap 也能跑），
+      // react/react-dom/@fmby/v2-shared 由宿主以全局变量提供，杜绝第二份 react。
+      formats: ['iife'],
+      name: 'FmbyTheme',
       fileName: () => 'index.js',
     },
     rollupOptions: {
@@ -37,6 +40,14 @@ export default defineConfig({
         'react/jsx-runtime',
         /^@fmby\/v2-shared(\/.*)?$/,
       ],
+      output: {
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          'react/jsx-runtime': 'ReactJSXRuntime',
+          '@fmby/v2-shared': 'FmbyShared',
+        },
+      },
     },
     outDir: 'dist',
     emptyOutDir: true,

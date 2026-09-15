@@ -87,6 +87,14 @@ export default defineConfig(({ mode }) => {
             '*': '/',
           },
         },
+        // THEME-BUILD-01/FE-OPT-01：主题运行时外挂产物（/themes/<id>/...）由
+        // 后端静态面伺服——dev 模式同样代理到真实 server，保证主题激活链路
+        // 在 dev 与生产行为一致。
+        '/themes': {
+          target: backend,
+          changeOrigin: true,
+          ws: false,
+        },
       },
     },
     build: {

@@ -28,7 +28,7 @@ export function WideMediaCard({
     <article className={cardStyles.wideCard}>
       <Link className={cardStyles.wideThumbLink} to={`/item/${item.id}`}>
         {image ? (
-          <img alt={item.title} className={cardStyles.wideThumb} src={image} />
+          <img alt={item.title} className={cardStyles.wideThumb} src={image} loading="lazy" decoding="async" />
         ) : (
           <div className={cardStyles.imageFallback}>暂无封面</div>
         )}

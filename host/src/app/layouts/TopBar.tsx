@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { ChevronDown, LogOut, Search, Settings, ShieldCheck, User } from 'lucide-react';
 import { useSession } from '@/session/SessionProvider';
+import { prefetchRouteByKey } from '@/app/router/prefetch';
 import { SearchOverlay } from '@/pages/browse/SearchOverlay';
 import styles from './TopBar.module.css';
 
@@ -79,12 +80,16 @@ export function TopBar() {
               </NavLink>
               <NavLink
                 to="/libraries"
+                onMouseEnter={() => prefetchRouteByKey('libraries')}
+                onFocus={() => prefetchRouteByKey('libraries')}
                 className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
               >
                 媒体库
               </NavLink>
               <NavLink
                 to="/history"
+                onMouseEnter={() => prefetchRouteByKey('history')}
+                onFocus={() => prefetchRouteByKey('history')}
                 className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
               >
                 观看历史
@@ -92,6 +97,8 @@ export function TopBar() {
               {isAdmin ? (
                 <NavLink
                   to="/manage"
+                  onMouseEnter={() => prefetchRouteByKey('manageOverview')}
+                  onFocus={() => prefetchRouteByKey('manageOverview')}
                   className={({ isActive }) => (isActive ? styles.navLinkActive : styles.navLink)}
                 >
                   <span className={styles.adminNavText}>管理中心</span>

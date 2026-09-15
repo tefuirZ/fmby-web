@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router';
+import { prefetchRouteByKey, routeLoaders } from '@/app/router/prefetch';
 import styles from './ManageLayout.module.css';
 
 interface ManageNavNode {
@@ -115,6 +116,36 @@ function findActiveNode(nodes: ManageNavNode[], pathname: string): ManageNavNode
   return null;
 }
 
+/** FE-OPT-01：路径 → 预取 key 映射（与 manageNavTree/路由同步登记）。 */
+const PATH_PREFETCH_KEYS: Record<string, keyof typeof routeLoaders> = {
+  '/manage/site/settings': 'manageSiteSettings',
+  '/manage': 'manageOverview',
+  '/manage/task-center': 'manageTaskCenter',
+  '/manage/media/add': 'manageAddMedia',
+  '/manage/media/items': 'manageMediaItems',
+  '/manage/media/libraries': 'manageLibraries',
+  '/manage/media/mounts': 'manageMounts',
+  '/manage/media/probe-tasks': 'manageProbeTasks',
+  '/manage/media/naming-scrape': 'manageNamingRules',
+  '/manage/collections': 'manageCollections',
+  '/manage/site/users/registration-codes': 'manageRegistrationCodes',
+  '/manage/site/users/accounts': 'manageUsers',
+  '/manage/site/users/role-templates': 'manageRoleTemplates',
+  '/manage/site/rewards': 'manageRewards',
+  '/manage/site/security/sessions': 'manageSessions',
+  '/manage/site/security/audit-logs': 'manageAuditLogs',
+  '/manage/site/security/runtime-logs': 'manageRuntimeLogs',
+  '/manage/site/telegram': 'manageTelegram',
+  '/manage/site/secrets': 'manageSecrets',
+  '/manage/site/license': 'manageLicense',
+};
+
+/** FE-OPT-01：hover/focus 预取（侧栏树叶子节点复用）。 */
+function prefetchByPath(path: string): void {
+  const key = PATH_PREFETCH_KEYS[path];
+  if (key) prefetchRouteByKey(key);
+}
+
 function NavLeaf({
   node,
   pathname,
@@ -138,6 +169,8 @@ function NavLeaf({
       data-active={active ? 'true' : undefined}
       style={{ paddingLeft: `${level * 12 + 12}px` }}
       onClick={onNavigate}
+      onMouseEnter={() => node.to && prefetchByPath(node.to)}
+      onFocus={() => node.to && prefetchByPath(node.to)}
       aria-current={active ? 'page' : undefined}
     >
       {Icon ? <Icon size={16} className={styles.navIcon} aria-hidden="true" /> : null}

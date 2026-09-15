@@ -69,6 +69,8 @@ export function LivePlaybackStreams({
                       src={nowPlaying.posterUrl}
                       alt={nowPlaying.mediaTitle}
                       className={styles.streamPoster}
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div className={styles.streamPosterFallback}>

@@ -6,11 +6,11 @@
  * `${data_dir}/themes/<id>/dist/`）。host bundle 零主题字节；第三方主题
  * 安装进 data/themes/<id>/ 即天然可用，无需重建 host。
  *
- * `loadEntry` 用运行时动态 `import(/* webpack 忽略 *\/ 字符串)（Vite 下用
- * 显式 URL 拼接，避免构建期把主题解析进模块图）。
+ * `loadEntry` 以 script 注入方式执行主题 IIFE 产物（Vite 构建期看到的是
+ * 纯字符串拼接 URL，避免构建期把主题解析进模块图）。
  */
 
-import type { ThemeRegistration } from '@fmby/v2-shared/theme';
+import type { ThemeEntryModule, ThemeRegistration } from '@fmby/v2-shared/theme';
 
 export const DEFAULT_THEME_ID = 'darkroom';
 
@@ -25,18 +25,49 @@ function themeAssets(id: string, files: string[]): Record<string, string> {
   return Object.fromEntries(files.map((file) => [file, `${base}/${file}`]));
 }
 
+/** 已加载的 IIFE 主题挂到的全局名（见各主题 vite.config 的 output.globals）。 */
+const THEME_GLOBAL_NAME = 'FmbyTheme';
+
+/**
+ * 运行时外挂入口：主题产物为 IIFE（`var FmbyTheme = (function(){...})()`，
+ * react/shared 由宿主全局变量提供——浏览器环境无 importmap，ESM 裸说明符
+ * 无法解析）。以 <script> 注入执行后读全局。Vite 构建期看到的是纯字符串
+ * 拼接 URL，不会把主题打进 host 模块图。
+ */
+function loadIifeThemeEntry(src: string): Promise<ThemeEntryModule> {
+  return new Promise((resolve, reject) => {
+    const win = window as unknown as Record<string, unknown>;
+    const previous = win[THEME_GLOBAL_NAME];
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+      const win = window as unknown as Record<string, unknown>;
+      const entry = win[THEME_GLOBAL_NAME];
+      // 恢复/清除全局，避免多主题（串行激活）串味。
+      if (previous === undefined) {
+        delete win[THEME_GLOBAL_NAME];
+      } else {
+        win[THEME_GLOBAL_NAME] = previous;
+      }
+      if (entry && typeof entry === 'object' && 'manifest' in (entry as object)) {
+        resolve(entry as ThemeEntryModule);
+      } else {
+        reject(new Error(`theme entry global "${THEME_GLOBAL_NAME}" missing after load: ${src}`));
+      }
+    };
+    script.onerror = () => reject(new Error(`theme entry script failed to load: ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
 function makeRegistration(id: string, cssFiles: string[]): ThemeRegistration {
   const base = themeBaseUrl(id);
   return {
     id,
     manifestUrl: `${base}/theme.manifest.json`,
     assets: themeAssets(id, cssFiles),
-    // 运行时外挂入口：default export ThemeEntryModule（vite library 构建产物）。
-    // Vite 构建期看到的是纯字符串拼接 URL，不会把主题打进 host 模块图。
-    loadEntry: async () => {
-      const module = await import(/* @vite-ignore */ `${base}/index.js`);
-      return module.default;
-    },
+    loadEntry: () => loadIifeThemeEntry(`${base}/index.js`),
   };
 }
 

@@ -247,7 +247,7 @@ export function HeroSpotlight({
         </div>
         <div className={heroStyles.heroPosterWrap}>
           {poster ? (
-            <img alt={activeHero.item.title} className={heroStyles.heroPoster} src={poster} onError={onPosterError} />
+            <img alt={activeHero.item.title} className={heroStyles.heroPoster} src={poster} onError={onPosterError} decoding="async" />
           ) : (
             <div
               className={cardStyles.imageFallback}

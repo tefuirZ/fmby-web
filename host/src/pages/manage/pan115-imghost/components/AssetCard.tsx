@@ -115,6 +115,8 @@ export function AssetCard({ asset }: AssetCardProps) {
         <img
           src={imgSrc}
           alt={asset.originalFilename}
+          loading="lazy"
+          decoding="async"
           onError={handleImgError}
           style={{
             position: 'absolute',

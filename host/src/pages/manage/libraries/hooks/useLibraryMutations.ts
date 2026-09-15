@@ -78,6 +78,23 @@ export function useLibraryMutations({
       libraryId: string;
       confirmation: DangerousActionRequest;
     }) => manageApi.deleteLibrary(libraryId, confirmation),
+    // FE-OPT-01 ② 危险操作即时反馈：确认提交瞬间先从列表缓存乐观移除该库
+    // （表格立刻少一行），网络往返在后台完成；失败则回滚恢复并报错。
+    onMutate: async ({ libraryId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.manage.libraries.list() });
+      const previous = queryClient.getQueryData(queryKeys.manage.libraries.list());
+      queryClient.setQueryData<unknown>(
+        queryKeys.manage.libraries.list(),
+        (old: { libraries?: { library: { id: string } }[] } | undefined) => {
+          if (!old || !Array.isArray(old.libraries)) return old;
+          return {
+            ...old,
+            libraries: old.libraries.filter((entry) => entry.library.id !== libraryId),
+          };
+        },
+      );
+      return { previous };
+    },
     onSuccess: async (result, variables) => {
       const { libraryId } = variables;
       queryClient.removeQueries({ queryKey: queryKeys.manage.libraries.detail(libraryId) });
@@ -90,7 +107,10 @@ export function useLibraryMutations({
       });
       await queryClient.invalidateQueries({ queryKey: queryKeys.manage.libraries.list() });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(queryKeys.manage.libraries.list(), context.previous);
+      }
       setBanner({
         variant: 'error',
         title: '媒体库删除失败',

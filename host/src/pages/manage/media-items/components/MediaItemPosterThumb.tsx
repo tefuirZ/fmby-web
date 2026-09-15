@@ -28,6 +28,8 @@ export function MediaItemPosterThumb({
       alt={`${title} 海报`}
       className={styles.posterImage}
       src={posterUrl}
+      loading="lazy"
+      decoding="async"
       onError={() => setFailed(true)}
     />
   );

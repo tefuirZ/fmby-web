@@ -1,0 +1,77 @@
+{
+  "tag": "before",
+  "base": "http://127.0.0.1:5181",
+  "runs": 5,
+  "timestamp": "2026-09-15T05:31:05.384Z",
+  "metrics": {
+    "fcp_paint_0": 616,
+    "nav_visible_home_0": 792,
+    "fcp_paint_1": 564,
+    "nav_visible_home_1": 703,
+    "fcp_paint_2": 608,
+    "nav_visible_home_2": 956,
+    "fcp_paint_3": 732,
+    "nav_visible_home_3": 962,
+    "fcp_paint_4": 948,
+    "nav_visible_home_4": 1269,
+    "fcp_home": {
+      "n": 5,
+      "min": 655,
+      "p50": 856,
+      "p95": 1226,
+      "max": 1226,
+      "mean": 864
+    },
+    "nav_home_to_manage": {
+      "n": 5,
+      "min": 281,
+      "p50": 335,
+      "p95": 580,
+      "max": 580,
+      "mean": 394
+    },
+    "nav_home_to_libraries": {
+      "n": 5,
+      "min": 295,
+      "p50": 391,
+      "p95": 604,
+      "max": 604,
+      "mean": 425.8
+    },
+    "nav_manage_to_audit": {
+      "n": 5,
+      "min": 34,
+      "p50": 74,
+      "p95": 138,
+      "max": 138,
+      "mean": 80.6
+    },
+    "form_click_to_applied": {
+      "n": 2,
+      "min": 194,
+      "p50": 232,
+      "p95": 232,
+      "max": 232,
+      "mean": 213
+    },
+    "theme_switch_flicker_frames": {
+      "n": 2,
+      "min": 100,
+      "p50": 108,
+      "p95": 108,
+      "max": 108,
+      "mean": 104
+    },
+    "hover_prefetch": {
+      "avgHoverPrefetchedChunks": 0,
+      "navWithHover": {
+        "n": 5,
+        "min": 31,
+        "p50": 57,
+        "p95": 131,
+        "max": 131,
+        "mean": 66.6
+      }
+    }
+  }
+}
