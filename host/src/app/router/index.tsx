@@ -49,6 +49,7 @@ function RouteHydrateFallback() {
  * - /libraries                媒体库列表
  * - /libraries/:id            媒体库详情
  * - /item/:itemId             媒体项详情
+ * - /people/:personId         人物合集
  * - /play/:itemId             播放页
  * - /settings/*               设置中心（仅个人偏好：资料 / 播放 / 外观）
  * - /manage                               管理首页（使用 ManageLayout）
@@ -137,6 +138,14 @@ export const router = createBrowserRouter([
             lazy: async () => {
               const { ItemDetailPage } = await import('@/pages/browse/ItemDetailPage');
               return { Component: ItemDetailPage };
+            },
+          },
+          {
+            // V1F-10：人物合集页（V1 `/people/:personId` 对位）。
+            path: 'people/:personId',
+            lazy: async () => {
+              const { PersonDetailPage } = await import('@/pages/browse/PersonDetailPage');
+              return { Component: PersonDetailPage };
             },
           },
           {

@@ -1,4 +1,6 @@
 export { browseApi } from './api';
+export { personApi } from './person';
+export type { PersonDetail, PersonItemsPage } from './person';
 export type {
   BrowseFilterOption,
   BrowseHero,

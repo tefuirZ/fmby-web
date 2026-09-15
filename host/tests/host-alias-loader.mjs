@@ -27,10 +27,17 @@ export async function resolve(specifier, context, nextResolve) {
     }
   }
   if (specifier.startsWith('.')) {
+    // 目录导入（`./person`）→ 依次回退 `./person.ts` / `./person/index.ts`。
+    // 此前只回退 `.ts`，目录形态的 `./person` 会 ERR_MODULE_NOT_FOUND
+    // （V1F-10 首个相对目录导入暴露该缺口）。
     try {
       return await nextResolve(specifier, context);
     } catch {
-      return nextResolve(`${specifier}.ts`, context);
+      try {
+        return await nextResolve(`${specifier}.ts`, context);
+      } catch {
+        return nextResolve(`${specifier}/index.ts`, context);
+      }
     }
   }
   return nextResolve(specifier, context);

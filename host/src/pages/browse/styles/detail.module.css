@@ -564,6 +564,20 @@
   border-radius: var(--radius-full);
 }
 
+/* V1F-10：人物卡可点（此前人物卡为惰性 div，点不进人物页）。
+   text-decoration/color 继承——暗房里链接不靠下划线表达，靠 hover 提亮。 */
+.personCardLink {
+  flex: 0 0 96px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-md, 8px);
+}
+
+.personCardLink:focus-visible {
+  outline: 2px solid var(--text-1);
+  outline-offset: 2px;
+}
+
 .personCard {
   flex: 0 0 96px;
   display: flex;
