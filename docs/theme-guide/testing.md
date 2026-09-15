@@ -136,7 +136,7 @@ pnpm verify
 # 5. node scripts/check-frontend-dupes.mjs
 #    主题纯度（禁 API client/query keys/权限判断）
 # 6. node scripts/check-contract-mappers.mjs   契约与 mapper 对账
-# 7. node scripts/check-theme-budget.mjs       主题体量（ts ≤ 3000 行 / dist ≤ 1.5MB）
+# 7. node scripts/check-theme-budget.mjs       主题质量（God File >1000 行 FAIL；不限总量）
 # 8. node scripts/check-theme-parity.mjs       声明 domain → 四项能力面齐备
 # 9. pnpm e2e                     Playwright（无 Rust server 二进制时整组 skip）
 ```
@@ -150,7 +150,7 @@ pnpm verify
 | size [5] | 主题 chunk 被首屏闭包引用 | registry 里必须用**动态** `import()`，勿改成静态 |
 | size [6] | 首屏脚本含 `LibrarySkin` 等标识 | skin 代码进了主包——检查 [5] 与 registry 写法 |
 | dupes | 主题内出现 `httpClient` / `queryKeys` / 权限判断 | 主题只消费 `SkinProps`，删掉取数代码 |
-| theme-budget | ts 超 3000 行 / dist 超 1.5MB | 输出列 Top5 膨胀文件，先砍装饰 |
+| theme-budget | 单文件 > 1000 行（God File） | 列出超限文件，按单一职责拆解 |
 | theme-parity | 缺 `realtime/mobile/timezone/authorization` 之一 | 对照 `capabilities.ts` 补齐并在入口 `capabilities` 声明 |
 | e2e | 无 Rust server 二进制 → 整组 skip（非失败） | 需要 e2e 时先 `cargo build -p fmby-v2-server` |
 
@@ -161,7 +161,7 @@ pnpm verify
 - [ ] `pnpm test` 全绿（自己主题的测试也要进 `themes/<id>/tests/`）
 - [ ] `pnpm verify` 全绿（九步）
 - [ ] 五态断言 + 移动端分支 + 实时订阅三条测试齐全
-- [ ] 单主题 ts ≤ 3000 行（`check-theme-budget` 输出实数）
+- [ ] 无 God File（单文件 ≤ 1000 行；总量不限）
 - [ ] handoff 已写（八行报告 + 门禁原文）
 
 ---

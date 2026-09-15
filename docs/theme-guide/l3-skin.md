@@ -185,7 +185,7 @@ useEffect(() => realtime.subscribe(() => forceTick((t) => t + 1)), [realtime]);
 
 | 红线 | 值 | darkroom 实测 |
 |---|---|---|
-| 单主题 ts 源码 | ≤ 3000 行 | 702 行（= 红线 23%，两 skin 共 433 行 + 入口 37 行）|
+| 单主题总量 | **不设上限** | 主题允许自主开发，该多大就多大 |
 | 单主题 dist | ≤ 1.5MB | 产物合计 gzip 4.38 KB |
 
 单 skin 控制在 **200-250 行**内是健康的（LibrarySkin 218 / ItemSkin 215）。
