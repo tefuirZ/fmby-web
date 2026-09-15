@@ -13,12 +13,6 @@ importers:
       '@fmby/v2-shared':
         specifier: workspace:*
         version: link:../shared
-      '@fmby/v2-theme-darkroom':
-        specifier: workspace:*
-        version: link:../themes/darkroom
-      '@fmby/v2-theme-template':
-        specifier: workspace:*
-        version: link:../themes/_template
       '@hookform/resolvers':
         specifier: ^5.0.1
         version: 5.9.1(react-hook-form@7.86.0(react@19.2.8))(zod@3.25.76)
@@ -86,6 +80,12 @@ importers:
         specifier: ^3.25.20
         version: 3.25.76
     devDependencies:
+      '@fmby/v2-theme-darkroom':
+        specifier: workspace:*
+        version: link:../themes/darkroom
+      '@fmby/v2-theme-template':
+        specifier: workspace:*
+        version: link:../themes/_template
       '@playwright/test':
         specifier: ^1.58.0
         version: 1.62.1
@@ -201,6 +201,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
+      vite:
+        specifier: ^6.3.5
+        version: 6.4.3(@types/node@25.9.5)
 
   themes/darkroom:
     devDependencies:
@@ -222,6 +225,9 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
+      vite:
+        specifier: ^6.3.5
+        version: 6.4.3(@types/node@25.9.5)
 
 packages:
 

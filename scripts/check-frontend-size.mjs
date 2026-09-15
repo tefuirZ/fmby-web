@@ -119,6 +119,71 @@ function runSizeCheck() {
     console.log('  [PASS] Zero theme & player chunks in initial screen closure.');
   }
 
+  // 3b. THEME-BUILD-01：逐 chunk 内容反查（杜绝假绿）——文件名启发式（[3]）
+  // 会被 chunk 改名/合并绕过；这里直接扫首屏闭包 JS 字节：命中主题/skin 代码
+  // 特征串即 FAIL。注意：主题 **id 字符串**（'darkroom' 等注册表元数据）属
+  // host 合法引用，不作标识；特征串必须是主题代码内才会出现的符号。
+  console.log('\n[3b] Content-level scan: theme/skin code markers in initial closure...');
+  const THEME_CODE_MARKERS = [
+    'LibrarySkin',
+    'ItemSkin',
+    'DomainSkinOutlet',
+    'browse.library skin', // manifest/文档级字串
+  ];
+  const MARKER_SUBSTRINGS = ['data-darkroom']; // darkroom skin 专属 DOM 属性
+  let contentClean = true;
+  for (const relFile of initialClosureFiles) {
+    const full = path.join(HOST_DIST, relFile);
+    if (!fs.existsSync(full)) continue;
+    const content = fs.readFileSync(full, 'utf-8');
+    for (const marker of [...THEME_CODE_MARKERS, ...MARKER_SUBSTRINGS]) {
+      if (content.includes(marker)) {
+        console.error(`  [FAIL] 首屏 chunk 内联主题代码: ${relFile}（特征串 "${marker}"）`);
+        hasFailure = true;
+        contentClean = false;
+      }
+    }
+    // 主题构建产物特征：vite library 产物头部带 external import 面，若主题
+    // 代码被内联进 host chunk，会在主包内出现对主题源文件路径的 sourcemap
+    // 残留（vite 默认 no sourcemap 下残留注释不常见，改用强特征：主题入口
+    // 的 capabilities 声明字串）。
+    if (content.includes("'browse.library': LibrarySkin") || content.includes('"browse.library": LibrarySkin')) {
+      console.error(`  [FAIL] 首屏 chunk 内联主题入口声明: ${relFile}`);
+      hasFailure = true;
+      contentClean = false;
+    }
+  }
+  if (contentClean) {
+    console.log('  [PASS] 首屏闭包逐 chunk 反查零主题代码（LibrarySkin/ItemSkin/DomainSkinOutlet/data-darkroom 均未命中）。');
+  }
+
+  // 3c. THEME-BUILD-01：主题独立产物存在性——themes/<id>/dist/index.js 必须
+  // 真实产出（vite library 构建）。缺失 = 主题无法外挂（历史真缺口：主题
+  // 被内联进 host、dist 从未产出）。
+  console.log('\n[3c] Verifying theme dist artifacts exist (library build output)...');
+  for (const themeId of fs.readdirSync(THEMES_DIR).filter((dir) => {
+    const full = path.join(THEMES_DIR, dir);
+    return fs.statSync(full).isDirectory() && fs.existsSync(path.join(full, 'theme.manifest.json'));
+  })) {
+    const entryFile = path.join(THEMES_DIR, themeId, 'dist', 'index.js');
+    if (!fs.existsSync(entryFile)) {
+      console.error(`  [FAIL] 主题独立产物缺失: themes/${themeId}/dist/index.js（先跑 pnpm build:themes）`);
+      hasFailure = true;
+    } else {
+      const raw = fs.readFileSync(entryFile, 'utf-8');
+      // 产物必须是 ESM（export default）且不含打包进去的 react（external 生效）
+      if (!raw.includes('export')) {
+        console.error(`  [FAIL] themes/${themeId}/dist/index.js 非 ESM 产物（无 export）`);
+        hasFailure = true;
+      } else if (/\bfunction _?s\(/.test(raw) && raw.includes('useState') && raw.length > 100_000) {
+        console.error(`  [FAIL] themes/${themeId}/dist/index.js 疑似打包了 react（external 失效）`);
+        hasFailure = true;
+      } else {
+        console.log(`  [PASS] themes/${themeId}/dist/index.js 存在且为 ESM library 产物`);
+      }
+    }
+  }
+
   // 4. 检查各主题包总产物与 manifest 大小
   console.log('\n[4] Checking theme packages (assets + manifest)...');
   const themeDirs = fs.readdirSync(THEMES_DIR).filter((dir) => {

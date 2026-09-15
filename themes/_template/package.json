@@ -10,7 +10,8 @@
     "./tokens.css": "./tokens.css"
   },
   "scripts": {
-    "typecheck": "tsc -p . --noEmit"
+    "typecheck": "tsc -p . --noEmit",
+    "build": "vite build && node -e \"const fs=require('fs');const cp=(s,d)=>{fs.copyFileSync(s,d)};['theme.manifest.json','tokens.css','aurora.css'].forEach(f=>{if(fs.existsSync(f))cp(f,'dist/'+f)});if(fs.existsSync('skins'))fs.mkdirSync('dist/skins',{recursive:true}),fs.readdirSync('skins').forEach(f=>cp('skins/'+f,'dist/skins/'+f))\""
   },
   "devDependencies": {
     "@fmby/v2-shared": "workspace:*",
@@ -18,6 +19,7 @@
     "react": "^19.1.0",
     "@types/react": "^19.1.4",
     "react-dom": "^19.1.0",
-    "@types/react-dom": "^19.1.4"
+    "@types/react-dom": "^19.1.4",
+    "vite": "^6.3.5"
   }
 }

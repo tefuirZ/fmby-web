@@ -1,0 +1,65 @@
+# THEME-BUILD-01 真实 server 外挂链路验证
+日期：2026-09-15 04:13 UTC｜server：fmby-v2-server（主仓 THEME-BUILD-01 后端半）｜主题产物：fmby-web w/theme-build vite library 构建
+
+## 部署形态
+- data/themes/darkroom/dist/{index.js,theme.manifest.json,tokens.css,aurora.css,skins/*.css}
+- data/themes/template/dist/{index.js,theme.manifest.json,tokens.css}
+- FMBY_WEB_ROOT=fmby-web/host/dist（SPA）
+
+## [A] SPA 伺服
+GET / -> 200 (text/html)
+host 主 bundle：assets/index-lLcG8MbN.js
+
+## [B] host 主 bundle 主题代码反查（THEME-BUILD-01 核心断言：全 0）
+  'LibrarySkin' 命中数: 0
+  'ItemSkin' 命中数: 0
+  'data-darkroom' 命中数: 0
+  'DomainSkinOutlet' 命中数: 0
+
+## [C] /api/site/themes（D3 修复：skins map 正确解析）
+{
+    "active_default": "darkroom",
+    "source": "local-only",
+    "themes": [
+        {
+            "id": "darkroom",
+            "label": "\u6697\u623f",
+            "version": "0.1.109",
+            "trust": "official",
+            "skins": [
+                "browse.item",
+                "browse.library"
+            ],
+            "installed": true,
+            "origin": "local"
+        },
+        {
+            "id": "template",
+            "label": "\u6a21\u677f\u4e3b\u9898",
+            "version": "0.1.109",
+            "trust": "official",
+            "skins": [],
+            "installed": true,
+            "origin": "local"
+        }
+    ]
+}
+
+## [D] 主题外挂静态面（ADR-001 §4 运行时路径）
+GET /themes/darkroom/theme.manifest.json -> 200 (application/json) 394B
+GET /themes/darkroom/tokens.css -> 200 (text/css) 10994B
+GET /themes/darkroom/aurora.css -> 200 (text/css) 3435B
+GET /themes/darkroom/skins/library.css -> 200 (text/css) 3685B
+GET /themes/darkroom/skins/item.css -> 200 (text/css) 4117B
+GET /themes/darkroom/index.js -> 200 (application/javascript) 8626B
+GET /themes/template/theme.manifest.json -> 200 (application/json) 230B
+GET /themes/template/tokens.css -> 200 (text/css) 1421B
+GET /themes/template/index.js -> 200 (application/javascript) 309B
+
+## [E] 主题入口 ESM（default export + react external）
+import { useState as p, useEffect as f, createElement as t } from "react";
+
+## [F] 穿越防护
+GET /themes/darkroom/../fmby-v2.db -> 404（应 404）
+GET /themes/darkroom/dist/../../../etc/passwd -> 404（应 404）
+GET /themes/%2e%2e/fmby-v2.db -> 404（应 404）

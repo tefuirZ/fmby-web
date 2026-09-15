@@ -13,8 +13,6 @@
   },
   "dependencies": {
     "@fmby/v2-shared": "workspace:*",
-    "@fmby/v2-theme-darkroom": "workspace:*",
-    "@fmby/v2-theme-template": "workspace:*",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-checkbox": "^1.1.8",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -46,6 +44,8 @@
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.5.2",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "@fmby/v2-theme-darkroom": "workspace:*",
+    "@fmby/v2-theme-template": "workspace:*"
   }
 }

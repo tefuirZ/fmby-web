@@ -38,7 +38,10 @@ function walkFiles(dir, filterExt = ['.ts', '.tsx', '.js', '.mjs', '.jsx']) {
       entry.name === 'dist' ||
       entry.name === '.vite' ||
       entry.name === '.tmp' ||
-      entry.name.endsWith('.d.ts')
+      entry.name.endsWith('.d.ts') ||
+      // THEME-BUILD-01：vite 构建配置是打包工具脚本（import vite/node:url），
+      // 不是主题运行时代码——纯度闸只约束主题 src/。
+      entry.name === 'vite.config.ts'
     ) {
       continue;
     }
