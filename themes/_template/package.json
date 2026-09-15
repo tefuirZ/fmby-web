@@ -1,6 +1,6 @@
 {
   "name": "@fmby/v2-theme-template",
-  "version": "0.1.111",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "主题模板（docs/09 §1 themes/_template）：新主题脚手架。灰蓝画布最小 token 集，用于验证 tokens 热替换契约。",
@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p . --noEmit",
-    "build": "vite build && node -e \"const fs=require('fs');const cp=(s,d)=>{fs.copyFileSync(s,d)};['theme.manifest.json','tokens.css','aurora.css'].forEach(f=>{if(fs.existsSync(f))cp(f,'dist/'+f)});if(fs.existsSync('skins'))fs.mkdirSync('dist/skins',{recursive:true}),fs.readdirSync('skins').forEach(f=>cp('skins/'+f,'dist/skins/'+f))\""
+    "build": "vite build"
   },
   "devDependencies": {
     "@fmby/v2-shared": "workspace:*",

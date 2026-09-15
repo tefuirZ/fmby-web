@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 
@@ -15,7 +16,17 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   build: {
     lib: {
-      entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+      // C（2026-09-15 用户裁定）：主题源码**同时支持 .ts / .tsx / .js / .jsx**——
+      // 第三方主题作者可自由选择语言（旧主题常用纯 JS；TS 类型安全可选）。
+      // 自动探测入口（按优先级），不存在则报错提示。
+      entry: (() => {
+        const candidates = ['./src/index.ts', './src/index.tsx', './src/index.jsx', './src/index.js'];
+        for (const c of candidates) {
+          const abs = fileURLToPath(new URL(c, import.meta.url));
+          if (existsSync(abs)) return abs;
+        }
+        throw new Error(`主题入口未找到（尝试过 ${candidates.join(' / ')}）`);
+      })(),
       formats: ['es'],
       fileName: () => 'index.js',
     },
