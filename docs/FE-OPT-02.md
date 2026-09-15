@@ -7,7 +7,7 @@
 
 ## 八行报告
 
-- **任务结论**：① 三断点（375/768/1280）× 25 页截图归档（75 张，`docs/evidence-fe-opt-02/`）+ 手机档横向溢出审计——发现并修复**全站性 +69px 溢出**（TopBar 未接手机档 token + 搜索触发器/用户名不收窄），修复后 25 页 **0 溢出**；② 触控目标审计——修复 Button 组件触屏 44px、Switch 命中区伪元素扩展、mobileClose 36→44px、TopBar 图标化按钮 padding 提升，修复后违规 **0**；③ 管理面移动化：侧栏移动版抽屉（Radix Dialog）+ mobileBar 触发器已有，表格 `tableWrap overflow-x:auto` 断言通过、新建抽屉手机上 0 越界可关闭；④ 播放页移动端：直达 /play/101 真跑——播放器挂载、进度条元素 >40px 可拖（down→move→up 无异常）、播放页 0 横向溢出、截图归档。
+- **任务结论**：① 三断点（375/768/1280）× 25 页截图归档（75 张；**REPO-HYGIENE-01 后抽样入库**：`docs/evidence/fe-opt-02/samples/` 8 张 + 索引，全量外置——见 `docs/evidence-policy.md`）+ 手机档横向溢出审计——发现并修复**全站性 +69px 溢出**（TopBar 未接手机档 token + 搜索触发器/用户名不收窄），修复后 25 页 **0 溢出**；② 触控目标审计——修复 Button 组件触屏 44px、Switch 命中区伪元素扩展、mobileClose 36→44px、TopBar 图标化按钮 padding 提升，修复后违规 **0**；③ 管理面移动化：侧栏移动版抽屉（Radix Dialog）+ mobileBar 触发器已有，表格 `tableWrap overflow-x:auto` 断言通过、新建抽屉手机上 0 越界可关闭；④ 播放页移动端：直达 /play/101 真跑——播放器挂载、进度条元素 >40px 可拖（down→move→up 无异常）、播放页 0 横向溢出、截图归档。
 - **修改范围**：TopBar.module.css（手机档断点：矮顶栏/导航横滚/搜索图标化/用户钮收窄）、ManageLayout.module.css（mobileClose 44px）、shared Button.module.css（触屏 min-height 44px）、shared Switch.module.css（::before 命中区扩展）、mobile-audit.spec.ts（新）。
 - **测试**：mobile-audit **6 passed / 0 failed**；pnpm verify **11 闸全绿**（versions/typecheck/build/build:themes/test/size/dupes/contracts/theme-budget/theme-parity）。
 - **门禁**：size 179KB<300KB；themes node:test 14/14；shared 49 pass。
@@ -20,7 +20,7 @@
 
 | # | 卡面要求 | 状态 | 证据 |
 | --- | --- | --- | --- |
-| 1 | 三断点逐页截图 | ✅ | `docs/evidence-fe-opt-02/{phone-375,tablet-768,desktop-1280}/` 各 25 页 + playback（26） |
+| 1 | 三断点逐页截图 | ✅ | 原 `docs/evidence-fe-opt-02/{phone-375,tablet-768,desktop-1280}/` 各 25 页 + playback（26）；REPO-HYGIENE-01 后为 `docs/evidence/fe-opt-02/samples/`（8 抽样）+ `full/`（外置，gitignored） |
 | 1b | 横向溢出核查 | ✅ 修复 | before：25 页全部 +69px → 修 TopBar 后仍 +45px（rightArea 恒定）→ 收窄 searchTrigger/userButton → **25 页 0px** |
 | 2a | 点按目标 ≥44px | ✅ 修复 | before：4 类违规（36x36 ×3、44x24 Switch）→ after：**none**（Button 触屏 44px + Switch ::before 命中区 + mobileClose 44px + topbar 按钮 padding 提升） |
 | 2b | 滑动画廊手势 | ✅ 核实 | mediaRail/continueRail `overflow-x:auto + scroll-snap-type:x proximity`（shared.module.css:380+）；触屏惯性 `-webkit-overflow-scrolling: touch`（responsive.css） |
