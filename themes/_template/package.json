@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "主题模板（docs/09 §1 themes/_template）：新主题脚手架。灰蓝画布最小 token 集，用于验证 tokens 热替换契约。",
+  "description": "主题模板（themes/_template）：第三方主题完整样板。灰蓝画布 token 集 + 一个真实可用的 browse.item L3 皮肤（编辑档案版式，五态全覆盖/响应式/实时/导航），作为「从零做主题」的起手工程。",
   "exports": {
     ".": "./src/index.ts",
     "./theme.manifest.json": "./theme.manifest.json",
-    "./tokens.css": "./tokens.css"
+    "./tokens.css": "./tokens.css",
+    "./skins/item.css": "./skins/item.css"
   },
   "scripts": {
     "typecheck": "tsc -p . --noEmit",
+    "test": "node --import ../../shared/tests/register-resolver.mjs --test tests/*.test.ts",
     "build": "vite build && node -e \"const fs=require('fs');const cp=(s,d)=>{fs.copyFileSync(s,d)};['theme.manifest.json','tokens.css','aurora.css'].forEach(f=>{if(fs.existsSync(f))cp(f,'dist/'+f)});if(fs.existsSync('skins'))fs.mkdirSync('dist/skins',{recursive:true}),fs.readdirSync('skins').forEach(f=>cp('skins/'+f,'dist/skins/'+f))\""
   },
   "devDependencies": {

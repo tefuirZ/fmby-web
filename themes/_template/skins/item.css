@@ -1,0 +1,312 @@
+/*
+ * ============================================================
+ * 模板主题 —— browse.item 域皮肤样式（第三方主题样板）
+ * ============================================================
+ *
+ * 版式：**编辑档案（dossier）**——与 host 默认详情页（纵向堆叠）和
+ * darkroom（横向双栏海报墙）都不同：导语头 + 事实带 + 叙述/事实双栏 +
+ * 剧集横滑带。
+ *
+ * 约定：
+ * - 所有选择器挂在 `[data-template~='…']` 属性钩子上（主题自持表现层，
+ *   不依赖 host 的 CSS Module 类名）。
+ * - 颜色/间距全部消费 token（`var(--…)` 带兜底值）——主题只改取值，
+ *   变量语言与 host `defaults.css` 一致。
+ * - 移动端（<768px，与 shared 断点口径一致）：双栏塌成单列，事实带换行。
+ */
+
+[data-template~='item-dossier'] {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 20px 72px;
+  color: var(--text-1, #ececf1);
+}
+
+/* ── 导语头 ─────────────────────────────────────────────────── */
+[data-template~='dossier-head'] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+[data-template~='dossier-kicker'] {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--content-accent, #7fa8c9);
+}
+
+[data-template~='dossier-head'] h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  line-height: 1.2;
+}
+
+[data-template~='dossier-tagline'] {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-2, #b4b6bf);
+}
+
+/* ── 事实带（关键事实一行） ──────────────────────────────────── */
+[data-template~='fact-ribbon'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 4px;
+}
+
+[data-template~='fact'] {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+[data-template~='fact-label'] {
+  color: var(--text-3, #8b8e98);
+}
+
+[data-template~='fact-value'] {
+  color: var(--text-1, #ececf1);
+  font-weight: 500;
+}
+
+/* ── 双栏主体 ───────────────────────────────────────────────── */
+[data-template~='dossier-grid'] {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+[data-template~='dossier-narrative'] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+[data-template~='description'] {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-2, #b4b6bf);
+}
+
+[data-template~='genre-chips'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-template~='chip'] {
+  padding: 3px 12px;
+  border-radius: var(--radius-lg, 14px);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.16));
+  background: var(--surface-2, rgba(255, 255, 255, 0.045));
+  color: var(--text-2, #b4b6bf);
+  font-size: 0.8125rem;
+}
+
+/* 观看进度：细线进度条，颜色取自 token 强调色 */
+[data-template~='progress'] {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3, rgba(255, 255, 255, 0.072));
+  overflow: hidden;
+}
+
+[data-template~='progress-fill'] {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--content-accent, #7fa8c9);
+}
+
+/* ── 事实栏（右） ───────────────────────────────────────────── */
+[data-template~='dossier-facts'] {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-card, 12px);
+  background: var(--surface-1, rgba(255, 255, 255, 0.024));
+}
+
+[data-template~='fact-block'] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-template~='block-title'] {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3, #8b8e98);
+}
+
+[data-template~='fact-list'] {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  color: var(--text-2, #b4b6bf);
+}
+
+/* ── 剧集横滑带 ─────────────────────────────────────────────── */
+[data-template~='episode-rail'] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+[data-template~='rail-title'] {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-1, #ececf1);
+}
+
+[data-template~='rail-track'] {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-template~='rail-card'] {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+[data-template~='rail-open'] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px; /* 触控目标 ≥44px（WCAG 2.5.5） */
+  padding: 10px 16px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.16));
+  background: var(--surface-2, rgba(255, 255, 255, 0.045));
+  color: var(--text-1, #ececf1);
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+[data-template~='rail-open']:hover {
+  border-color: var(--content-accent, #7fa8c9);
+  color: var(--content-accent, #7fa8c9);
+}
+
+[data-template~='rail-open']:focus-visible {
+  outline: 2px solid var(--content-accent, #7fa8c9);
+  outline-offset: 2px;
+}
+
+/* 无导航注入时的静态标题（占位卡，不可点） */
+[data-template~='rail-open-static'] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.08));
+  color: var(--text-2, #b4b6bf);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+/* ── 状态面（loading 骨架 / 反馈面） ────────────────────────── */
+[data-template~='skeleton-kicker'],
+[data-template~='skeleton-title'],
+[data-template~='skeleton-line'] {
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-2, rgba(255, 255, 255, 0.045));
+}
+
+[data-template~='skeleton-kicker'] {
+  width: 140px;
+  height: 12px;
+}
+
+[data-template~='skeleton-title'] {
+  width: 60%;
+  height: 32px;
+}
+
+[data-template~='skeleton-line'] {
+  height: 14px;
+}
+
+[data-template~='dossier-feedback'] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 40px 24px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-card, 12px);
+}
+
+[data-template~='dossier-feedback'] h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+[data-template~='dossier-feedback'] p {
+  margin: 0;
+  color: var(--text-2, #b4b6bf);
+}
+
+[data-template~='primary-button'] {
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--content-accent, #7fa8c9);
+  background: transparent;
+  color: var(--content-accent, #7fa8c9);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+[data-template~='primary-button']:focus-visible {
+  outline: 2px solid var(--content-accent, #7fa8c9);
+  outline-offset: 2px;
+}
+
+/* ── 移动端（<768px，与 shared 断点口径一致）：双栏塌单列 ────── */
+@media (max-width: 767px) {
+  [data-template~='item-dossier'] {
+    padding: 20px 16px 56px;
+    gap: 18px;
+  }
+
+  [data-template~='dossier-grid'] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  [data-template~='fact-ribbon'] {
+    gap: 6px 14px;
+  }
+}

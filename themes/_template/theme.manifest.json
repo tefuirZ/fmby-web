@@ -4,12 +4,15 @@
   "label": "模板主题",
   "contract_version": "0.1",
   "tokens": {
-    "cssFile": "tokens.css"
+    "cssFile": "tokens.css",
+    "extraCssFiles": ["skins/item.css"]
   },
   "entry": {
     "mount": "index.ts"
   },
-  "skins": {},
+  "skins": {
+    "browse.item": "ItemSkin"
+  },
   "nav": {
     "items": []
   },

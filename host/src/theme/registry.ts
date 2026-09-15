@@ -84,5 +84,7 @@ export const THEME_REGISTRY: Record<string, ThemeRegistration> = {
     'skins/library.css',
     'skins/item.css',
   ]),
-  template: makeRegistration('template', ['tokens.css']),
+  // `_template` 是第三方主题完整样板：tokens + browse.item L3 皮肤（自带样式层，
+  // 演示「域皮肤 + 独立 CSS」的完整接线）。
+  template: makeRegistration('template', ['tokens.css', 'skins/item.css']),
 };

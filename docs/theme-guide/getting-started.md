@@ -17,11 +17,18 @@ themes/<你的主题 id>/
 ├── package.json            # 包名 @fmby/v2-theme-<id>（workspace 成员）
 ├── theme.manifest.json     # 主题清单（host 启动时最先拉取，红线 < 2KB）
 ├── tokens.css              # 设计 token（:root 变量，全站换肤的根基）
-├── [extra.css]             # 可选附加样式层（如环境光层）
+├── [extra.css]             # 可选附加样式层（如环境光层 / 皮肤样式）
+├── vite.config.ts          # library 构建（IIFE + external react/shared）
 ├── tsconfig.json           # 复制 _template
-└── src/
-    └── index.ts            # 入口（默认导出 ThemeEntryModule）
+├── src/
+│   ├── index.ts            # 入口（默认导出 ThemeEntryModule）
+│   └── skins/              # （可选）L3 域皮肤
+└── tests/                  # （可选）node:test 单测
 ```
+
+> **`_template` 是完整可跑样板**：它自带一个真实可用的 `browse.item` L3 皮肤
+> （`src/skins/ItemSkin.ts`）+ 样式层 + 单测，不只是一个空壳。逐步骤安装说明见
+> [`themes/_template/README.md`](../../themes/_template/README.md)。
 
 三条铁律（ADR-001 §3，门禁强制）：
 
@@ -33,7 +40,7 @@ themes/<你的主题 id>/
 
 ## 1. 复制脚手架 `_template`
 
-模板主题在仓内 `themes/_template/`（CSS-only 起手样板，含注册指引）：
+模板主题在仓内 `themes/_template/`（**完整可跑样板**：token 层 + 一个真实可用的 `browse.item` L3 皮肤 + 样式 + 单测 + 构建配置）：
 
 ```bash
 # 在前端仓（fmby-web）根目录执行
@@ -109,31 +116,30 @@ darkroom（暗房）的设计语言供参考——**兼容旧版全部变量名�
 
 ---
 
-## 4. registry 登记
+## 4. host 接线（仓内主题 vs 第三方外挂）
 
-主题包建好后，需要在 host 的注册表里登记一行（`host/src/theme/registry.ts`）：
+主题如何被 host 加载，取决于发布形态：
+
+**仓内主题（开发/官方）**：在 `host/src/theme/registry.ts` 登记一行——
 
 ```ts
-// 1) ?url 取资产生成地址（字符串常量，不加载、不执行任何主题字节）
-import mythemeManifestUrl from '@fmby/v2-theme-mytheme/theme.manifest.json?url';
-import mythemeTokensUrl from '@fmby/v2-theme-mytheme/tokens.css?url';
-
-// 2) 注册表加一项：loadEntry 用动态 import()（产物独立 async chunk）
+// THEME-BUILD-01：registry 只按运行时路径登记，不 import 主题源码
+// （首屏零主题字节，check-frontend-size 强制）。makeRegistration 组装
+// /themes/<id>/<file> 资源 URL + IIFE 入口加载器。
 export const THEME_REGISTRY: Record<string, ThemeRegistration> = {
-  // ...darkroom / template 既有项...
-  mytheme: {
-    id: 'mytheme',
-    manifestUrl: mythemeManifestUrl,
-    assets: { 'tokens.css': mythemeTokensUrl },
-    loadEntry: () => import('@fmby/v2-theme-mytheme').then((m) => m.default),
-  },
+  // ...darkroom 既有项...
+  mytheme: makeRegistration('mytheme', ['tokens.css', 'skins/item.css']),
 };
 ```
 
-纪律（同 darkroom 先例）：
+**第三方主题（外挂，推荐）**：**无需重建 host**——把构建产物 `dist/` 放进后端
+数据目录 `${FMBY_DATA_DIR}/themes/<id>/dist/`（目录名 = manifest `id`），
+后端静态面自动伺服 `/themes/<id>/*`，切换器即可见。完整命令见
+[`themes/_template/README.md` §4](../../themes/_template/README.md)。
 
-- 对主题包**只做两件事**：`?url` 取地址 + 动态 `import()` 声明懒入口；
-- **不静态 import 主题代码**（否则主题进首屏，`check-frontend-size` [5] 直接红）。
+> 形态要点：主题产物是 **IIFE**（`var FmbyTheme = …`），`react`/`react-dom`/
+> `@fmby/v2-shared` 由**宿主全局**提供（`window.React` 等）——浏览器无 importmap，
+> ESM 裸说明符不可执行。host 侧 `themeGlobals.ts` 负责在注入前挂好这些全局。
 
 ---
 
@@ -182,5 +188,6 @@ pnpm e2e                                      # Playwright（无 Rust server 二
 - [ ] `pnpm verify` 全绿
 - [ ] 切换到自己的主题，画布颜色立变（tokens 热替换生效的最快自检）
 
-到这里你拥有一个 **CSS-only 主题**（切换器可选、tokens 热替换）。想接管整个页面的
+到这里你拥有一个 **CSS-only 主题**（切换器可选、tokens 热替换）。`_template`
+还演示了如何接一个**真实可用的 L3 皮肤**（`browse.item`）；想接管整个页面的
 布局与交互（L3 域皮肤），继续读 [《二：L3 域皮肤开发》](./l3-skin.md)。
