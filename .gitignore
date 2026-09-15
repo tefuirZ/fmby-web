@@ -16,3 +16,4 @@ blob-report/
 # REPO-HYGIENE-01：审计截图全量集**外置**（CI artifact / 发布仓），
 # 仓库只保留 samples/ 抽样（≤1MiB 门禁守住）。策略见 docs/evidence-policy.md。
 docs/evidence/**/full/
+.codegraph/
