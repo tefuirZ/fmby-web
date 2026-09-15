@@ -139,7 +139,10 @@ export function ItemSkin(props: SkinProps) {
       createElement(
         'div',
         { 'data-darkroom': 'poster-wall' },
-        createElement('div', { 'data-darkroom': 'poster-frame', 'aria-label': item.title }),
+        // 纯装饰性占位（无图片/无内容，渐变底）；条目标题已由 meta-column 的
+        // <h1> 宣布。无 role 的 div 禁带 aria-label（axe aria-prohibited-attr），
+        // 故不标注——装饰元素对 AT 应不可见。
+        createElement('div', { 'data-darkroom': 'poster-frame', 'aria-hidden': 'true' }),
       ),
       createElement(
         'aside',

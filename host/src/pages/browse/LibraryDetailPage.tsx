@@ -99,28 +99,48 @@ export function LibraryDetailPage() {
       <section className={libraryStyles.libraryControlPanel}>
         <div className={styles.toolbar}>
           <div className={styles.filterGroup}>
-            <select className={styles.select} value={mediaType} onChange={(event) => setMediaType(event.target.value)}>
+            <select
+              className={styles.select}
+              value={mediaType}
+              aria-label="媒体类型筛选"
+              onChange={(event) => setMediaType(event.target.value)}
+            >
               {filters?.mediaTypes.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
-            <select className={styles.select} value={resolution} onChange={(event) => setResolution(event.target.value)}>
+            <select
+              className={styles.select}
+              value={resolution}
+              aria-label="分辨率筛选"
+              onChange={(event) => setResolution(event.target.value)}
+            >
               {filters?.resolutions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
-            <select className={styles.select} value={watched} onChange={(event) => setWatched(event.target.value)}>
+            <select
+              className={styles.select}
+              value={watched}
+              aria-label="观看状态筛选"
+              onChange={(event) => setWatched(event.target.value)}
+            >
               {filters?.watchedStates.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
-            <select className={styles.select} value={sort} onChange={(event) => setSort(event.target.value)}>
+            <select
+              className={styles.select}
+              value={sort}
+              aria-label="排序方式"
+              onChange={(event) => setSort(event.target.value)}
+            >
               {filters?.sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}

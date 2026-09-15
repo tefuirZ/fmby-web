@@ -19,6 +19,9 @@ import { defineConfig, devices } from '@playwright/test';
 const webRepoRoot = join(import.meta.dirname, '..');
 const mainRepoRoot = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
 const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
+// 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让，
+// 与 e2e/start.mjs 同源口径）。
+const webOrigin = `http://127.0.0.1:${Number(process.env.FMBY_E2E_WEB_PORT ?? 5180)}`;
 
 /** 服务端二进制是否存在（与 e2e/start.mjs 的 resolveBinary 保持一致）。 */
 function hasServerBinary() {
@@ -55,7 +58,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:5180',
+    baseURL: webOrigin,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -70,7 +73,7 @@ export default defineConfig({
   webServer: hasBinary
     ? {
         command: 'node e2e/start.mjs',
-        url: 'http://127.0.0.1:5180',
+        url: webOrigin,
         reuseExistingServer: false,
         timeout: 120_000,
       }

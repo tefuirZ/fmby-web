@@ -131,6 +131,14 @@ export default defineConfig(({ mode }) => {
             '*': '/',
           },
         },
+        // THEME-BUILD-01/FE-OPT-03：主题运行时外挂产物（/themes/<id>/...）由后端
+        // 静态面伺服。dev server 已有该代理；preview（产物模式，E2E 默认）同样
+        // 必须代理，否则 /themes/* 落到 SPA HTML 回退 → 主题激活失败。
+        '/themes': {
+          target: backend,
+          changeOrigin: true,
+          ws: false,
+        },
       },
     },
     build: {

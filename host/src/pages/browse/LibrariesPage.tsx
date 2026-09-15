@@ -112,7 +112,12 @@ export function LibrariesPage() {
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
             />
-            <select className={styles.select} value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <select
+              className={styles.select}
+              value={typeFilter}
+              aria-label="媒体库类型筛选"
+              onChange={(event) => setTypeFilter(event.target.value)}
+            >
               <option value="all">全部类型</option>
               {typeOptions.filter((item) => item !== 'all').map((item) => (
                 <option key={item} value={item}>

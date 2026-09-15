@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "test": "node --import ./tests/register-aliases.mjs --test tests/*.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -37,6 +38,9 @@
     "zod": "^3.25.20"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@fmby/v2-theme-darkroom": "workspace:*",
+    "@fmby/v2-theme-template": "workspace:*",
     "@playwright/test": "^1.58.0",
     "@tanstack/react-table": "^8.21.3",
     "@types/node": "^25.6.0",
@@ -44,8 +48,6 @@
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.5.2",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "@fmby/v2-theme-darkroom": "workspace:*",
-    "@fmby/v2-theme-template": "workspace:*"
+    "vite": "^6.3.5"
   }
 }
