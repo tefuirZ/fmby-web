@@ -7,22 +7,30 @@ import { defineConfig, devices } from '@playwright/test';
  * docs/plans/tasks/gemini-frontend-002.md
  *
  * WEB-GOV ③：真实 E2E 依赖 Rust 服务端二进制；无产物时**跳过而非失败**
- * （`skip: !hasBinary`）。二进制解析与 start.mjs 同源口径：
+ * （`skip: !hasBinary`）。WEB-E2E-FULL：前端仓无 `target/`，二进制解析增加
+ * **主仓 FMBY-V2 回退**（`FMBY_E2E_MAIN_REPO` 默认 `/home/tefuir/rustproject/FMBY-V2`），
+ * 与 `e2e/start.mjs` 同源口径：
  *   1. 环境变量 `FMBY_E2E_SERVER_BIN`（显式覆盖）；
- *   2. `<repo>/target/<FMBY_E2E_PROFILE|debug>/fmby-v2-server${exeSuffix}`。
+ *   2. `<前端仓>/target/<profile>/...`；
+ *   3. `<主仓>/target/{release,debug}/...`。
  */
 
-const repoRoot = join(import.meta.dirname, '..', '..');
+// host/ → 前端仓根
+const webRepoRoot = join(import.meta.dirname, '..');
+const mainRepoRoot = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
 const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
-const profile = process.env.FMBY_E2E_PROFILE ?? 'debug';
 
 /** 服务端二进制是否存在（与 e2e/start.mjs 的 resolveBinary 保持一致）。 */
 function hasServerBinary() {
-  const candidates = [
-    process.env.FMBY_E2E_SERVER_BIN,
-    join(repoRoot, 'target', profile, `fmby-v2-server${EXE_SUFFIX}`),
-    join(repoRoot, 'target', profile, 'fmby-v2-server'),
-  ].filter((value) => typeof value === 'string' && value.length > 0);
+  const candidates = [process.env.FMBY_E2E_SERVER_BIN].filter(
+    (v) => typeof v === 'string' && v.length > 0,
+  );
+  for (const root of [webRepoRoot, mainRepoRoot]) {
+    for (const profile of ['release', 'debug']) {
+      candidates.push(join(root, 'target', profile, `fmby-v2-server${EXE_SUFFIX}`));
+      candidates.push(join(root, 'target', profile, 'fmby-v2-server'));
+    }
+  }
   return candidates.some((candidate) => existsSync(candidate));
 }
 
@@ -30,7 +38,7 @@ const hasBinary = hasServerBinary();
 
 if (!hasBinary) {
   console.warn(
-    `[playwright] SKIP e2e: fmby-v2-server binary not found (FMBY_E2E_SERVER_BIN / target/${profile}/fmby-v2-server${EXE_SUFFIX}). ` +
+    `[playwright] SKIP e2e: fmby-v2-server binary not found (FMBY_E2E_SERVER_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
       `Build with 'cargo build -p fmby-v2-server' to enable real E2E.`,
   );
 }

@@ -8,15 +8,26 @@ import type { Page } from '@playwright/test';
  *   1. 环境变量 `FMBY_E2E_SERVER_BIN`；
  *   2. `<repoRoot>/target/<FMBY_E2E_PROFILE|debug>/fmby-v2-server${exeSuffix}`。
  */
-const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
+// host/e2e/fixtures → host → 前端仓根
+const WEB_REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
+// 主仓（Rust 产物所在；WEB-E2E-FULL：前端仓无 target/ 时回退）
+const MAIN_REPO_ROOT = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
 const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
-const PROFILE = process.env.FMBY_E2E_PROFILE ?? 'debug';
 
-export const E2E_ENABLED: boolean = [
-  process.env.FMBY_E2E_SERVER_BIN,
-  join(REPO_ROOT, 'target', PROFILE, `fmby-v2-server${EXE_SUFFIX}`),
-  join(REPO_ROOT, 'target', PROFILE, 'fmby-v2-server'),
-].some((candidate) => typeof candidate === 'string' && candidate.length > 0 && existsSync(candidate));
+function serverBinaryExists() {
+  const candidates = [process.env.FMBY_E2E_SERVER_BIN].filter(
+    (v) => typeof v === 'string' && v.length > 0,
+  );
+  for (const root of [WEB_REPO_ROOT, MAIN_REPO_ROOT]) {
+    for (const profile of ['release', 'debug']) {
+      candidates.push(join(root, 'target', profile, `fmby-v2-server${EXE_SUFFIX}`));
+      candidates.push(join(root, 'target', profile, 'fmby-v2-server'));
+    }
+  }
+  return candidates.some((candidate) => existsSync(candidate));
+}
+
+export const E2E_ENABLED: boolean = serverBinaryExists();
 
 /** 跳过原因（供 test.skip 文案）。 */
 export const E2E_SKIP_REASON =

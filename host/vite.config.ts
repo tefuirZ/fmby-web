@@ -89,6 +89,42 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    // WEB-E2E-FULL：真实 E2E 默认服务**已构建产物**（`host/dist`），对齐卡面
+    // 「主仓二进制 + 前端 host/dist（已构建）」的真实栈口径。dev server 会开
+    // React StrictMode 双调用（仅 dev），在 VideoPlayer 的异步挂载上暴露竞态
+    // （实测：dev 下 <video> 不挂载；产物构建无此双调用 → 正常挂载）。
+    // 需要热更新（调试 spec）时可 `FMBY_E2E_DEV=1` 回落 dev server。
+    preview: {
+      port: 5180,
+      strictPort: true,
+      proxy: {
+        '/api': {
+          target: backend,
+          changeOrigin: true,
+          ws: false,
+          cookieDomainRewrite: {
+            '*': '',
+          },
+          cookiePathRewrite: {
+            '*': '/',
+          },
+          headers: {
+            'x-requested-with': 'FMBY-Web',
+          },
+        },
+        '/emby': {
+          target: backend,
+          changeOrigin: true,
+          ws: false,
+          cookieDomainRewrite: {
+            '*': '',
+          },
+          cookiePathRewrite: {
+            '*': '/',
+          },
+        },
+      },
+    },
     build: {
       // 生成 .vite/manifest.json：scripts/check-frontend-size.mjs 依据它
       // 计算入口静态闭包（首屏 JS）与主题 async chunk 的 gzip 体积红线。
