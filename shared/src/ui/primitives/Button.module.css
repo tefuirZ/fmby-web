@@ -38,6 +38,18 @@
   opacity: 0.55;
 }
 
+/* FE-OPT-02：触屏指针设备上点按目标提到 --touch-min（44px）。
+   桌面指针不受影响（hover: none 判定非触屏）。 */
+@media (hover: none) and (pointer: coarse) {
+  .button {
+    min-height: var(--touch-min);
+  }
+
+  .button[data-size='sm'] {
+    min-height: 40px; /* 行内次级操作轻量提开，避免表格内过重 */
+  }
+}
+
 /*
  * primary：纯白实底 + 画布黑文字。
  * 按下反馈从「位移」改成「压暗」—— 暗房不做元素浮动。

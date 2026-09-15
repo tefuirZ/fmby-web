@@ -287,8 +287,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  /* FE-OPT-02：触屏点按目标 44px（--touch-min） */
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);

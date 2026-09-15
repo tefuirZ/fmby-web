@@ -23,12 +23,34 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-6);
+  /* FE-OPT-02：手机档用矮顶栏（token 已有但原先未接入） */
   height: var(--topbar-height-desktop);
   /* 与 ManageLayout 的页宽 / 页边距对齐，站名与正文左缘同一条线 */
   width: 100%;
   max-width: var(--grid-max-width);
   margin: 0 auto;
   padding: 0 var(--grid-margin);
+}
+
+/* FE-OPT-02 手机档顶栏：矮栏 + 收窄间距 + 导航可横滚（点按目标仍 ≥44px 高）。 */
+@media (max-width: 767px) {
+  .container {
+    height: var(--topbar-height-mobile);
+    gap: var(--space-3);
+    padding: 0 var(--grid-gutter-mobile);
+  }
+
+  /* 中段导航允许横向滚动（不撑破文档宽度） */
+  .nav {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    max-width: 52vw;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .leftArea {
@@ -165,6 +187,31 @@
   transition:
     color var(--duration-fast) var(--ease-default),
     background-color var(--duration-fast) var(--ease-default);
+}
+
+/* FE-OPT-02 手机档：搜索触发器收为图标（aria-label 保留可访问性）、
+   用户按钮只留头像位（下拉菜单展开时仍完整可见）。 */
+@media (max-width: 767px) {
+  .searchTrigger {
+    gap: 0;
+    /* FE-OPT-02：图标化后保 44px 点按目标（14 icon + 2*15 padding） */
+    padding: 15px;
+  }
+
+  .searchLabel,
+  .searchKbd {
+    display: none;
+  }
+
+  .userButton {
+    gap: 0;
+    /* FE-OPT-02：触屏点按目标 44px（头像 26 + 2*9 padding） */
+    padding: 9px;
+  }
+
+  .userName {
+    display: none;
+  }
 }
 
 /* 悬停与展开是同一种状态：提亮文字 + 一层极微的面，不加描边 */

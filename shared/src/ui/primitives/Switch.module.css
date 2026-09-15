@@ -18,6 +18,16 @@
     border-color var(--duration-fast) var(--ease-default);
 }
 
+/* FE-OPT-02：触屏设备上用透明伪元素把命中区扩到 44x44（视觉轨道不变，
+   24px 高的开关在手机上徒手点中太苛刻——WCAG 2.5.5 AAA 的常用达标法）。 */
+@media (hover: none) and (pointer: coarse) {
+  .root::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+  }
+}
+
 .root[data-state='checked'] {
   background: var(--content-accent);
   border-color: transparent;

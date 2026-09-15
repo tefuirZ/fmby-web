@@ -5,6 +5,9 @@ dist/
 .DS_Store
 *.tsbuildinfo
 
+# 本地环境变量（含内网后端地址）
+.env.local
+
 # Playwright 产物（trace / screenshot / report）
 test-results/
 playwright-report/
