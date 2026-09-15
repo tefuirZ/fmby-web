@@ -11,6 +11,7 @@
  */
 
 import type { ThemeEntryModule, ThemeRegistration } from '@fmby/v2-shared/theme';
+import { exposeThemeGlobals } from './themeGlobals';
 
 export const DEFAULT_THEME_ID = 'darkroom';
 
@@ -36,6 +37,9 @@ const THEME_GLOBAL_NAME = 'FmbyTheme';
  */
 function loadIifeThemeEntry(src: string): Promise<ThemeEntryModule> {
   return new Promise((resolve, reject) => {
+    // 注入前确保宿主依赖全局桥就位（`})(React)` 需要 window.React；
+    // 缺失则主题入口抛 `React is not defined`。幂等。
+    exposeThemeGlobals();
     const win = window as unknown as Record<string, unknown>;
     const previous = win[THEME_GLOBAL_NAME];
     const script = document.createElement('script');
@@ -45,8 +49,10 @@ function loadIifeThemeEntry(src: string): Promise<ThemeEntryModule> {
       const win = window as unknown as Record<string, unknown>;
       const entry = win[THEME_GLOBAL_NAME];
       // 恢复/清除全局，避免多主题（串行激活）串味。
+      // 注：注入的 `var FmbyTheme = …` 在 window 上是**不可配置**属性，
+      // `delete` 会抛 `Cannot delete property`（实测）——故改为**赋值**。
       if (previous === undefined) {
-        delete win[THEME_GLOBAL_NAME];
+        win[THEME_GLOBAL_NAME] = undefined;
       } else {
         win[THEME_GLOBAL_NAME] = previous;
       }

@@ -19,10 +19,17 @@
  *    正确顺序（对齐 `full_chain_e2e` 先例：bootstrap → seed → server）：
  *    **先 seed（seed 自带 bootstrap_multi 建三库 + 种数据），再起 server**——
  *    server 打开已建好的库，无并发写竞争。
+ *
+ * ③ **主题产物组装（FE-OPT-03 修复）**：THEME-BUILD-01 起主题改为**运行时外挂**
+ *    （host registry 从 `/themes/<id>/*` 拉取，后端静态面映射
+ *    `${FMBY_DATA_DIR}/themes/<id>/dist/<rest>`）——但 e2e 启动器未组装
+ *    `data/themes/`，导致主题激活 404（asset 回落到 SPA HTML）→ `theme-switch`
+ *    在 main 上恒红（实测复现）。本步骤：`pnpm build:themes` 产物
+ *    `themes/<id>/dist/**` → `${workDir}/data/themes/<id>/dist/**`。
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -35,6 +42,9 @@ const webRepoRoot = join(here, '..', '..');
 const mainRepoRoot = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
 
 const backendPort = Number(process.env.FMBY_E2E_BACKEND_PORT ?? 18099);
+// 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让）。
+const webPort = Number(process.env.FMBY_E2E_WEB_PORT ?? 5180);
+const webOrigin = `http://127.0.0.1:${webPort}`;
 const workDir = mkdtempSync(join(tmpdir(), 'fmby-e2e-real-'));
 const dbPath = join(workDir, 'e2e.db');
 const dataDir = join(workDir, 'data');
@@ -43,7 +53,7 @@ process.env.FMBY_BACKEND = `http://127.0.0.1:${backendPort}`;
 process.env.FMBY_DB_PATH = dbPath;
 process.env.FMBY_DATA_DIR = dataDir;
 process.env.FMBY_BIND = `127.0.0.1:${backendPort}`;
-process.env.FMBY_TRUSTED_ORIGINS = 'http://127.0.0.1:5180';
+process.env.FMBY_TRUSTED_ORIGINS = webOrigin;
 
 /** 平台可执行后缀：Windows 为 '.exe'，其余为空串。 */
 const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
@@ -109,6 +119,64 @@ if (seedExit !== 0) {
 }
 console.log('[real-server] explicit E2E seed complete');
 
+// ---- ①b 组装主题运行时产物（THEME-BUILD-01 外挂形态）----
+// host registry 从 `/themes/<id>/*` 拉 manifest/tokens/index.js；后端静态面映射
+// `${FMBY_DATA_DIR}/themes/<id>/dist/<rest>`。故把 `themes/<dir>/dist/**` 复制到
+// `${dataDir}/themes/<id>/dist/**`。**目录名与运行时 id 可能不同**（如 `_template`
+// 目录 → manifest `id: "template"`）——以 manifest 的 `id` 为准（registry 按 id 请求）。
+// 产物缺失时先 `pnpm build:themes`。
+function assembleThemes() {
+  const themesRoot = join(webRepoRoot, 'themes');
+  const dirs = readdirSync(themesRoot, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+    .map((e) => e.name);
+  let assembled = 0;
+  for (const dir of dirs) {
+    const srcDist = join(themesRoot, dir, 'dist');
+    if (!existsSync(join(srcDist, 'index.js'))) {
+      continue; // 未构建的主题跳过
+    }
+    // 运行时 id 以构建产物 manifest 为准（回退目录名）。
+    let runtimeId = dir;
+    const distManifest = join(srcDist, 'theme.manifest.json');
+    if (existsSync(distManifest)) {
+      try {
+        const parsed = JSON.parse(readFileSync(distManifest, 'utf8'));
+        if (typeof parsed?.id === 'string' && parsed.id.length > 0) {
+          runtimeId = parsed.id;
+        }
+      } catch {
+        // manifest 不可解析：回退目录名
+      }
+    }
+    const destDist = join(dataDir, 'themes', runtimeId, 'dist');
+    rmSync(destDist, { recursive: true, force: true });
+    cpSync(srcDist, destDist, { recursive: true });
+    assembled += 1;
+  }
+  return assembled;
+}
+
+let assembled = assembleThemes();
+if (assembled === 0) {
+  console.log('[real-server] themes/*/dist 缺失，先执行 pnpm build:themes …');
+  const built = await new Promise((resolve) => {
+    const p = spawn(join(webRepoRoot, 'node_modules', '.bin', 'pnpm'), ['build:themes'], {
+      cwd: webRepoRoot,
+      stdio: 'inherit',
+      env: process.env,
+    });
+    p.once('exit', (code) => resolve(code ?? 1));
+  });
+  if (built !== 0) {
+    console.error('[real-server] pnpm build:themes 失败');
+    rmSync(workDir, { recursive: true, force: true });
+    process.exit(1);
+  }
+  assembled = assembleThemes();
+}
+console.log(`[real-server] assembled ${assembled} theme(s) → ${join(dataDir, 'themes')}`);
+
 // ---- ② 再起 server（打开已建好的三库）----
 const backend = spawn(serverBin, [], {
   stdio: 'inherit',
@@ -133,7 +201,7 @@ if (useDevServer) {
     root: join(webRepoRoot, 'host'),
     server: {
       host: '127.0.0.1',
-      port: 5180,
+      port: webPort,
       strictPort: true,
     },
   });
@@ -158,7 +226,7 @@ if (useDevServer) {
     root: join(webRepoRoot, 'host'),
     preview: {
       host: '127.0.0.1',
-      port: 5180,
+      port: webPort,
       strictPort: true,
     },
   });

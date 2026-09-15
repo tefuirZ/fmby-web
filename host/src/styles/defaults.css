@@ -19,11 +19,11 @@
   --bg-raised: #14161b;
   --bg-raised-strong: #1b1e24;
 
-  /* ---- 文本 ---- */
+  /* ---- 文本（FE-OPT-03 WCAG AA：text-4 对最亮画布 raised-strong #1b1e24 须 ≥4.5；原 #63666f=2.91 不达标 → #858b95=4.87） ---- */
   --text-1: #ececf1;
   --text-2: #b4b6bf;
   --text-3: #8b8e98;
-  --text-4: #63666f;
+  --text-4: #858b95;
   --text-primary: #ececf1;
   --text-secondary: #b4b6bf;
   --text-tertiary: #8b8e98;

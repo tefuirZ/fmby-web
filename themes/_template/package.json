@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p . --noEmit",
-    "build": "vite build"
+    "build": "vite build && node -e \"const fs=require('fs');const cp=(s,d)=>{fs.copyFileSync(s,d)};['theme.manifest.json','tokens.css','aurora.css'].forEach(f=>{if(fs.existsSync(f))cp(f,'dist/'+f)});if(fs.existsSync('skins'))fs.mkdirSync('dist/skins',{recursive:true}),fs.readdirSync('skins').forEach(f=>cp('skins/'+f,'dist/skins/'+f))\""
   },
   "devDependencies": {
     "@fmby/v2-shared": "workspace:*",
