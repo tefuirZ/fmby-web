@@ -23,6 +23,8 @@
     "./viewmodels": "./src/viewmodels/index.ts",
     "./viewmodels/*": "./src/viewmodels/*",
     "./forms": "./src/forms/index.ts",
+    "./batch": "./src/batch/index.ts",
+    "./batch/*": "./src/batch/*",
     "./hooks": "./src/hooks/index.ts",
     "./hooks/*": "./src/hooks/*",
     "./search": "./src/search/index.ts",

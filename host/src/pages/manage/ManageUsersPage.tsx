@@ -1,9 +1,11 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { type ManageUserAccountKind, type UserStatus } from '@fmby/v2-shared/contracts/manage';
+import { type DangerousActionRequest, type ManageUserAccountKind, type UserStatus } from '@fmby/v2-shared/contracts/manage';
 import { manageApi } from '@fmby/v2-shared/contracts/manage';
 import { useSession } from '@/session';
 import { FeedbackState } from '@fmby/v2-shared/ui';
+import { BatchProgressPanel } from '@fmby/v2-shared/ui';
+import { useBatchRunner } from '@fmby/v2-shared/hooks';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -46,6 +48,7 @@ export function ManageUsersPage() {
   const [drawerState, setDrawerState] = useState<UserDrawerState | null>(null);
   const [formState, setFormState] = useState<UserFormState>(DEFAULT_FORM_STATE);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const batchRunner = useBatchRunner();
   const [batchEditDrawerOpen, setBatchEditDrawerOpen] = useState(false);
   const [batchEditConfirmOpen, setBatchEditConfirmOpen] = useState(false);
   const [batchEditFormState, setBatchEditFormState] = useState(DEFAULT_BATCH_EDIT_FORM_STATE);
@@ -78,7 +81,6 @@ export function ManageUsersPage() {
     createUserMutation,
     updateUserMutation,
     batchUpdateUsersMutation,
-    batchDeleteMutation,
     resetUserLoginRiskMutation,
     resetUserPasswordMutation,
   } = useUserMutations({
@@ -138,6 +140,38 @@ export function ManageUsersPage() {
       ),
     [currentUser?.id, users],
   );
+
+  // FE-OPT-04：批量软删除改为**逐条编排**（逐条状态 + 失败可单条重试）。
+  // 后端 `PATCH /manage/users/{id}/status` 与 `POST /manage/users/batch/*` 现均为 501
+  // stub；逐条编排在真实端点落地后即生效，且当下能把未实现如实呈现为逐条 fail。
+  const softDeleteUserOne = async (userId: string, confirmation: DangerousActionRequest) => {
+    await manageApi.updateUserStatus(userId, {
+      status: 'disabled',
+      confirmAction: confirmation.confirmAction || 'disable-users',
+      sessionConfirmation: confirmation.sessionConfirmation,
+      currentPassword: confirmation.currentPassword,
+    });
+  };
+
+  const runBatchSoftDelete = async (confirmation: DangerousActionRequest) => {
+    const targets = selectedSoftDeleteTargets.map((user) => ({
+      id: user.id,
+      label: user.displayName || user.username,
+    }));
+    const targetsWithConfirm = targets;
+    setSelectedUserIds([]);
+    await batchRunner.run(targetsWithConfirm, (id) => softDeleteUserOne(id, confirmation));
+    await usersQuery.refetch();
+  };
+
+  const retrySoftDelete = async (id: string) => {
+    await batchRunner.retryOne(id, (userId) =>
+      softDeleteUserOne(userId, {
+        confirmAction: 'disable-users',
+      } as DangerousActionRequest),
+    );
+    await usersQuery.refetch();
+  };
 
   if (usersQuery.isPending) {
     return <FeedbackState variant="loading" title="正在加载用户列表" description="正在同步用户角色、状态和最近登录设备。" />;
@@ -418,13 +452,21 @@ export function ManageUsersPage() {
         confirmLabel="确认批量删除"
         onOpenChange={setBatchDeleteConfirmOpen}
         onConfirm={(confirmation) => {
-          batchDeleteMutation.mutate({
-            userIds: selectedSoftDeleteTargets.map((user) => user.id),
-            confirmation,
-          });
+          setBatchDeleteConfirmOpen(false);
+          setBanner(null);
+          void runBatchSoftDelete(confirmation);
         }}
-        pending={batchDeleteMutation.isPending}
+        pending={false}
       />
+
+      {batchRunner.items.length > 0 ? (
+        <BatchProgressPanel
+          items={batchRunner.items}
+          actionLabel="停用账号"
+          onDismiss={batchRunner.dismiss}
+          onRetryItem={(id) => void retrySoftDelete(id)}
+        />
+      ) : null}
     </div>
   );
 }

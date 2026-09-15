@@ -7,6 +7,8 @@ import { FeedbackState } from '@fmby/v2-shared/ui';
 import { ConfirmDialog } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { BatchActionBar, BatchProgressPanel } from '@fmby/v2-shared/ui';
+import { useBatchSelection, useBatchRunner } from '@fmby/v2-shared/hooks';
 import styles from './ManagePages.module.css';
 import { ManagePageHeader, MetricCard } from './components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -41,6 +43,7 @@ export function ManageMountsPage() {
   const [directoryBrowser, setDirectoryBrowser] = useState<ManageMountDirectoryBrowserResponse | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingMountDeleteState | null>(null);
   const [pendingAuthModeChange, setPendingAuthModeChange] = useState<MountRemoteAuthMode | null>(null);
+  const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
   const deferredKeyword = useDeferredValue(keyword.trim());
 
   const mountsQuery = useMountsQuery();
@@ -88,6 +91,43 @@ export function ManageMountsPage() {
       return matchesKeyword && matchesStatus && matchesType;
     });
   }, [deferredKeyword, mounts, statusFilter, typeFilter]);
+
+  // FE-OPT-04：多选 + 批量删除（后端无批量端点，逐条调用既有 DELETE；
+  // 逐条状态可见、失败项可单条重试）。
+  const visibleIds = useMemo(() => filteredMounts.map((m) => m.id), [filteredMounts]);
+  const selection = useBatchSelection({ visibleIds });
+  const runner = useBatchRunner();
+  const selectedMounts = useMemo(
+    () => mounts.filter((m) => selection.selectedSet.has(m.id)),
+    [mounts, selection.selectedSet],
+  );
+
+  const labelOfMount = (id: string) => mounts.find((m) => m.id === id)?.name ?? `#${id}`;
+
+  const runBatchDelete = async () => {
+    const targets = selection.selected.map((id) => ({ id, label: labelOfMount(id) }));
+    selection.clear();
+    await runner.run(targets, deleteMountOne);
+    await mountsQuery.refetch();
+  };
+
+  /** 单条删除执行器（批量 / 重试共用）。 */
+  const deleteMountOne = async (mountId: string) => {
+    await deleteMountMutation.mutateAsync({
+      mountId,
+      confirmation: { confirmAction: 'delete-mount' },
+    });
+  };
+
+  const retryMountDelete = async (id: string) => {
+    await runner.retryOne(id, deleteMountOne);
+    await mountsQuery.refetch();
+  };
+
+  const retryAllMountDeletes = async () => {
+    await runner.retryFailed(deleteMountOne);
+    await mountsQuery.refetch();
+  };
 
   if (mountsQuery.isPending) {
     return (
@@ -195,7 +235,37 @@ export function ManageMountsPage() {
         onRequestDelete={(mount) => requestDelete(buildPendingMountDeleteState(mount))}
         onCreateClick={openCreateDrawer}
         validateMutation={validateMountMutation}
+        selectedIds={selection.selected}
+        headerState={selection.headerState}
+        onToggleRow={(id, checked, opts) => selection.toggle(id, checked, opts)}
+        onSelectAll={selection.selectAll}
+        onClearVisible={selection.clearVisible}
+        onInvertVisible={selection.invertVisible}
       />
+
+      {runner.items.length > 0 ? (
+        <BatchProgressPanel
+          items={runner.items}
+          actionLabel="删除数据源"
+          onDismiss={runner.dismiss}
+          onRetryItem={(id) => void retryMountDelete(id)}
+          onRetryFailed={() => void retryAllMountDeletes()}
+        />
+      ) : null}
+
+      <BatchActionBar
+        count={selectedMounts.length}
+        onClear={selection.clear}
+        hint="批量删除会移除数据源及其绑定关系，逐条执行、失败可单独重试。"
+      >
+        <button
+          className={styles.dangerButton}
+          type="button"
+          onClick={() => setBatchDeleteConfirmOpen(true)}
+        >
+          批量删除
+        </button>
+      </BatchActionBar>
 
       <MountDrawer
         drawerState={drawerState}
@@ -244,6 +314,18 @@ export function ManageMountsPage() {
           });
         }}
         pending={isDeleting}
+      />
+      <ConfirmDialog
+        open={batchDeleteConfirmOpen}
+        title={`批量删除 ${selectedMounts.length} 个数据源`}
+        description="将逐条删除选中数据源；失败项会在进度面板中列出，可单独重试。"
+        impact={selectedMounts.map((m) => `· ${m.name}`).join('\n')}
+        confirmLabel="确认批量删除"
+        onOpenChange={(open) => { if (!open) setBatchDeleteConfirmOpen(false); }}
+        onConfirm={() => {
+          setBatchDeleteConfirmOpen(false);
+          void runBatchDelete();
+        }}
       />
       <ConfirmDialog
         open={pendingAuthModeChange !== null}

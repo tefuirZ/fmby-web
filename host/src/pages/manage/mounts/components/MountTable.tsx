@@ -1,5 +1,5 @@
 import type { ManageMountProviderType, ManageMountRecord } from '@fmby/v2-shared/contracts/manage';
-import { StatusBadge } from '@fmby/v2-shared/ui';
+import { Checkbox, StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, ManageSectionCard, getManageStatusVariant } from '../../components';
@@ -31,6 +31,18 @@ interface MountTableProps {
   onRequestDelete: (mount: ManageMountRecord) => void;
   onCreateClick: () => void;
   validateMutation: ValidateMutationShape;
+  /** FE-OPT-04 多选：已选 id。 */
+  selectedIds: readonly string[];
+  /** FE-OPT-04 多选：表头三态。 */
+  headerState: 'checked' | 'indeterminate' | 'unchecked';
+  /** FE-OPT-04 多选：勾选（shift 为范围选）。 */
+  onToggleRow: (id: string, checked: boolean, opts?: { shiftKey?: boolean }) => void;
+  /** FE-OPT-04 多选：全选当前页。 */
+  onSelectAll: () => void;
+  /** FE-OPT-04 多选：清空当前页选择。 */
+  onClearVisible: () => void;
+  /** FE-OPT-04 多选：反选当前页。 */
+  onInvertVisible: () => void;
 }
 
 export function MountTable({
@@ -47,7 +59,14 @@ export function MountTable({
   onRequestDelete,
   onCreateClick,
   validateMutation,
+  selectedIds,
+  headerState,
+  onToggleRow,
+  onSelectAll,
+  onClearVisible,
+  onInvertVisible,
 }: MountTableProps) {
+  const selectedSet = new Set(selectedIds);
   const renderEmptyState = (
     <div className={styles.emptyInlineState}>
       <div className={styles.stackText}>
@@ -104,7 +123,18 @@ export function MountTable({
             </select>
           </label>
         </div>
-        <span className={styles.tableHint}>当前结果：{filteredMounts.length} 条</span>
+        <div className={styles.rowActions}>
+          <button className={styles.smallButton} type="button" onClick={onSelectAll}>
+            全选本页
+          </button>
+          <button className={styles.smallButton} type="button" onClick={onInvertVisible}>
+            反选
+          </button>
+          <button className={styles.smallButton} type="button" onClick={onClearVisible}>
+            清空本页
+          </button>
+          <span className={styles.tableHint}>当前结果：{filteredMounts.length} 条</span>
+        </div>
       </div>
 
       {mounts.length === 0 ? (
@@ -116,6 +146,16 @@ export function MountTable({
               <table className={styles.table}>
                 <thead>
                   <tr>
+                    <th style={{ width: 36 }}>
+                      <Checkbox
+                        checked={headerState === 'checked' ? true : headerState === 'indeterminate' ? 'indeterminate' : false}
+                        onCheckedChange={() => {
+                          if (headerState === 'checked') onClearVisible();
+                          else onSelectAll();
+                        }}
+                        aria-label="全选当前页数据源"
+                      />
+                    </th>
                     <th>数据源</th>
                     <th>类型</th>
                     <th>状态</th>
@@ -129,13 +169,26 @@ export function MountTable({
                 <tbody>
                   {filteredMounts.length === 0 ? (
                     <EmptyTableRow
-                      colSpan={8}
+                      colSpan={9}
                       title="没有匹配的来源"
                       description="试试更换关键词、状态或类型筛选。"
                     />
                   ) : (
                     filteredMounts.map((mount) => (
-                      <tr key={mount.id}>
+                      <tr key={mount.id} data-selected={selectedSet.has(mount.id) || undefined}>
+                        <td>
+                          <Checkbox
+                            checked={selectedSet.has(mount.id)}
+                            onClick={(event) => {
+                              if (event.shiftKey) {
+                                event.preventDefault();
+                                onToggleRow(mount.id, !selectedSet.has(mount.id), { shiftKey: true });
+                              }
+                            }}
+                            onCheckedChange={(checked) => onToggleRow(mount.id, checked === true)}
+                            aria-label={`选择数据源 ${mount.name}`}
+                          />
+                        </td>
                         <td>
                           <div className={styles.stackText}>
                             <span className={styles.primaryText}>{mount.name}</span>

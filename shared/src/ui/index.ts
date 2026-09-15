@@ -31,6 +31,7 @@ export { InlineBanner } from './common/InlineBanner';
 export { StatusBadge } from './common/StatusBadge';
 export type { StatusBadgeVariant } from './common/StatusBadge';
 export { HoverScrollArea } from './common/HoverScrollArea';
+export { BatchProgressPanel, BatchActionBar } from './common/BatchProgressPanel';
 export { DirectoryBrowser } from './common/DirectoryBrowser';
 export type {
   DirectoryBrowserEntry,

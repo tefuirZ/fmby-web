@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   isServiceUnwiredError,
   type CollectionVisibility,
   type ManagedCollectionRecord,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
-import { Dialog, FeedbackState, InlineBanner, SensitiveActionDialog, StatusBadge } from '@fmby/v2-shared/ui';
+import { BatchActionBar, BatchProgressPanel, Checkbox, Dialog, FeedbackState, InlineBanner, SensitiveActionDialog, StatusBadge } from '@fmby/v2-shared/ui';
+import { useBatchSelection, useBatchRunner } from '@fmby/v2-shared/hooks';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
@@ -57,6 +58,7 @@ export function ManageCollectionsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ManagedCollectionRecord | null>(null);
   const [pendingMemberDelete, setPendingMemberDelete] = useState<{ collectionId: string; memberId: string; memberTitle: string } | null>(null);
+  const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
 
   const { createMutation, updateMutation, deleteMutation, deleteMemberMutation } =
     useCollectionMutations({
@@ -74,6 +76,37 @@ export function ManageCollectionsPage() {
     const timer = window.setTimeout(() => setBanner(null), 4200);
     return () => window.clearTimeout(timer);
   }, [banner]);
+
+  const collections = collectionsQuery.data ?? [];
+
+  // FE-OPT-04：多选 + 批量删除（hooks 必须在任何 early-return 之前，遵守 Hooks 规则）。
+  const visibleIds = useMemo(() => collections.map((c) => c.id), [collections]);
+  const selection = useBatchSelection({ visibleIds });
+  const runner = useBatchRunner();
+
+  const collectionsRefLabel = (id: string) =>
+    collections.find((c) => c.id === id)?.title ?? `#${id}`;
+
+  const deleteCollectionOne = async (id: string) => {
+    await deleteMutation.mutateAsync(id);
+  };
+
+  const runBatchDelete = async () => {
+    const targets = selection.selected.map((id) => ({
+      id,
+      label: collections.find((c) => c.id === id)?.title ?? `#${id}`,
+    }));
+    selection.clear();
+    await runner.run(targets, deleteCollectionOne);
+  };
+
+  const retryCollectionDelete = async (id: string) => {
+    await runner.retryOne(id, deleteCollectionOne);
+  };
+
+  const retryAllCollectionDeletes = async () => {
+    await runner.retryFailed(deleteCollectionOne);
+  };
 
   if (collectionsQuery.isPending) {
     return (
@@ -131,7 +164,6 @@ export function ManageCollectionsPage() {
     );
   }
 
-  const collections = collectionsQuery.data ?? [];
   const manualCount = collections.filter((c) => c.sourceKind === 'manual').length;
   const hiddenCount = collections.filter((c) => c.visibility === 'Hidden').length;
 
@@ -204,9 +236,30 @@ export function ManageCollectionsPage() {
           </div>
         ) : (
           <div className={styles.tableWrap}>
+            <div className={styles.rowActions} style={{ marginBottom: 8 }}>
+              <button className={styles.smallButton} type="button" onClick={selection.selectAll}>
+                全选
+              </button>
+              <button className={styles.smallButton} type="button" onClick={selection.invertVisible}>
+                反选
+              </button>
+              <button className={styles.smallButton} type="button" onClick={selection.clearVisible}>
+                清空本页
+              </button>
+            </div>
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th style={{ width: 36 }}>
+                    <Checkbox
+                      checked={selection.headerState === 'checked' ? true : selection.headerState === 'indeterminate' ? 'indeterminate' : false}
+                      onCheckedChange={() => {
+                        if (selection.headerState === 'checked') selection.clearVisible();
+                        else selection.selectAll();
+                      }}
+                      aria-label="全选合集"
+                    />
+                  </th>
                   <th>合集</th>
                   <th>来源</th>
                   <th>可见性</th>
@@ -220,6 +273,19 @@ export function ManageCollectionsPage() {
                   return (
                     <Fragment key={collection.id}>
                       <tr>
+                        <td>
+                          <Checkbox
+                            checked={selection.selectedSet.has(collection.id)}
+                            onClick={(event) => {
+                              if (event.shiftKey) {
+                                event.preventDefault();
+                                selection.toggle(collection.id, !selection.selectedSet.has(collection.id), { shiftKey: true });
+                              }
+                            }}
+                            onCheckedChange={(checked) => selection.toggle(collection.id, checked === true)}
+                            aria-label={`选择合集 ${collection.title}`}
+                          />
+                        </td>
                         <td>
                           <button
                             type="button"
@@ -258,7 +324,7 @@ export function ManageCollectionsPage() {
                       </tr>
                       {expanded ? (
                         <tr>
-                          <td colSpan={5}>
+                          <td colSpan={6}>
                             <CollectionMemberPanel
                               collectionId={collection.id}
                               detailQuery={detailQuery}
@@ -362,6 +428,44 @@ export function ManageCollectionsPage() {
           </label>
         </div>
       </Dialog>
+
+      {runner.items.length > 0 ? (
+        <BatchProgressPanel
+          items={runner.items}
+          actionLabel="删除合集"
+          onDismiss={runner.dismiss}
+          onRetryItem={(id) => void retryCollectionDelete(id)}
+          onRetryFailed={() => void retryAllCollectionDeletes()}
+        />
+      ) : null}
+
+      <BatchActionBar
+        count={selection.selected.length}
+        onClear={selection.clear}
+        hint="删除会级联移除成员；逐条执行，失败项可单独重试。"
+      >
+        <button
+          className={styles.smallDangerButton}
+          type="button"
+          onClick={() => setBatchDeleteConfirmOpen(true)}
+        >
+          批量删除
+        </button>
+      </BatchActionBar>
+
+      <SensitiveActionDialog
+        open={batchDeleteConfirmOpen}
+        actionKey="delete-managed-collection"
+        title={`批量删除 ${selection.selected.length} 个合集`}
+        description="将逐条删除选中合集并级联移除成员；失败项会在进度面板列出，可单独重试。"
+        impact={selection.selected.map((id) => `· ${collectionsRefLabel(id)}`)}
+        confirmLabel="确认批量删除"
+        onOpenChange={(open) => { if (!open) setBatchDeleteConfirmOpen(false); }}
+        onConfirm={() => {
+          setBatchDeleteConfirmOpen(false);
+          void runBatchDelete();
+        }}
+      />
 
       <SensitiveActionDialog
         open={pendingDelete !== null}

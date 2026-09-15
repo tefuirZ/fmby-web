@@ -1,0 +1,205 @@
+/*
+ * Darkroom · 批量操作进度面板 + 动作条（FE-OPT-04）
+ * ------------------------------------------------------------
+ * 进度面板是"操作中"的语义载体：进度条 + 计数 + 失败项列表（可重试）。
+ * 动作条是"选中集"的语义载体：吸附底部，清空 + 动作按钮。
+ * 均沿用暗房细线美学（淡边框 + 无重阴影），复用 --space/--radius token。
+ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, transparent);
+}
+
+.panel[data-running] {
+  border-color: var(--accent, var(--border-subtle));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.spinner {
+  animation: batchSpin 0.9s linear infinite;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+@keyframes batchSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-xs, 4px);
+  padding: 2px;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  border-color: var(--border-subtle);
+  color: var(--text);
+}
+
+.track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent, var(--text-muted));
+  transition: width 0.2s ease;
+}
+
+.counter {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.failedBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.failedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 0.8rem;
+  color: var(--danger, var(--text));
+}
+
+.failedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.failedItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.78rem;
+}
+
+.failedLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failedReason {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.retryOne,
+.retryAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius-xs, 4px);
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.retryOne:hover,
+.retryAll:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.footer {
+  padding-top: var(--space-1);
+}
+
+.actionBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1, var(--bg-base));
+  backdrop-filter: blur(6px);
+}
+
+.actionBarText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.actionBarHint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.actionBarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.clearButton {
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius-xs, 4px);
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

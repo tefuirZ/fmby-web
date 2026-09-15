@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { Trash2 } from 'lucide-react';
 import type { ManageMediaItemListRecord } from '@fmby/v2-shared/contracts/manage/media-items';
 import type { PendingSourceDeleteState } from '../types';
-import { StatusBadge } from '@fmby/v2-shared/ui';
+import { Checkbox, StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
 import {
   getSourceStatusLabel,
@@ -24,6 +24,12 @@ interface MediaItemListTableProps {
   resolveDeleteItemId?: string;
   deletePending: boolean;
   onRequestDelete: (item: ManageMediaItemListRecord) => void;
+  /** FE-OPT-04 多选。 */
+  selectedIds?: readonly string[];
+  headerState?: 'checked' | 'indeterminate' | 'unchecked';
+  onToggleRow?: (id: string, checked: boolean, opts?: { shiftKey?: boolean }) => void;
+  onSelectAll?: () => void;
+  onClearVisible?: () => void;
 }
 
 export function MediaItemListTable({
@@ -33,12 +39,30 @@ export function MediaItemListTable({
   resolveDeleteItemId,
   deletePending,
   onRequestDelete,
+  selectedIds,
+  headerState,
+  onToggleRow,
+  onSelectAll,
+  onClearVisible,
 }: MediaItemListTableProps) {
+  const selectedSet = new Set(selectedIds ?? []);
   return (
     <div className={`${sharedStyles.tableWrap} ${styles.desktopTable}`}>
       <table className={sharedStyles.table}>
         <thead>
           <tr>
+            {onToggleRow ? (
+              <th style={{ width: 36 }}>
+                <Checkbox
+                  checked={headerState === 'checked' ? true : headerState === 'indeterminate' ? 'indeterminate' : false}
+                  onCheckedChange={() => {
+                    if (headerState === 'checked') onClearVisible?.();
+                    else onSelectAll?.();
+                  }}
+                  aria-label="全选当前页资源"
+                />
+              </th>
+            ) : null}
             <th>资源</th>
             <th>状态</th>
             <th>本地覆盖</th>
@@ -49,6 +73,21 @@ export function MediaItemListTable({
         <tbody>
           {items.map((item) => (
             <tr key={item.id}>
+              {onToggleRow ? (
+                <td>
+                  <Checkbox
+                    checked={selectedSet.has(item.id)}
+                    onClick={(event) => {
+                      if (event.shiftKey) {
+                        event.preventDefault();
+                        onToggleRow(item.id, !selectedSet.has(item.id), { shiftKey: true });
+                      }
+                    }}
+                    onCheckedChange={(checked) => onToggleRow(item.id, checked === true)}
+                    aria-label={`选择资源 ${item.title}`}
+                  />
+                </td>
+              ) : null}
               <td>
                 <div className={styles.itemCell}>
                   <div className={styles.posterFrame}>

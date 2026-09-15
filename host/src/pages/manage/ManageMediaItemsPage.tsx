@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw } from 'lucide-react';
 import type { BannerState } from '@fmby/v2-shared/ui/types';
@@ -8,6 +8,8 @@ import { FeedbackState } from '@fmby/v2-shared/ui';
 import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { useDebounce } from '@fmby/v2-shared/hooks/useDebounce';
+import { useBatchSelection, useBatchRunner } from '@fmby/v2-shared/hooks';
+import { BatchActionBar, BatchProgressPanel } from '@fmby/v2-shared/ui';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { mediaItemsApi } from '@fmby/v2-shared/contracts/manage/media-items';
@@ -44,6 +46,7 @@ export function ManageMediaItemsPage() {
   const [overrideFilter, setOverrideFilter] = useState<OverrideFilter>('all');
   const [page, setPage] = useState(1);
   const [banner, setBanner] = useState<BannerState | null>(null);
+  const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
   const [pendingSourceDelete, setPendingSourceDelete] =
     useState<PendingSourceDeleteState | null>(null);
   const queryClient = useQueryClient();
@@ -152,6 +155,39 @@ export function ManageMediaItemsPage() {
   });
 
   const items = mediaItemsQuery.data?.items ?? [];
+  // FE-OPT-04：多选 + 批量删除媒体源（逐条：先解析唯一来源，再删；失败逐条可重试）。
+  const visibleIds = useMemo(() => items.map((item) => item.id), [items]);
+  const selection = useBatchSelection({ visibleIds });
+  const batchRunner = useBatchRunner();
+
+  const deleteMediaItemSourceOne = async (itemId: string) => {
+    const detail = await mediaItemsApi.getMediaItemDetail(itemId);
+    const sources = detail.sources;
+    if (sources.length === 0) {
+      throw new Error('该资源没有可删除的媒体源');
+    }
+    if (sources.length > 1) {
+      throw new Error(`该资源关联 ${sources.length} 条来源，需进详情页指定`);
+    }
+    await mediaItemsApi.deleteMediaItemSource(itemId, sources[0].id, {
+      confirmAction: 'delete-media-item-source',
+    });
+  };
+
+  const runBatchDeleteSources = async () => {
+    const targets = selection.selected.map((id) => ({
+      id,
+      label: items.find((item) => item.id === id)?.title ?? `#${id}`,
+    }));
+    selection.clear();
+    await batchRunner.run(targets, deleteMediaItemSourceOne);
+    await mediaItemsQuery.refetch();
+  };
+
+  const retrySourceDelete = async (id: string) => {
+    await batchRunner.retryOne(id, deleteMediaItemSourceOne);
+    await mediaItemsQuery.refetch();
+  };
   const total = mediaItemsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasActiveFilters =
@@ -326,6 +362,11 @@ export function ManageMediaItemsPage() {
               resolveDeleteItemId={resolveDeleteTargetMutation.variables?.id}
               deletePending={deleteSourceMutation.isPending}
               onRequestDelete={handleRequestSourceDelete}
+              selectedIds={selection.selected}
+              headerState={selection.headerState}
+              onToggleRow={(id, checked, opts) => selection.toggle(id, checked, opts)}
+              onSelectAll={selection.selectAll}
+              onClearVisible={selection.clearVisible}
             />
 
             <MediaItemCardGrid
@@ -368,6 +409,43 @@ export function ManageMediaItemsPage() {
           </>
         )}
       </ManageSectionCard>
+
+      {batchRunner.items.length > 0 ? (
+        <BatchProgressPanel
+          items={batchRunner.items}
+          actionLabel="删除媒体源"
+          onDismiss={batchRunner.dismiss}
+          onRetryItem={(id) => void retrySourceDelete(id)}
+        />
+      ) : null}
+
+      <BatchActionBar
+        count={selection.selected.length}
+        onClear={selection.clear}
+        hint="逐条删除唯一媒体源；多来源或无来源的资源会列为失败项，可进详情页处理。"
+      >
+        <button
+          className={styles.smallDangerButton}
+          type="button"
+          onClick={() => setBatchDeleteConfirmOpen(true)}
+        >
+          批量删除媒体源
+        </button>
+      </BatchActionBar>
+
+      <SensitiveActionDialog
+        open={batchDeleteConfirmOpen}
+        actionKey="delete-media-item-source"
+        title={`批量删除 ${selection.selected.length} 条资源的媒体源`}
+        description="逐条删除：仅含唯一来源的资源会被删除；多来源/无来源资源列为失败项。"
+        impact={selection.selected.map((id) => `· ${items.find((i) => i.id === id)?.title ?? `#${id}`}`)}
+        confirmLabel="确认批量删除"
+        onOpenChange={(open) => { if (!open) setBatchDeleteConfirmOpen(false); }}
+        onConfirm={() => {
+          setBatchDeleteConfirmOpen(false);
+          void runBatchDeleteSources();
+        }}
+      />
 
       <SensitiveActionDialog
         open={pendingSourceDelete !== null}

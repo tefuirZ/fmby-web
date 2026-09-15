@@ -1,10 +1,11 @@
 import { useDeferredValue, useEffect, useState } from 'react';
-import type { RegistrationCodeBatchRecord, RegistrationCodeStatus } from '@fmby/v2-shared/contracts/manage';
+import { manageApi, type DangerousActionRequest, type RegistrationCodeBatchRecord, type RegistrationCodeStatus } from '@fmby/v2-shared/contracts/manage';
 import type { BannerState } from '@fmby/v2-shared/ui/types';
 import { Dialog } from '@fmby/v2-shared/ui';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
-import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { BatchProgressPanel, SensitiveActionDialog } from '@fmby/v2-shared/ui';
+import { useBatchRunner } from '@fmby/v2-shared/hooks';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
@@ -54,6 +55,7 @@ export function ManageRegistrationCodesPage() {
   const [copyToast, setCopyToast] = useState<CopyToastState | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingCodeAction | null>(null);
   const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
+  const batchRunner = useBatchRunner();
   const deferredSearchKeyword = useDeferredValue(searchKeyword.trim().toLowerCase());
 
   const codesQuery = useRegistrationCodesQuery();
@@ -213,6 +215,32 @@ export function ManageRegistrationCodesPage() {
   const selectedBatches = batches.filter((batch) =>
     selectedBatchIds.includes(batch.id),
   );
+
+  // FE-OPT-04：批量删批次改**逐条编排**（逐条状态 + 失败可单条重试）。
+  // 后端 `POST /manage/registration-codes/batch/delete` 现为 501 stub；逐条
+  // 走既有单码删除语义不可行（批次粒度），故仍以批次为目标，逐批删除 + 状态。
+  const deleteRegistrationBatchOne = async (batchId: string, confirmation: DangerousActionRequest) => {
+    await manageApi.batchDeleteRegistrationCodeBatches({
+      batchIds: [batchId],
+      confirmAction: confirmation.confirmAction,
+      sessionConfirmation: confirmation.sessionConfirmation,
+      currentPassword: confirmation.currentPassword,
+    });
+  };
+
+  const runBatchDeleteBatches = async (confirmation: DangerousActionRequest) => {
+    const targets = selectedBatches.map((batch) => ({ id: batch.id, label: batch.name || batch.id }));
+    setSelectedBatchIds([]);
+    await batchRunner.run(targets, (id) => deleteRegistrationBatchOne(id, confirmation));
+    await codesQuery.refetch();
+  };
+
+  const retryBatchDelete = async (id: string) => {
+    await batchRunner.retryOne(id, (batchId) =>
+      deleteRegistrationBatchOne(batchId, { confirmAction: 'delete-registration-code-batches' } as DangerousActionRequest),
+    );
+    await codesQuery.refetch();
+  };
 
   const actionError =
     createMutation.error ??
@@ -562,12 +590,19 @@ export function ManageRegistrationCodesPage() {
           setBatchDeleteConfirmOpen(false);
         }}
         onConfirm={(confirmation) => {
-          batchDeleteMutation.mutate({
-            batchIds: selectedBatchIds,
-            confirmation,
-          });
+          setBatchDeleteConfirmOpen(false);
+          void runBatchDeleteBatches(confirmation);
         }}
       />
+
+      {batchRunner.items.length > 0 ? (
+        <BatchProgressPanel
+          items={batchRunner.items}
+          actionLabel="删除注册码批次"
+          onDismiss={batchRunner.dismiss}
+          onRetryItem={(id) => void retryBatchDelete(id)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,0 +1,41 @@
+{
+  "tag": "fe-opt-04-batch",
+  "base": "http://127.0.0.1:5199",
+  "runs": 5,
+  "itemsPerRun": 3,
+  "timestamp": "2026-09-15T15:12:04.010Z",
+  "metrics": {
+    "select_all_to_bar": {
+      "n": 5,
+      "min": 90,
+      "p50": 113,
+      "p95": 116,
+      "max": 116,
+      "mean": 109
+    },
+    "batch_confirm_to_panel": {
+      "n": 5,
+      "min": 110,
+      "p50": 153,
+      "p95": 184,
+      "max": 184,
+      "mean": 152
+    },
+    "batch_run_total": {
+      "n": 5,
+      "min": 29,
+      "p50": 110,
+      "p95": 201,
+      "max": 201,
+      "mean": 106
+    },
+    "batch_list_applied": {
+      "n": 5,
+      "min": 28,
+      "p50": 38,
+      "p95": 62,
+      "max": 62,
+      "mean": 41
+    }
+  }
+}
