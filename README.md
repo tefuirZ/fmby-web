@@ -49,7 +49,7 @@ FMBY v2 多主题前端。分层架构与主题协议见契约仓
 1. **[从零做一个主题](docs/theme-guide/getting-started.md)** —— 复制脚手架、manifest 字段、
    tokens 变量语言、registry 登记、verify 门禁清单
 2. **[L3 域皮肤开发](docs/theme-guide/l3-skin.md)** —— SkinProps 契约、五态全覆盖、
-   移动端/实时/能力面、体量红线（范例：darkroom `LibrarySkin` / `ItemSkin`）
+   移动端/实时/能力面、质量门禁（范例：darkroom `LibrarySkin` / `ItemSkin`）
 3. **[测试与门禁](docs/theme-guide/testing.md)** —— node:test 五态断言模式 + verify 九步闸
    逐条排查表
 

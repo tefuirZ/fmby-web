@@ -26,7 +26,7 @@ themes/<你的主题 id>/
 三条铁律（ADR-001 §3，门禁强制）：
 
 1. **纯外观**：禁止 API client / mapper / query keys / 权限判断 / 预加载业务数据（`preload` 恒 `false`）；
-2. **体量红线**：单主题 ts ≤ 3000 行、dist ≤ 1.5MB（`check-theme-budget.mjs`）；
+2. **质量门禁**（**不限总量**）：单文件禁 God File（<300 理想 / 300-600 健康 / 600-1000 关注 / >1000 必拆）；主题想做多大做多大，禁的是屎山（职责混乱/重复/数据逻辑混入）；
 3. **首屏零主题**：主题产物必须是独立 async chunk，首屏不加载（`check-frontend-size.mjs` [5][6] 断言）。
 
 ---
@@ -157,7 +157,7 @@ pnpm test                        # 前端单测（node:test）
 
 node scripts/check-frontend-size.mjs          # [1]-[4] 首屏体积/分包红线 + [5][6] 主题隔离断言
 node scripts/check-frontend-dupes.mjs         # 主题纯度扫描（禁 API client/query keys/权限判断）
-node scripts/check-theme-budget.mjs           # 主题体量：ts ≤ 3000 行 / dist ≤ 1.5MB
+node scripts/check-theme-budget.mjs           # 主题质量：God File 分级（>1000 行 FAIL），不限总量
 node scripts/check-theme-parity.mjs           # 声明了 domain skin → 四项能力面必须齐备
 pnpm e2e                                      # Playwright（无 Rust server 二进制时整组 skip）
 ```
@@ -168,7 +168,7 @@ pnpm e2e                                      # Playwright（无 Rust server 二
 | size [5] | 主题 chunk 必须是独立 async chunk 且不在首屏闭包 | `[FAIL] 主题 chunk 被首屏闭包引用` |
 | size [6] | `dist/index.html` 直接引用脚本不得含 `LibrarySkin/DomainSkin/SkinProps` | `[FAIL] 首屏脚本含主题/skin 代码` |
 | dupes | 主题内禁 API client / mapper / query keys / 权限判断 | 指出违规文件与行 |
-| theme-budget | ts ≤ 3000 行 / dist ≤ 1.5MB | 超限并列出 Top5 膨胀文件 |
+| theme-budget | 单文件 > 1000 行（God File） | 列出超限文件，按单一职责拆解 |
 | theme-parity | 声明了 domain skin → 实时/移动端/时区/授权四项齐备 | 列出缺失的能力项 |
 
 ---
