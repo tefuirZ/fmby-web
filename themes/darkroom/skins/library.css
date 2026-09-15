@@ -74,6 +74,27 @@
   border-radius: 10px;
 }
 
+/* BUG-SKIN-NAV-01：卡片导航面（锚点/按钮/静态展示）铺满卡体并继承暗房字色。 */
+[data-darkroom~='card-open'],
+[data-darkroom~='card-static'] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+[data-darkroom~='card-static'] {
+  cursor: default;
+}
+
+[data-darkroom~='card-open']:focus-visible {
+  outline: 2px solid var(--accent, #7fd1b9);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 [data-darkroom~='card'] strong {
   font-weight: 600;
 }

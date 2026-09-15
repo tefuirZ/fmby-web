@@ -119,6 +119,9 @@ export function ItemSkin(props: SkinProps) {
   }
 
   const episodes = itemData?.episodeOptions ?? [];
+  // BUG-SKIN-NAV-01：剧集带卡片导航由 host 注入面驱动（同 LibrarySkin 模式）。
+  const openItem = typeof actions.openItem === 'function' ? actions.openItem : undefined;
+  const itemHref = typeof actions.itemHref === 'function' ? actions.itemHref : undefined;
   const metaLine = [
     item.year,
     item.kindLabel,
@@ -191,6 +194,8 @@ export function ItemSkin(props: SkinProps) {
       ),
     ),
     // 结构差异 2：剧集/关联横滑带（host 默认是整段区块纵向排列）。
+    // BUG-SKIN-NAV-01：剧集卡片接入 host 注入的导航面（主题不自建路由
+    // 字面量）；无注入时退化为静态展示（向后兼容）。
     episodes.length
       ? createElement(
           'div',
@@ -199,13 +204,37 @@ export function ItemSkin(props: SkinProps) {
           createElement(
             'div',
             { 'data-darkroom': 'hstrip-track' },
-            episodes.map((episode) =>
-              createElement(
+            episodes.map((episode) => {
+              const href = itemHref?.(episode.id);
+              return createElement(
                 'article',
                 { key: episode.id, 'data-darkroom': 'hstrip-card' },
-                createElement('strong', null, episode.title),
-              ),
-            ),
+                openItem && href
+                  ? createElement(
+                      'a',
+                      {
+                        'data-darkroom': 'hstrip-open',
+                        href,
+                        onClick: (event: { preventDefault?: () => void }) => {
+                          event.preventDefault?.();
+                          openItem(episode.id);
+                        },
+                      },
+                      createElement('strong', null, episode.title),
+                    )
+                  : openItem
+                    ? createElement(
+                        'button',
+                        {
+                          'data-darkroom': 'hstrip-open',
+                          onClick: () => openItem(episode.id),
+                          type: 'button',
+                        },
+                        createElement('strong', null, episode.title),
+                      )
+                    : createElement('strong', null, episode.title),
+              );
+            }),
           ),
         )
       : null,

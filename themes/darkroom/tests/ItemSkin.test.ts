@@ -94,6 +94,36 @@ test('剧集横滑带：episodeOptions 非空时渲染', () => {
   assert.match(html, /第一集/);
 });
 
+test('剧集导航（BUG-SKIN-NAV-01）：注入 openItem/itemHref → 剧集卡为真实 <a href>', () => {
+  const html = renderSkin({
+    state: 'ready',
+    data: {
+      ...READY_DATA,
+      episodeOptions: [
+        { id: 'e1', title: '第一集' },
+        { id: 'e2', title: '第二集' },
+      ],
+    },
+    actions: { openItem: () => {}, itemHref: (id: string) => `/item/${id}` },
+  });
+  assert.match(html, /<a[^>]*data-darkroom="hstrip-open"[^>]*href="\/item\/e1"/);
+  assert.match(html, /<a[^>]*href="\/item\/e2"/);
+  assert.equal(
+    (html.match(/<a[^>]*data-darkroom="hstrip-open"/g) ?? []).length,
+    2,
+    '两剧集 → 两锚点',
+  );
+});
+
+test('剧集导航回退：无注入（旧 host）→ 静态标题，不崩不伪造链接', () => {
+  const html = renderSkin({
+    state: 'ready',
+    data: { ...READY_DATA, episodeOptions: [{ id: 'e1', title: '第一集' }] },
+  });
+  assert.match(html, /第一集/);
+  assert.doesNotMatch(html, /data-darkroom="hstrip-open"/);
+});
+
 test('实时显示：isLive 两形态诚实标注', () => {
   // ItemSkin 本体无悬浮条（Library 专属），实时契约由 subscribe 订阅 +
   // progress/源状态随刷新更新体现；此处锁定 subscribe 合同被 skin 接受。

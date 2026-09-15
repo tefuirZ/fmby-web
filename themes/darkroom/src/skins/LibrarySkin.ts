@@ -158,6 +158,10 @@ export function LibrarySkin(props: SkinProps) {
   const items = libraryData.items ?? [];
   const groups = groupByKind(items);
   const canLoadMore = typeof actions.loadMore === 'function';
+  // BUG-SKIN-NAV-01：导航入口由 host 注入（语义键 openItem/itemHref）；
+  // host 未注入时为 undefined——卡片退化为不可导航展示（不抛错、不伪造链接）。
+  const openItem = typeof actions.openItem === 'function' ? actions.openItem : undefined;
+  const itemHref = typeof actions.itemHref === 'function' ? actions.itemHref : undefined;
 
   return createElement(
     'section',
@@ -189,21 +193,53 @@ export function LibrarySkin(props: SkinProps) {
       ),
     ),
     // 结构差异 3：卡墙（mobile 单列 / desktop 双列——layoutForViewport hint）。
+    // BUG-SKIN-NAV-01：卡片导航由 host 注入的 `openItem(id)` / `itemHref(id)`
+    // 驱动——主题**不自建路由字面量**（href 也由 host 构造），仅消费注入面。
+    // 两键齐全 → 真实 `<a href>`（role=link + 中键/右键语义），点击
+    // preventDefault 走 SPA；仅 openItem → `<button>`；都无 → 静态展示
+    // （旧 host 向后兼容，不抛错）。
     createElement(
       'div',
       { 'data-darkroom': 'card-wall' },
-      items.map((item) =>
-        createElement(
+      items.map((item) => {
+        const metaLine = [item.year, item.kind].filter(Boolean).join(' · ');
+        const href = itemHref?.(item.id);
+        return createElement(
           'article',
           { key: item.id, 'data-darkroom': 'card' },
-          createElement('strong', null, item.title),
-          createElement(
-            'span',
-            { 'data-darkroom': 'card-meta' },
-            [item.year, item.kind].filter(Boolean).join(' · '),
-          ),
-        ),
-      ),
+          openItem && href
+            ? createElement(
+                'a',
+                {
+                  'data-darkroom': 'card-open',
+                  href,
+                  onClick: (event: { preventDefault?: () => void }) => {
+                    event.preventDefault?.();
+                    openItem(item.id);
+                  },
+                },
+                createElement('strong', null, item.title),
+                createElement('span', { 'data-darkroom': 'card-meta' }, metaLine),
+              )
+            : openItem
+              ? createElement(
+                  'button',
+                  {
+                    'data-darkroom': 'card-open',
+                    onClick: () => openItem(item.id),
+                    type: 'button',
+                  },
+                  createElement('strong', null, item.title),
+                  createElement('span', { 'data-darkroom': 'card-meta' }, metaLine),
+                )
+              : createElement(
+                  'div',
+                  { 'data-darkroom': 'card-static' },
+                  createElement('strong', null, item.title),
+                  createElement('span', { 'data-darkroom': 'card-meta' }, metaLine),
+                ),
+        );
+      }),
     ),
     // 结构差异 4：底部悬浮操作条（实时态 + 加载更多）。
     createElement(FloatingActionBar, {

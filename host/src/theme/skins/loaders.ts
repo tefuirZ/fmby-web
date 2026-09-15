@@ -10,18 +10,19 @@
  *   经 context 下发，由 DomainSkinOutlet 汇聚成 SkinProps。
  */
 
-import { createContext, createElement, useContext, type ReactNode } from 'react';
+import { createContext, createElement, useCallback, useContext, type ReactNode } from 'react';
+import { useNavigate } from 'react-router';
 
 import { useItemDetail, useLibraryDetail } from '@fmby/v2-shared/viewmodels';
 import type { LayoutHint, ViewState } from '@fmby/v2-shared/viewmodels';
-import type { SkinProps } from '@fmby/v2-shared/theme';
+import type { SkinActions, SkinProps } from '@fmby/v2-shared/theme';
 
 /** 域数据装配结果（SkinProps 的 data/state/actions 切面）。 */
 export interface DomainSkinData {
   data: SkinProps['data'];
   state: ViewState;
-  /** viewmodel actions（host 侧动作面；WEB-B1 后真实下发） */
-  actions: SkinProps['actions'];
+  /** viewmodel actions（host 侧动作面；WEB-B1 后真实下发，含 openItem 导航键） */
+  actions: SkinActions;
   /** 布局提示（移动端/桌面端；WEB-B1 交付物 3） */
   layout: LayoutHint;
   /** 归一化错误（error/forbidden 态可用） */
@@ -41,6 +42,21 @@ export interface DomainSkinParamsProps {
 }
 
 /**
+ * 通用导航动作面（BUG-SKIN-NAV-01）。
+ *
+ * host 是唯一持有路由知识的一侧；主题不得自建导航（禁 router import）。
+ * 此 hook 把「打开条目」编译为语义键 `openItem`，经各 domain 数据源装配器
+ * 汇入 `SkinProps.actions`，主题按需取用。
+ */
+function useSkinNavigationActions(): Pick<SkinActions, 'openItem' | 'itemHref'> {
+  const navigate = useNavigate();
+  return {
+    openItem: useCallback((id: string) => navigate(`/item/${id}`), [navigate]),
+    itemHref: useCallback((id: string) => `/item/${id}`, []),
+  };
+}
+
+/**
  * browse.library 装配组件：`useLibraryDetail` viewmodel 桥。
  *
  * viewmodel 内部自带筛选排序默认值；主题筛选动作经 actions 下发
@@ -51,6 +67,7 @@ function BrowseLibrarySkinDataProvider({
   children,
 }: DomainSkinParamsProps & { children: ReactNode }) {
   const libraryId = params.libraryId ?? '';
+  const navigation = useSkinNavigationActions();
   const vm = useLibraryDetail({
     libraryId: libraryId || undefined,
     mediaType: 'all',
@@ -65,6 +82,7 @@ function BrowseLibrarySkinDataProvider({
     error: vm.error,
     layout: vm.layout,
     actions: {
+      ...navigation,
       refresh: vm.actions.refresh,
       loadMore: vm.actions.loadMore,
     },
@@ -81,6 +99,7 @@ function BrowseItemSkinDataProvider({
   children,
 }: DomainSkinParamsProps & { children: ReactNode }) {
   const itemId = params.itemId ?? '';
+  const navigation = useSkinNavigationActions();
   const vm = useItemDetail({
     itemId: itemId || undefined,
     selectedSeasonId: undefined,
@@ -92,6 +111,7 @@ function BrowseItemSkinDataProvider({
     error: vm.error,
     layout: vm.layout,
     actions: {
+      ...navigation,
       retry: vm.actions.retry,
       refresh: vm.actions.refresh,
     },
