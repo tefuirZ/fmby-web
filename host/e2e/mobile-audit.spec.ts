@@ -1,4 +1,6 @@
 import { mkdirSync } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test, expect, type Page } from '@playwright/test';
 import { login, resetBackend, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/helpers';
 
@@ -9,12 +11,24 @@ import { login, resetBackend, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/he
  * 3. 管理面窄屏呈现（表格可横向滚动 / 抽屉可用）；
  * 4. 播放页移动端（进度条可拖 / 控件可达）。
  *
- * 截图归档：docs/evidence/fe-opt-02/<device>/<page>.png
+ * 截图归档（REPO-HYGIENE-01）：全量集写 `<repo>/docs/evidence/fe-opt-02/full/<device>/<page>.png`
+ * （**gitignored** → CI artifact；仓库只留 `samples/` 抽样，见 docs/evidence-policy.md）。
+ * 用 `EVIDENCE_DIR` 可覆盖输出根（相对仓库根，或绝对路径）。
+ *
+ * 注：playwright 运行 cwd 为 `host/`，故路径必须**锚定仓库根**（否则会落到
+ * `host/docs/...`——FE-OPT-02 原实现即存在此路径偏移）。
  */
 
 test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
-const SHOTS = 'docs/evidence/fe-opt-02';
+// host/e2e → host → 仓库根
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const evidenceRoot = process.env.EVIDENCE_DIR
+  ? isAbsolute(process.env.EVIDENCE_DIR)
+    ? process.env.EVIDENCE_DIR
+    : join(REPO_ROOT, process.env.EVIDENCE_DIR)
+  : join(REPO_ROOT, 'docs/evidence/fe-opt-02');
+const SHOTS = join(evidenceRoot, 'full');
 
 /** 页面清单（path → 可见性锚点）。与 WEB-E2E-FULL 覆盖面一致。 */
 const PAGES: Array<{ name: string; path: string; anchor?: string | RegExp }> = [

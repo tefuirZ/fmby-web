@@ -37,6 +37,12 @@ pnpm verify       # typecheck + build + size + dupes + contracts
 3. **三层依赖单向**：themes → shared ← host（themes 不得 import host）
 4. 门禁 `pnpm dupes` 强制上述规则
 
+## 仓库卫生（REPO-HYGIENE-01）
+
+审计产物（截图全量集、playwright trace/report）**外置**到 CI artifact，仓库只保留
+**代表样本 + 索引**。二进制产物总量由 `pnpm repo-size`（接入 `pnpm verify`）守 ≤1 MiB。
+分类口径与抽样规则见 **[docs/evidence-policy.md](docs/evidence-policy.md)**。
+
 # FMBY v2 前端（fmby-web）
 
 FMBY v2 多主题前端。分层架构与主题协议见契约仓
