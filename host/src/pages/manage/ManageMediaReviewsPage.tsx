@@ -4,6 +4,7 @@ import {
   isMediaReviewsUnwiredError,
   isVisibilityAction,
   mediaReviewsApi,
+  type MediaReviewProviderCandidate,
   type MediaReviewRecord,
 } from '@fmby/v2-shared/contracts/manage/media-reviews';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -380,6 +381,24 @@ export function ManageMediaReviewsPage() {
               description="此动作将改变媒体在站内的可见状态，需 DangerousAction 权限并由后端二次确认。"
             />
           ) : null}
+          {resolveAction === 'ManualMatch' ? (
+            <ProviderSearchPanel
+              onPick={(candidate) =>
+                setResolvePayload(
+                  JSON.stringify(
+                    {
+                      provider: candidate.provider,
+                      providerItemId: candidate.providerItemId,
+                      entityType: candidate.entityType,
+                      externalId: candidate.externalId,
+                    },
+                    null,
+                    2,
+                  ),
+                )
+              }
+            />
+          ) : null}
           <label className={styles.label}>
             payload（可选，JSON）
             <textarea
@@ -390,8 +409,97 @@ export function ManageMediaReviewsPage() {
               placeholder='例如 {"providerItemId":"tmdb:12345"}'
             />
           </label>
+          {resolveAction === 'ManualMatch' ? (
+            <span className={styles.fieldHint}>
+              人工匹配：在上方点选候选即可自动填入 payload（provider + providerItemId），无需手填 JSON。
+            </span>
+          ) : null}
         </div>
       </Dialog>
+    </div>
+  );
+}
+
+/** 人工匹配候选搜索：点选候选 → 自动填入 resolve payload。 */
+function ProviderSearchPanel({
+  onPick,
+}: {
+  onPick: (candidate: MediaReviewProviderCandidate) => void;
+}) {
+  const [provider, setProvider] = useState('tmdb');
+  const [query, setQuery] = useState('');
+
+  const searchQuery = useQuery({
+    queryKey: queryKeys.manage.mediaReviews.providerSearch(provider, query),
+    queryFn: () => mediaReviewsApi.providerSearch({ provider, query }),
+    enabled: query.trim().length > 0,
+  });
+
+  const candidates = searchQuery.data?.candidates ?? [];
+
+  return (
+    <div className={styles.stackText}>
+      <div className={styles.fieldRow}>
+        <label className={styles.label}>
+          provider
+          <select
+            className={styles.select}
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+          >
+            <option value="tmdb">TMDB</option>
+            <option value="douban">豆瓣</option>
+          </select>
+        </label>
+        <label className={styles.label}>
+          搜索关键词
+          <input
+            className={styles.input}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="输入标题后搜索候选"
+          />
+        </label>
+      </div>
+
+      {searchQuery.isPending ? (
+        <span className={styles.tableHint}>正在搜索候选…</span>
+      ) : searchQuery.isError ? (
+        <span className={styles.tableHint}>候选搜索失败：{getErrorMessage(searchQuery.error)}</span>
+      ) : candidates.length === 0 ? (
+        <span className={styles.tableHint}>{query.trim() ? '没有匹配的候选。' : '输入关键词以搜索候选。'}</span>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>标题</th>
+                <th>原名</th>
+                <th>年份</th>
+                <th>类型</th>
+                <th>provider ID</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {candidates.map((c) => (
+                <tr key={`${c.provider}-${c.providerItemId}`}>
+                  <td>{c.title}</td>
+                  <td className={styles.mutedText}>{c.originalTitle ?? '—'}</td>
+                  <td>{c.year ?? '—'}</td>
+                  <td className={styles.mono}>{c.entityType}</td>
+                  <td className={styles.mono}>{c.providerItemId}</td>
+                  <td className="nowrap">
+                    <button type="button" className={styles.smallButton} onClick={() => onPick(c)}>
+                      选用
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
