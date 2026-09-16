@@ -23,6 +23,24 @@
  * 5. `--update-baseline`：重写基线清单。**只许减不许增**——若某文件本次行数
  *    高于基线记录值，拒绝写入并 FAIL（防止把变胖洗进基线）。
  *
+ * 豁免（**显式清单，不靠行数绕过**；每条必须写清理由与判定标准）：
+ * - `EXEMPT_FILES`：路由声明表类（`app/router/index.tsx`）。MD-3 的 400 行红线
+ *   针对**组件**（可读性/复用），而路由表是「一处看全路由」的声明式清单：
+ *   它的长度=路由数量，拆成多文件反而丢失总览价值。
+ *   **判定标准（满足全部才可按此类豁免）**：
+ *     ① 文件主体是嵌套的路由声明对象（大量 `lazy: async () => import(...)`）；
+ *     ② 不含业务 JSX 组件定义；
+ *     ③ 拆分会损害「一处看全」的可读性收益。
+ *   不满足这三条的长文件**不适用**本豁免——应拆分或走其他口径。
+ * - 工具模块自动豁免：**文件内不含任何 JSX** 的 `.tsx`。
+ *   `mounts/formUtils.tsx` 这类纯函数集合不是组件，其痛点对应「单函数 >120 行」
+ *   （那是另一条规则，不在本卡）。
+ *   **判定标准**：剥离注释与字符串字面量后，正则未命中任何 JSX 标签
+ *   （见 `hasJsx()`）。含 JSX 即视为组件，**不适用**本豁免。
+ * - 口径说明：`.ts`（含 `shared/src/contracts/**`）**不纳入**本闸。
+ *   契约文件长度=端点数量（raw DTO + mapper 双件套），属天然长度而非结构问题，
+ *   且已有 `contracts` 闸管其结构。
+ *
  * 基线（纯数据）：docs/plans/v2-dev/evidence/fe-component-size-baseline.json
  */
 
@@ -51,6 +69,22 @@ const BASELINE_PATH = path.join(
 const WARN_LINES = 400;
 const FAIL_LINES = 500;
 
+/**
+ * 显式豁免清单（路由声明表类）。
+ * 每条须含 file + reason；新增条目必须在 reason 里说明它满足上述①②③。
+ * 禁止用豁免绕过「懒得拆」——本闸管的正是这类。
+ */
+const EXEMPT_FILES = [
+  {
+    file: 'host/src/app/router/index.tsx',
+    reason:
+      '路由声明表（① 主体为 lazy 路由声明；② 无业务 JSX 组件；③ 拆分丢失「一处看全路由」价值）。' +
+      '长度=路由数量，属天然长度而非结构问题。',
+  },
+];
+
+const EXEMPT_SET = new Set(EXEMPT_FILES.map((e) => e.file));
+
 const UPDATE_FLAG = process.argv.includes('--update-baseline');
 
 function getRelativePath(fullPath) {
@@ -73,6 +107,28 @@ function walkTsx(dir) {
   return results;
 }
 
+/**
+ * 是否含 JSX。用于工具模块判定：不含任何 JSX 的 .tsx 视为纯函数集合，非组件。
+ * 先剥离注释与字符串字面量，避免把注释里的 `<foo>` 或字符串里的 `<div>` 误判为 JSX。
+ */
+function hasJsx(source) {
+  const stripped = source
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\/[^\n]*/g, ' ')
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
+    .replace(/`(?:[^`\\]|\\.)*`/g, '``');
+  // JSX 开/闭标签：前面不是标识符/数字/`)`/`]`（排除 `a < b` 这类比较运算）
+  return /(^|[^A-Za-z0-9_$\)\]<]\/?[A-Za-z][A-Za-z0-9.-]*(?=[\s/>]))/m.test(stripped);
+}
+
+/** 是否豁免：命中显式清单 或 无 JSX 的工具模块；否则 null。 */
+function isExempt(relPath, source) {
+  if (EXEMPT_SET.has(relPath)) return '清单';
+  if (!hasJsx(source)) return '无 JSX';
+  return null;
+}
+
 function countLines(file) {
   const content = fs.readFileSync(file, 'utf-8');
   // 末尾空行不计（与 wc -l 口径一致：以换行符计数）
@@ -87,12 +143,20 @@ function loadBaseline() {
 
 const files = SCAN_DIRS.flatMap(walkTsx);
 const measured = files
-  .map((f) => ({ file: getRelativePath(f), lines: countLines(f) }))
+  .map((f) => ({
+    file: getRelativePath(f),
+    lines: countLines(f),
+    exempt: isExempt(getRelativePath(f), fs.readFileSync(f, 'utf-8')),
+  }))
   .filter((m) => m.lines > WARN_LINES)
   .sort((a, b) => b.lines - a.lines);
 
+const exempted = measured.filter((m) => m.exempt);
+const enforced = measured.filter((m) => !m.exempt);
+
 const baseline = loadBaseline();
 const baselineMap = new Map((baseline?.files ?? []).map((f) => [f.file, f.lines]));
+
 
 const violations = [];
 const warnings = [];
@@ -100,7 +164,7 @@ const warnings = [];
 // ── --update-baseline：只许减不许增 ────────────────────────────────────────
 if (UPDATE_FLAG) {
   console.log('=== FMBY v2 前端组件行数基线更新（只许减不许增）===\n');
-  const grew = measured.filter((m) => {
+  const grew = enforced.filter((m) => {
     const prev = baselineMap.get(m.file);
     return prev !== undefined && m.lines > prev;
   });
@@ -120,12 +184,12 @@ if (UPDATE_FLAG) {
     warnLines: WARN_LINES,
     failLines: FAIL_LINES,
     generatedAt: new Date().toISOString(),
-    files: measured,
+    files: enforced,
   };
   fs.mkdirSync(path.dirname(BASELINE_PATH), { recursive: true });
   fs.writeFileSync(BASELINE_PATH, `${JSON.stringify(next, null, 2)}\n`);
-  console.log(`  [PASS] 基线已写入 ${getRelativePath(BASELINE_PATH)}（${measured.length} 个超线文件）`);
-  for (const m of measured) {
+  console.log(`  [PASS] 基线已写入 ${getRelativePath(BASELINE_PATH)}（${enforced.length} 个超线文件，豁免 ${exempted.length} 个）`);
+  for (const m of enforced) {
     const prev = baselineMap.get(m.file);
     const delta = prev === undefined ? '新增' : `${prev} → ${m.lines}`;
     console.log(`    - ${m.file}: ${m.lines} 行（${delta}）`);
@@ -135,6 +199,22 @@ if (UPDATE_FLAG) {
 
 // ── 常规检查 ──────────────────────────────────────────────────────────────
 console.log('=== FMBY v2 前端组件行数门禁（CONSTRAINTS MD-3 棘轮）===\n');
+
+// 豁免文件不参与棘轮（既不进基线也不判违规），但要在输出里可见——防「静默放行」。
+console.log('[0] 豁免清单（显式，不参与棘轮）：');
+for (const e of EXEMPT_FILES) {
+  const hit = measured.find((m) => m.file === e.file);
+  console.log(`  - ${e.file}${hit ? `（${hit.lines} 行，${hit.exempt}）` : '（当前未超线）'}`);
+  console.log(`      理由：${e.reason}`);
+}
+const autoExempt = exempted.filter((m) => !EXEMPT_SET.has(m.file));
+if (autoExempt.length > 0) {
+  console.log('  - 另（按「无 JSX」自动判定为工具模块）：');
+  for (const m of autoExempt) {
+    console.log(`      ${m.file}（${m.lines} 行）`);
+  }
+}
+console.log('');
 console.log(`[1] 扫描 host/src + shared/src 的 .tsx（> ${WARN_LINES} 行 warn / > ${FAIL_LINES} 行 fail）...`);
 
 if (!baseline) {
@@ -147,7 +227,7 @@ if (!baseline) {
   console.log(`  - 基线：${baseline.files.length} 个超线文件\n`);
 }
 
-for (const m of measured) {
+for (const m of enforced) {
   const prev = baselineMap.get(m.file);
 
   if (prev === undefined) {
@@ -184,8 +264,8 @@ const stale = baseline
     })
   : [];
 
-console.log(`[2] 超线文件 ${measured.length} 个（新增/变胖计 FAIL；基线内未上升计 WARN 债务）...\n`);
-for (const m of measured) {
+console.log(`[2] 超线文件 ${enforced.length} 个受管（另有 ${exempted.length} 个豁免；新增/变胖计 FAIL，基线内未上升计 WARN 债务）...\n`);
+for (const m of enforced) {
   const prev = baselineMap.get(m.file);
   const tag = prev === undefined ? '新增' : `${prev} → ${m.lines}`;
   const grew = prev !== undefined && m.lines > prev;
