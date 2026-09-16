@@ -8,6 +8,8 @@ import {
   buildMountConfigObject,
   buildStructuredRemoteConfig,
   isStructuredRemoteProvider,
+  isS3Provider,
+  isWebDavProvider,
   normalizeRemoteMountPath,
   shouldConfirmRemoteAuthModeSwitch,
   validateDirectoryBrowser,
@@ -92,7 +94,11 @@ export function useMountDrawerHandlers({
         title: '目录浏览器暂时无法使用',
         description: isStructuredProviderForm
           ? '请先补齐服务地址和认证信息，再加载目录。'
-          : '请先确认当前来源支持目录浏览，且必要配置已经准备完成。',
+          : isS3Provider(formState.providerType)
+            ? '请先补齐服务地址与 bucket，再加载目录。'
+            : isWebDavProvider(formState.providerType)
+              ? '请先补齐服务地址，再加载目录。'
+              : '请先确认当前来源支持目录浏览，且必要配置已经准备完成。',
       });
       return;
     }

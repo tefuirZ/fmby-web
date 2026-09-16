@@ -1,5 +1,7 @@
 export { BasicInfoSection } from './BasicInfoSection';
 export { RemoteConnectionSection } from './RemoteConnectionSection';
+export { WebDavS3ConnectionSection } from './WebDavS3ConnectionSection';
+export { MountProviderFields } from './MountProviderFields';
 export { AuthModeSection } from './AuthModeSection';
 export { ConfigJsonSection } from './ConfigJsonSection';
 export { CapabilitiesSection } from './CapabilitiesSection';

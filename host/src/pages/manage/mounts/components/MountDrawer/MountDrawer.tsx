@@ -11,16 +11,15 @@ import {
   buildMountFormState,
   getMountDrawerDescription,
   getMountDrawerTitle,
-  isStructuredRemoteProvider,
+  isWebDavProvider,
+  isS3Provider,
   supportsDirectoryBrowser,
 } from '../../formUtils';
 import { MountDirectoryBrowserCard } from '../MountDirectoryBrowserCard';
 import { useAdvancedSectionState, useMountDrawerHandlers } from './hooks';
 import {
   BasicInfoSection,
-  RemoteConnectionSection,
-  AuthModeSection,
-  ConfigJsonSection,
+  MountProviderFields,
   CapabilitiesSection,
   PathPoliciesSection,
   PreservedConfigSection,
@@ -35,7 +34,6 @@ import {
   MountDeletePanel,
   AdvancedSectionWrapper,
   Pan115CredentialsSection,
-  Pan115CreateCredentialsSection,
   Pan115DirectoryBrowserSection,
   type Pan115CreatePendingActivation,
 } from './sections';
@@ -65,7 +63,8 @@ export function MountDrawer({
 }: MountDrawerProps) {
   const currentDetail = mountDetailQuery.data;
   const isDrawerOpen = drawerState !== null;
-  const isStructuredProviderForm = isStructuredRemoteProvider(formState.providerType);
+  const isWebDavS3Form =
+    isWebDavProvider(formState.providerType) || isS3Provider(formState.providerType);
   // Pan115 创建凭据：扫码 / 手填 cookie 二选一，等 mount 创建成功后再 activate
   const [pan115Pending, setPan115Pending] = useState<Pan115CreatePendingActivation | null>(null);
   const activateAttemptedRef = useRef<string | null>(null);
@@ -147,44 +146,21 @@ export function MountDrawer({
             supportsDirectoryBrowser={supportsDirectoryBrowserForm}
             onProviderTypeChange={handleProviderTypeChange}
           />
-          {isStructuredProviderForm ? (
-            <>
-              <RemoteConnectionSection
-                formState={formState}
-                setFormState={setFormState}
-                formErrors={formErrors}
-                setFormErrors={setFormErrors}
-                isSaving={isSaving}
-                credentialProbeStatus={credentialProbe.status}
-                credentialProbeMessage={credentialProbe.message}
-                setDirectoryBrowser={setDirectoryBrowser}
-              />
-              <AuthModeSection
-                formState={formState}
-                setFormState={setFormState}
-                formErrors={formErrors}
-                setFormErrors={setFormErrors}
-                isSaving={isSaving}
-                onAuthModeChange={handleRemoteAuthModeChange}
-                setDirectoryBrowser={setDirectoryBrowser}
-              />
-            </>
-          ) : formState.providerType === 'pan115' ? (
-            <Pan115CreateCredentialsSection
-              pending={pan115Pending}
-              onPendingChange={setPan115Pending}
-              isSaving={isSaving}
-            />
-          ) : (
-            <ConfigJsonSection
-              formState={formState}
-              setFormState={setFormState}
-              formErrors={formErrors}
-              setFormErrors={setFormErrors}
-              isSaving={isSaving}
-              mode="create"
-            />
-          )}
+          <MountProviderFields
+            formState={formState}
+            setFormState={setFormState}
+            formErrors={formErrors}
+            setFormErrors={setFormErrors}
+            isSaving={isSaving}
+            mode="create"
+            setDirectoryBrowser={setDirectoryBrowser}
+            credentialProbeStatus={credentialProbe.status}
+            credentialProbeMessage={credentialProbe.message}
+            onAuthModeChange={handleRemoteAuthModeChange}
+            pan115Pending={pan115Pending}
+            onPan115PendingChange={setPan115Pending}
+            isWebDavS3Form={isWebDavS3Form}
+          />
           {supportsDirectoryBrowserForm ? (
             <MountDirectoryBrowserCard
               providerType={formState.providerType}
@@ -253,38 +229,21 @@ export function MountDrawer({
             supportsDirectoryBrowser={supportsDirectoryBrowserForm}
             onProviderTypeChange={handleProviderTypeChange}
           />
-          {isStructuredProviderForm ? (
-            <>
-              <RemoteConnectionSection
-                formState={formState}
-                setFormState={setFormState}
-                formErrors={formErrors}
-                setFormErrors={setFormErrors}
-                isSaving={isSaving}
-                credentialProbeStatus={credentialProbe.status}
-                credentialProbeMessage={credentialProbe.message}
-                setDirectoryBrowser={setDirectoryBrowser}
-              />
-              <AuthModeSection
-                formState={formState}
-                setFormState={setFormState}
-                formErrors={formErrors}
-                setFormErrors={setFormErrors}
-                isSaving={isSaving}
-                onAuthModeChange={handleRemoteAuthModeChange}
-                setDirectoryBrowser={setDirectoryBrowser}
-              />
-            </>
-          ) : (
-            <ConfigJsonSection
-              formState={formState}
-              setFormState={setFormState}
-              formErrors={formErrors}
-              setFormErrors={setFormErrors}
-              isSaving={isSaving}
-              mode="edit"
-            />
-          )}
+          <MountProviderFields
+            formState={formState}
+            setFormState={setFormState}
+            formErrors={formErrors}
+            setFormErrors={setFormErrors}
+            isSaving={isSaving}
+            mode="edit"
+            setDirectoryBrowser={setDirectoryBrowser}
+            credentialProbeStatus={credentialProbe.status}
+            credentialProbeMessage={credentialProbe.message}
+            onAuthModeChange={handleRemoteAuthModeChange}
+            pan115Pending={pan115Pending}
+            onPan115PendingChange={setPan115Pending}
+            isWebDavS3Form={isWebDavS3Form}
+          />
           {supportsDirectoryBrowserForm ? (
             <MountDirectoryBrowserCard
               providerType={formState.providerType}

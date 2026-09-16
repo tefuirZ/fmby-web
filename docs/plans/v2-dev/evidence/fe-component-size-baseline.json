@@ -2,7 +2,7 @@
   "note": "前端组件行数基线（CONSTRAINTS MD-3 棘轮）。只许减不许增：新增超线文件即 FAIL，存量行数上升即 FAIL。更新：pnpm component-size --update-baseline",
   "warnLines": 400,
   "failLines": 500,
-  "generatedAt": "2026-09-16T21:52:54.616Z",
+  "generatedAt": "2026-09-16T22:19:35.107Z",
   "files": [
     {
       "file": "host/src/pages/manage/ManageRegistrationCodesPage.tsx",
@@ -57,11 +57,6 @@
     {
       "file": "host/src/pages/manage/ManageRewardsPage.tsx",
       "lines": 417,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/mounts/components/MountDrawer/MountDrawer.tsx",
-      "lines": 406,
       "exempt": null
     },
     {
