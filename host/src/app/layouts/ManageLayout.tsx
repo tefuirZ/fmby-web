@@ -2,7 +2,9 @@ import { useState } from 'react';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import {
   Activity,
+  BarChart3,
   CalendarCheck,
+  Globe,
   FileText,
   Film,
   FolderHeart,
@@ -52,6 +54,17 @@ const manageNavTree: ManageNavNode[] = [
       { id: 'media-probe-tasks', label: '媒体信息检测', icon: Search, to: '/manage/media/probe-tasks' },
       { id: 'media-naming-scrape', label: '命名与刮削', icon: SlidersHorizontal, to: '/manage/media/naming-scrape' },
       { id: 'media-collections', label: '收藏合集', icon: FolderHeart, to: '/manage/collections' },
+    ],
+  },
+  {
+    id: 'content-ops',
+    label: '内容与运营',
+    icon: Activity,
+    children: [
+      { id: 'media-reviews', label: '媒体审核工单', icon: ShieldCheck, to: '/manage/media-reviews' },
+      { id: 'operations', label: '运营看板', icon: BarChart3, to: '/manage/operations' },
+      { id: 'events', label: '事件中心', icon: Activity, to: '/manage/events' },
+      { id: 'upstreams', label: '上游源', icon: Globe, to: '/manage/upstreams' },
     ],
   },
   {
@@ -128,6 +141,10 @@ const PATH_PREFETCH_KEYS: Record<string, keyof typeof routeLoaders> = {
   '/manage/media/probe-tasks': 'manageProbeTasks',
   '/manage/media/naming-scrape': 'manageNamingRules',
   '/manage/collections': 'manageCollections',
+  '/manage/media-reviews': 'manageMediaReviews',
+  '/manage/operations': 'manageOperations',
+  '/manage/events': 'manageEvents',
+  '/manage/upstreams': 'manageUpstreams',
   '/manage/site/users/registration-codes': 'manageRegistrationCodes',
   '/manage/site/users/accounts': 'manageUsers',
   '/manage/site/users/role-templates': 'manageRoleTemplates',

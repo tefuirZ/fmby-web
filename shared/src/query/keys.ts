@@ -199,5 +199,41 @@ export const queryKeys = {
     },
 
     runtimeLogs: (...args: unknown[]) => ['manage', 'runtime-logs', ...args] as const,
+
+    mediaReviews: {
+      all: () => ['manage', 'media-reviews'] as const,
+      list: (query?: Record<string, unknown>) =>
+        ['manage', 'media-reviews', 'list', query ?? {}] as const,
+      detail: (id?: string) =>
+        id
+          ? (['manage', 'media-reviews', 'detail', id] as const)
+          : (['manage', 'media-reviews', 'detail'] as const),
+      providerSearch: (provider: string, query: string) =>
+        ['manage', 'media-reviews', 'provider-search', provider, query] as const,
+    },
+
+    events: {
+      list: (query?: Record<string, unknown>) =>
+        ['manage', 'events', 'list', query ?? {}] as const,
+      detail: (requestId?: string) =>
+        requestId
+          ? (['manage', 'events', 'detail', requestId] as const)
+          : (['manage', 'events', 'detail'] as const),
+    },
+
+    operations: {
+      overview: (days: number) => ['manage', 'operations', 'overview', days] as const,
+    },
+
+    upstreams: {
+      all: () => ['manage', 'upstreams'] as const,
+      list: (query?: object) => ['manage', 'upstreams', 'list', query ?? {}] as const,
+      detail: (id?: string) =>
+        id
+          ? (['manage', 'upstreams', 'detail', id] as const)
+          : (['manage', 'upstreams', 'detail'] as const),
+      health: (id: string) => ['manage', 'upstreams', 'health', id] as const,
+      discovery: () => ['manage', 'upstreams', 'discovery'] as const,
+    },
   },
 } as const;

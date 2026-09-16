@@ -67,6 +67,10 @@ export const routeLoaders = {
   manageSecrets: () => import('@/pages/manage/ManageSecretsPage'),
   manageLicense: () => import('@/pages/manage/ManageLicensePage'),
   manageCollections: () => import('@/pages/manage/ManageCollectionsPage'),
+  manageMediaReviews: () => import('@/pages/manage/ManageMediaReviewsPage'),
+  manageOperations: () => import('@/pages/manage/ManageOperationsPage'),
+  manageEvents: () => import('@/pages/manage/ManageEventsPage'),
+  manageUpstreams: () => import('@/pages/manage/ManageUpstreamsPage'),
   manageSiteSettings: () => import('@/pages/manage/ManageSiteSettingsPage'),
   manageAdvanced: () => import('@/pages/manage/ManageAdvancedPage'),
 } as const;

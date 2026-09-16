@@ -70,6 +70,10 @@ function RouteHydrateFallback() {
  * - /manage/site/telegram                 Telegram Bot 配置（P6-04）
  * - /manage/site/rewards                  积分与签到（P6-04）
  * - /manage/collections                   收藏合集（P6-04）
+ * - /manage/media-reviews                 媒体审核工单（V1F-03a/b）
+ * - /manage/operations                    运营看板（V1F-08-B1）
+ * - /manage/events                        事件中心（V1F-07）
+ * - /manage/upstreams                     上游源（V1F-02-S1..S4）
  * - /manage/tools/pan115-imghost          图床工具（VITE_FEATURE_PAN115_IMGHOST=1 时启用）
  */
 export const router = createBrowserRouter([
@@ -227,6 +231,34 @@ export const router = createBrowserRouter([
             lazy: async () => {
               const { ManageTaskCenterPage } = await import('@/pages/manage/ManageTaskCenterPage');
               return { Component: ManageTaskCenterPage };
+            },
+          },
+          {
+            path: 'media-reviews',
+            lazy: async () => {
+              const { ManageMediaReviewsPage } = await import('@/pages/manage/ManageMediaReviewsPage');
+              return { Component: ManageMediaReviewsPage };
+            },
+          },
+          {
+            path: 'operations',
+            lazy: async () => {
+              const { ManageOperationsPage } = await import('@/pages/manage/ManageOperationsPage');
+              return { Component: ManageOperationsPage };
+            },
+          },
+          {
+            path: 'events',
+            lazy: async () => {
+              const { ManageEventsPage } = await import('@/pages/manage/ManageEventsPage');
+              return { Component: ManageEventsPage };
+            },
+          },
+          {
+            path: 'upstreams',
+            lazy: async () => {
+              const { ManageUpstreamsPage } = await import('@/pages/manage/ManageUpstreamsPage');
+              return { Component: ManageUpstreamsPage };
             },
           },
           {
