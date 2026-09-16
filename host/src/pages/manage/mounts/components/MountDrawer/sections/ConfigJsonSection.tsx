@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { ManageSectionCard } from '../../../../components';
 import type { MountFormState, MountFormErrors, MountDrawerMode } from '../../../types';
-import { renderFieldError } from '../../../formUtils';
+import { renderFieldError } from '../../../formRenderers';
 import styles from '../../../../ManagePages.module.css';
 
 interface ConfigJsonSectionProps {

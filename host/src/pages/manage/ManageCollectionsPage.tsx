@@ -1,53 +1,27 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   isServiceUnwiredError,
-  type CollectionVisibility,
   type ManagedCollectionRecord,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
-import { BatchActionBar, BatchProgressPanel, Checkbox, Dialog, FeedbackState, InlineBanner, SensitiveActionDialog, StatusBadge } from '@fmby/v2-shared/ui';
+import { Checkbox, FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { useBatchSelection, useBatchRunner } from '@fmby/v2-shared/hooks';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { useCollectionDetailQuery, useCollectionMutations, useCollectionsQuery } from './collections/hooks';
-
-interface CollectionFormState {
-  title: string;
-  overview: string;
-  posterUrl: string;
-  visibility: CollectionVisibility;
-}
-
-const VISIBILITY_LABELS: Record<CollectionVisibility, string> = {
-  Active: '对外可见',
-  Hidden: '已隐藏',
-};
-
-const SOURCE_LABELS: Record<string, string> = {
-  manual: '手工创建',
-  douban_doulist: '豆瓣片单同步',
-  preset: '预设合集',
-};
-
-function createInitialFormState(): CollectionFormState {
-  return { title: '', overview: '', posterUrl: '', visibility: 'Active' };
-}
-
-function buildFormStateFromRecord(record: ManagedCollectionRecord): CollectionFormState {
-  return {
-    title: record.title,
-    overview: record.overview ?? '',
-    posterUrl: record.posterUrl ?? '',
-    visibility: record.visibility,
-  };
-}
-
-function formatEpochMs(epochMs: number): string {
-  if (!Number.isFinite(epochMs) || epochMs <= 0) {
-    return '—';
-  }
-  return new Date(epochMs).toLocaleString('zh-CN', { hour12: false });
-}
+import { CollectionMemberPanel } from './collections/components/CollectionMemberPanel';
+import {
+  CollectionFormDialog,
+  type CollectionFormState,
+} from './collections/components/CollectionFormDialog';
+import { CollectionBatchActions } from './collections/components/CollectionBatchActions';
+import {
+  SOURCE_LABELS,
+  VISIBILITY_LABELS,
+  buildFormStateFromRecord,
+  createInitialFormState,
+  formatEpochMs,
+} from './collections/components/labels';
 
 export function ManageCollectionsPage() {
   const collectionsQuery = useCollectionsQuery();
@@ -348,168 +322,53 @@ export function ManageCollectionsPage() {
         )}
       </ManageSectionCard>
 
-      <Dialog
+      <CollectionFormDialog
         open={formOpen}
-        eyebrow={editingRecord ? '编辑合集' : '新建合集'}
-        title={editingRecord ? `编辑：${editingRecord.title}` : '新建手工合集'}
-        description="标题必填；可见性决定合集是否在浏览面出现。"
-        onOpenChange={(open) => {
-          if (!open) {
-            setFormOpen(false);
-          }
+        editing={editingRecord !== null}
+        editingTitle={editingRecord?.title}
+        formState={formState}
+        pending={formPending}
+        onClose={() => setFormOpen(false)}
+        onSubmit={submitForm}
+        onFormStateChange={setFormState}
+      />
+
+      <CollectionBatchActions
+        runnerItems={runner.items}
+        onDismiss={runner.dismiss}
+        onRetryItem={(id) => void retryCollectionDelete(id)}
+        onRetryFailed={() => void retryAllCollectionDeletes()}
+        selectedCount={selection.selected.length}
+        onClearSelection={selection.clear}
+        onRequestBatchDelete={() => setBatchDeleteConfirmOpen(true)}
+        batchDeleteOpen={batchDeleteConfirmOpen}
+        onBatchDeleteOpenChange={(open) => {
+          if (!open) setBatchDeleteConfirmOpen(false);
         }}
-        footer={
-          <>
-            <button
-              className={styles.secondaryButton}
-              type="button"
-              onClick={() => setFormOpen(false)}
-              disabled={formPending}
-            >
-              取消
-            </button>
-            <button
-              className={styles.primaryButton}
-              type="button"
-              onClick={submitForm}
-              disabled={formPending || formState.title.trim().length === 0}
-            >
-              {formPending ? '保存中…' : editingRecord ? '保存修改' : '创建合集'}
-            </button>
-          </>
-        }
-      >
-        <div className={styles.fieldGroup}>
-          <label className={styles.label}>
-            标题（必填，最长 512 字）
-            <input
-              className={styles.input}
-              value={formState.title}
-              maxLength={512}
-              onChange={(e) => setFormState((s) => ({ ...s, title: e.target.value }))}
-              placeholder="例如：科幻经典补完计划"
-            />
-          </label>
-          <div className={styles.fieldRow}>
-            <label className={styles.label}>
-              可见性
-              <select
-                className={styles.select}
-                value={formState.visibility}
-                onChange={(e) =>
-                  setFormState((s) => ({ ...s, visibility: e.target.value as CollectionVisibility }))
-                }
-              >
-                <option value="Active">Active（对外可见）</option>
-                <option value="Hidden">Hidden（隐藏）</option>
-              </select>
-            </label>
-            <label className={styles.label}>
-              海报地址（可选，最长 512 字）
-              <input
-                className={styles.input}
-                value={formState.posterUrl}
-                maxLength={512}
-                onChange={(e) => setFormState((s) => ({ ...s, posterUrl: e.target.value }))}
-                placeholder="https://…"
-              />
-            </label>
-          </div>
-          <label className={styles.label}>
-            简介（可选，最长 2000 字）
-            <textarea
-              className={styles.textarea}
-              rows={4}
-              value={formState.overview}
-              maxLength={2000}
-              onChange={(e) => setFormState((s) => ({ ...s, overview: e.target.value }))}
-              placeholder="这个合集收录了什么、按什么顺序看。"
-            />
-          </label>
-        </div>
-      </Dialog>
-
-      {runner.items.length > 0 ? (
-        <BatchProgressPanel
-          items={runner.items}
-          actionLabel="删除合集"
-          onDismiss={runner.dismiss}
-          onRetryItem={(id) => void retryCollectionDelete(id)}
-          onRetryFailed={() => void retryAllCollectionDeletes()}
-        />
-      ) : null}
-
-      <BatchActionBar
-        count={selection.selected.length}
-        onClear={selection.clear}
-        hint="删除会级联移除成员；逐条执行，失败项可单独重试。"
-      >
-        <button
-          className={styles.smallDangerButton}
-          type="button"
-          onClick={() => setBatchDeleteConfirmOpen(true)}
-        >
-          批量删除
-        </button>
-      </BatchActionBar>
-
-      <SensitiveActionDialog
-        open={batchDeleteConfirmOpen}
-        actionKey="delete-managed-collection"
-        title={`批量删除 ${selection.selected.length} 个合集`}
-        description="将逐条删除选中合集并级联移除成员；失败项会在进度面板列出，可单独重试。"
-        impact={selection.selected.map((id) => `· ${collectionsRefLabel(id)}`)}
-        confirmLabel="确认批量删除"
-        onOpenChange={(open) => { if (!open) setBatchDeleteConfirmOpen(false); }}
-        onConfirm={() => {
+        onConfirmBatchDelete={() => {
           setBatchDeleteConfirmOpen(false);
           void runBatchDelete();
         }}
-      />
-
-      <SensitiveActionDialog
-        open={pendingDelete !== null}
-        actionKey="delete-managed-collection"
-        title={pendingDelete ? `删除合集：${pendingDelete.title}` : ''}
-        description="删除会同时移除合集内的全部成员记录，且不可恢复。"
-        impact={[
-          '物理删除，级联清空成员。',
-          '豆瓣同步/预设来源的合集删除后，需要重新同步才能恢复。',
-        ]}
-        errorMessage={
-          deleteMutation.isError ? getErrorMessage(deleteMutation.error) : undefined
-        }
-        confirmLabel="确认删除"
-        pending={deleteMutation.isPending}
-        onOpenChange={(open) => {
-          if (!open && !deleteMutation.isPending) {
-            setPendingDelete(null);
-          }
+        batchDeleteImpact={selection.selected.map((id) => `· ${collectionsRefLabel(id)}`)}
+        pendingDeleteTitle={pendingDelete?.title ?? null}
+        deletePending={deleteMutation.isPending}
+        deleteError={deleteMutation.isError ? deleteMutation.error : undefined}
+        onDeleteOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setPendingDelete(null);
         }}
-        onConfirm={() => {
+        onConfirmDelete={() => {
           if (pendingDelete) {
             deleteMutation.mutate(pendingDelete.id);
             setPendingDelete(null);
           }
         }}
-      />
-
-      <SensitiveActionDialog
-        open={pendingMemberDelete !== null}
-        actionKey="delete-managed-collection-member"
-        title={pendingMemberDelete ? `移除成员：${pendingMemberDelete.memberTitle}` : ''}
-        description="成员会从这个合集里移除，媒体本体不受影响。"
-        errorMessage={
-          deleteMemberMutation.isError ? getErrorMessage(deleteMemberMutation.error) : undefined
-        }
-        confirmLabel="确认移除"
-        pending={deleteMemberMutation.isPending}
-        onOpenChange={(open) => {
-          if (!open && !deleteMemberMutation.isPending) {
-            setPendingMemberDelete(null);
-          }
+        pendingMemberTitle={pendingMemberDelete?.memberTitle ?? null}
+        memberDeletePending={deleteMemberMutation.isPending}
+        memberDeleteError={deleteMemberMutation.isError ? deleteMemberMutation.error : undefined}
+        onMemberDeleteOpenChange={(open) => {
+          if (!open && !deleteMemberMutation.isPending) setPendingMemberDelete(null);
         }}
-        onConfirm={() => {
+        onConfirmMemberDelete={() => {
           if (pendingMemberDelete) {
             deleteMemberMutation.mutate({
               collectionId: pendingMemberDelete.collectionId,
@@ -519,71 +378,6 @@ export function ManageCollectionsPage() {
           }
         }}
       />
-    </div>
-  );
-}
-
-interface CollectionMemberPanelProps {
-  collectionId: string;
-  detailQuery: ReturnType<typeof useCollectionDetailQuery>;
-  onRemoveMember: (memberId: string, memberTitle: string) => void;
-}
-
-function CollectionMemberPanel({ collectionId, detailQuery, onRemoveMember }: CollectionMemberPanelProps) {
-  void collectionId;
-  if (detailQuery.isPending) {
-    return <div className={styles.tableHint}>正在加载成员明细…</div>;
-  }
-  if (detailQuery.isError) {
-    return (
-      <div className={styles.tableHint}>成员明细加载失败：{getErrorMessage(detailQuery.error)}</div>
-    );
-  }
-  const members = detailQuery.data?.members ?? [];
-  if (members.length === 0) {
-    return <div className={styles.tableHint}>这个合集还没有成员。</div>;
-  }
-  return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>成员</th>
-            <th>类型</th>
-            <th>上映年</th>
-            <th>启用</th>
-            <th>release 序</th>
-            <th>watch 序</th>
-            <th className="nowrap">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((member) => (
-            <tr key={member.id}>
-              <td>{member.titleSnapshot}</td>
-              <td>{member.mediaKind}</td>
-              <td>{member.yearSnapshot ?? '—'}</td>
-              <td>
-                <StatusBadge
-                  label={member.isEnabled ? '启用' : '停用'}
-                  variant={member.isEnabled ? 'success' : 'neutral'}
-                />
-              </td>
-              <td>{member.releaseOrder ?? '—'}</td>
-              <td>{member.watchOrder ?? '—'}</td>
-              <td className="nowrap">
-                <button
-                  className={styles.smallDangerButton}
-                  type="button"
-                  onClick={() => onRemoveMember(member.id, member.titleSnapshot)}
-                >
-                  移除
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

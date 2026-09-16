@@ -5,7 +5,7 @@ import type {
 
 import styles from './ManageShared.module.css';
 
-interface MountOption {
+export interface MountOption {
   id: string;
   name: string;
   pathLabel?: string;
