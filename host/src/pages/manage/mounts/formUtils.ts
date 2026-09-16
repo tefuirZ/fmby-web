@@ -52,6 +52,11 @@ export function createEmptyRemoteConfig(): MountRemoteConfigState {
     password: '',
     token: '',
     otpCode: '',
+    bucket: '',
+    region: '',
+    prefix: '',
+    accessKey: '',
+    secretKey: '',
   };
 }
 
@@ -80,9 +85,7 @@ export function buildCreateMountPayload(form: MountFormState): CreateManageMount
   return {
     name: form.name.trim(),
     providerType: form.providerType,
-    rootPath: isStructuredRemoteProvider(form.providerType)
-      ? normalizeRemoteMountPath(form.rootPath)
-      : form.rootPath.trim(),
+    rootPath: normalizeMountRootPath(form),
     configJson: buildMountConfigObject(form),
     capabilities: form.capabilities,
     pathPolicies: form.pathPolicies,
@@ -92,9 +95,7 @@ export function buildCreateMountPayload(form: MountFormState): CreateManageMount
 export function buildUpdateMountPayload(form: MountFormState) {
   return {
     name: form.name.trim(),
-    rootPath: isStructuredRemoteProvider(form.providerType)
-      ? normalizeRemoteMountPath(form.rootPath)
-      : form.rootPath.trim(),
+    rootPath: normalizeMountRootPath(form),
     configJson: buildMountConfigObject(form),
     capabilities: form.capabilities,
     pathPolicies: form.pathPolicies,
@@ -105,7 +106,28 @@ export function buildMountConfigObject(form: MountFormState) {
   if (isStructuredRemoteProvider(form.providerType)) {
     return buildStructuredRemoteConfig(form);
   }
+  if (isWebDavProvider(form.providerType) || isS3Provider(form.providerType)) {
+    return buildWebDavS3Config(form);
+  }
   return parseConfigJson(form.configJsonText);
+}
+
+/**
+ * root_path 归一分派（WEBDAV-S3-ENABLE §3.2）：
+ * AList/OpenList 与 WebDAV → `/`-prefixed；S3 → 无前导 `/`；其余原样。
+ */
+function normalizeMountRootPath(form: MountFormState) {
+  if (isStructuredRemoteProvider(form.providerType)) {
+    return normalizeRemoteMountPath(form.rootPath);
+  }
+  if (isWebDavProvider(form.providerType) || isS3Provider(form.providerType)) {
+    // S3 的「prefix」即 root_path（对象 key 前缀），二者同源不同名。
+    const raw = isS3Provider(form.providerType) && form.remoteConfig.prefix.trim() !== ''
+      ? form.remoteConfig.prefix
+      : form.rootPath;
+    return normalizeWebDavS3RootPath(form.providerType, raw);
+  }
+  return form.rootPath.trim();
 }
 
 export function buildStructuredRemoteConfig(form: MountFormState): Record<string, unknown> {
@@ -146,6 +168,11 @@ export function extractRemoteConfigState(configJson: Record<string, unknown>) {
     ),
   );
 
+  const bucket = readConfigString(configJson, ['bucket']) ?? '';
+  const region = readConfigString(configJson, ['region']) ?? '';
+  const accessKey = readConfigString(configJson, ['access_key', 'accessKey']) ?? '';
+  const secretKey = readConfigString(configJson, ['secret_key', 'secretKey']) ?? '';
+
   return {
     remoteConfig: {
       endpoint,
@@ -154,6 +181,12 @@ export function extractRemoteConfigState(configJson: Record<string, unknown>) {
       password,
       token,
       otpCode,
+      bucket,
+      region,
+      // 编辑态：S3 的 root_path 即 key 前缀，回填进 prefix 供表单展示。
+      prefix: '',
+      accessKey,
+      secretKey,
     } satisfies MountRemoteConfigState,
     preservedConfig,
   };
@@ -182,6 +215,10 @@ export function validateMountForm(form: MountFormState): MountFormErrors {
 
   if (form.name.trim() === '') {
     errors.name = '数据源名称不能为空。';
+  }
+
+  if (isWebDavProvider(form.providerType) || isS3Provider(form.providerType)) {
+    return { ...errors, ...validateWebDavS3Form(form) };
   }
 
   if (isStructuredRemoteProvider(form.providerType)) {
@@ -229,6 +266,15 @@ export function validateDirectoryBrowser(form: MountFormState): MountFormErrors 
     errors.browse = '当前来源类型不支持目录浏览器。';
     return errors;
   }
+  if (isWebDavProvider(form.providerType) || isS3Provider(form.providerType)) {
+    if (!isValidHttpUrl(form.remoteConfig.endpoint)) {
+      errors.endpoint = '请先填写合法的服务地址。';
+    }
+    if (isS3Provider(form.providerType) && form.remoteConfig.bucket.trim() === '') {
+      errors.bucket = '先填写 bucket 再浏览目录。';
+    }
+    return errors;
+  }
   if (!isStructuredRemoteProvider(form.providerType)) {
     return errors;
   }
@@ -244,6 +290,54 @@ export function validateDirectoryBrowser(form: MountFormState): MountFormErrors 
   if ((username === '' && password !== '') || (username !== '' && password === '')) {
     errors.username = '如果使用账号密码，用户名和密码必须同时填写。';
     errors.password = '如果使用账号密码，用户名和密码必须同时填写。';
+  }
+  return errors;
+}
+
+/**
+ * WebDAV / S3 的 config_json（WEBDAV-S3-ENABLE §3.1，与 adapter 解析端同口径）：
+ * - WebDAV 必填 `url`（别名 endpoint/base_url/baseUrl 四者任一），凭据可选（匿名合法）；
+ * - S3 必填 `endpoint`（别名 base_url/baseUrl）+ `bucket`，region/AK/SK 可选。
+ *
+ * ⚠️ 凭据字段（password / access_key / secret_key）属后端敏感键
+ * （`ConfigJsonValue::validate` 敏感名单）。当前前端**无密封端点**可取
+ * `__sealed:` 引用，故此处按明文提交，**依赖后端 MOUNT-CRED-SEAL 卡在
+ * bridge 侧密封后落库**（入站收明文 → 落库密文 → 回显 `__sealed:<key>`）。
+ * 该卡未落地前，带凭据创建会被后端 400 拒绝。
+ */
+export function buildWebDavS3Config(form: MountFormState): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...form.preservedConfig };
+  for (const key of REMOTE_CONFIG_KNOWN_KEYS) {
+    delete next[key];
+  }
+  if (isWebDavProvider(form.providerType)) {
+    next.url = form.remoteConfig.endpoint.trim();
+    if (form.remoteConfig.username.trim() !== '') next.username = form.remoteConfig.username.trim();
+    if (form.remoteConfig.password !== '') next.password = form.remoteConfig.password;
+    return next;
+  }
+  next.endpoint = form.remoteConfig.endpoint.trim();
+  next.bucket = form.remoteConfig.bucket.trim();
+  if (form.remoteConfig.region.trim() !== '') next.region = form.remoteConfig.region.trim();
+  if (form.remoteConfig.accessKey !== '') next.access_key = form.remoteConfig.accessKey;
+  if (form.remoteConfig.secretKey !== '') next.secret_key = form.remoteConfig.secretKey;
+  return next;
+}
+
+/** 必填字段级校验（缺 url / bucket → 具名错误，后端已补具名错误码，前端同口径提示）。 */
+export function validateWebDavS3Form(form: MountFormState): MountFormErrors {
+  const errors: MountFormErrors = {};
+  if (isWebDavProvider(form.providerType) || isS3Provider(form.providerType)) {
+    if (normalizeWebDavS3RootPath(form.providerType, form.rootPath) === '') {
+      errors.rootPath = '根路径禁止包含「..」段（防路径穿越）。';
+    }
+    if (!isValidHttpUrl(form.remoteConfig.endpoint)) {
+      errors.endpoint = '服务地址必须是合法的 http/https URL。';
+      return errors;
+    }
+    if (isS3Provider(form.providerType) && form.remoteConfig.bucket.trim() === '') {
+      errors.bucket = 'S3 兼容来源必须填写 bucket。';
+    }
   }
   return errors;
 }
@@ -311,7 +405,12 @@ export function normalizeRemoteMountPath(value: string) {
 }
 
 export function supportsDirectoryBrowser(providerType: ManageMountProviderType) {
-  return providerType === 'local' || isStructuredRemoteProvider(providerType);
+  return (
+    providerType === 'local' ||
+    isStructuredRemoteProvider(providerType) ||
+    isWebDavProvider(providerType) ||
+    isS3Provider(providerType)
+  );
 }
 
 /**
@@ -327,12 +426,52 @@ export function isStructuredRemoteProvider(providerType: ManageMountProviderType
   return providerType === 'alist' || providerType === 'openlist';
 }
 
+/** WebDAV（WEBDAV-S3-FE）。 */
+export function isWebDavProvider(providerType: ManageMountProviderType) {
+  return providerType === 'webdav';
+}
+
+/** S3 兼容（WEBDAV-S3-FE）。 */
+export function isS3Provider(providerType: ManageMountProviderType) {
+  return providerType === 's3-compatible';
+}
+
+/** 是否走「结构化字段表单」（AList/OpenList + WebDAV + S3），否则回落到 config_json 手填。 */
+export function isStructuredConfigProvider(providerType: ManageMountProviderType) {
+  return isStructuredRemoteProvider(providerType) || isWebDavProvider(providerType) || isS3Provider(providerType);
+}
+
+/**
+ * root_path 归一（WEBDAV-S3-ENABLE §3.2）：
+ * - 两类都禁 `..` 段（对齐 AList/OpenList 既有口径）；
+ * - WebDAV → `/`-prefixed（URL 路径语义）；
+ * - S3 → 无前导 `/`（对象 key 前缀语义）；
+ * - 空根 → `/`。
+ */
+export function normalizeWebDavS3RootPath(providerType: ManageMountProviderType, value: string) {
+  const trimmed = value.trim().replace(/\\/g, '/');
+  // §3.2：空根 → `/`（两类同）。
+  if (trimmed === '') return '/';
+  // §3.2：含 `..` 段 → 返回空串（调用方据此报字段级错误「禁止 .. 段」）。
+  // 不静默剔除：后端会 400，静默改写会让用户以为填的值被接受（RB-4 / 不伪造）。
+  if (trimmed.split('/').includes('..')) return '';
+  const segments = trimmed.split('/').filter((segment) => segment !== '' && segment !== '.');
+  if (segments.length === 0) return '/';
+  return isS3Provider(providerType)
+    ? segments.join('/')
+    : `/${segments.join('/')}`;
+}
+
 export function getDirectoryBrowserDescription(providerType: ManageMountProviderType) {
   switch (providerType) {
     case 'local':
       return 'Local 路径请直接从本机目录中选择，优先使用盘符和目录浏览，不再依赖手填。';
     case 'alist':
       return 'AList 路径请直接从远端目录里选择，不再手动输入。';
+    case 'webdav':
+      return 'WebDAV 根路径请直接从远端目录里选择，归一为 / 前缀。';
+    case 's3-compatible':
+      return 'S3 前缀请直接从远端目录里选择，归一为无前导 /。';
     default:
       return 'OpenList 路径请直接从远端目录里选择。';
   }
@@ -440,9 +579,9 @@ export function getProviderHint(providerType: ManageMountProviderType) {
     case 'local':
       return 'Local 来源使用本机绝对路径；config_json 通常留空。';
     case 'webdav':
-      return 'WebDAV 可在 config_json 中填写 endpoint、username、password 等字段。';
+      return 'WebDAV 走结构化配置：服务地址 + 可选用户名密码 + 目录浏览器选择根路径（归一为 / 前缀）。';
     case 's3-compatible':
-      return 'S3 兼容来源可在 config_json 中填写 endpoint、bucket、region、access_key_id 等字段。';
+      return 'S3 兼容来源走结构化配置：服务地址 + bucket（必填）+ 可选 region/凭证 + 目录浏览器选择 key 前缀（无前导 /）。';
     case 'alist':
       return 'AList 改为结构化配置：服务地址 + 认证方式 + 目录浏览器选择路径。';
     default:
@@ -455,9 +594,9 @@ export function getRootPathPlaceholder(providerType: ManageMountProviderType) {
     case 'local':
       return '例如：E:\\Media\\Movies';
     case 'webdav':
-      return '例如：/dav/media';
+      return '例如：/dav/media（归一为 / 前缀）';
     case 's3-compatible':
-      return '例如：bucket/prefix';
+      return '例如：media/movies（归一为无前导 /）';
     case 'alist':
       return '例如：/movies';
     default:

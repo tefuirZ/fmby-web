@@ -20,6 +20,16 @@ export interface MountRemoteConfigState {
   password: string;
   token: string;
   otpCode: string;
+  /** S3：桶名（必填，WEBDAV-S3-ENABLE §3.1）。 */
+  bucket: string;
+  /** S3：区域（可选）。 */
+  region: string;
+  /** S3：对象 key 前缀（写入 root_path，不进 config_json）。 */
+  prefix: string;
+  /** S3：Access Key（敏感键，见 formUtils 的 MOUNT-CRED-SEAL 注释）。 */
+  accessKey: string;
+  /** S3：Secret Key（敏感键，同上）。 */
+  secretKey: string;
 }
 
 export interface MountFormErrors {
@@ -31,6 +41,8 @@ export interface MountFormErrors {
   password?: string;
   token?: string;
   browse?: string;
+  /** S3 bucket 缺失（后端具名错误码同口径）。 */
+  bucket?: string;
 }
 
 export interface MountFormState {
