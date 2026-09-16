@@ -234,6 +234,22 @@ export const queryKeys = {
           : (['manage', 'upstreams', 'detail'] as const),
       health: (id: string) => ['manage', 'upstreams', 'health', id] as const,
       discovery: () => ['manage', 'upstreams', 'discovery'] as const,
+      categories: (id?: string) =>
+        id
+          ? (['manage', 'upstreams', 'categories', id] as const)
+          : (['manage', 'upstreams', 'categories'] as const),
+      libraries: (id?: string) =>
+        id
+          ? (['manage', 'upstreams', 'libraries', id] as const)
+          : (['manage', 'upstreams', 'libraries'] as const),
+      bindings: (id?: string, libraryId?: string) =>
+        id
+          ? (['manage', 'upstreams', 'bindings', id, libraryId ?? null] as const)
+          : (['manage', 'upstreams', 'bindings'] as const),
+      presets: (id?: string) =>
+        id
+          ? (['manage', 'upstreams', 'presets', id] as const)
+          : (['manage', 'upstreams', 'presets'] as const),
     },
   },
 } as const;
