@@ -1,9 +1,20 @@
 import { httpClient } from "@fmby/v2-shared/api/client";
 import { isApiError } from "@fmby/v2-shared/errors";
 import type {
+  UpstreamCategoryBindingInput,
+  UpstreamCategoryListResponse,
+  UpstreamCategoryRecord,
   UpstreamHealthCheck,
   UpstreamLanDiscoveryItem,
   UpstreamLanDiscoveryResult,
+  UpstreamMappingApplyResult,
+  UpstreamMappingOverrideInput,
+  UpstreamMappingPresetListResponse,
+  UpstreamMappingPresetRecord,
+  UpstreamMappingPresetWriteInput,
+  UpstreamMappingPreviewInput,
+  UpstreamMappingPreviewItem,
+  UpstreamMappingPreviewResult,
   UpstreamSourceListQuery,
   UpstreamSourceListResponse,
   UpstreamSourceRecord,
@@ -59,6 +70,82 @@ interface RawLanDiscoveryItem {
 interface RawLanDiscoveryList {
   items: RawLanDiscoveryItem[];
   total: number;
+}
+
+interface RawUpstreamCategory {
+  id: string;
+  source_id: string;
+  upstream_category_id: string;
+  parent_upstream_category_id: string | null;
+  name: string;
+  kind: string;
+  library_id: string | null;
+  library_name: string | null;
+  discovered_at: number;
+  updated_at: number;
+}
+
+interface RawUpstreamCategoryList {
+  items: RawUpstreamCategory[];
+  total: number;
+}
+
+interface RawMappingPreset {
+  id: string;
+  source_id: string;
+  name: string;
+  include_keywords: string[];
+  exclude_keywords: string[];
+  include_category_ids: string[];
+  exclude_category_ids: string[];
+  default_library_type: string;
+  create_missing_libraries: boolean;
+  enabled: boolean;
+  created_by: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+interface RawMappingPresetList {
+  items: RawMappingPreset[];
+  total: number;
+}
+
+interface RawPreviewItem {
+  category_id: string;
+  upstream_category_id: string;
+  category_name: string;
+  selected: boolean;
+  action: string;
+  library_id: string | null;
+  library_name: string | null;
+  create_key: string | null;
+  create_library_name: string | null;
+  create_library_type: string | null;
+  skip_reason: string | null;
+  conflict_message: string | null;
+}
+
+interface RawPreviewResult {
+  source_id: string;
+  items: RawPreviewItem[];
+  creates: {
+    key: string;
+    name: string;
+    library_type: string;
+    category_ids: string[];
+  }[];
+  bind_count: number;
+  create_count: number;
+  skip_count: number;
+  conflict_count: number;
+}
+
+interface RawApplyResult {
+  source_id: string;
+  created_library_count: number;
+  bound_category_count: number;
+  preset: RawMappingPreset | null;
 }
 
 /** 后端端口未装配 / 能力未实现时的 fail-closed 判定。 */
@@ -211,6 +298,170 @@ export const upstreamsApi = {
     return fromHealthCheck(raw);
   },
 
+  async listAppleCmsCategories(
+    id: string,
+  ): Promise<UpstreamCategoryListResponse> {
+    const raw = await httpClient.get<RawUpstreamCategoryList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/apple-cms/categories`,
+    );
+    return { items: raw.items.map(fromCategory), total: raw.total };
+  },
+
+  async listEmbyLibraries(id: string): Promise<UpstreamCategoryListResponse> {
+    const raw = await httpClient.get<RawUpstreamCategoryList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/emby/libraries`,
+    );
+    return { items: raw.items.map(fromCategory), total: raw.total };
+  },
+
+  async listBindings(id: string, libraryId?: string): Promise<UpstreamCategoryListResponse> {
+    const raw = await httpClient.get<RawUpstreamCategoryList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/bindings`,
+      { params: { libraryId: libraryId || undefined } },
+    );
+    return { items: raw.items.map(fromCategory), total: raw.total };
+  },
+
+  /** AppleCMS 真实分类发现（S3，外部调用 + 凭据开封）。 */
+  async discoverAppleCmsCategories(
+    id: string,
+  ): Promise<UpstreamCategoryListResponse> {
+    const raw = await httpClient.post<RawUpstreamCategoryList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/apple-cms/discover-categories`,
+    );
+    return { items: raw.items.map(fromCategory), total: raw.total };
+  },
+
+  /** Emby 真实媒体库发现（S3）。 */
+  async discoverEmbyLibraries(id: string): Promise<UpstreamCategoryListResponse> {
+    const raw = await httpClient.post<RawUpstreamCategoryList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/emby/discover-libraries`,
+    );
+    return { items: raw.items.map(fromCategory), total: raw.total };
+  },
+
+  /** 绑定整表替换（全量覆盖，非增量）。 */
+  async replaceAppleCmsCategoryBindings(
+    id: string,
+    bindings: UpstreamCategoryBindingInput[],
+  ): Promise<UpstreamCategoryListResponse> {
+    const raw = await httpClient.put<RawUpstreamCategoryList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/apple-cms/category-bindings`,
+      {
+        body: {
+          bindings: bindings.map((b) => ({
+            categoryId: b.categoryId,
+            libraryId: b.libraryId,
+          })),
+        },
+      },
+    );
+    return { items: raw.items.map(fromCategory), total: raw.total };
+  },
+
+  /** 绑定整表替换（Emby 库）。 */
+  async replaceEmbyLibraryBindings(
+    id: string,
+    bindings: UpstreamCategoryBindingInput[],
+  ): Promise<UpstreamCategoryListResponse> {
+    const raw = await httpClient.put<RawUpstreamCategoryList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/emby/library-bindings`,
+      {
+        body: {
+          bindings: bindings.map((b) => ({
+            categoryId: b.categoryId,
+            libraryId: b.libraryId,
+          })),
+        },
+      },
+    );
+    return { items: raw.items.map(fromCategory), total: raw.total };
+  },
+
+  async listPresets(id: string): Promise<UpstreamMappingPresetListResponse> {
+    const raw = await httpClient.get<RawMappingPresetList>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/mapping/presets`,
+    );
+    return { items: raw.items.map(fromPreset), total: raw.total };
+  },
+
+  async createPreset(
+    id: string,
+    input: UpstreamMappingPresetWriteInput,
+  ): Promise<UpstreamMappingPresetRecord> {
+    const raw = await httpClient.post<RawMappingPreset>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/mapping/presets`,
+      { body: toPresetBody(input) },
+    );
+    return fromPreset(raw);
+  },
+
+  async updatePreset(
+    id: string,
+    presetId: string,
+    input: UpstreamMappingPresetWriteInput,
+  ): Promise<UpstreamMappingPresetRecord> {
+    const raw = await httpClient.put<RawMappingPreset>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/mapping/presets/${encodeURIComponent(presetId)}`,
+      { body: toPresetBody(input) },
+    );
+    return fromPreset(raw);
+  },
+
+  async deletePreset(id: string, presetId: string): Promise<void> {
+    await httpClient.delete<void>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/mapping/presets/${encodeURIComponent(presetId)}`,
+    );
+  },
+
+  /** 预览（纯计算，不写库）。 */
+  async previewMapping(
+    id: string,
+    input: UpstreamMappingPreviewInput,
+  ): Promise<UpstreamMappingPreviewResult> {
+    const raw = await httpClient.post<RawPreviewResult>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/mapping/preview`,
+      { body: toPreviewBody(input) },
+    );
+    return {
+      sourceId: raw.source_id,
+      items: raw.items.map(fromPreviewItem),
+      creates: raw.creates.map((c) => ({
+        key: c.key,
+        name: c.name,
+        libraryType: c.library_type,
+        categoryIds: c.category_ids,
+      })),
+      bindCount: raw.bind_count,
+      createCount: raw.create_count,
+      skipCount: raw.skip_count,
+      conflictCount: raw.conflict_count,
+    };
+  },
+
+  /** 应用（落库，不可逆）——映射写操作，前端需二次确认。 */
+  async applyMapping(
+    id: string,
+    input: UpstreamMappingPreviewInput,
+    savePresetName?: string,
+  ): Promise<UpstreamMappingApplyResult> {
+    const raw = await httpClient.post<RawApplyResult>(
+      `/api/manage/upstreams/${encodeURIComponent(id)}/mapping/apply`,
+      {
+        body: {
+          ...toPreviewBody(input),
+          savePresetName: savePresetName || undefined,
+        },
+      },
+    );
+    return {
+      sourceId: raw.source_id,
+      createdLibraryCount: raw.created_library_count,
+      boundCategoryCount: raw.bound_category_count,
+      preset: raw.preset ? fromPreset(raw.preset) : null,
+    };
+  },
+
   async discoverLan(): Promise<UpstreamLanDiscoveryResult> {
     const raw = await httpClient.post<RawLanDiscoveryList>(
       "/api/manage/upstreams/emby/discover-lan",
@@ -221,3 +472,92 @@ export const upstreamsApi = {
     };
   },
 };
+
+function fromCategory(r: RawUpstreamCategory): UpstreamCategoryRecord {
+  return {
+    id: r.id,
+    sourceId: r.source_id,
+    upstreamCategoryId: r.upstream_category_id,
+    parentUpstreamCategoryId: r.parent_upstream_category_id,
+    name: r.name,
+    kind: r.kind,
+    libraryId: r.library_id,
+    libraryName: r.library_name,
+    discoveredAt: r.discovered_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+function fromPreset(r: RawMappingPreset): UpstreamMappingPresetRecord {
+  return {
+    id: r.id,
+    sourceId: r.source_id,
+    name: r.name,
+    includeKeywords: r.include_keywords ?? [],
+    excludeKeywords: r.exclude_keywords ?? [],
+    includeCategoryIds: r.include_category_ids ?? [],
+    excludeCategoryIds: r.exclude_category_ids ?? [],
+    defaultLibraryType: r.default_library_type,
+    createMissingLibraries: r.create_missing_libraries,
+    enabled: r.enabled,
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+function fromPreviewItem(r: RawPreviewItem): UpstreamMappingPreviewItem {
+  return {
+    categoryId: r.category_id,
+    upstreamCategoryId: r.upstream_category_id,
+    categoryName: r.category_name,
+    selected: r.selected,
+    action: r.action,
+    libraryId: r.library_id,
+    libraryName: r.library_name,
+    createKey: r.create_key,
+    createLibraryName: r.create_library_name,
+    createLibraryType: r.create_library_type,
+    skipReason: r.skip_reason,
+    conflictMessage: r.conflict_message,
+  };
+}
+
+function toPresetBody(input: UpstreamMappingPresetWriteInput): Record<string, unknown> {
+  return {
+    name: input.name,
+    includeKeywords: input.includeKeywords,
+    excludeKeywords: input.excludeKeywords,
+    includeCategoryIds: input.includeCategoryIds,
+    excludeCategoryIds: input.excludeCategoryIds,
+    defaultLibraryType: input.defaultLibraryType ?? undefined,
+    createMissingLibraries: input.createMissingLibraries,
+    enabled: input.enabled,
+  };
+}
+
+function toOverrideBody(o: UpstreamMappingOverrideInput): Record<string, unknown> {
+  return {
+    categoryId: o.categoryId,
+    selected: o.selected,
+    action: o.action ?? undefined,
+    libraryId: o.libraryId ?? undefined,
+    libraryName: o.libraryName ?? undefined,
+    libraryType: o.libraryType ?? undefined,
+  };
+}
+
+/** 预览请求体（apply 用 flatten 语义平铺同套字段 + savePresetName）。 */
+function toPreviewBody(input: UpstreamMappingPreviewInput): Record<string, unknown> {
+  return {
+    presetId: input.presetId ?? undefined,
+    includeKeywords: input.includeKeywords,
+    excludeKeywords: input.excludeKeywords,
+    includeCategoryIds: input.includeCategoryIds,
+    excludeCategoryIds: input.excludeCategoryIds,
+    selectedCategoryIds: input.selectedCategoryIds ?? undefined,
+    defaultLibraryType: input.defaultLibraryType ?? undefined,
+    createMissingLibraries: input.createMissingLibraries ?? undefined,
+    overrides: input.overrides.map(toOverrideBody),
+  };
+}
