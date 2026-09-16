@@ -6,28 +6,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  AlertCircle,
-  ArrowLeft,
-  Check,
-  Copy,
-  ExternalLink,
-  Sparkles,
-} from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router';
-import { VideoPlayer, type EpisodeNavigationControls } from '@/features/player';
-import { HoverScrollArea } from '@fmby/v2-shared/ui';
+import { useNavigate, useParams } from 'react-router';
+import type { EpisodeNavigationControls } from '@/features/player';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { usePlaybackSession } from '@fmby/v2-shared/viewmodels';
 import styles from './PlayPage.module.css';
 import { ExternalPlayerBar } from './play/ExternalPlayerBar';
-import {
-  DeferredSidebarPrompt,
-  EpisodeQueueItem,
-  PlaybackOverviewPanel,
-  SidebarMediaCard,
-  SidebarSection,
-} from './play/PlayPanels';
+import { PlaybackOverviewPanel } from './play/PlayPanels';
 import {
   buildPlaybackPath,
   buildPlayerPoster,
@@ -38,6 +23,21 @@ import {
   sortEpisodeCards,
 } from './play/playbackPresentation';
 import { usePlaybackProgress } from './play/usePlaybackProgress';
+import { PlaybackStage } from './play/PlaybackStage';
+import { PlayPageHeader } from './play/PlayPageHeader';
+import { PlaybackSidebar } from './play/PlaybackSidebar';
+import { PlaybackInfoBar } from './play/PlaybackInfoBar';
+import {
+  MissingItemPanel,
+  NoSourcePanel,
+  PlaybackErrorPanel,
+  PreparingPanel,
+} from './play/PlayFeedbackPanels';
+import {
+  CompatibilityRiskNotice,
+  DetailErrorNotice,
+  DetailLoadingNotice,
+} from './play/CompatibilityNotice';
 
 export function PlayPage() {
   const { itemId } = useParams();
@@ -243,100 +243,42 @@ export function PlayPage() {
   }, [sidebarOpen]);
 
   if (!itemId) {
-    return (
-      <div className={styles.errorPanel}>
-        <div className={styles.panelCard}>
-          <h1>播放器无法打开</h1>
-          <p className={styles.metaText}>当前链接缺少内容标识。</p>
-          <div className={styles.panelActions}>
-            <Link className={styles.primaryButton} to="/">
-              回首页
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <MissingItemPanel />;
   }
 
   if (playback.state === 'loading') {
-    return (
-      <div className={styles.loadingPanel}>
-        <div className={styles.panelCard}>
-          <h1>正在准备播放</h1>
-          <p className={styles.metaText}>正在创建播放会话并获取播放地址...</p>
-        </div>
-      </div>
-    );
+    return <PreparingPanel />;
   }
 
   if (playback.state === 'error' || playback.state === 'forbidden') {
     return (
-      <div className={styles.errorPanel}>
-        <div className={styles.panelCard}>
-          <h1>{playback.state === 'forbidden' ? '没有播放权限' : '暂时无法开始播放'}</h1>
-          <p className={styles.metaText}>{getErrorMessage(playback.error)}</p>
-          <div className={styles.panelActions}>
-            <button
-              className={styles.primaryButton}
-              type="button"
-              onClick={playback.actions.retry}
-            >
-              重试
-            </button>
-            <button
-              className={styles.secondaryButton}
-              type="button"
-              onClick={() => navigate(-1)}
-            >
-              返回上一页
-            </button>
-          </div>
-        </div>
-      </div>
+      <PlaybackErrorPanel
+        forbidden={playback.state === 'forbidden'}
+        message={getErrorMessage(playback.error)}
+        onRetry={playback.actions.retry}
+        onBack={() => navigate(-1)}
+      />
     );
   }
 
   if (!session?.streamUrl) {
     return (
-      <div className={styles.errorPanel}>
-        <div className={styles.panelCard}>
-          <h1>当前版本暂无可用播放源</h1>
-          <p className={styles.metaText}>
-            {session?.browserPlaybackHint ??
-              session?.fallbackHint ??
-              '请稍后重试或改用外部播放器。'}
-          </p>
-          <div className={styles.panelActions}>
-            {portableStreamUrl ? (
-              <a
-                className={styles.primaryButton}
-                href={portableStreamUrl}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                <ExternalLink size={15} />
-                使用外部播放器
-              </a>
-            ) : null}
-            <Link className={styles.secondaryButton} to={`/item/${itemId}`}>
-              返回详情页
-            </Link>
-          </div>
-        </div>
-      </div>
+      <NoSourcePanel
+        hint={session?.browserPlaybackHint ?? session?.fallbackHint}
+        portableStreamUrl={portableStreamUrl}
+        itemId={itemId}
+      />
     );
   }
 
-  const firstSubtitle = session.subtitleTracks[0];
-  const subtitleUrl = firstSubtitle
-    ? `${window.location.origin}${
-        firstSubtitle.id.startsWith('/') ? '' : '/api/assets/subtitles/'
-      }${firstSubtitle.id}`
-    : undefined;
   const canPlay = session.canDirectPlayInBrowser;
   const playbackRiskHint = canPlay ? session.browserPlaybackHint : undefined;
   const containerBadge = parseMimeContainer(session.mimeType);
   const audioBadge = session.audioTracks[0]?.codecLabel?.toUpperCase();
+  const firstSubtitle = session.subtitleTracks[0];
+  const subtitleUrl = firstSubtitle
+    ? `${firstSubtitle.id.startsWith('/') ? '' : '/api/assets/subtitles/'}${firstSubtitle.id}`
+    : undefined;
   const recommendedItems = detail?.related.slice(0, 5) ?? [];
   const hasSidebar =
     isEpisodeView ||
@@ -344,43 +286,18 @@ export function PlayPage() {
 
   return (
     <div className={styles.page} data-surface="immersive">
-      <header className={styles.pageHeader}>
-        <button
-          className={styles.iconButton}
-          type="button"
-          onClick={() => navigate(-1)}
-          aria-label="返回"
-        >
-          <ArrowLeft size={17} />
-        </button>
-        <div className={styles.titleBlock}>
-          <strong className={styles.title}>{session.title}</strong>
-          {session.subtitle ? (
-            <span className={styles.subtitle}>{session.subtitle}</span>
-          ) : null}
-        </div>
-        <div className={styles.headerRight}>
-          <Link className={styles.ghostButton} to={`/item/${itemId}`}>
-            详情
-          </Link>
-          {portableStreamUrl ? (
-            <a
-              className={styles.secondaryButton}
-              href={portableStreamUrl}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              <ExternalLink size={14} />
-              外部播放
-            </a>
-          ) : null}
-          {hasSidebar ? (
-            <button ref={sidebarTriggerRef} className={styles.secondaryButton} type="button" aria-expanded={sidebarOpen} aria-controls="playback-sidebar" onClick={handleToggleSidebar}>
-              {sidebarOpen ? '关闭队列' : isEpisodeView ? '剧集队列' : '相关推荐'}
-            </button>
-          ) : null}
-        </div>
-      </header>
+      <PlayPageHeader
+        title={session.title}
+        subtitle={session.subtitle}
+        itemId={itemId}
+        portableStreamUrl={portableStreamUrl}
+        hasSidebar={hasSidebar}
+        sidebarOpen={sidebarOpen}
+        isEpisodeView={isEpisodeView}
+        triggerRef={sidebarTriggerRef}
+        onBack={() => navigate(-1)}
+        onToggleSidebar={handleToggleSidebar}
+      />
 
       <div className={styles.playbackShell}>
         <div className={styles.playbackLayout}>
@@ -388,264 +305,73 @@ export function PlayPage() {
             className={styles.playbackStage}
             data-has-sidebar={hasSidebar ? 'true' : 'false'}
           >
-            <section className={styles.playbackMain}>
-              <div className={styles.videoWrap}>
-                <div className={styles.videoBox}>
-                  {canPlay ? (
-                    <VideoPlayer
-                      className={styles.playerInner}
-                      url={session.streamUrl}
-                      poster={playerPoster}
-                      subtitleUrl={subtitleUrl}
-                      subtitleLabel={firstSubtitle?.label}
-                      resumePosition={resumePosition}
-                      episodeNavigation={episodeNavigation}
-                      autoplay
-                      onTimeUpdate={handleTimeUpdate}
-                      onPause={handlePause}
-                      onEnded={handlePlayerEnded}
-                      onError={handleError}
-                    />
-                  ) : (
-                    <div className={styles.incompatOverlay}>
-                      <div className={styles.incompatIcon}>
-                        <AlertCircle size={26} />
-                      </div>
-                      <h2 className={styles.incompatTitle}>
-                        此格式无法在浏览器中直接播放
-                      </h2>
-                      <p className={styles.incompatHint}>
-                        {session.browserPlaybackHint ??
-                          '当前版本的编码格式不受浏览器支持（如 HEVC、AC3、MKV 等），请使用外部播放器打开原始直出地址。'}
-                      </p>
-                      <div className={styles.incompatActions}>
-                        {portableStreamUrl ? (
-                          <a
-                            className={styles.primaryButton}
-                            href={portableStreamUrl}
-                            rel="noopener noreferrer"
-                            target="_blank"
-                          >
-                            <ExternalLink size={14} />
-                            在外部播放器中打开
-                          </a>
-                        ) : null}
-                        <button
-                          className={styles.secondaryButton}
-                          type="button"
-                          onClick={handleCopyLink}
-                        >
-                          {copied ? <Check size={14} /> : <Copy size={14} />}
-                          {copied ? '已复制' : '复制播放链接'}
-                        </button>
-                        {portableStreamUrl ? (
-                          <a
-                            className={styles.ghostButton}
-                            href={portableStreamUrl}
-                            rel="noopener noreferrer"
-                            target="_blank"
-                            title="在浏览器新标签中打开视频流"
-                          >
-                            <ExternalLink size={14} />
-                            新标签打开
-                          </a>
-                        ) : null}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
+            <PlaybackStage
+              canPlay={canPlay}
+              streamUrl={session.streamUrl}
+              poster={playerPoster}
+              subtitleUrl={subtitleUrl}
+              subtitleLabel={firstSubtitle?.label}
+              resumePosition={resumePosition}
+              episodeNavigation={episodeNavigation}
+              browserPlaybackHint={session.browserPlaybackHint}
+              fallbackHint={session.fallbackHint}
+              portableStreamUrl={portableStreamUrl}
+              copied={copied}
+              onCopyLink={handleCopyLink}
+              onTimeUpdate={handleTimeUpdate}
+              onPause={handlePause}
+              onEnded={handlePlayerEnded}
+              onError={handleError}
+            />
 
-            {hasSidebar && sidebarOpen ? (
-              <>
-                <button
-                  className={styles.queueBackdrop}
-                  type="button"
-                  aria-label="关闭播放队列"
-                  onClick={() => setSidebarOpen(false)}
-                />
-                <aside
-                  id="playback-sidebar"
-                  ref={sidebarRef}
-                  className={`${styles.sidebarColumn} ${styles.sidebarDrawer}`}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label={isEpisodeView ? '剧集队列' : '相关推荐'}
-                  onFocusCapture={requestSidebarQuery}
-                  onPointerEnter={requestSidebarQuery}
-                >
-                  {detail?.kind === 'episode' ? (
-                    <SidebarSection
-                      title="剧集列表"
-                      description={`已列出《${episodeSeriesTitle}》全部已识别剧集。`}
-                      fillHeight
-                    >
-                      {!allowSidebarQuery ? (
-                        <DeferredSidebarPrompt
-                          actionLabel="加载剧集列表"
-                          description="剧集列表按需拉取，先把播放器和起播链路让出来。"
-                          onClick={requestSidebarQuery}
-                        />
-                      ) : isResolvingSeriesRoot || isSeriesEpisodesLoading ? (
-                        <div className={styles.sidebarEmpty}>正在加载本剧剧集...</div>
-                      ) : !series?.id ? (
-                        <div className={styles.sidebarEmpty}>
-                          暂时无法定位当前剧集所属剧集，请稍后刷新重试。
-                        </div>
-                      ) : seriesEpisodes.length > 0 ? (
-                        <HoverScrollArea
-                          className={styles.episodeListScroller}
-                          axis="y"
-                          delayMs={50}
-                        >
-                          <div className={styles.episodeQueue}>
-                            {seriesEpisodes.map((episode) => (
-                              <EpisodeQueueItem
-                                key={episode.id}
-                                item={episode}
-                                active={
-                                  episode.id === itemId ||
-                                  episode.playbackTargetId === itemId
-                                }
-                              />
-                            ))}
-                          </div>
-                        </HoverScrollArea>
-                      ) : (
-                        <div className={styles.sidebarEmpty}>当前还没有识别到本剧剧集。</div>
-                      )}
-                    </SidebarSection>
-                  ) : (
-                    <SidebarSection
-                      title={detail?.kind === 'movie' ? '猜你喜欢' : '延伸内容'}
-                      description="别让右侧空着，顺手把相近内容接上。"
-                    >
-                      {!allowSidebarQuery ? (
-                        <DeferredSidebarPrompt
-                          actionLabel="加载延伸内容"
-                          description="相关推荐延后到交互后再查，避免和起播抢资源。"
-                          onClick={requestSidebarQuery}
-                        />
-                      ) : (
-                        <div className={styles.sidebarCardList}>
-                          {recommendedItems.map((item) => (
-                            <SidebarMediaCard
-                              key={item.id}
-                              item={item}
-                              actionLabel={item.playbackTargetId ? '直接播放' : '查看详情'}
-                              to={
-                                item.playbackTargetId
-                                  ? buildPlaybackPath(item)
-                                  : `/item/${item.id}`
-                              }
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </SidebarSection>
-                  )}
-                </aside>
-              </>
-            ) : null}
+            <PlaybackSidebar
+              open={hasSidebar && sidebarOpen}
+              isEpisodeView={isEpisodeView}
+              sidebarRef={sidebarRef}
+              allowed={allowSidebarQuery}
+              onRequestQuery={requestSidebarQuery}
+              onClose={() => setSidebarOpen(false)}
+              episodeSeriesTitle={episodeSeriesTitle}
+              isResolvingSeriesRoot={isResolvingSeriesRoot}
+              isSeriesEpisodesLoading={isSeriesEpisodesLoading}
+              seriesId={series?.id}
+              seriesEpisodes={seriesEpisodes}
+              currentItemId={itemId}
+              detailKind={detail?.kind}
+              recommendedItems={recommendedItems}
+              buildPlayPath={buildPlaybackPath}
+            />
           </div>
 
           <section className={styles.playbackDetails}>
             {playbackRiskHint ? (
-              <div className={styles.playbackNotice}>
-                <div className={styles.playbackNoticeIcon}>
-                  <AlertCircle size={16} />
-                </div>
-                <div className={styles.playbackNoticeBody}>
-                  <strong className={styles.playbackNoticeTitle}>网页端兼容性提示</strong>
-                  <p className={styles.playbackNoticeText}>{playbackRiskHint}</p>
-                </div>
-              </div>
+              <CompatibilityRiskNotice hint={playbackRiskHint} />
             ) : null}
 
-            <div className={styles.infoBar}>
-              <div className={styles.formatBadges}>
-                {containerBadge ? (
-                  <span className={styles.badge}>{containerBadge}</span>
-                ) : null}
-                {audioBadge ? <span className={styles.badge}>{audioBadge}</span> : null}
-                {playbackRiskHint ? (
-                  <span className={`${styles.badge} ${styles.badgeNotice}`}>兼容性待确认</span>
-                ) : !canPlay ? (
-                  <span className={`${styles.badge} ${styles.badgeWarn}`}>不兼容</span>
-                ) : null}
-              </div>
-              <div className={styles.externalActions}>
-                <button
-                  className={styles.ghostButton}
-                  type="button"
-                  onClick={handleCopyLink}
-                  title="复制视频直链"
-                >
-                  {copied ? <Check size={13} /> : <Copy size={13} />}
-                  {copied ? '已复制' : '复制链接'}
-                </button>
-                {portableStreamUrl ? (
-                  <a
-                    className={styles.secondaryButton}
-                    href={portableStreamUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    <ExternalLink size={13} />
-                    外部播放器
-                  </a>
-                ) : null}
-                {hasSidebar ? (
-                  <button className={styles.ghostButton} type="button" onClick={handleToggleSidebar}>
-                    {sidebarOpen ? '收起队列' : isEpisodeView ? '打开剧集队列' : '打开相关推荐'}
-                  </button>
-                ) : null}
-              </div>
-            </div>
+            <PlaybackInfoBar
+              containerBadge={containerBadge}
+              audioBadge={audioBadge}
+              playbackRiskHint={playbackRiskHint}
+              canPlay={canPlay}
+              copied={copied}
+              onCopyLink={handleCopyLink}
+              portableStreamUrl={portableStreamUrl}
+              hasSidebar={hasSidebar}
+              sidebarOpen={sidebarOpen}
+              isEpisodeView={isEpisodeView}
+              onToggleSidebar={handleToggleSidebar}
+            />
 
             {portableStreamUrl ? <ExternalPlayerBar streamUrl={portableStreamUrl} /> : null}
 
             {hasSupportingDetailError ? (
-              <div className={styles.playbackNotice}>
-                <div className={styles.playbackNoticeIcon}>
-                  <AlertCircle size={16} />
-                </div>
-                <div className={styles.playbackNoticeBody}>
-                  <strong className={styles.playbackNoticeTitle}>
-                    内容信息补齐失败
-                  </strong>
-                  <p className={styles.playbackNoticeText}>
-                    {getErrorMessage(playback.error)}
-                  </p>
-                  <div className={styles.externalActions}>
-                    <button
-                      className={styles.secondaryButton}
-                      type="button"
-                      onClick={playback.actions.retry}
-                    >
-                      重试详情信息
-                    </button>
-                    <Link className={styles.ghostButton} to={`/item/${itemId}`}>
-                      返回详情页
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              <DetailErrorNotice
+                message={getErrorMessage(playback.error)}
+                onRetry={playback.actions.retry}
+                itemId={itemId}
+              />
             ) : isSupportingDetailLoading ? (
-              <div className={styles.playbackNotice}>
-                <div className={styles.playbackNoticeIcon}>
-                  <Sparkles size={16} />
-                </div>
-                <div className={styles.playbackNoticeBody}>
-                  <strong className={styles.playbackNoticeTitle}>
-                    内容信息正在后台补齐
-                  </strong>
-                  <p className={styles.playbackNoticeText}>
-                    播放会话已优先建立，系列详情、推荐和剧集列表会在空闲或交互后再加载。
-                  </p>
-                </div>
-              </div>
+              <DetailLoadingNotice text="播放会话已优先建立，系列详情、推荐和剧集列表会在空闲或交互后再加载。" />
             ) : null}
 
             {detail ? (
