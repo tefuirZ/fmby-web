@@ -5,7 +5,7 @@
 > 后端端点全部已存在，此前用户看不到。后端仓**只读参考，未改一行**。
 
 - 基线：`origin/main` @ `e011a5e`（含上一卡 4 页）
-- 提交：**2 个**（① Upstreams 子资源 `a22de88` · ② provider-search `8b6f7ab`）
+- 提交：**4 个**（① Upstreams 子资源 `a22de88` · ② provider-search `8b6f7ab` · ③ handoff `8baa463` · ④ 红线拆分 `ac31dc3`）
 - 门禁：`pnpm verify` **11 闸全绿**
 
 ---
@@ -69,16 +69,18 @@
 
 | 文件 | 职责 | 行数 |
 |---|---|---|
-| `ManageUpstreamsPage.tsx` | **Tab 壳**（上游源 / 类目绑定 / 映射）+ 目标源选择器 | ~150 |
-| `upstreams/shared.ts` | 常量与表单工具（源表单、列表解析、时间格式化） | ~120 |
-| `upstreams/UpstreamSourceListSection.tsx` | 源 CRUD + 启停 + 探活 + 局域网发现（既有能力原样迁出） | ~430 |
-| `upstreams/UpstreamBindingsSection.tsx` | 类目绑定草稿 + 整表替换保存 + 绑定总览 | ~250 |
-| `upstreams/UpstreamMappingPresetsSection.tsx` | 预设 CRUD | ~300 |
-| `upstreams/UpstreamMappingWizardSection.tsx` | 预览 → 应用两段式 | ~290 |
+| `ManageUpstreamsPage.tsx` | **Tab 壳**（上游源 / 类目绑定 / 映射）+ 目标源选择器 | 150 |
+| `upstreams/shared.ts` | 常量与表单工具（源表单、列表解析、时间格式化） | 113 |
+| `upstreams/UpstreamSourceListSection.tsx` | 源 CRUD + 启停 + 探活 + 局域网发现 | **313** |
+| `upstreams/SourceFormDialog.tsx` | 源新建/编辑表单（纯展示 + 受控） | 160 |
+| `upstreams/UpstreamBindingsSection.tsx` | 类目绑定草稿 + 整表替换保存 + 绑定总览 | 289 |
+| `upstreams/UpstreamMappingPresetsSection.tsx` | 预设 CRUD | 355 |
+| `upstreams/UpstreamMappingWizardSection.tsx` | 预览 → 应用两段式 | 326 |
 
-- `UpstreamSourceListSection.tsx` 仍 ~430 行（**略超 400**）。已审：主体是
-  源表单 Dialog 的 JSX（约 130 行单纯字段块）。**建议后续**把表单抽
-  `SourceFormDialog.tsx` 即可降到 ~300。**本卡未做**（不在卡面范围，且不影响功能）。
+**红线 400 已清零**（commit `ac31dc3`）：初版 `UpstreamSourceListSection.tsx` 435 行超限，
+把源表单 Dialog 抽成 `SourceFormDialog.tsx` 后降到 313 行。表单为纯展示 + 受控，
+状态与提交仍由 `UpstreamSourceListSection` 持有，**行为零变更**。
+`upstreams/` 下全部文件（含页面壳）现均在 400 以内。
 
 ## 3. 契约与接线
 
@@ -90,15 +92,15 @@
 
 ---
 
-## 4. 待办 / 需裁决
+## 4. 裁决结果 / 遗留登记
 
-1. **`UpstreamSourceListSection.tsx` 略超 400 行**——见 §2，拆分方案已给，等裁决是否本轮做。
-2. **绑定覆盖指令（overrides）未做 UI**：后端 `UpstreamMappingOverrideDto` 支持逐类目
-   `selected / action / libraryId / libraryName / libraryType` 覆盖，契约层
-   `overrides` 字段已留好（当前恒传 `[]`）。**需要「逐类目改绑定目标/强制跳过」的交互时再接**，
-   本卡未做（卡面未列，且预览已能只读展示每类目的动作结果）。
-3. **provider 候选来源**：候选面板 provider 下拉目前硬编码 `tmdb` / `douban` 两项。
-   后端 `provider` 为自由字符串（无枚举端点）。**若实际 provider 集合不同或需可配置，需后端提供枚举端点或产品给定清单**。
+1. **红线拆分（原 435 行）→ 本轮已做**（裁决 1）。见 §2，`ac31dc3`，全部文件入 400。
+2. **逐类目 overrides UI → 登记待办卡**（裁决 2，不在本卡）。后端 `UpstreamMappingOverrideDto`
+   支持逐类目 `selected / action / libraryId / libraryName / libraryType` 覆盖；契约层
+   `overrides` 字段已留好（当前恒传 `[]`），不阻塞后续——UI 后补即可。
+3. **provider 候选下拉硬编码 `tmdb` / `douban` → 接受现状**（裁决 3）。
+   理由：V2 `builtin_secrets` 内置可用 provider 即这两个（TMDB 国际、豆瓣），硬编码与当前事实一致；
+   后端补枚举端点属「更正确但非必要」（YAGNI），已登记为**可选小卡**。
 4. **后端不缺端点**：本卡 13 个端点在 `crates/fmby-v2-http/src/routes/mod.rs` / `upstream_discovery.rs`
    均已注册，**无需后端补端点**。
 5. **字段级真值仍缺**：`api-contract-fields.json` 里 upstreams 子资源的
