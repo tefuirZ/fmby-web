@@ -4,7 +4,7 @@ import { ManageSectionCard } from '../../../../components';
 import { PROVIDER_OPTIONS } from '../../../types';
 import type { MountFormState, MountFormErrors } from '../../../types';
 import { getProviderHint, getRootPathPlaceholder, getRootPathReadonlyHint } from '../../../formUtils';
-import { renderFieldError } from '../../../formUtils';
+import { renderFieldError } from '../../../formRenderers';
 import styles from '../../../../ManagePages.module.css';
 
 interface BasicInfoSectionProps {

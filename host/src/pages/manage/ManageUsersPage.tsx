@@ -6,11 +6,8 @@ import { useSession } from '@/session';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { BatchProgressPanel } from '@fmby/v2-shared/ui';
 import { useBatchRunner } from '@fmby/v2-shared/hooks';
-import { InlineBanner } from '@fmby/v2-shared/ui';
-import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
 import { queryKeys } from '@fmby/v2-shared/query';
 import styles from './longtail-shared/ManageShared.module.css';
-import { ManagePageHeader } from './longtail-shared/components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type { BannerState } from '@fmby/v2-shared/ui/types';
 import {
@@ -25,14 +22,19 @@ import {
   buildUserFormState,
   canSelectUserForBatchAction,
   getNextUserAction,
-  getRegistrationReviewAction,
 } from './users/formUtils';
 import { useUsersQuery, useUserDetailQuery, useUserMutations } from './users/hooks';
 import {
   BatchUserEditDrawer,
   ResetUserPasswordDialog,
-  UserTable,
   UserDrawer,
+  UserActionDialogs,
+  UserSelectionBar,
+  UsersHeaderAndTable,
+  getPendingActionImpact,
+  getPendingActionKey,
+  getPendingActionLabel,
+  getPendingActionTitle,
 } from './users/components';
 
 const USER_PAGE_SIZE = 100;
@@ -189,72 +191,32 @@ export function ManageUsersPage() {
 
   return (
     <div className={styles.page}>
-      <ManagePageHeader
-        title="用户管理"
-        description="补齐账号详情、创建、编辑和批量软删除闭环，删除语义先明确收口为停用账号并吊销活跃会话。"
-        meta={<span className={styles.metaText}>共 {totalUsers} 个账号，当前第 {page} / {totalPages} 页</span>}
-        actions={
-          <>
-            <button className={styles.primaryButton} type="button" onClick={() => { setBanner(null); setDrawerState({ mode: 'create' }); }}>新建用户</button>
-            <button className={styles.secondaryButton} type="button" onClick={() => usersQuery.refetch()}>刷新</button>
-          </>
-        }
-      />
-
-      {banner ? <InlineBanner variant={banner.variant} title={banner.title} description={banner.description} /> : null}
-
-      <UserTable
-        users={users}
-        total={totalUsers}
-        page={page}
+      <UsersHeaderAndTable
+        control={{
+          page, totalPages, keyword, statusFilter, accountKindFilter,
+          selectedUserIds, selectableUsers,
+          setKeyword, setStatusFilter, setAccountKindFilter, setPage, setSelectedUserIds,
+        }}
+        totalUsers={totalUsers}
         pageSize={USER_PAGE_SIZE}
-        totalPages={totalPages}
+        users={users}
         isFetching={usersQuery.isFetching}
         isPageTransitioning={usersQuery.isPlaceholderData}
         currentUserId={currentUser?.id}
-        keyword={keyword}
-        statusFilter={statusFilter}
-        accountKindFilter={accountKindFilter}
-        selectedUserIds={selectedUserIds}
-        onKeywordChange={(value) => {
-          setKeyword(value);
-          setSelectedUserIds([]);
+        banner={banner}
+        onCreate={() => {
+          setBanner(null);
+          setDrawerState({ mode: 'create' });
         }}
-        onStatusFilterChange={(value) => {
-          setStatusFilter(value);
-          setPage(1);
-          setSelectedUserIds([]);
+        onRefresh={() => usersQuery.refetch()}
+        onOpenView={(id) => {
+          setBanner(null);
+          setDrawerState({ mode: 'view', userId: id });
         }}
-        onAccountKindFilterChange={(value) => {
-          setAccountKindFilter(value);
-          setPage(1);
-          setSelectedUserIds([]);
+        onOpenEdit={(id) => {
+          setBanner(null);
+          setDrawerState({ mode: 'edit', userId: id });
         }}
-        onPreviousPage={() => {
-          setPage((current) => Math.max(1, current - 1));
-          setSelectedUserIds([]);
-        }}
-        onNextPage={() => {
-          setPage((current) => Math.min(totalPages, current + 1));
-          setSelectedUserIds([]);
-        }}
-        onSelectUser={(userId, checked) =>
-          setSelectedUserIds((current) =>
-            checked ? Array.from(new Set([...current, userId])) : current.filter((item) => item !== userId),
-          )
-        }
-        onSelectAll={(checked) =>
-          setSelectedUserIds((current) => {
-            if (checked) {
-              const merged = new Set(current);
-              selectableUsers.forEach((user) => merged.add(user.id));
-              return Array.from(merged);
-            }
-            return current.filter((id) => !selectableUsers.some((user) => user.id === id));
-          })
-        }
-        onOpenView={(id) => { setBanner(null); setDrawerState({ mode: 'view', userId: id }); }}
-        onOpenEdit={(id) => { setBanner(null); setDrawerState({ mode: 'edit', userId: id }); }}
         onResetPassword={(user) => {
           setBanner(null);
           setResetPasswordDialog({ user });
@@ -281,38 +243,16 @@ export function ManageUsersPage() {
         }}
       />
 
-      {selectedUsers.length > 0 ? (
-        <div className={styles.stickyBar}>
-          <div className={styles.stackText}>
-            <strong>已选择 {selectedUsers.length} 个账号</strong>
-            <span className={styles.mutedText}>
-              当前删除语义为软删除：账号会停用并吊销活跃会话，已停用账号仍可批量编辑或恢复。
-              待激活注册申请请走列表里的批准/拒绝注册。
-            </span>
-          </div>
-          <div className={styles.rowActions}>
-            <button className={styles.secondaryButton} type="button" onClick={() => setSelectedUserIds([])}>清空选择</button>
-            <button
-              className={styles.secondaryButton}
-              type="button"
-              onClick={() => {
-                setBatchEditFormState(DEFAULT_BATCH_EDIT_FORM_STATE);
-                setBatchEditDrawerOpen(true);
-              }}
-            >
-              批量编辑
-            </button>
-            <button
-              className={styles.dangerButton}
-              type="button"
-              disabled={selectedSoftDeleteTargets.length === 0}
-              onClick={() => setBatchDeleteConfirmOpen(true)}
-            >
-              {selectedSoftDeleteTargets.length === 0 ? '已处于软删除状态' : '批量删除'}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <UserSelectionBar
+        selectedCount={selectedUsers.length}
+        softDeleteTargetCount={selectedSoftDeleteTargets.length}
+        onClearSelection={() => setSelectedUserIds([])}
+        onOpenBatchEdit={() => {
+          setBatchEditFormState(DEFAULT_BATCH_EDIT_FORM_STATE);
+          setBatchEditDrawerOpen(true);
+        }}
+        onRequestBatchDelete={() => setBatchDeleteConfirmOpen(true)}
+      />
 
       <UserDrawer
         drawerState={drawerState}
@@ -371,19 +311,14 @@ export function ManageUsersPage() {
         onSubmit={() => setBatchEditConfirmOpen(true)}
       />
 
-      <SensitiveActionDialog
-        open={batchEditConfirmOpen}
-        actionKey="batch-update-users"
-        title={`批量编辑 ${selectedUsers.length} 个账号`}
-        description="系统会只改你在上一层勾选的字段，未勾选的内容保持不动。"
-        impact={[
-          batchEditFormState.applyRole ? '会统一覆盖所选账号的系统角色。' : '不会动系统角色。',
-          batchEditFormState.applyStatus ? '会统一调整账号状态；停用会直接吊销活跃会话。' : '不会动账号状态。',
-          batchEditFormState.applySourceGrants ? '会整体替换来源路径授权；留空保存等于清空来源路径规则。' : '不会动来源路径授权。',
-        ]}
-        confirmLabel="确认批量编辑"
-        onOpenChange={setBatchEditConfirmOpen}
-        onConfirm={(confirmation) => {
+
+      <UserActionDialogs
+        batchEditOpen={batchEditConfirmOpen}
+        onBatchEditOpenChange={setBatchEditConfirmOpen}
+        selectedCount={selectedUsers.length}
+        batchEditFormState={batchEditFormState}
+        batchEditPending={batchUpdateUsersMutation.isPending}
+        onConfirmBatchEdit={(confirmation) => {
           batchUpdateUsersMutation.mutate({
             userIds: selectedUsers.map((user) => user.id),
             role: batchEditFormState.applyRole ? batchEditFormState.role : undefined,
@@ -396,18 +331,11 @@ export function ManageUsersPage() {
             currentPassword: confirmation.currentPassword,
           });
         }}
-        pending={batchUpdateUsersMutation.isPending}
-      />
-
-      <SensitiveActionDialog
-        open={pendingAction !== null}
-        actionKey={getPendingActionKey(pendingAction)}
-        title={getPendingActionTitle(pendingAction)}
-        description="关键账号状态调整需要二次确认，避免误操作。"
-        impact={getPendingActionImpact(pendingAction)}
-        confirmLabel={getPendingActionLabel(pendingAction)}
-        onOpenChange={(open) => { if (!open) setPendingAction(null); }}
-        onConfirm={(confirmation) => {
+        pendingAction={pendingAction}
+        onPendingOpenChange={(open) => {
+          if (!open) setPendingAction(null);
+        }}
+        onConfirmPendingAction={(confirmation) => {
           if (!pendingAction) return;
           if (pendingAction.kind === 'registration-review') {
             reviewRegistrationMutation.mutate({
@@ -431,32 +359,24 @@ export function ManageUsersPage() {
             confirmation,
           });
         }}
-        pending={
+        pendingActionPending={
           updateStatusMutation.isPending ||
           reviewRegistrationMutation.isPending ||
           resetUserLoginRiskMutation.isPending
         }
-      />
-
-      <SensitiveActionDialog
-        open={batchDeleteConfirmOpen}
-        actionKey="delete-users"
-        title={`批量删除 ${selectedSoftDeleteTargets.length} 个账号`}
-        description="当前删除语义为软删除：系统会停用所选账号，并同时吊销其活跃会话。"
-        impact={[
-          '当前登录账号和待激活注册申请不会进入批量删除。',
-          selectedAlreadyDisabledCount > 0
-            ? `另有 ${selectedAlreadyDisabledCount} 个已停用账号已经处于软删除状态，不会重复提交。`
-            : '这次不会做物理删库。',
-        ]}
-        confirmLabel="确认批量删除"
-        onOpenChange={setBatchDeleteConfirmOpen}
-        onConfirm={(confirmation) => {
+        actionKey={getPendingActionKey(pendingAction)}
+        actionTitle={getPendingActionTitle(pendingAction)}
+        actionLabel={getPendingActionLabel(pendingAction)}
+        actionImpact={getPendingActionImpact(pendingAction)}
+        batchDeleteOpen={batchDeleteConfirmOpen}
+        onBatchDeleteOpenChange={setBatchDeleteConfirmOpen}
+        softDeleteTargetCount={selectedSoftDeleteTargets.length}
+        alreadyDisabledCount={selectedAlreadyDisabledCount}
+        onConfirmBatchDelete={(confirmation) => {
           setBatchDeleteConfirmOpen(false);
           setBanner(null);
           void runBatchSoftDelete(confirmation);
         }}
-        pending={false}
       />
 
       {batchRunner.items.length > 0 ? (
@@ -471,43 +391,5 @@ export function ManageUsersPage() {
   );
 }
 
-function getPendingActionKey(action: PendingUserAction | null) {
-  if (!action) return 'update-user-status';
-  if (action.kind === 'registration-review') {
-    return getRegistrationReviewAction(action.action).actionKey;
-  }
-  if (action.kind === 'login-risk-reset') return 'reset-user-login-risk';
-  return 'update-user-status';
-}
-
-function getPendingActionLabel(action: PendingUserAction | null) {
-  if (!action) return '确认';
-  if (action.kind === 'registration-review') {
-    return getRegistrationReviewAction(action.action).label;
-  }
-  if (action.kind === 'login-risk-reset') return '解除账号登录风控';
-  return getNextUserAction(action.user).label;
-}
-
-function getPendingActionImpact(action: PendingUserAction | null) {
-  if (!action) return undefined;
-  if (action.kind === 'registration-review') {
-    return getRegistrationReviewAction(action.action).impact;
-  }
-  if (action.kind === 'login-risk-reset') {
-    return [
-      '只解除该用户名当前失败登录窗口内的临时风控影响。',
-      '不会删除失败登录、限流或锁定审计记录。',
-      '不会修改账号状态、密码、角色或来源授权。',
-    ];
-  }
-  return getNextUserAction(action.user).impact;
-}
-
-function getPendingActionTitle(action: PendingUserAction | null) {
-  if (!action) return '';
-  const username = action.user.displayName || action.user.username;
-  return `${getPendingActionLabel(action)}：${username}`;
-}
 
 export default ManageUsersPage;
