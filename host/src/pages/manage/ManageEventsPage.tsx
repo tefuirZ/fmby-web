@@ -209,28 +209,32 @@ export function ManageEventsPage() {
           {events.length === 0 ? (
             <div className={styles.emptyInlineState}>暂无事件。</div>
           ) : (
-            events.map((event) => (
-              <button
-                key={event.id}
-                type="button"
-                className={styles.mobileRecordCard}
-                style={{ textAlign: 'left', width: '100%' }}
-                onClick={() => setExpandedId(expandedId === event.requestId ? null : event.requestId)}
-              >
-                <div className={styles.mobileRecordHeader}>
-                  <div className={styles.stackText}>
-                    <strong className={styles.mobileRecordTitle}>{event.title}</strong>
-                    <span className={styles.mobileRecordMeta}>{formatEpochMs(event.timestamp)}</span>
-                  </div>
-                  <StatusBadge
-                    label={SEVERITY_LABELS[event.severity] ?? event.severity}
-                    variant={getManageStatusVariant(event.severity)}
-                  />
+            events.map((event) => {
+              const expanded = expandedId === event.requestId;
+              return (
+                <div key={event.id} className={styles.mobileRecordCard}>
+                  <button
+                    type="button"
+                    className={styles.ghostButton}
+                    style={{ textAlign: 'left', width: '100%' }}
+                    onClick={() => setExpandedId(expanded ? null : event.requestId)}
+                  >
+                    <div className={styles.mobileRecordHeader}>
+                      <div className={styles.stackText}>
+                        <strong className={styles.mobileRecordTitle}>{event.title}</strong>
+                        <span className={styles.mobileRecordMeta}>{formatEpochMs(event.timestamp)}</span>
+                      </div>
+                      <StatusBadge
+                        label={SEVERITY_LABELS[event.severity] ?? event.severity}
+                        variant={getManageStatusVariant(event.severity)}
+                      />
+                    </div>
+                    <p className={styles.mobileRecordBody}>{event.summary}</p>
+                  </button>
+                  {expanded ? <EventDetailPanel event={event} detailQuery={detailQuery} /> : null}
                 </div>
-                <p className={styles.mobileRecordBody}>{event.summary}</p>
-                {expandedId === event.requestId ? <EventDetailPanel event={event} detailQuery={detailQuery} /> : null}
-              </button>
-            ))
+              );
+            })
           )}
         </div>
       </ManageSectionCard>
