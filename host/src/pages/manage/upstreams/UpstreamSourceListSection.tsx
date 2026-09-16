@@ -5,17 +5,12 @@ import {
   type UpstreamSourceRecord,
 } from '@fmby/v2-shared/contracts/manage/upstreams';
 import { queryKeys } from '@fmby/v2-shared/query';
-import {
-  Dialog,
-  InlineBanner,
-  SensitiveActionDialog,
-  StatusBadge,
-} from '@fmby/v2-shared/ui';
+import { InlineBanner, SensitiveActionDialog, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard, getManageStatusVariant } from '../longtail-shared/components';
+import { SourceFormDialog } from './SourceFormDialog';
 import {
-  AUTH_METHOD_OPTIONS,
   SOURCE_TYPE_OPTIONS,
   STATUS_LABELS,
   buildFormStateFromRecord,
@@ -282,134 +277,17 @@ export function UpstreamSourceListSection() {
         )}
       </ManageSectionCard>
 
-      <Dialog
+      <SourceFormDialog
         open={formOpen}
-        eyebrow={editing ? '编辑上游源' : '新建上游源'}
-        title={editing ? `编辑：${editing.name}` : '新建上游源'}
-        description="地址与认证方式必填；密码/API Key 由后端密封，读接口永不回显。"
+        editing={editing}
+        formState={formState}
+        pending={isFormPending}
         onOpenChange={(open) => {
           if (!open) setFormOpen(false);
         }}
-        footer={
-          <>
-            <button
-              className={styles.secondaryButton}
-              type="button"
-              onClick={() => setFormOpen(false)}
-              disabled={isFormPending}
-            >
-              取消
-            </button>
-            <button
-              className={styles.primaryButton}
-              type="button"
-              onClick={submitForm}
-              disabled={isFormPending || !formState.name.trim() || !formState.baseUrl.trim()}
-            >
-              {isFormPending ? '保存中…' : editing ? '保存修改' : '创建源'}
-            </button>
-          </>
-        }
-      >
-        <div className={styles.fieldGroup}>
-          <label className={styles.label}>
-            名称（必填）
-            <input
-              className={styles.input}
-              value={formState.name}
-              onChange={(e) => setFormState((s) => ({ ...s, name: e.target.value }))}
-              placeholder="例如：家庭 Emby"
-            />
-          </label>
-          <label className={styles.label}>
-            地址（必填）
-            <input
-              className={styles.input}
-              value={formState.baseUrl}
-              onChange={(e) => setFormState((s) => ({ ...s, baseUrl: e.target.value }))}
-              placeholder="http://192.168.1.10:8096"
-            />
-          </label>
-          <div className={styles.fieldRow}>
-            <label className={styles.label}>
-              类型
-              <select
-                className={styles.select}
-                value={formState.sourceType}
-                onChange={(e) => setFormState((s) => ({ ...s, sourceType: e.target.value }))}
-              >
-                {SOURCE_TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.label}>
-              认证方式
-              <select
-                className={styles.select}
-                value={formState.authMethod}
-                onChange={(e) => setFormState((s) => ({ ...s, authMethod: e.target.value }))}
-              >
-                {AUTH_METHOD_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {formState.authMethod === 'UsernamePassword' ? (
-            <div className={styles.fieldRow}>
-              <label className={styles.label}>
-                用户名
-                <input
-                  className={styles.input}
-                  value={formState.username}
-                  onChange={(e) => setFormState((s) => ({ ...s, username: e.target.value }))}
-                />
-              </label>
-              <label className={styles.label}>
-                密码{editing ? '（留空保留既有）' : ''}
-                <input
-                  className={styles.input}
-                  type="password"
-                  autoComplete="new-password"
-                  value={formState.password}
-                  onChange={(e) => setFormState((s) => ({ ...s, password: e.target.value }))}
-                />
-              </label>
-            </div>
-          ) : null}
-          {formState.authMethod === 'ApiKey' ? (
-            <label className={styles.label}>
-              API Key{editing ? '（留空保留既有）' : ''}
-              <input
-                className={styles.input}
-                type="password"
-                autoComplete="new-password"
-                value={formState.apiKey}
-                onChange={(e) => setFormState((s) => ({ ...s, apiKey: e.target.value }))}
-              />
-            </label>
-          ) : null}
-          <div className={styles.fieldRow}>
-            <label className={styles.label}>
-              User-Agent（可选）
-              <input
-                className={styles.input}
-                value={formState.userAgent}
-                onChange={(e) => setFormState((s) => ({ ...s, userAgent: e.target.value }))}
-              />
-            </label>
-            <label className={styles.label}>
-              Referer（可选）
-              <input
-                className={styles.input}
-                value={formState.referer}
-                onChange={(e) => setFormState((s) => ({ ...s, referer: e.target.value }))}
-              />
-            </label>
-          </div>
-        </div>
-      </Dialog>
+        onFormStateChange={setFormState}
+        onSubmit={submitForm}
+      />
 
       <SensitiveActionDialog
         open={pendingDelete !== null}
