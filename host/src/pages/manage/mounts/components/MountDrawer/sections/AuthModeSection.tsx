@@ -2,6 +2,10 @@ import type { Dispatch, SetStateAction } from 'react';
 import { ManageSectionCard } from '../../../../components';
 import type { MountFormState, MountFormErrors, MountRemoteAuthMode } from '../../../types';
 import { renderFieldError } from '../../../formRenderers';
+import {
+  STORED_CREDENTIAL_PLACEHOLDER,
+  hasStoredSealedRef,
+} from '../../../formUtils';
 import styles from '../../../../ManagePages.module.css';
 
 interface AuthModeSectionProps {
@@ -23,6 +27,19 @@ export function AuthModeSection({
   onAuthModeChange,
   setDirectoryBrowser,
 }: AuthModeSectionProps) {
+  const placeholderFor = (field: 'token' | 'password') => {
+    const stored =
+      field === 'token'
+        ? formState.remoteConfig.tokenSealedRef
+        : formState.remoteConfig.passwordSealedRef;
+    if (hasStoredSealedRef(stored)) {
+      return STORED_CREDENTIAL_PLACEHOLDER;
+    }
+    return field === 'token'
+      ? '输入上游返回的授权 token，留空则按游客访问'
+      : '对应账号密码';
+  };
+
   return (
     <ManageSectionCard title="认证方式" description="支持账号密码与 token 两种方案；如果上游允许游客访问，两种模式都可以留空凭据。">
       <div className={styles.selectionGrid}>
@@ -68,7 +85,7 @@ export function AuthModeSection({
               setDirectoryBrowser(null);
               setFormState((prev) => ({ ...prev, remoteConfig: { ...prev.remoteConfig, token: event.target.value } }));
             }}
-            placeholder="输入上游返回的授权 token，留空则按游客访问"
+            placeholder={placeholderFor('token')}
             disabled={isSaving}
           />
           {renderFieldError(formErrors.token)}
@@ -101,7 +118,7 @@ export function AuthModeSection({
                 setDirectoryBrowser(null);
                 setFormState((prev) => ({ ...prev, remoteConfig: { ...prev.remoteConfig, password: event.target.value } }));
               }}
-              placeholder="对应账号密码"
+              placeholder={placeholderFor('password')}
               disabled={isSaving}
             />
             {renderFieldError(formErrors.password)}

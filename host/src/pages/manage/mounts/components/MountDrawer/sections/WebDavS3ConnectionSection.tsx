@@ -2,6 +2,8 @@ import type { Dispatch, SetStateAction } from 'react';
 import { ManageSectionCard } from '../../../../components';
 import type { MountFormState, MountFormErrors } from '../../../types';
 import {
+  STORED_CREDENTIAL_PLACEHOLDER,
+  hasStoredSealedRef,
   isS3Provider,
   isWebDavProvider,
   isValidHttpUrl,
@@ -131,8 +133,14 @@ export function WebDavS3ConnectionSection({
                   autoComplete="new-password"
                   value={formState.remoteConfig.accessKey}
                   onChange={(event) => patch({ accessKey: event.target.value })}
+                  placeholder={
+                    hasStoredSealedRef(formState.remoteConfig.accessKeySealedRef)
+                      ? STORED_CREDENTIAL_PLACEHOLDER
+                      : undefined
+                  }
                   disabled={isSaving}
                 />
+                {renderFieldError(formErrors.accessKey)}
               </label>
               <label className={styles.label}>
                 Secret Key（可选）
@@ -142,8 +150,14 @@ export function WebDavS3ConnectionSection({
                   autoComplete="new-password"
                   value={formState.remoteConfig.secretKey}
                   onChange={(event) => patch({ secretKey: event.target.value })}
+                  placeholder={
+                    hasStoredSealedRef(formState.remoteConfig.secretKeySealedRef)
+                      ? STORED_CREDENTIAL_PLACEHOLDER
+                      : undefined
+                  }
                   disabled={isSaving}
                 />
+                {renderFieldError(formErrors.secretKey)}
               </label>
             </div>
           </>
@@ -166,8 +180,14 @@ export function WebDavS3ConnectionSection({
                 autoComplete="new-password"
                 value={formState.remoteConfig.password}
                 onChange={(event) => patch({ password: event.target.value })}
+                placeholder={
+                  hasStoredSealedRef(formState.remoteConfig.passwordSealedRef)
+                    ? STORED_CREDENTIAL_PLACEHOLDER
+                    : undefined
+                }
                 disabled={isSaving}
               />
+              {renderFieldError(formErrors.password)}
             </label>
           </div>
         )}

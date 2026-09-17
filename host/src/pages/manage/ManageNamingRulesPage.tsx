@@ -23,11 +23,9 @@ import {
   NamingRulesStickyBar,
   NamingRulesCleanupPanel,
   NamingRulesHeader,
-} from './naming-rules/components';
-import {
   NamingScrapeBatchRepairSection,
   NamingScrapeStrategySection,
-} from './naming-rules/scrape-sections';
+} from './naming-rules/components';
 
 export function ManageNamingRulesPage() {
   const settingsQuery = useNamingRulesSettingsQuery();
