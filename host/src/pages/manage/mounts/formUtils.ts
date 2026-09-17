@@ -76,7 +76,12 @@ export function buildMountFormState(detail: ManageMountDetailRecord): MountFormS
       maxConcurrentStreams: policy.maxConcurrentStreams,
     })),
     configJsonText: JSON.stringify(configJson, null, 2),
-    remoteConfig,
+    // S3：root_path 即对象 key 前缀（后端 validate_root_path 把 root_path 当
+    // prefix 归一），故以它回填 prefix，保证「显示即实际」（否则编辑态前缀框
+    // 为空、实际有前缀，改一次就可能把它覆盖掉）。
+    remoteConfig: isS3Provider(detail.providerType)
+      ? { ...remoteConfig, prefix: detail.rootPath ?? '' }
+      : remoteConfig,
     preservedConfig,
   };
 }
@@ -224,7 +229,9 @@ export function validateMountForm(form: MountFormState): MountFormErrors {
   if (isStructuredRemoteProvider(form.providerType)) {
     const normalizedRootPath = normalizeRemoteMountPath(form.rootPath);
     if (normalizedRootPath === '') {
-      errors.rootPath = '请先通过目录浏览器选择远端根路径。';
+      errors.rootPath = hasParentTraversalSegment(form.rootPath)
+        ? '根路径禁止包含「..」段（防路径穿越）。'
+        : '请先通过目录浏览器选择远端根路径。';
     }
 
     if (!isValidHttpUrl(form.remoteConfig.endpoint)) {
@@ -390,16 +397,34 @@ export function isValidHttpUrl(value: string) {
   }
 }
 
+/** 是否含 `..` 段（路径穿越防线）。 */
+export function hasParentTraversalSegment(value: string) {
+  return value.trim().replace(/\\/g, '/').split('/').includes('..');
+}
+
+/**
+ * AList / OpenList / RcloneRc 的 root_path 归一（`-` 前缀）。
+ *
+ * **含 `..` 段返回空串（拒绝，不静默剔除）**——后端 `validate_root_path` 对
+ * 这些类型一律拒 `..`，静默改写成 `/a/b` 会让用户以为填的值被接受（RB-4 禁假成功）。
+ *
+ * 存量兼容性：后端 create 与 PATCH **都**过 `validate_root_path`
+ * （`application/src/manage.rs:212` / `:362`），故存量挂载的 root_path
+ * **不可能含 `..`** —— 改报错无存量风险。读路径（如切换 provider 时回填）仍
+ * 用 `|| '/'` 兜底，属防御性容忍，不影响写入侧报错。
+ */
 export function normalizeRemoteMountPath(value: string) {
   const trimmed = value.trim().replace(/\\/g, '/');
   if (trimmed === '') {
     return '';
   }
+  if (hasParentTraversalSegment(trimmed)) {
+    return '';
+  }
 
   const segments = trimmed
     .split('/')
-    .filter((segment) => segment !== '' && segment !== '.')
-    .filter((segment) => segment !== '..');
+    .filter((segment) => segment !== '' && segment !== '.');
 
   return segments.length === 0 ? '/' : `/${segments.join('/')}`;
 }

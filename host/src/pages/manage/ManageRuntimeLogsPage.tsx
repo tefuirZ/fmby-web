@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { manageApi, type RuntimeLogLevel, type RuntimeLogRecord } from '@fmby/v2-shared/contracts/manage';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { FeedbackState } from '@fmby/v2-shared/ui';
-import { Dialog } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from './longtail-shared/ManageShared.module.css';
@@ -14,43 +13,24 @@ import {
   getManageStatusVariant,
 } from './longtail-shared/components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import {
+  LEVEL_OPTIONS,
+  METHOD_OPTIONS,
+  PAGE_SIZE_OPTIONS,
+  type RuntimeLogPageSize,
+} from './runtime-logs/shared';
+import {
+  RuntimeLogMobileCard,
+  buildTargetOptions,
+  formatLevelLabel,
+  lookupFieldValue,
+  parseRuntimeLogPageSize,
+} from './runtime-logs/components';
+import { RuntimeLogDetailDialog } from './runtime-logs/RuntimeLogDetailDialog';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildRuntimeLogView,
-  formatRuntimeTargetLabel,
-  type RuntimeLogView,
 } from './runtimeLogPresentation';
-
-const LEVEL_OPTIONS: Array<{ value: 'all' | RuntimeLogLevel; label: string }> = [
-  { value: 'all', label: '全部级别' },
-  { value: 'error', label: '错误' },
-  { value: 'warn', label: '警告' },
-  { value: 'info', label: '信息' },
-  { value: 'debug', label: '调试' },
-  { value: 'trace', label: '跟踪' },
-];
-
-const METHOD_OPTIONS = [
-  { value: 'all', label: '全部方式' },
-  { value: 'GET', label: 'GET' },
-  { value: 'POST', label: 'POST' },
-  { value: 'PUT', label: 'PUT' },
-  { value: 'PATCH', label: 'PATCH' },
-  { value: 'DELETE', label: 'DELETE' },
-  { value: 'HEAD', label: 'HEAD' },
-  { value: 'OPTIONS', label: 'OPTIONS' },
-] as const;
-
-const PAGE_SIZE_OPTIONS = [
-  { value: 50, label: '50 条' },
-  { value: 100, label: '100 条' },
-  { value: 200, label: '200 条' },
-  { value: 500, label: '500 条' },
-  { value: 1000, label: '1000 条' },
-  { value: 'all', label: '全部' },
-] as const;
-
-type RuntimeLogPageSize = (typeof PAGE_SIZE_OPTIONS)[number]['value'];
 
 export function ManageRuntimeLogsPage() {
   const [search, setSearch] = useState('');
@@ -405,196 +385,9 @@ export function ManageRuntimeLogsPage() {
         </div>
       </ManageSectionCard>
 
-      <Dialog
-        open={selectedLogView !== null}
-        title={selectedLogView?.headline ?? '运行日志详情'}
-        description={
-          selectedLogView
-            ? `${formatDateTime(selectedLogView.record.timestamp)} · ${selectedLogView.targetLabel} · ${selectedLogView.record.sourceFile}`
-            : '查看标准化日志详情'
-        }
-        eyebrow="运行日志详情"
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedLog(null);
-          }
-        }}
-      >
-        {selectedLogView ? (
-          <div className={styles.page}>
-            <ManageSectionCard
-              title="日志概览"
-              description="先看最关键的请求、结果和归属信息。"
-            >
-              <div className={styles.detailSummaryGrid}>
-                <DetailCard label="级别" value={formatLevelLabel(selectedLogView.record.level)} />
-                <DetailCard label="类别" value={selectedLogView.targetLabel} />
-                <DetailCard label="事件" value={selectedLogView.eventLabel} />
-                <DetailCard label="结果" value={selectedLogView.resultLabel} />
-                <DetailCard
-                  label="客户端 / IP"
-                  value={selectedLogView.actorLabel}
-                />
-                <DetailCard
-                  label="用户"
-                  value={selectedLogView.requestLabel}
-                />
-                <DetailCard
-                  label="请求 ID"
-                  value={lookupFieldValue(selectedLogView, 'request_id') ?? '未记录'}
-                />
-                <DetailCard
-                  label="日志文件"
-                  value={selectedLogView.record.sourceFile}
-                />
-              </div>
-            </ManageSectionCard>
-
-            <ManageSectionCard
-              title="标准化字段"
-              description="这里只展示已拆解成中文字段的关键信息。"
-            >
-              <div className={styles.detailFieldGrid}>
-                {selectedLogView.primaryFields.length > 0 ? (
-                  selectedLogView.primaryFields.map((field) => (
-                    <DetailFieldCard key={field.key} field={field} />
-                  ))
-                ) : (
-                  <div className={styles.emptyInlineState}>当前日志没有提取到结构化字段。</div>
-                )}
-              </div>
-            </ManageSectionCard>
-
-            {selectedLogView.extraFields.length > 0 ? (
-              <ManageSectionCard
-                title="补充字段"
-                description="保留没有进入概览卡片的其它字段，方便继续深挖。"
-              >
-                <div className={styles.detailFieldGrid}>
-                  {selectedLogView.extraFields.map((field) => (
-                    <DetailFieldCard key={field.key} field={field} />
-                  ))}
-                </div>
-              </ManageSectionCard>
-            ) : null}
-
-            <ManageSectionCard
-              title="原始日志"
-              description="这是文件里的原始日志行，保留给专业排查时兜底使用。"
-            >
-              <pre className={styles.jsonBlock}>{selectedLogView.record.rawLine}</pre>
-            </ManageSectionCard>
-          </div>
-        ) : null}
-      </Dialog>
+      <RuntimeLogDetailDialog view={selectedLogView ?? null} onClose={() => setSelectedLog(null)} />
     </div>
   );
-}
-
-function RuntimeLogMobileCard({
-  view,
-  onDetail,
-}: {
-  view: RuntimeLogView;
-  onDetail: () => void;
-}) {
-  return (
-    <article className={styles.mobileRecordCard}>
-      <div className={styles.mobileRecordHeader}>
-        <div className={styles.stackText}>
-          <strong className={styles.mobileRecordTitle}>{view.headline}</strong>
-          <span className={styles.mobileRecordMeta}>{formatDateTime(view.record.timestamp)}</span>
-        </div>
-        <StatusBadge
-          label={formatLevelLabel(view.record.level)}
-          variant={getManageStatusVariant(view.record.level)}
-        />
-      </div>
-      <div className={styles.mobileRecordGrid}>
-        <span>类别</span>
-        <strong>{view.targetLabel}</strong>
-        <span>结果</span>
-        <strong>{view.resultLabel}</strong>
-        <span>客户端 / 用户</span>
-        <strong>{view.actorLabel}</strong>
-        <span>请求</span>
-        <strong>{view.requestLabel}</strong>
-        <span>请求 ID</span>
-        <strong className={styles.mono}>{lookupFieldValue(view, 'request_id') ?? '—'}</strong>
-      </div>
-      <div className={styles.mobileRecordActions}>
-        <button className={styles.secondaryButton} type="button" onClick={onDetail}>
-          查看详情
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function buildTargetOptions(availableTargets: string[], selectedTarget: string) {
-  const uniqueTargets = new Set(availableTargets.filter(Boolean));
-  if (selectedTarget) {
-    uniqueTargets.add(selectedTarget);
-  }
-
-  return Array.from(uniqueTargets)
-    .sort((left, right) => left.localeCompare(right))
-    .map((value) => ({
-      value,
-      label: `${formatRuntimeTargetLabel(value)} · ${value}`,
-    }));
-}
-
-function parseRuntimeLogPageSize(value: string): RuntimeLogPageSize {
-  if (value === 'all') {
-    return 'all';
-  }
-
-  const parsed = Number(value);
-  return PAGE_SIZE_OPTIONS.find((option) => option.value === parsed)?.value ?? 200;
-}
-
-function DetailCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.detailCard}>
-      <span className={styles.detailCardLabel}>{label}</span>
-      <span className={styles.detailCardValue}>{value}</span>
-    </div>
-  );
-}
-
-function DetailFieldCard({
-  field,
-}: {
-  field: { label: string; value: string };
-}) {
-  return (
-    <div className={styles.detailCard}>
-      <span className={styles.detailCardLabel}>{field.label}</span>
-      <span className={styles.detailCardValue}>{field.value}</span>
-    </div>
-  );
-}
-
-function lookupFieldValue(view: RuntimeLogView, key: string) {
-  return [...view.primaryFields, ...view.extraFields].find((field) => field.key === key)?.value;
-}
-
-function formatLevelLabel(level: RuntimeLogRecord['level']) {
-  switch (level) {
-    case 'error':
-      return '错误';
-    case 'warn':
-      return '警告';
-    case 'info':
-      return '信息';
-    case 'debug':
-      return '调试';
-    case 'trace':
-      return '跟踪';
-    default:
-      return '未知';
-  }
 }
 
 export default ManageRuntimeLogsPage;
