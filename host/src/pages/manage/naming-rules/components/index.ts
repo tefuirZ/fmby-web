@@ -8,4 +8,6 @@ export { NamingRulesProtectedTermsSection } from './NamingRulesProtectedTermsSec
 export { NamingRulesStickyBar } from './NamingRulesStickyBar';
 export { NamingRulesCleanupPanel } from './NamingRulesCleanupPanel';
 export { NamingRulesHeader } from './NamingRulesHeader';
+export { NamingScrapeStrategySection } from './NamingScrapeStrategySection';
+export { NamingScrapeBatchRepairSection } from './NamingScrapeBatchRepairSection';
 export { NamingRulesReplayConfirm } from './NamingRulesReplayConfirm';

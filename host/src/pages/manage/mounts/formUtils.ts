@@ -44,6 +44,44 @@ export function createEmptyMountForm(): MountFormState {
   };
 }
 
+/** 后端密封引用前缀（契约 §3.3②：敏感键出站一律此形态，明文绝不回显）。 */
+export const SEALED_REF_PREFIX = '__sealed:';
+
+/** 是否后端密封引用（`__sealed:<key>`）。 */
+export function isSealedRef(value: string | undefined | null): boolean {
+  return typeof value === 'string' && value.startsWith(SEALED_REF_PREFIX);
+}
+
+/**
+ * 敏感键保存值（MOUNT-CRED-SEAL 语义）：
+ * - 用户**重填了明文** → 用明文（Create/Update 后端都会重新密封）；
+ * - 用户**留空**且有存量引用 → 原样回传引用（Update = 「不改凭据」；
+ *   PATCH 是整表替换，省略该键会丢凭据，故必须回传）；
+ * - 用户**误把 `__sealed:` 粘进输入框** → 视为「不改凭据」回传存量引用，
+ *   绝不在 Create 场景把它原样提交（那会 400 `MountConfigSealedRefOnCreate`）。
+ */
+export function resolveSensitiveValue(typed: string, storedRef: string | null | undefined): string | undefined {
+  if (typed.trim() !== '' && !isSealedRef(typed.trim())) {
+    return typed;
+  }
+  if (storedRef) {
+    return storedRef;
+  }
+  return undefined;
+}
+
+/** 编辑态是否已有存量凭据（决定输入框占位文案）。 */
+export function hasStoredSealedRef(ref: string | null | undefined): boolean {
+  return Boolean(ref);
+}
+
+/** 编辑态已有存量凭据时的输入框占位（MOUNT-CRED-SEAL 裁决 3）。 */
+export const STORED_CREDENTIAL_PLACEHOLDER = '已配置凭据，留空则不修改';
+
+/** 用户误把密封引用粘进输入框时的字段级报错。 */
+export const SEALED_REF_INPUT_ERROR =
+  '请填写明文凭据；留空表示保留已配置的凭据（不要粘贴 __sealed: 引用）。';
+
 export function createEmptyRemoteConfig(): MountRemoteConfigState {
   return {
     endpoint: '',
@@ -57,6 +95,10 @@ export function createEmptyRemoteConfig(): MountRemoteConfigState {
     prefix: '',
     accessKey: '',
     secretKey: '',
+    passwordSealedRef: null,
+    tokenSealedRef: null,
+    accessKeySealedRef: null,
+    secretKeySealedRef: null,
   };
 }
 
@@ -142,14 +184,22 @@ export function buildStructuredRemoteConfig(form: MountFormState): Record<string
   }
 
   next.endpoint = form.remoteConfig.endpoint.trim();
+  // MOUNT-CRED-SEAL：敏感键经 resolveSensitiveValue 处理——重填明文用明文，
+  // 留空回传存量 `__sealed:` 引用（Update=不改凭据；PATCH 整表替换故不可省略）。
   if (form.remoteConfig.authMode === 'token') {
-    if (form.remoteConfig.token.trim() !== '') {
-      next.token = form.remoteConfig.token.trim();
+    const token = resolveSensitiveValue(form.remoteConfig.token, form.remoteConfig.tokenSealedRef);
+    if (token !== undefined) {
+      next.token = token;
     }
   } else {
-    if (form.remoteConfig.username.trim() !== '' && form.remoteConfig.password.trim() !== '') {
-      next.username = form.remoteConfig.username.trim();
-      next.password = form.remoteConfig.password.trim();
+    const username = form.remoteConfig.username.trim();
+    const password = resolveSensitiveValue(form.remoteConfig.password, form.remoteConfig.passwordSealedRef);
+    if (username !== '' && password !== undefined) {
+      next.username = username;
+      next.password = password;
+    } else if (password !== undefined && isSealedRef(password)) {
+      // 用户名未重填但有存量密码引用 → 仅回传引用，保留既有密码不改。
+      next.password = password;
     }
     if (form.remoteConfig.otpCode.trim() !== '') {
       next.otp_code = form.remoteConfig.otpCode.trim();
@@ -162,10 +212,16 @@ export function buildStructuredRemoteConfig(form: MountFormState): Record<string
 export function extractRemoteConfigState(configJson: Record<string, unknown>) {
   const endpoint =
     readConfigString(configJson, ['endpoint', 'base_url', 'baseUrl', 'server', 'url']) ?? '';
-  const token = readConfigString(configJson, ['token', 'access_token', 'accessToken']) ?? '';
+  const rawToken = readConfigString(configJson, ['token', 'access_token', 'accessToken']) ?? '';
   const username = readConfigString(configJson, ['username']) ?? '';
-  const password = readConfigString(configJson, ['password']) ?? '';
+  const rawPassword = readConfigString(configJson, ['password']) ?? '';
   const otpCode = readConfigString(configJson, ['otp_code', 'otpCode']) ?? '';
+  // MOUNT-CRED-SEAL：回显的 `__sealed:` 引用不进输入框（否则展示成引用串），
+  // 存进记忆位供「留空则不修改」回传；只有明文才回填输入框。
+  const tokenSealedRef = isSealedRef(rawToken) ? rawToken : null;
+  const passwordSealedRef = isSealedRef(rawPassword) ? rawPassword : null;
+  const token = tokenSealedRef ? '' : rawToken;
+  const password = passwordSealedRef ? '' : rawPassword;
 
   const preservedConfig = Object.fromEntries(
     Object.entries(configJson).filter(
@@ -175,8 +231,12 @@ export function extractRemoteConfigState(configJson: Record<string, unknown>) {
 
   const bucket = readConfigString(configJson, ['bucket']) ?? '';
   const region = readConfigString(configJson, ['region']) ?? '';
-  const accessKey = readConfigString(configJson, ['access_key', 'accessKey']) ?? '';
-  const secretKey = readConfigString(configJson, ['secret_key', 'secretKey']) ?? '';
+  const rawAccessKey = readConfigString(configJson, ['access_key', 'accessKey']) ?? '';
+  const rawSecretKey = readConfigString(configJson, ['secret_key', 'secretKey']) ?? '';
+  const accessKeySealedRef = isSealedRef(rawAccessKey) ? rawAccessKey : null;
+  const secretKeySealedRef = isSealedRef(rawSecretKey) ? rawSecretKey : null;
+  const accessKey = accessKeySealedRef ? '' : rawAccessKey;
+  const secretKey = secretKeySealedRef ? '' : rawSecretKey;
 
   return {
     remoteConfig: {
@@ -192,6 +252,10 @@ export function extractRemoteConfigState(configJson: Record<string, unknown>) {
       prefix: '',
       accessKey,
       secretKey,
+      passwordSealedRef,
+      tokenSealedRef,
+      accessKeySealedRef,
+      secretKeySealedRef,
     } satisfies MountRemoteConfigState,
     preservedConfig,
   };
@@ -227,6 +291,7 @@ export function validateMountForm(form: MountFormState): MountFormErrors {
   }
 
   if (isStructuredRemoteProvider(form.providerType)) {
+    collectSealedRefInputErrors(form, errors);
     const normalizedRootPath = normalizeRemoteMountPath(form.rootPath);
     if (normalizedRootPath === '') {
       errors.rootPath = hasParentTraversalSegment(form.rootPath)
@@ -320,20 +385,39 @@ export function buildWebDavS3Config(form: MountFormState): Record<string, unknow
   if (isWebDavProvider(form.providerType)) {
     next.url = form.remoteConfig.endpoint.trim();
     if (form.remoteConfig.username.trim() !== '') next.username = form.remoteConfig.username.trim();
-    if (form.remoteConfig.password !== '') next.password = form.remoteConfig.password;
+    const password = resolveSensitiveValue(form.remoteConfig.password, form.remoteConfig.passwordSealedRef);
+    if (password !== undefined) next.password = password;
     return next;
   }
   next.endpoint = form.remoteConfig.endpoint.trim();
   next.bucket = form.remoteConfig.bucket.trim();
   if (form.remoteConfig.region.trim() !== '') next.region = form.remoteConfig.region.trim();
-  if (form.remoteConfig.accessKey !== '') next.access_key = form.remoteConfig.accessKey;
-  if (form.remoteConfig.secretKey !== '') next.secret_key = form.remoteConfig.secretKey;
+  const accessKey = resolveSensitiveValue(form.remoteConfig.accessKey, form.remoteConfig.accessKeySealedRef);
+  if (accessKey !== undefined) next.access_key = accessKey;
+  const secretKey = resolveSensitiveValue(form.remoteConfig.secretKey, form.remoteConfig.secretKeySealedRef);
+  if (secretKey !== undefined) next.secret_key = secretKey;
   return next;
+}
+
+/**
+ * 敏感输入框防御：用户若把 `__sealed:` 引用粘进输入框，给出字段级错误。
+ *
+ * 背景（§3.3③）：Create 提交 `__sealed:` → 400 `MountConfigSealedRefOnCreate`
+ * （防跨挂载凭据引用）；Update 提交引用虽合法，但用户不该手填引用——应「留空」
+ * 表示不改。正常流程前端从不把引用放进输入框（引用存记忆位），此为兜底提示。
+ */
+function collectSealedRefInputErrors(form: MountFormState, errors: MountFormErrors) {
+  const { remoteConfig } = form;
+  if (isSealedRef(remoteConfig.password.trim())) errors.password = SEALED_REF_INPUT_ERROR;
+  if (isSealedRef(remoteConfig.token.trim())) errors.token = SEALED_REF_INPUT_ERROR;
+  if (isSealedRef(remoteConfig.accessKey.trim())) errors.accessKey = SEALED_REF_INPUT_ERROR;
+  if (isSealedRef(remoteConfig.secretKey.trim())) errors.secretKey = SEALED_REF_INPUT_ERROR;
 }
 
 /** 必填字段级校验（缺 url / bucket → 具名错误，后端已补具名错误码，前端同口径提示）。 */
 export function validateWebDavS3Form(form: MountFormState): MountFormErrors {
   const errors: MountFormErrors = {};
+  collectSealedRefInputErrors(form, errors);
   if (isWebDavProvider(form.providerType) || isS3Provider(form.providerType)) {
     if (normalizeWebDavS3RootPath(form.providerType, form.rootPath) === '') {
       errors.rootPath = '根路径禁止包含「..」段（防路径穿越）。';

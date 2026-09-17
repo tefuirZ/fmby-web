@@ -30,6 +30,14 @@ export interface MountRemoteConfigState {
   accessKey: string;
   /** S3：Secret Key（敏感键，同上）。 */
   secretKey: string;
+  // ── MOUNT-CRED-SEAL：编辑态凭据「留空则不修改」的记忆位 ──────────────────
+  // 后端 Detail 回显的是 `__sealed:` 引用（绝不回明文）。编辑时把引用存这里、
+  // 输入框留空展示「已配置」；保存时若用户未重填，则**原样回传引用**
+  // （Update 语义 = 不改凭据）。PATCH 是整表替换，省略该键会丢凭据，故必须回传。
+  passwordSealedRef?: string | null;
+  tokenSealedRef?: string | null;
+  accessKeySealedRef?: string | null;
+  secretKeySealedRef?: string | null;
 }
 
 export interface MountFormErrors {
@@ -43,6 +51,9 @@ export interface MountFormErrors {
   browse?: string;
   /** S3 bucket 缺失（后端具名错误码同口径）。 */
   bucket?: string;
+  /** 敏感输入框误填 `__sealed:` 引用（§3.3③ 防御）。 */
+  accessKey?: string;
+  secretKey?: string;
 }
 
 export interface MountFormState {
