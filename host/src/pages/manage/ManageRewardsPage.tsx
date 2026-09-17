@@ -6,24 +6,18 @@ import {
   type RewardsEventConfigRecord,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { queryKeys } from '@fmby/v2-shared/query';
-import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
+import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 
-const LEDGER_LIMIT_OPTIONS = [50, 100, 200] as const;
+import {
+  LEDGER_LIMIT_OPTIONS,
+  RewardsLedgerSection,
+  formatEpochMs,
+} from './rewards/RewardsLedgerSection';
+
 const LEDGER_LIMIT_DEFAULT = 50;
-
-function formatEpochMs(epochMs: number): string {
-  if (!Number.isFinite(epochMs) || epochMs <= 0) {
-    return '—';
-  }
-  return new Date(epochMs).toLocaleString('zh-CN', { hour12: false });
-}
-
-function formatDelta(delta: number): string {
-  return delta > 0 ? `+${delta}` : `${delta}`;
-}
 
 export function ManageRewardsPage() {
   const queryClient = useQueryClient();
@@ -352,64 +346,12 @@ export function ManageRewardsPage() {
         ) : null}
       </ManageSectionCard>
 
-      <ManageSectionCard
-        title={`积分流水（最近 ${ledgerLimit} 条）`}
-        description="按时间倒序；变动与余额后值为账本快照，可直接复核对账。"
-        actions={
-          <label className={styles.label}>
-            条数
-            <select
-              className={styles.select}
-              value={ledgerLimit}
-              onChange={(e) => setLedgerLimit(Number(e.target.value))}
-            >
-              {LEDGER_LIMIT_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  最近 {option} 条
-                </option>
-              ))}
-            </select>
-          </label>
-        }
-      >
-        {ledgerQuery.isPending ? (
-          <div className={styles.tableHint}>正在加载流水…</div>
-        ) : ledger.length === 0 ? (
-          <div className={styles.emptyInlineState}>该用户还没有任何积分流水。</div>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>时间</th>
-                  <th>类型</th>
-                  <th>来源</th>
-                  <th>变动</th>
-                  <th>余额后</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledger.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="nowrap">{formatEpochMs(entry.createdAt)}</td>
-                    <td>
-                      <StatusBadge
-                        label={entry.transactionType}
-                        variant={entry.delta >= 0 ? 'success' : 'warning'}
-                      />
-                    </td>
-                    <td className={styles.mono}>
-                      {entry.sourceType}/{entry.sourceId}
-                    </td>
-                    <td className={styles.mono}>{formatDelta(entry.delta)}</td>
-                    <td className={styles.mono}>{entry.balanceAfter}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </ManageSectionCard>
+      <RewardsLedgerSection
+        ledger={ledger}
+        ledgerLimit={ledgerLimit}
+        onLedgerLimitChange={setLedgerLimit}
+        isPending={ledgerQuery.isPending}
+      />
     </div>
   );
 }

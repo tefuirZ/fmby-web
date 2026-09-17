@@ -90,19 +90,44 @@
 
 ## 4. 拆法模板（给后人示范）
 
+### 4.0 三条铁律（违一条必返工；B2/B3 各犯过）
+
+> **① 子组件类型必须从既有模块 `import` 真实类型，禁止自造窄类型。**
+> props 上的每一个类型（含回调签名、枚举、返回结构）都要指向**已存在的**
+> 类型/函数签名；不要手写一个「看起来差不多」的局部 interface。
+> 典型翻车（B2/B3 共三次）：自造 `SidebarItemSummary` 比真实 `MediaCardSummary` 窄、
+> `onError/onTimeUpdate` 比播放器签名窄、自造 `RegistrationCodePendingAction` 把
+> **单码** `record` 写成批次、把 `getCodeStatusAction().impact`（**string**）写成 `string[]`。
+> **做法**：先 `grep` 既有模块找到权威类型（`PendingCodeAction`、`DangerousActionRequest`、
+> `Dispatch<SetStateAction<T>>`、`ReturnType<typeof fn>`），直接复用；
+> 拿不准就 `import type` 后让 `tsc` 告诉你哪里不匹配——**报错即证据，改回真实类型**。
+>
+> **② JSX 块按【行号切片】抽取，禁止靠字符串匹配定位边界。**
+> 多分支页面里 `index('</Dialog>')` / 「找下一个 `}}`」会切到别的分支或提前收尾
+> （B3 两次：把 `) : isPending ? (` 分支带走、`onConfirm` 多行体产出 TS1381/1382 残骸）。
+> **做法**：先 `grep -n` 定位起止行号 → `python3` 按 `lines[i:j]` 切片 →
+> **切完立刻** `wc -l` + `pnpm typecheck` 校验行数与语法。
+>
+> **③ 抽状态 hook 时，页面 early-return 不能进 hook。**
+> `if (q.isPending) return <FeedbackState/>` 属**组件**渲染逻辑，留在页面；
+> 只把 useState/派生/事件处理器抽进 hook。抽完确认 hook 内**无 JSX 返回**，
+> 且需要的 query 对象（`codesQuery` 等）已加入 hook 返回对象供页面 early-return 使用。
+
+### 4.1 步骤
+
 1. 先找**接缝**：early-return 终态面板 → 纯展示区块（header/infobar/stage/sidebar）
    → 子组件（表格行/卡片/搜索面板）→ 共享常量与格式化。
 2. 新建**同名目录**（`Xxx/`，已有则复用），页面留壳只做编排 + 状态。
-3. 子组件的**类型不要另造**：本项目踩到两次——`SidebarItemSummary` 比真实
-   `MediaCardSummary` 窄、`onError/onTimeUpdate` 签名比播放器窄。
-   **直接 import 既有类型 / 对齐真实签名**（见下方「坑」）。
+3. 子组件的**类型不要另造**（见铁律 ①）**直接 import 既有类型 / 对齐真实签名**。
 4. 拆完跑 `pnpm typecheck` → `pnpm test` → `pnpm component-size --update-baseline` 回收。
 
 **坑（照做可省 3 轮）**：
-- 抽走子组件后，页面里**就地定义的派生值**可能随之被切走（本次丢了
-  `subtitleUrl` / `firstSubtitle`，报错才暴露）。切完立刻 typecheck。
+- 抽走子组件后，页面里**就地定义的派生值**可能随之被切走（PlayPage 丢了
+  `subtitleUrl` / `firstSubtitle`，报错才暴露）。按铁律 ② 切片并立刻 typecheck。
 - 抽走后页面常有**未使用的 import**（TS6133）逐个清；lucide 图标与
   `Link` 最常被搬空。
+- 抽 `use*PageState` hook 时，hook 返回对象手工拼装易**同名键重复**（TS1117）——
+  加一轮去重（B3）。
 
 ---
 

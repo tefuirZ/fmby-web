@@ -4,18 +4,14 @@ import { RefreshCw } from 'lucide-react';
 import type { BannerState } from '@fmby/v2-shared/ui/types';
 import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
 import type { ManageMediaItemListRecord } from '@fmby/v2-shared/contracts/manage/media-items';
-import { FeedbackState } from '@fmby/v2-shared/ui';
-import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
-import { InlineBanner } from '@fmby/v2-shared/ui';
+import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
 import { useDebounce } from '@fmby/v2-shared/hooks/useDebounce';
 import { useBatchSelection, useBatchRunner } from '@fmby/v2-shared/hooks';
-import { BatchActionBar, BatchProgressPanel } from '@fmby/v2-shared/ui';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { mediaItemsApi } from '@fmby/v2-shared/contracts/manage/media-items';
 import sharedStyles from './ManagePages.module.css';
-import styles from './ManageMediaItemsPage.module.css';
-import { ManagePageHeader, ManageSectionCard } from './components';
+import { ManagePageHeader } from './components';
 import {
   useManageMediaItemLibrariesQuery,
   useManageMediaItemsQuery,
@@ -23,8 +19,7 @@ import {
 import {
   MediaItemMetricsBoard,
   MediaItemFilters,
-  MediaItemListTable,
-  MediaItemCardGrid,
+  MediaItemsListSection,
 } from './media-items/components';
 import type {
   MediaTypeFilter,
@@ -33,7 +28,7 @@ import type {
   OverrideFilter,
   PendingSourceDeleteState,
 } from './media-items/types';
-import { formatSourcePreview, getSourceStatusLabel } from './media-items/formUtils';
+import { formatSourcePreview } from './media-items/formUtils';
 
 const PAGE_SIZE = 20;
 
@@ -319,163 +314,35 @@ export function ManageMediaItemsPage() {
         onResetFilters={resetFilters}
       />
 
-      <ManageSectionCard
-        title="资源列表"
-        description="列表只展示海报、状态与覆盖摘要；查看与编辑请进入资源详情页。"
-        actions={
-          <span className={sharedStyles.metaText}>
-            默认按最近更新时间倒序
-          </span>
-        }
-      >
-        {mediaItemsQuery.isError ? (
-          <InlineBanner
-            variant="error"
-            title="刷新资源列表失败"
-            description={getErrorMessage(mediaItemsQuery.error)}
-          />
-        ) : null}
-
-        {items.length === 0 ? (
-          <FeedbackState
-            variant="empty"
-            title="当前条件下没有资源"
-            description="没有匹配的资源，换个关键词或放宽筛选条件试试。"
-            action={
-              hasActiveFilters ? (
-                <button
-                  className={sharedStyles.primaryButton}
-                  type="button"
-                  onClick={resetFilters}
-                >
-                  重置筛选
-                </button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <>
-            <MediaItemListTable
-              items={items}
-              pendingSourceDelete={pendingSourceDelete}
-              resolveDeletePending={resolveDeleteTargetMutation.isPending}
-              resolveDeleteItemId={resolveDeleteTargetMutation.variables?.id}
-              deletePending={deleteSourceMutation.isPending}
-              onRequestDelete={handleRequestSourceDelete}
-              selectedIds={selection.selected}
-              headerState={selection.headerState}
-              onToggleRow={(id, checked, opts) => selection.toggle(id, checked, opts)}
-              onSelectAll={selection.selectAll}
-              onClearVisible={selection.clearVisible}
-            />
-
-            <MediaItemCardGrid
-              items={items}
-              pendingSourceDelete={pendingSourceDelete}
-              resolveDeletePending={resolveDeleteTargetMutation.isPending}
-              resolveDeleteItemId={resolveDeleteTargetMutation.variables?.id}
-              deletePending={deleteSourceMutation.isPending}
-              onRequestDelete={handleRequestSourceDelete}
-            />
-
-            <div className={styles.paginationBar}>
-              <div className={sharedStyles.metaText}>
-                每页 {PAGE_SIZE} 条，当前显示 {items.length} 条
-              </div>
-              <div className={styles.paginationActions}>
-                <button
-                  className={sharedStyles.ghostButton}
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
-                  上一页
-                </button>
-                <span className={styles.paginationLabel}>
-                  第 {page} / {totalPages} 页
-                </span>
-                <button
-                  className={sharedStyles.ghostButton}
-                  type="button"
-                  disabled={page >= totalPages}
-                  onClick={() =>
-                    setPage((current) => Math.min(totalPages, current + 1))
-                  }
-                >
-                  下一页
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </ManageSectionCard>
-
-      {batchRunner.items.length > 0 ? (
-        <BatchProgressPanel
-          items={batchRunner.items}
-          actionLabel="删除媒体源"
-          onDismiss={batchRunner.dismiss}
-          onRetryItem={(id) => void retrySourceDelete(id)}
-        />
-      ) : null}
-
-      <BatchActionBar
-        count={selection.selected.length}
-        onClear={selection.clear}
-        hint="逐条删除唯一媒体源；多来源或无来源的资源会列为失败项，可进详情页处理。"
-      >
-        <button
-          className={styles.smallDangerButton}
-          type="button"
-          onClick={() => setBatchDeleteConfirmOpen(true)}
-        >
-          批量删除媒体源
-        </button>
-      </BatchActionBar>
-
-      <SensitiveActionDialog
-        open={batchDeleteConfirmOpen}
-        actionKey="delete-media-item-source"
-        title={`批量删除 ${selection.selected.length} 条资源的媒体源`}
-        description="逐条删除：仅含唯一来源的资源会被删除；多来源/无来源资源列为失败项。"
-        impact={selection.selected.map((id) => `· ${items.find((i) => i.id === id)?.title ?? `#${id}`}`)}
-        confirmLabel="确认批量删除"
-        onOpenChange={(open) => { if (!open) setBatchDeleteConfirmOpen(false); }}
-        onConfirm={() => {
+      <MediaItemsListSection
+        items={items}
+        page={page}
+        totalPages={totalPages}
+        pageSize={PAGE_SIZE}
+        error={mediaItemsQuery.isError ? mediaItemsQuery.error : undefined}
+        hasActiveFilters={hasActiveFilters}
+        onResetFilters={resetFilters}
+        pendingSourceDelete={pendingSourceDelete}
+        resolveDeletePending={resolveDeleteTargetMutation.isPending}
+        resolveDeleteItemId={resolveDeleteTargetMutation.variables?.id}
+        deletePending={deleteSourceMutation.isPending}
+        onRequestDelete={handleRequestSourceDelete}
+        selection={selection}
+        batchRunner={batchRunner}
+        batchDeleteConfirmOpen={batchDeleteConfirmOpen}
+        setBatchDeleteConfirmOpen={setBatchDeleteConfirmOpen}
+        onConfirmBatchDelete={() => {
           setBatchDeleteConfirmOpen(false);
           void runBatchDeleteSources();
         }}
-      />
-
-      <SensitiveActionDialog
-        open={pendingSourceDelete !== null}
-        actionKey="delete-media-item-source"
-        title={pendingSourceDelete ? `删除媒体源：${pendingSourceDelete.itemTitle}` : ''}
-        description="删除后当前资源会失去这条来源记录；如果它是最后一个来源，这条资源会暂时没有可播源。"
-        impact={
-          pendingSourceDelete
-            ? [
-                `来源挂载：${pendingSourceDelete.mountName}`,
-                `源文件：${pendingSourceDelete.filePath}`,
-                `当前来源状态：${getSourceStatusLabel(pendingSourceDelete.sourceStatus)}`,
-                '探测任务和探测快照会一起清掉；如果仍被播放会话引用，后端会拒绝删除。',
-              ]
-            : undefined
-        }
-        errorMessage={
-          pendingSourceDelete && deleteSourceMutation.isError
-            ? getErrorMessage(deleteSourceMutation.error)
-            : undefined
-        }
-        confirmLabel="删除媒体源"
-        pending={deleteSourceMutation.isPending}
-        onOpenChange={(open) => {
-          if (!open) {
-            deleteSourceMutation.reset();
-            setPendingSourceDelete(null);
-          }
+        onRetrySourceDelete={(id) => void retrySourceDelete(id)}
+        onConfirmSourceDelete={handleConfirmSourceDelete}
+        onPendingSourceDeleteDismiss={() => {
+          deleteSourceMutation.reset();
+          setPendingSourceDelete(null);
         }}
-        onConfirm={handleConfirmSourceDelete}
+        deleteSourceError={deleteSourceMutation.isError ? deleteSourceMutation.error : undefined}
+        setPage={(next) => setPage(next)}
       />
     </div>
   );

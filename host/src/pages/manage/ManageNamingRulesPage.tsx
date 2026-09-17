@@ -1,15 +1,10 @@
 import { startTransition } from 'react';
-import { RotateCcw, Save, Wand2 } from 'lucide-react';
 
 import { ConfirmDialog } from '@fmby/v2-shared/ui';
 import { FeedbackState } from '@fmby/v2-shared/ui';
-import { InlineBanner } from '@fmby/v2-shared/ui';
-import { StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 
 import sharedStyles from './longtail-shared/ManageShared.module.css';
-import styles from './ManageNamingRulesPage.module.css';
-import { ManagePageHeader } from './longtail-shared/components';
 import { buildScrapeDraftKey, normalizeScrapeDraftForSubmit, toScrapeDraft } from './naming-rules/formUtils';
 import {
   useLibrariesQueryForNaming,
@@ -20,15 +15,14 @@ import {
   useNamingRulesSettingsQuery,
 } from './naming-rules/hooks';
 import {
-  NamingRulesCustomTermsSection,
-  NamingRulesDefaultTermsSection,
   NamingRulesMetrics,
   NamingRulesPreviewSection,
-  NamingRulesProtectedTermsSection,
   NamingRulesReplayConfirm,
   NamingRulesReplaySection,
   NamingRulesSignalGrid,
   NamingRulesStickyBar,
+  NamingRulesCleanupPanel,
+  NamingRulesHeader,
 } from './naming-rules/components';
 import {
   NamingScrapeBatchRepairSection,
@@ -218,58 +212,16 @@ export function ManageNamingRulesPage() {
 
   return (
     <div className={sharedStyles.page}>
-      <ManagePageHeader
-        title="命名刮削设置"
-        description="这页收口命名清洗、识别后自动刮削、主元数据来源、元数据语言和缺失海报补刮。数据库是元数据真相源，海报会落本地缓存，不再只存一条屁用没有的外链。"
-        meta={
-          <div className={sharedStyles.metaRow}>
-            <StatusBadge label="TMDB 主链路已接通" variant="success" />
-            <StatusBadge
-              label={state.draft.metadataSource === 'douban' ? '豆瓣主元数据已启用' : 'TMDB 主元数据'}
-              variant={state.draft.metadataSource === 'douban' ? 'info' : 'success'}
-            />
-            <StatusBadge
-              label={isDirty ? '存在未保存修改' : '设置已同步'}
-              variant={isDirty ? 'warning' : 'info'}
-            />
-            <span className={sharedStyles.metaText}>
-              当前清洗规则版本：{state.savedSettings.cleanup.rulePackVersion}
-            </span>
-          </div>
-        }
-        actions={
-          <div className={sharedStyles.headerActions}>
-            <button
-              className={sharedStyles.ghostButton}
-              disabled={!isDirty || saveMutation.isPending}
-              onClick={actions.resetDraftToSaved}
-            >
-              <RotateCcw size={16} />
-              重置未保存
-            </button>
-            <button className={sharedStyles.secondaryButton} onClick={actions.resetToDefaults}>
-              <Wand2 size={16} />
-              恢复默认草稿
-            </button>
-            <button
-              className={sharedStyles.primaryButton}
-              disabled={!isDirty || saveMutation.isPending}
-              onClick={saveDraft}
-            >
-              <Save size={16} />
-              {saveMutation.isPending ? '保存中…' : '保存设置'}
-            </button>
-          </div>
-        }
+      <NamingRulesHeader
+        draft={state.draft}
+        savedRulePackVersion={state.savedSettings.cleanup.rulePackVersion}
+        isDirty={isDirty}
+        savePending={saveMutation.isPending}
+        banner={state.banner}
+        onResetDraftToSaved={actions.resetDraftToSaved}
+        onResetToDefaults={actions.resetToDefaults}
+        onSaveDraft={saveDraft}
       />
-
-      {state.banner ? (
-        <InlineBanner
-          variant={state.banner.variant}
-          title={state.banner.title}
-          description={state.banner.description}
-        />
-      ) : null}
 
       <NamingRulesMetrics metrics={metrics} />
       <NamingRulesSignalGrid />
@@ -334,67 +286,28 @@ export function ManageNamingRulesPage() {
         onTrigger={actions.triggerBatchRepair}
       />
 
-      <details
-        className={styles.collapseCard}
-        open={state.cleanupPanelOpen}
-        onToggle={(event) => state.setCleanupPanelOpen((event.currentTarget as HTMLDetailsElement).open)}
-      >
-        <summary className={styles.collapseSummary}>
-          <div>
-            <div className={styles.signalEyebrow}>清洗规则</div>
-            <strong>展开后再编辑默认词、自定义词和保留词</strong>
-            <p>清洗规则继续保留，但不再把整页塞满。要改的时候再展开，页面才不至于像杂货铺。</p>
-          </div>
-          <StatusBadge
-            label={state.cleanupPanelOpen ? '已展开' : '已折叠'}
-            variant={state.cleanupPanelOpen ? 'info' : 'success'}
-          />
-        </summary>
-
-        <div className={styles.collapseBody}>
-          <details
-            className={styles.collapseInner}
-            open={state.cleanupDefaultTermsOpen}
-            onToggle={(event) =>
-              state.setCleanupDefaultTermsOpen((event.currentTarget as HTMLDetailsElement).open)
-            }
-          >
-            <summary className={styles.collapseInnerSummary}>
-              <strong>默认噪音词</strong>
-              <span>
-                启用中 {activeDefaultCount} 个，已禁用 {state.draft.cleanup.disabledDefaultTerms.length} 个
-              </span>
-            </summary>
-            <div className={styles.collapseInnerBody}>
-              <NamingRulesDefaultTermsSection
-                defaultSearch={state.defaultSearch}
-                onDefaultSearchChange={state.setDefaultSearch}
-                defaultTerms={defaultTerms}
-                filteredDefaultTerms={filteredDefaultTerms}
-                activeDefaultCount={activeDefaultCount}
-                disabledDefaultTermCount={state.draft.cleanup.disabledDefaultTerms.length}
-                disabledDefaultTermSet={disabledDefaultTermSet}
-                protectedTermSet={protectedTermSet}
-                onToggleDefaultTerm={actions.toggleDefaultTerm}
-              />
-            </div>
-          </details>
-
-          <NamingRulesCustomTermsSection
-            customTerms={state.draft.cleanup.customTerms}
-            onAddCustomTerm={actions.addCustomTerm}
-            onUpdateCustomTerm={actions.updateCustomTerm}
-            onRemoveCustomTerm={actions.removeCustomTerm}
-          />
-          <NamingRulesProtectedTermsSection
-            protectedTermInput={state.protectedTermInput}
-            onProtectedTermInputChange={state.setProtectedTermInput}
-            onAddProtectedTerm={actions.addProtectedTerm}
-            protectedTerms={state.draft.cleanup.protectedTerms}
-            onRemoveProtectedTerm={actions.removeProtectedTerm}
-          />
-        </div>
-      </details>
+      <NamingRulesCleanupPanel
+        cleanupPanelOpen={state.cleanupPanelOpen}
+        onCleanupPanelOpenChange={state.setCleanupPanelOpen}
+        cleanupDefaultTermsOpen={state.cleanupDefaultTermsOpen}
+        onCleanupDefaultTermsOpenChange={state.setCleanupDefaultTermsOpen}
+        draft={state.draft}
+        defaultSearch={state.defaultSearch}
+        onDefaultSearchChange={state.setDefaultSearch}
+        defaultTerms={defaultTerms}
+        filteredDefaultTerms={filteredDefaultTerms}
+        activeDefaultCount={activeDefaultCount}
+        disabledDefaultTermSet={disabledDefaultTermSet}
+        protectedTermSet={protectedTermSet}
+        protectedTermInput={state.protectedTermInput}
+        onProtectedTermInputChange={state.setProtectedTermInput}
+        onToggleDefaultTerm={actions.toggleDefaultTerm}
+        onAddCustomTerm={actions.addCustomTerm}
+        onUpdateCustomTerm={actions.updateCustomTerm}
+        onRemoveCustomTerm={actions.removeCustomTerm}
+        onAddProtectedTerm={actions.addProtectedTerm}
+        onRemoveProtectedTerm={actions.removeProtectedTerm}
+      />
 
       {isDirty || saveMutation.isPending ? (
         <NamingRulesStickyBar

@@ -2,7 +2,7 @@
   "note": "前端组件行数基线（CONSTRAINTS MD-3 棘轮）。只许减不许增：新增超线文件即 FAIL，存量行数上升即 FAIL。更新：pnpm component-size --update-baseline",
   "warnLines": 400,
   "failLines": 500,
-  "generatedAt": "2026-09-17T00:59:21.429Z",
+  "generatedAt": "2026-09-17T03:11:08.508Z",
   "files": [
     {
       "file": "host/src/pages/login/LoginPage.tsx",
@@ -12,41 +12,6 @@
     {
       "file": "host/src/pages/manage/naming-rules/scrape-sections.tsx",
       "lines": 533,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/ManageOverviewPage.tsx",
-      "lines": 496,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/ManageMediaItemsPage.tsx",
-      "lines": 484,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/media-item-detail/components/MediaItemSubtitleSection.tsx",
-      "lines": 463,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/ManageNamingRulesPage.tsx",
-      "lines": 448,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/media-item-detail/components/MediaItemMetadataSection.tsx",
-      "lines": 448,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/ManageRewardsPage.tsx",
-      "lines": 417,
-      "exempt": null
-    },
-    {
-      "file": "host/src/pages/manage/ManageLicensePage.tsx",
-      "lines": 403,
       "exempt": null
     }
   ]
