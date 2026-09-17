@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Cloud, HardDrive, RefreshCw, ShieldAlert } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { manageApi } from '@fmby/v2-shared/contracts/manage';
@@ -8,8 +8,9 @@ import { queryKeys } from '@fmby/v2-shared/query';
 import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import type { BannerState } from '@fmby/v2-shared/ui/types';
 import styles from './ManagePages.module.css';
-import guideStyles from './ManageOnboarding.module.css';
 import cockpitStyles from './overview/ManageOverviewCockpit.module.css';
+import { OverviewKpiCapsules } from './overview/OverviewKpiCapsules';
+import { OverviewSetupGuide } from './overview/OverviewSetupGuide';
 import {
   ActiveTaskQueueWidget,
   LivePlaybackStreams,
@@ -22,16 +23,11 @@ import {
 } from './overview';
 import {
   ManagePageHeader,
-  ManageSectionCard,
   getManageStatusVariant,
 } from './components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
-import {
-  buildSetupGuide,
-  mapSetupStepStatusLabel,
-  mapSetupStepStatusVariant,
-} from './setup-guide';
+import { buildSetupGuide } from './setup-guide';
 
 export function ManageOverviewPage() {
   const queryClient = useQueryClient();
@@ -212,79 +208,17 @@ export function ManageOverviewPage() {
   // 如果处于首次配置引导状态，展示引导视图
   if (guide.isSetupMode) {
     return (
-      <div className={styles.page}>
-        <ManagePageHeader
-          title="先把媒体站跑起来"
-          description="第一次进后台别先盯着统计，先把来源、媒体库、刮削和入库主链路走通。"
-          meta={
-            <StatusBadge
-              label={`${guide.completedSteps} / ${guide.totalSteps} 步已完成`}
-              variant="info"
-            />
-          }
-          actions={
-            <>
-              <button
-                className={styles.secondaryButton}
-                type="button"
-                onClick={() => {
-                  void overviewQuery.refetch();
-                  void mountsQuery.refetch();
-                  void librariesQuery.refetch();
-                  void usersQuery.refetch();
-                  void namingSettingsQuery.refetch();
-                }}
-              >
-                <RefreshCw size={16} />
-                刷新状态
-              </button>
-              <Link className={styles.primaryButton} to="/manage/media/add">
-                打开完整引导
-              </Link>
-            </>
-          }
-        />
-
-        {banner ? (
-          <InlineBanner
-            variant={banner.variant}
-            title={banner.title}
-            description={banner.description}
-          />
-        ) : null}
-
-        <ManageSectionCard
-          title="按这个顺序走，最省心"
-          description="每一步都带你去对应页面，不用先学会后台结构。"
-        >
-          <div className={guideStyles.stepGrid}>
-            {guide.steps.map((step, index) => (
-              <article
-                key={step.id}
-                className={guideStyles.stepCard}
-                data-state={step.state}
-              >
-                <div className={guideStyles.stepHeader}>
-                  <div className={styles.stackText}>
-                    <span className={guideStyles.stepIndex}>{index + 1}</span>
-                    <strong className={guideStyles.stepTitle}>{step.title}</strong>
-                  </div>
-                  <StatusBadge
-                    label={mapSetupStepStatusLabel(step.state)}
-                    variant={mapSetupStepStatusVariant(step.state)}
-                  />
-                </div>
-                <p className={guideStyles.stepDescription}>{step.description}</p>
-                <div className={guideStyles.stepActions}>
-                  <Link className={styles.primaryButton} to={step.to}>
-                    {step.actionLabel}
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        </ManageSectionCard>
-      </div>
+      <OverviewSetupGuide
+        guide={guide}
+        banner={banner}
+        onRefresh={() => {
+          void overviewQuery.refetch();
+          void mountsQuery.refetch();
+          void librariesQuery.refetch();
+          void usersQuery.refetch();
+          void namingSettingsQuery.refetch();
+        }}
+      />
     );
   }
 
@@ -364,74 +298,15 @@ export function ManageOverviewPage() {
       ) : null}
 
       <div className={cockpitStyles.cockpitContainer}>
-        {/* 1. 核心 KPI 胶囊横幅 */}
-        <div className={cockpitStyles.kpiCapsuleGrid}>
-          {/* 实时推流 */}
-          <div className={cockpitStyles.kpiCapsule}>
-            <div className={cockpitStyles.kpiHeader}>
-              <span className={cockpitStyles.kpiLabel}>实时在线播放</span>
-              <span className={`${cockpitStyles.pulseDot} ${activeStreamsCount > 0 ? cockpitStyles.healthy : cockpitStyles.attention}`} />
-            </div>
-            <div className={cockpitStyles.kpiValueRow}>
-              <span className={cockpitStyles.kpiMainValue}>{activeStreamsCount}</span>
-              <span className={cockpitStyles.kpiUnit}>路活跃流</span>
-            </div>
-            <span className={cockpitStyles.kpiSubText}>
-              {activeStreamsCount > 0 ? '直链推流中' : '无并发压力 · 待机中'}
-            </span>
-          </div>
-
-          {/* 媒体资产规模 */}
-          <div className={cockpitStyles.kpiCapsule}>
-            <div className={cockpitStyles.kpiHeader}>
-              <span className={cockpitStyles.kpiLabel}>入库媒体资产</span>
-              <HardDrive size={15} style={{ color: 'var(--manage-cyan)' }} />
-            </div>
-            <div className={cockpitStyles.kpiValueRow}>
-              <span className={cockpitStyles.kpiMainValue}>{totalMediaCount.toLocaleString()}</span>
-              <span className={cockpitStyles.kpiUnit}>部/集</span>
-            </div>
-            <span className={cockpitStyles.kpiSubText}>
-              共 {libraries.length} 个媒体库 · 持续刮削更新
-            </span>
-          </div>
-
-          {/* 挂载健康度 */}
-          <div className={cockpitStyles.kpiCapsule}>
-            <div className={cockpitStyles.kpiHeader}>
-              <span className={cockpitStyles.kpiLabel}>数据源与云盘</span>
-              <Cloud size={15} style={{ color: '#38bdf8' }} />
-            </div>
-            <div className={cockpitStyles.kpiValueRow}>
-              <span className={cockpitStyles.kpiMainValue}>
-                {healthyMountsCount}/{mounts.length}
-              </span>
-              <span className={cockpitStyles.kpiUnit}>正常可达</span>
-            </div>
-            <span className={cockpitStyles.kpiSubText} title={getMountsKpiSubText()}>
-              {getMountsKpiSubText()}
-            </span>
-          </div>
-
-          {/* 风险待办 */}
-          <div className={cockpitStyles.kpiCapsule}>
-            <div className={cockpitStyles.kpiHeader}>
-              <span className={cockpitStyles.kpiLabel}>风险与告警</span>
-              <ShieldAlert
-                size={15}
-                style={{ color: totalAlertsCount > 0 ? 'var(--warning)' : 'var(--success)' }}
-              />
-            </div>
-            <div className={cockpitStyles.kpiValueRow}>
-              <span className={cockpitStyles.kpiMainValue}>{totalAlertsCount}</span>
-              <span className={cockpitStyles.kpiUnit}>项待处理</span>
-            </div>
-            <span className={cockpitStyles.kpiSubText}>
-              {totalAlertsCount === 0 ? '全系统无阻塞性风险' : '包含挂载/空库/凭证提醒'}
-            </span>
-          </div>
-        </div>
-
+        <OverviewKpiCapsules
+          activeStreamsCount={activeStreamsCount}
+          totalMediaCount={totalMediaCount}
+          healthyMountsCount={healthyMountsCount}
+          mountsTotal={mounts.length}
+          libraryCount={libraries.length}
+          totalAlertsCount={totalAlertsCount}
+          mountsKpiSubText={getMountsKpiSubText()}
+        />
         {/* 2. 驾驶舱主栅格 (黄金 6:4 双列) */}
         <div className={cockpitStyles.cockpitMainGrid}>
           {/* 左列：实时推流监控卡片 + 风险雷达 + 正在运行的任务队列 (红色框区域) */}

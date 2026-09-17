@@ -6,4 +6,6 @@ export { NamingRulesCustomTermsSection } from './NamingRulesCustomTermsSection';
 export { NamingRulesDefaultTermsSection } from './NamingRulesDefaultTermsSection';
 export { NamingRulesProtectedTermsSection } from './NamingRulesProtectedTermsSection';
 export { NamingRulesStickyBar } from './NamingRulesStickyBar';
+export { NamingRulesCleanupPanel } from './NamingRulesCleanupPanel';
+export { NamingRulesHeader } from './NamingRulesHeader';
 export { NamingRulesReplayConfirm } from './NamingRulesReplayConfirm';

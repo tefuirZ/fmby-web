@@ -51,6 +51,8 @@ async function copyToClipboard(text: string): Promise<void> {
  * fail-closed 引导态呈现（API 404/无法连通）而非崩溃——契约层在此冻结，
  * 页面据此先行落地。UI 仅为毛坯，后续按预期打磨。
  */
+import { LicenseUnwiredPanel } from './license/LicenseUnwiredPanel';
+
 export function ManageLicensePage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -188,24 +190,7 @@ export function ManageLicensePage() {
 
   // 后端尚未装配（或返回空）→ fail-closed 引导态。
   if (!status) {
-    return (
-      <div className={styles.page}>
-        <ManagePageHeader
-          title="授权与订阅"
-          description="查看实例授权状态、租约与心跳，发起设备流或一次性凭据激活。"
-        />
-        <ManageSectionCard title="授权服务未装配" description="后端授权端点尚未提供，本页以只读引导态呈现。">
-          <InlineBanner
-            variant="info"
-            title="等待后端装配"
-            description="授权与订阅端点尚未就绪。后端按本页冻结的契约实现后，这里会展示实例激活、租约与心跳信息。"
-          />
-          <button className={styles.secondaryButton} type="button" onClick={() => statusQuery.refetch()}>
-            重新检测
-          </button>
-        </ManageSectionCard>
-      </div>
-    );
+    return <LicenseUnwiredPanel onRetry={() => statusQuery.refetch()} />;
   }
 
   const runtimeLabel = licenseRuntimeStates[status.runtimeState] ?? status.runtimeState;
