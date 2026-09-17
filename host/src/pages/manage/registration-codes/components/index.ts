@@ -7,6 +7,10 @@ export { RegistrationCodeDetailMobileList } from './RegistrationCodeDetailMobile
 export { RegistrationCodeList } from './RegistrationCodeList';
 export { RegistrationCodeBatchActionsBar } from './RegistrationCodeBatchActionsBar';
 export { CopyToast } from './CopyToast';
+export { RegistrationCodeActionDialogs } from './RegistrationCodeActionDialogs';
+export { RegistrationCodeHeader } from './RegistrationCodeHeader';
+export { RegistrationCodeEditor } from './RegistrationCodeEditor';
+export { RegistrationCodeBatchSection } from './RegistrationCodeBatchSection';
 
 export type { RegistrationCodeMetricsBoardProps } from './RegistrationCodeMetricsBoard';
 export type { RegistrationCodeFiltersProps } from './RegistrationCodeFilters';
