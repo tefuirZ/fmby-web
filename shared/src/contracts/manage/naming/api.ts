@@ -302,6 +302,7 @@ export const namingCleanupApi = {
     const raw = await httpClient.post<RawNamingCleanupReplayIdentifyResponse>(
       '/api/manage/naming-cleanup/replay-identify',
       {
+        params: { confirmed: true },
         body: {
           scope: payload.scope,
           library_id: payload.libraryId,
@@ -317,6 +318,7 @@ export const namingCleanupApi = {
     const raw = await httpClient.post<RawNamingScrapeBatchRepairResponse>(
       '/api/manage/naming-scrape/batch-repair',
       {
+        params: { confirmed: true },
         body: {
           scope: payload.scope,
           library_id: payload.libraryId,
