@@ -50,7 +50,13 @@ export function mapOverview(rawInput: RawManageOverviewResponse | unknown): Mana
   const movieCount = optionalNonNegativeInteger(rawKpis.movie_count);
   const seriesCount = optionalNonNegativeInteger(rawKpis.series_count);
   const episodeCount = optionalNonNegativeInteger(rawKpis.episode_count);
-  const environmentStatus = readString(raw.environment_status) ?? "healthy";
+  // VERIFY-SEMANTICS 同批诚实化（X-2 缺口）：后端 wire 无 environment_status，
+  // 缺省不再回落 "healthy"（编造健康状态）——由 UI 缺值显示「—」。
+  const environmentStatus = readString(raw.environment_status);
+  const environmentLabel =
+    environmentStatus === undefined
+      ? undefined
+      : mapEnvironmentLabel(environmentStatus);
   const unavailableLibrarySources = readNonNegativeInteger(
     rawAlerts.unavailable_library_sources,
   );
@@ -66,7 +72,7 @@ export function mapOverview(rawInput: RawManageOverviewResponse | unknown): Mana
         : "healthy";
 
   return {
-    environmentLabel: mapEnvironmentLabel(environmentStatus),
+    environmentLabel,
     environmentStatus: mapEnvironmentStatus(environmentStatus),
     refreshedAt: readString(raw.refreshed_at) ?? FALLBACK_TIMESTAMP,
     primaryActionLabel: "查看媒体库",

@@ -270,10 +270,16 @@ export function ManageOverviewPage() {
         description="全景监控硬件水位、实时流媒体推流、多源挂载与系统风险，驱动资产高效流转。"
         meta={
           <>
-            <StatusBadge
-              label={overview.environmentLabel}
-              variant={getManageStatusVariant(overview.environmentStatus)}
-            />
+            {/* MANAGE-ADVANCED/VERIFY 诚实化：environment_status 后端无真值
+                （X-2 缺口），缺值显示「—」不渲染假健康徽章。 */}
+            {overview.environmentStatus === undefined ? (
+              <strong className={styles.primaryText}>—</strong>
+            ) : (
+              <StatusBadge
+                label={overview.environmentLabel ?? "—"}
+                variant={getManageStatusVariant(overview.environmentStatus)}
+              />
+            )}
             <span className={styles.metaText}>
               巡检时间：{formatDateTime(overview.refreshedAt)}
             </span>

@@ -7,7 +7,11 @@ import type {
 } from "../types";
 import type { RawAuditLogRecord } from "../raw-types";
 
-export function mapEnvironmentStatus(raw: string): "healthy" | "warning" | "critical" {
+export function mapEnvironmentStatus(
+  raw: string | undefined,
+): "healthy" | "warning" | "critical" | undefined {
+  // 缺省返回 undefined（诚实：wire 无 environment_status，不编 healthy）。
+  if (raw === undefined) return undefined;
   switch (raw) {
     case "critical":
       return "critical";

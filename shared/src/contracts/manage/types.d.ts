@@ -80,8 +80,8 @@ export interface ManageUnavailableSourceSummary {
     updatedAt: string;
 }
 export interface ManageOverviewResponse {
-    environmentLabel: string;
-    environmentStatus: "healthy" | "warning" | "critical";
+    environmentLabel?: string;
+    environmentStatus?: "healthy" | "warning" | "critical";
     refreshedAt: string;
     primaryActionLabel?: string;
     kpis: ManageKpi[];
