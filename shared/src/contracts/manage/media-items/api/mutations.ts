@@ -181,6 +181,8 @@ export const mediaItemsMutations = {
     return httpClient.delete<ManageActionResult>(
       `/api/manage/media-items/${itemId}/sources/${sourceId}`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_media_items_source_delete` 要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
