@@ -645,6 +645,8 @@ export const manageApi = {
     const raw = await httpClient.delete<RawManageActionResult>(
       `/api/manage/role-templates/${templateId}`,
       {
+        // V2 危险写统一 query 确认闸（后端 manage_role_templates_delete 要求）。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
