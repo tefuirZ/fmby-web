@@ -129,6 +129,7 @@ export function ManageOverviewPage() {
     mountsQuery.isPending ||
     librariesQuery.isPending ||
     usersQuery.isPending ||
+    sessionsQuery.isPending ||
     namingSettingsQuery.isPending
   ) {
     return (
@@ -140,11 +141,15 @@ export function ManageOverviewPage() {
     );
   }
 
+  // FE-HONESTY-P2 ①：sessionsQuery 此前**不在**本组（但重试按钮却 refetch 它），
+  // 配合 :182 的 `?? []` 把请求失败静默降级成「0 路会话」= 假正常。现纳入同口径
+  // 错误面：会话请求失败 → 整页错误态（与其余数据面一致），不再显示假的 0。
   if (
     overviewQuery.isError ||
     mountsQuery.isError ||
     librariesQuery.isError ||
     usersQuery.isError ||
+    sessionsQuery.isError ||
     namingSettingsQuery.isError
   ) {
     return (
@@ -156,6 +161,7 @@ export function ManageOverviewPage() {
             mountsQuery.error ??
             librariesQuery.error ??
             usersQuery.error ??
+            sessionsQuery.error ??
             namingSettingsQuery.error,
         )}
         action={
@@ -179,6 +185,8 @@ export function ManageOverviewPage() {
 
   const overview = overviewQuery.data;
   const mounts = mountsQuery.data?.items ?? [];
+  // FE-HONESTY-P2 ①：`sessions` 只在请求**成功**时才可能非空。失败已在上方的
+  // isError 组短路返回错误态，故此处取空数组表示「尚未取到」，而非「真的 0 条」。
   const sessions = sessionsQuery.data?.items ?? [];
   const libraries = librariesQuery.data?.items ?? [];
 
@@ -223,7 +231,11 @@ export function ManageOverviewPage() {
   }
 
   // 统计核心 KPI 指标
-  const activeStreamsCount = sessions.filter((s) => s.status === 'active' || s.current).length;
+  // FE-HONESTY-P2 ①：会话查询失败时**不能**用 0 冒充（用户会读成「没有在线推流」），
+  // 用 null 表达「数据不可用」，KPI 胶囊据此显示"—"。
+  const activeStreamsCount = sessionsQuery.isError
+    ? null
+    : sessions.filter((s) => s.status === 'active' || s.current).length;
   const healthyMountsCount = mounts.filter((m) => m.healthStatus === 'healthy' || !m.healthStatus).length;
   const totalMediaCount = overview.kpis.find((k) => k.key === 'media-items')?.value ?? 0;
   const totalAlertsCount = overview.todoItems.length + overview.unavailableSourceSummaries.length;
@@ -315,6 +327,10 @@ export function ManageOverviewPage() {
               sessions={sessions}
               onRevokeSession={(sessionId) => revokeSessionMutation.mutate(sessionId)}
               isRevoking={revokeSessionMutation.isPending}
+              isError={sessionsQuery.isError}
+              errorMessage={
+                sessionsQuery.isError ? getErrorMessage(sessionsQuery.error) : undefined
+              }
             />
 
             <RiskRadarPanel
