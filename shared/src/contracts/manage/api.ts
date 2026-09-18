@@ -318,6 +318,10 @@ export const manageApi = {
     const raw = await httpClient.post<RawManagedUserRecord>(
       `/api/manage/users/${userId}/approve-registration`,
       {
+        // V2 危险写统一 query 确认闸（照 deleteRoleTemplate/revokeSession 先例）；
+        // 后端 manage_users_approve_registration 要求 ?confirmed=true
+        // （check-confirm-gate 强制，缺发必 400）。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi({
           confirmAction:
             payload.confirmAction ?? "approve-user-registration",
@@ -336,6 +340,9 @@ export const manageApi = {
     const raw = await httpClient.post<RawManagedUserRecord>(
       `/api/manage/users/${userId}/reject-registration`,
       {
+        // 同 approve-registration：后端 manage_users_reject_registration 要求
+        // ?confirmed=true（check-confirm-gate 强制，缺发必 400）。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi({
           confirmAction:
             payload.confirmAction ?? "reject-user-registration",
