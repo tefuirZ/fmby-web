@@ -9,26 +9,34 @@ export interface RawListResponse<T> {
 }
 
 export interface RawManageOverviewResponse {
-  environment_status: string;
+  /** V2 wire 无此字段（跨仓缺口 X-2）：缺省 = UI 显示「—」，不得回落 "healthy"。 */
+  environment_status?: string;
   refreshed_at: string;
-  kpis: {
-    total_libraries: number;
-    total_media_items: number;
-    movie_count: number;
-    series_count: number;
-    episode_count: number;
-    total_mounts: number;
-    remote_mounts: number;
-    healthy_remote_mounts: number;
+  /** V2 OverviewDto 平铺真值（snake 直出）。 */
+  total_items?: number;
+  total_libraries?: number;
+  total_mounts?: number;
+  active_admin_count?: number;
+  uptime_secs?: number;
+  /** 老契约形状：V2 wire 不再提供（mapping 已按缺省处理）。 */
+  kpis?: {
+    total_libraries?: number;
+    total_media_items?: number;
+    movie_count?: number;
+    series_count?: number;
+    episode_count?: number;
+    total_mounts?: number;
+    remote_mounts?: number;
+    healthy_remote_mounts?: number;
   };
-  alerts: {
-    empty_libraries: number;
-    unreachable_mounts: number;
-    disabled_mounts: number;
+  alerts?: {
+    empty_libraries?: number;
+    unreachable_mounts?: number;
+    disabled_mounts?: number;
     unavailable_library_sources?: number;
     unavailable_source_summaries?: RawUnavailableLibrarySourceSummary[] | null;
   };
-  recent_audit_logs: RawAuditLogRecord[];
+  recent_audit_logs?: RawAuditLogRecord[];
 }
 
 export interface RawUnavailableLibrarySourceSummary {
@@ -423,10 +431,14 @@ export interface RawManagedMountDirectoryBrowserResponse {
 }
 
 export interface RawManageScanTriggerResponse {
-  library_id: string;
-  task_type: string;
+  /** 后端 wire 为 camelCase libraryId（serde rename）；snake 形状为老契约。 */
+  library_id?: string;
+  libraryId?: string;
+  task_type?: string;
   tasks: RawManagedScanTaskRecord[];
-  skipped_source_ids: string[];
+  skipped_source_ids?: string[];
+  /** 后端 wire：因已有在途任务而未新建的挂载 id（幂等，非错误）。 */
+  skippedMountIds?: string[];
 }
 
 export interface RawManageActionResult {

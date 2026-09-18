@@ -119,8 +119,9 @@ export interface ManageUnavailableSourceSummary {
 }
 
 export interface ManageOverviewResponse {
-  environmentLabel: string;
-  environmentStatus: "healthy" | "warning" | "critical";
+  /** 后端 wire 无 environment_status（X-2 缺口）：缺省 = UI 显示「—」。 */
+  environmentLabel?: string;
+  environmentStatus?: "healthy" | "warning" | "critical";
   refreshedAt: string;
   primaryActionLabel?: string;
   kpis: ManageKpi[];

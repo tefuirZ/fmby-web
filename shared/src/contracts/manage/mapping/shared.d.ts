@@ -1,6 +1,6 @@
 import type { CreateManageLibraryRequest, ManageProbeTasksQuery, ManageRuntimeLogsQuery, ManageScansQuery, ManageUserRole } from "../types";
 import type { RawAuditLogRecord } from "../raw-types";
-export declare function mapEnvironmentStatus(raw: string): "healthy" | "warning" | "critical";
+export declare function mapEnvironmentStatus(raw: string | undefined): "healthy" | "warning" | "critical" | undefined;
 export declare function mapEntityStatus(raw?: string | null): "healthy" | "attention" | "critical";
 export declare function mapRole(raw: string): ManageUserRole;
 export declare function mapUserStatus(raw: string): "active" | "disabled" | "locked" | "pending";

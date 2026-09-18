@@ -14,6 +14,7 @@ export interface ServerVitalsTelemetry {
 }
 
 interface ServerVitalsPanelProps {
+  /** 后端 wire 无 environment_status（X-2）：缺省显示「—」，不编造 healthy。 */
   environmentLabel?: string;
   environmentStatus?: 'healthy' | 'warning' | 'critical';
   refreshedAt?: string;
@@ -21,8 +22,8 @@ interface ServerVitalsPanelProps {
 }
 
 export function ServerVitalsPanel({
-  environmentLabel = '生产环境',
-  environmentStatus = 'healthy',
+  environmentLabel = '—',
+  environmentStatus,
   refreshedAt,
   vitals,
 }: ServerVitalsPanelProps) {
@@ -47,8 +48,14 @@ export function ServerVitalsPanel({
           <h2 className={styles.cardTitle}>服务器与系统脉搏</h2>
         </div>
         <div className={styles.cardHeaderActions}>
-          <span className={`${styles.pulseDot} ${environmentStatus === 'healthy' ? styles.healthy : environmentStatus === 'warning' ? styles.attention : styles.critical}`} />
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{environmentLabel}</span>
+          {environmentStatus === undefined ? (
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>—</span>
+          ) : (
+            <>
+              <span className={`${styles.pulseDot} ${environmentStatus === 'healthy' ? styles.healthy : environmentStatus === 'warning' ? styles.attention : styles.critical}`} />
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{environmentLabel}</span>
+            </>
+          )}
         </div>
       </div>
 

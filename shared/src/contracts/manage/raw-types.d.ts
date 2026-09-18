@@ -3,26 +3,31 @@ export interface RawListResponse<T> {
     total: number;
 }
 export interface RawManageOverviewResponse {
-    environment_status: string;
+    environment_status?: string;
     refreshed_at: string;
-    kpis: {
-        total_libraries: number;
-        total_media_items: number;
-        movie_count: number;
-        series_count: number;
-        episode_count: number;
-        total_mounts: number;
-        remote_mounts: number;
-        healthy_remote_mounts: number;
+    total_items?: number;
+    total_libraries?: number;
+    total_mounts?: number;
+    active_admin_count?: number;
+    uptime_secs?: number;
+    kpis?: {
+        total_libraries?: number;
+        total_media_items?: number;
+        movie_count?: number;
+        series_count?: number;
+        episode_count?: number;
+        total_mounts?: number;
+        remote_mounts?: number;
+        healthy_remote_mounts?: number;
     };
-    alerts: {
-        empty_libraries: number;
-        unreachable_mounts: number;
-        disabled_mounts: number;
+    alerts?: {
+        empty_libraries?: number;
+        unreachable_mounts?: number;
+        disabled_mounts?: number;
         unavailable_library_sources?: number;
         unavailable_source_summaries?: RawUnavailableLibrarySourceSummary[] | null;
     };
-    recent_audit_logs: RawAuditLogRecord[];
+    recent_audit_logs?: RawAuditLogRecord[];
 }
 export interface RawUnavailableLibrarySourceSummary {
     library_source_id: string;
@@ -389,10 +394,12 @@ export interface RawManagedMountDirectoryBrowserResponse {
     }>;
 }
 export interface RawManageScanTriggerResponse {
-    library_id: string;
-    task_type: string;
+    library_id?: string;
+    libraryId?: string;
+    task_type?: string;
     tasks: RawManagedScanTaskRecord[];
-    skipped_source_ids: string[];
+    skipped_source_ids?: string[];
+    skippedMountIds?: string[];
 }
 export interface RawManageActionResult {
     id: string;
@@ -411,7 +418,7 @@ export interface RawManageAdvancedResponse {
         admin_users: number;
         disabled_users: number;
         active_sessions: number;
-        revoked_sessions: number;
+        revoked_sessions?: number;
         expired_sessions: number;
         disabled_registration_codes: number;
     };
