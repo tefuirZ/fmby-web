@@ -72,18 +72,23 @@ export function ManageAdvancedPage() {
         <div className={styles.settingsGrid}>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>当前版本</span>
-            <strong className={styles.primaryText}>{data.health.version}</strong>
+            {/* MANAGE-ADVANCED：后端无真值字段，缺值显示「—」不渲染空。 */}
+            <strong className={styles.primaryText}>{data.health.version ?? "—"}</strong>
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>数据库状态</span>
-            <StatusBadge
-              label={data.health.databaseStatus}
-              variant={getManageStatusVariant(data.health.databaseStatus.toLowerCase())}
-            />
+            {data.health.databaseStatus === undefined ? (
+              <strong className={styles.primaryText}>—</strong>
+            ) : (
+              <StatusBadge
+                label={data.health.databaseStatus}
+                variant={getManageStatusVariant(data.health.databaseStatus.toLowerCase())}
+              />
+            )}
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>队列积压</span>
-            <strong className={styles.primaryText}>{data.health.queueDepth}</strong>
+            <strong className={styles.primaryText}>{data.health.queueDepth ?? "—"}</strong>
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>最近备份</span>

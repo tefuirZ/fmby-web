@@ -447,7 +447,8 @@ export interface RawManageAdvancedResponse {
     admin_users: number;
     disabled_users: number;
     active_sessions: number;
-    revoked_sessions: number;
+    /** V2 无真值来源（吊销=物理 DELETE，无行可数）：wire 上可能省略。 */
+    revoked_sessions?: number;
     expired_sessions: number;
     disabled_registration_codes: number;
   };
@@ -458,5 +459,7 @@ export interface RawManageAdvancedResponse {
     user_session_ttl_seconds: number;
     admin_session_ttl_seconds: number;
     token_rotation_enabled: boolean;
+    /** 后端 MANAGE-ADVANCED 第 7 项（V1 逐字对位）；旧后端可能省略。 */
+    compat_legacy_session_fallback_enabled?: boolean;
   };
 }

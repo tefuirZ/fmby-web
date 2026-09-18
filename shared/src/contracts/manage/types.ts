@@ -465,9 +465,11 @@ export interface ManageRuntimeLogsResponse {
 }
 
 export interface AdvancedSystemHealth {
-  version: string;
-  databaseStatus: string;
-  queueDepth: number;
+  /** 后端 wire 无真值来源（MANAGE-ADVANCED）：缺省 = 「—」。 */
+  version?: string;
+  /** 后端 wire 无真值来源；缺省时不渲染状态徽章。 */
+  databaseStatus?: string;
+  queueDepth?: number;
   lastBackupAt?: string;
   configurationDrift?: string;
 }
