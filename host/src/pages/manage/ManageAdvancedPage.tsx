@@ -68,22 +68,28 @@ export function ManageAdvancedPage() {
         }
       />
 
-      <ManageSectionCard title="系统健康" description="只展示可判断状态的核心指标。">
+      <ManageSectionCard title="系统健康" description="只展示可判断状态的核心指标；后端未提供真值的字段显示占位横线，绝不回落看起来正常的假值。">
         <div className={styles.settingsGrid}>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>当前版本</span>
-            <strong className={styles.primaryText}>{data.health.version}</strong>
+            <strong className={styles.primaryText}>{data.health.version ?? '—'}</strong>
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>数据库状态</span>
-            <StatusBadge
-              label={data.health.databaseStatus}
-              variant={getManageStatusVariant(data.health.databaseStatus.toLowerCase())}
-            />
+            {data.health.databaseStatus ? (
+              <StatusBadge
+                label={data.health.databaseStatus}
+                variant={getManageStatusVariant(data.health.databaseStatus.toLowerCase())}
+              />
+            ) : (
+              <strong className={styles.primaryText}>{'—'}</strong>
+            )}
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>队列积压</span>
-            <strong className={styles.primaryText}>{data.health.queueDepth}</strong>
+            <strong className={styles.primaryText}>
+              {typeof data.health.queueDepth === 'number' ? data.health.queueDepth : '—'}
+            </strong>
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>最近备份</span>

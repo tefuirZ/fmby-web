@@ -391,9 +391,9 @@ export interface ManageRuntimeLogsResponse {
     availableTargets: string[];
 }
 export interface AdvancedSystemHealth {
-    version: string;
-    databaseStatus: string;
-    queueDepth: number;
+    version?: string;
+    databaseStatus?: string;
+    queueDepth?: number;
     lastBackupAt?: string;
     configurationDrift?: string;
 }

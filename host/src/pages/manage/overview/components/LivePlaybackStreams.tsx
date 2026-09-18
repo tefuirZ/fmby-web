@@ -6,12 +6,23 @@ interface LivePlaybackStreamsProps {
   sessions: SessionRecord[];
   onRevokeSession?: (sessionId: string) => void;
   isRevoking?: boolean;
+  /**
+   * FE-HONESTY-P2 ①：会话查询是否失败。
+   *
+   * 为真时本卡片显示**明确的错误态**，绝不退化成「0 个在线会话」——后者会被用户
+   * 读成「当前真的没有推流」，是静默失真。
+   */
+  isError?: boolean;
+  /** 失败原因（已脱敏）；用于错误态文案。 */
+  errorMessage?: string;
 }
 
 export function LivePlaybackStreams({
   sessions,
   onRevokeSession,
   isRevoking = false,
+  isError = false,
+  errorMessage,
 }: LivePlaybackStreamsProps) {
   // 筛选出当前活跃/在线的会话
   const activeSessions = sessions.filter((s) => s.status === 'active' || s.current);
@@ -35,14 +46,29 @@ export function LivePlaybackStreams({
             <Activity size={18} />
           </span>
           <h2 className={styles.cardTitle}>实时推流与在线播放</h2>
-          <span className={styles.cardSubtitle}>（{activeSessions.length} 个在线会话）</span>
+          {/* 错误态不显示「0 个在线会话」——那是假正常；改为不可用。 */}
+          <span className={styles.cardSubtitle}>
+            {isError ? '（数据不可用）' : `（${activeSessions.length} 个在线会话）`}
+          </span>
         </div>
         <div className={styles.cardHeaderActions}>
-          <span className={`${styles.pulseDot} ${activeSessions.length > 0 ? styles.healthy : styles.attention}`} />
+          <span
+            className={`${styles.pulseDot} ${
+              isError ? styles.attention : activeSessions.length > 0 ? styles.healthy : styles.attention
+            }`}
+          />
         </div>
       </div>
 
-      {activeSessions.length === 0 ? (
+      {isError ? (
+        <div className={styles.radarContainer}>
+          <div className={styles.radarTitle}>在线会话数据不可用</div>
+          <p className={styles.radarHint}>
+            读取会话列表失败，因此<strong>无法判断</strong>当前是否有在线推流。
+            {errorMessage ? ` 原因：${errorMessage}` : ''}
+          </p>
+        </div>
+      ) : activeSessions.length === 0 ? (
         <div className={styles.radarContainer}>
           <div className={styles.radarScope}>
             <div className={styles.radarRingInner} />

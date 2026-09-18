@@ -465,9 +465,20 @@ export interface ManageRuntimeLogsResponse {
 }
 
 export interface AdvancedSystemHealth {
-  version: string;
-  databaseStatus: string;
-  queueDepth: number;
+  /**
+   * 后端版本。**可能为 `undefined`**——后端 `/api/manage/advanced` 当前未提供该
+   * 字段（契约仓 G-14，后端未实现），前端**不得**用占位值冒充真值。
+   */
+  version?: string;
+  /**
+   * 数据库健康状态。**可能为 `undefined`**：后端未提供该字段。
+   *
+   * 历史教训：此处曾硬编码 `"Healthy"`，导致后端数据库异常时前端仍显示健康
+   * （静默失真）。缺字段时必须显示"—"，绝不回落任何"看起来正常"的字面量。
+   */
+  databaseStatus?: string;
+  /** 队列积压。**可能为 `undefined`**：后端未提供该字段。 */
+  queueDepth?: number;
   lastBackupAt?: string;
   configurationDrift?: string;
 }

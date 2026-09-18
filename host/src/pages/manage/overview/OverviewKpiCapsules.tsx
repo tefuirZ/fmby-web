@@ -4,7 +4,11 @@ import { Cloud, HardDrive, ShieldAlert } from 'lucide-react';
 import cockpitStyles from './ManageOverviewCockpit.module.css';
 
 interface OverviewKpiCapsulesProps {
-  activeStreamsCount: number;
+  /**
+   * 活跃流路数。**`null` = 数据不可用**（会话查询失败）——与 `0` 语义不同：
+   * `0` 表示「真的没有在线会话」，`null` 表示「不知道」。
+   */
+  activeStreamsCount: number | null;
   totalMediaCount: number;
   healthyMountsCount: number;
   mountsTotal: number;
@@ -30,14 +34,21 @@ export function OverviewKpiCapsules({
         <div className={cockpitStyles.kpiCapsule}>
           <div className={cockpitStyles.kpiHeader}>
             <span className={cockpitStyles.kpiLabel}>实时在线播放</span>
-            <span className={`${cockpitStyles.pulseDot} ${activeStreamsCount > 0 ? cockpitStyles.healthy : cockpitStyles.attention}`} />
+            <span className={`${cockpitStyles.pulseDot} ${activeStreamsCount !== null && activeStreamsCount > 0 ? cockpitStyles.healthy : cockpitStyles.attention}`} />
           </div>
           <div className={cockpitStyles.kpiValueRow}>
-            <span className={cockpitStyles.kpiMainValue}>{activeStreamsCount}</span>
+            {/* 数据不可用时显示"—"，绝不显示 0（那是假正常）。 */}
+            <span className={cockpitStyles.kpiMainValue}>
+              {activeStreamsCount === null ? '—' : activeStreamsCount}
+            </span>
             <span className={cockpitStyles.kpiUnit}>路活跃流</span>
           </div>
           <span className={cockpitStyles.kpiSubText}>
-            {activeStreamsCount > 0 ? '直链推流中' : '无并发压力 · 待机中'}
+            {activeStreamsCount === null
+              ? '会话数据不可用 · 无法判断'
+              : activeStreamsCount > 0
+                ? '直链推流中'
+                : '无并发压力 · 待机中'}
           </span>
         </div>
 

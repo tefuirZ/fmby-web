@@ -224,9 +224,17 @@ export function mapAdvanced(
 
   return {
     health: {
-      version: "dev",
-      databaseStatus: "Healthy",
-      queueDepth: 0,
+      // FE-HONESTY-P2 ②：version / databaseStatus / queueDepth 三项此前为**硬编码
+      // 假值**（`"dev"` / `"Healthy"` / `0`），其中 `databaseStatus:"Healthy"` 尤其
+      // 危险——后端数据库异常时前端仍显示健康（静默失真）。
+      //
+      // 已核实后端真值（2026-09-18）：后端 `/api/manage/advanced` **尚未实现**
+      // （契约仓 features/implementation-status.md 登记为 G-14），
+      // `RawManageAdvancedResponse` 的 raw 里只有 database / security / settings /
+      // refreshed_at 四组，**没有** version、database_status、queue_depth 对应字段。
+      // 故按「没有真字段就不要编」的口径：三项一律省略（= undefined），由 UI 显示
+      // "—"。后端补齐后在此处直接映射。
+      // 跨仓缺口：见 docs/plans/handoffs/FE-HONESTY-P2.md。
       lastBackupAt: raw.refreshed_at,
       configurationDrift:
         raw.settings.user_session_ttl_seconds <
