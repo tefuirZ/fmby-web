@@ -94,7 +94,7 @@ export function mapRuntimeLogsQueryToParams(query?: ManageRuntimeLogsQuery) {
     path: query.path,
     client: query.client,
     ip: query.ip,
-    request_id: query.requestId,
+    requestId: query.requestId,
     user: query.user,
     all: query.all,
   };

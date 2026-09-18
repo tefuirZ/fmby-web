@@ -665,6 +665,9 @@ export const manageApi = {
     payload: DangerousActionRequest = { confirmAction: "revoke-session" },
   ) {
     await httpClient.delete(`/api/manage/sessions/${sessionId}`, {
+      // V2 危险写统一 query 确认闸（照 peripherals/api.ts 先例）；
+      // 后端 manage_sessions_delete 要求 ?confirmed=true（check-confirm-gate 强制）。
+      params: { confirmed: true },
       body: mapDangerousActionPayloadToApi(payload),
     });
   },
