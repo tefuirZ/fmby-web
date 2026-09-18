@@ -196,6 +196,9 @@ export const manageApi = {
     const raw = await httpClient.patch<RawManagedUserRecord>(
       `/api/manage/users/${userId}`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage.users_update` 走 `?confirmed=true` query 闸
+        // （`http/routes/manage.rs` ConfirmQuery），仅发 body 会 400。
+        params: { confirmed: true },
         body: {
           display_name: payload.displayName,
           email: payload.email,
@@ -227,6 +230,9 @@ export const manageApi = {
     const raw = await httpClient.post<RawManageBatchUsersActionResponse>(
       "/api/manage/users/batch/update",
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_users_batch_update` 经 require_dangerous_manage
+        // → require_confirmed，要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: {
           user_ids: payload.userIds,
           status: payload.status ? mapUserStatusToApi(payload.status) : undefined,
@@ -252,6 +258,8 @@ export const manageApi = {
     const raw = await httpClient.post<RawManageBatchUsersActionResponse>(
       "/api/manage/users/batch/disable",
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_users_batch_disable` 同样要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: {
           user_ids: payload.userIds,
           ...mapDangerousActionPayloadToApi({
@@ -346,6 +354,9 @@ export const manageApi = {
     const raw = await httpClient.post<RawManageActionResult>(
       `/api/manage/users/${userId}/reset-password`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_users_reset_password` 经 require_dangerous_manage
+        // → require_confirmed，要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: {
           new_password: payload.newPassword,
           force_change: payload.forceChange ?? false,
@@ -366,6 +377,9 @@ export const manageApi = {
     const raw = await httpClient.post<RawManageActionResult>(
       "/api/manage/login-risk/ip/reset",
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_login_risk_ip_reset` 经 require_dangerous_manage
+        // → require_confirmed，要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: {
           ip_address: payload.ipAddress,
           ...mapDangerousActionPayloadToApi({
@@ -386,6 +400,9 @@ export const manageApi = {
     const raw = await httpClient.post<RawManageActionResult>(
       `/api/manage/users/${userId}/login-risk/reset`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_users_reset_login_risk` 经 require_dangerous_manage
+        // → require_confirmed，要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi({
           confirmAction: payload.confirmAction ?? "reset-user-login-risk",
           sessionConfirmation: payload.sessionConfirmation,
@@ -514,6 +531,9 @@ export const manageApi = {
     payload: UpdateRegistrationCodeStatusRequest,
   ) {
     await httpClient.patch(`/api/manage/registration-codes/${codeId}/status`, {
+      // CONFIRM-GATE-ALIGN（REG-CODES-B）：后端 manage_registration_codes_update_status
+      // 要求 `?confirmed=true`。
+      params: { confirmed: true },
       body: {
         status: mapRegistrationCodeStatusToApi(payload.status),
         ...mapDangerousActionPayloadToApi({
@@ -535,6 +555,9 @@ export const manageApi = {
     const raw = await httpClient.delete<RawManageActionResult>(
       `/api/manage/registration-codes/${codeId}`,
       {
+        // CONFIRM-GATE-ALIGN（REG-CODES-B）：后端 manage_registration_codes_delete
+        // 要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
@@ -735,6 +758,8 @@ export const manageApi = {
     const raw = await httpClient.delete<RawManageActionResult>(
       `/api/manage/libraries/${libraryId}`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage.libraries_delete` 要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
@@ -829,6 +854,8 @@ export const manageApi = {
     const raw = await httpClient.delete<RawManageActionResult>(
       `/api/manage/mounts/${mountId}`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage.mounts_delete` 要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
