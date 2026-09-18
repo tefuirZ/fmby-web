@@ -254,7 +254,14 @@ export function mapAdvanced(
       {
         id: "review-sessions",
         title: "清理过期/吊销会话",
-        description: `当前共有 ${raw.security.revoked_sessions + raw.security.expired_sessions} 个非活跃会话记录可复核。`,
+        // MANAGE-ADVANCED ②：后端诚实省略 revoked_sessions（V2 吊销 = 物理
+        // DELETE 无行可数，RB-4 不伪造；见后端 dto/manage_advanced.rs 登记）。
+        // 字段缺失时整体回落「—」（undefined + number = NaN，且不显示 0
+        // 编造「无已吊销会话」）；两值齐备时才渲染计数。
+        description:
+          raw.security.revoked_sessions === undefined
+            ? "过期会话可复核；已吊销会话计数后端暂无法统计。"
+            : `当前共有 ${raw.security.revoked_sessions + raw.security.expired_sessions} 个非活跃会话记录可复核。`,
         impact: "降低排障噪音并改善会话视图可读性。",
         dangerous: false,
       },
