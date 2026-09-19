@@ -397,9 +397,17 @@ export interface RawManageScanTriggerResponse {
     library_id?: string;
     libraryId?: string;
     task_type?: string;
-    tasks: RawManagedScanTaskRecord[];
+    /** 后端 LibraryScanTriggerResponse.tasks 元素 = ScanTriggerResponse
+     * （mountId/taskKey/taskId/created）；非 RawManagedScanTaskRecord（V1 形状）。 */
+    tasks: RawScanTriggerTask[];
     skipped_source_ids?: string[];
     skippedMountIds?: string[];
+}
+export interface RawScanTriggerTask {
+    mountId: string;
+    taskKey: string;
+    taskId: string;
+    created: boolean;
 }
 export interface RawManageActionResult {
     id: string;

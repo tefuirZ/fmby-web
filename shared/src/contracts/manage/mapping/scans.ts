@@ -2,6 +2,7 @@ import type { ManageScanTaskRecord, ManageScanTriggerResult } from "../types";
 import type {
   RawManageScanTriggerResponse,
   RawManagedScanTaskRecord,
+  RawScanTriggerTask,
 } from "../raw-types";
 import { mapScanStatus, mapScanTaskType } from "./shared";
 
@@ -41,27 +42,19 @@ export function mapManageScanTriggerResponse(
   };
 }
 
-/** 后端 wire：单挂载触发结果（http/state/scan_trigger.rs:26-39）。 */
-interface RawScanTriggerTask {
-  mountId: string;
-  taskKey: string;
-  taskId: string;
-  created: boolean;
-}
-
-function mapScanTriggerTask(raw: unknown): ManageScanTaskRecord {
-  const record = raw as Record<string, unknown>;
-  const taskId = typeof record.taskId === "string" ? record.taskId : "unknown";
+function mapScanTriggerTask(raw: RawScanTriggerTask): ManageScanTaskRecord {
+  // wire 类型已确定（RawScanTriggerTask 4 字段，scan_trigger.rs:23-39），
+  // 无需 Record 运行时探测；保留 created→status 的幂等语义映射。
   return {
-    id: taskId,
+    id: raw.taskId,
     librarySourceId: "unknown",
     libraryId: "unknown",
     libraryName: "unknown",
-    mountId: typeof record.mountId === "string" ? record.mountId : "unknown",
+    mountId: raw.mountId,
     mountName: "unknown",
     sourcePath: "unknown",
     taskType: mapScanTaskType("library"),
-    status: mapScanStatus(typeof record.created === "boolean" && record.created ? "pending" : "running"),
+    status: mapScanStatus(raw.created ? "pending" : "running"),
     itemsFound: 0,
     itemsUpdated: 0,
     errorMessage: undefined,
