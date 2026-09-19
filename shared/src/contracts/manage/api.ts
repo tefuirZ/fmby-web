@@ -577,6 +577,10 @@ export const manageApi = {
     const raw = await httpClient.post<RawManageBatchRegistrationCodeActionResponse>(
       "/api/manage/registration-codes/batch/delete",
       {
+        // V2 危险写统一 query 确认闸（照 revokeSession 先例）；后端
+        // manage_registration_codes_batch_delete 要求 ?confirmed=true
+        // （check-confirm-gate 强制）。
+        params: { confirmed: true },
         body: {
           batch_ids: payload.batchIds,
           ...mapDangerousActionPayloadToApi({
