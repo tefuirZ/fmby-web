@@ -333,11 +333,10 @@ export function ManageOverviewPage() {
               sessions={sessions}
               onRevokeSession={(sessionId) => revokeSessionMutation.mutate(sessionId)}
               isRevoking={revokeSessionMutation.isPending}
-              isError={sessionsQuery.isError}
-              errorMessage={
-                sessionsQuery.isError ? getErrorMessage(sessionsQuery.error) : undefined
-              }
             />
+            {/* FE-HONESTY-P2 ①错误态已由 :152 的整页 early return 兜住——到达此处的
+                sessionsQuery.isError 恒为 false（error 类型收窄为 never），
+                isError/errorMessage 是死 props，w2 基线 typecheck 错（TS2339）在此清偿。 */}
 
             <RiskRadarPanel
               todoItems={overview.todoItems}

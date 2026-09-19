@@ -42,9 +42,13 @@ export function mapManageScanTriggerResponse(
   };
 }
 
+/**
+ * 后端 wire：单挂载触发结果（http/state/scan_trigger.rs:26-39）。
+ * 权威声明已上移 raw-types.ts（RawScanTriggerTask，tasks 字段真类型），
+ * 此处保留 import 供 mapScanTriggerTask 类型标注。
+ */
+
 function mapScanTriggerTask(raw: RawScanTriggerTask): ManageScanTaskRecord {
-  // wire 类型已确定（RawScanTriggerTask 4 字段，scan_trigger.rs:23-39），
-  // 无需 Record 运行时探测；保留 created→status 的幂等语义映射。
   return {
     id: raw.taskId,
     librarySourceId: "unknown",
