@@ -14,6 +14,7 @@ export type {
   RegisterResponse,
   SetupRequest,
   AuthResponse,
+  SetupCompletedResponse,
   SetupStatusResponse,
   InstallDatabaseKind,
   InstallStatusResponse,

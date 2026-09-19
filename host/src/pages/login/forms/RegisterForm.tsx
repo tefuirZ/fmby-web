@@ -35,9 +35,19 @@ export function RegisterForm({ onAuthenticated, onPendingApproval }: RegisterFor
         password: data.password,
         display_name: data.displayName || undefined,
       }),
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       if (response.status === 'authenticated' && response.user) {
-        onAuthenticated(response.user);
+        // ★后端 user 字段是 `{token, user:{id,username,...}}` 嵌套手拼结构，
+        // 与本仓 User 类型不符（登记见 RegisterResponse.user 注释）——不直接消费。
+        // 注册成功即后端已签发会话 cookie：照 login() 先例经 /api/auth/me
+        // 重新组装 User（capabilities 权威面），再进入认证态。
+        try {
+          const user = await authApi.getSession();
+          onAuthenticated(user);
+        } catch {
+          // me 失败时 fail-closed 不伪装登录态，用户手动重新登录。
+          onPendingApproval('注册成功，请使用新账号登录');
+        }
         return;
       }
       onPendingApproval(response.message);

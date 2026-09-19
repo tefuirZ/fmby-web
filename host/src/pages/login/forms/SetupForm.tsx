@@ -5,7 +5,6 @@ import { useMutation } from '@tanstack/react-query';
 import { authApi, setupSchema, type SetupFormData } from '@fmby/v2-shared/contracts/auth';
 import { useZodForm } from '@fmby/v2-shared/forms';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
-import type { User } from '@fmby/v2-shared/types';
 
 import styles from '../LoginPage.module.css';
 
@@ -13,11 +12,12 @@ import clsx from 'clsx';
 
 import { Field, PasswordToggle, SubmitButton } from './fields';
 
-interface LoginFormProps {
-  onAuthenticated: (user: User) => void;
+interface SetupFormProps {
+  /** setup 完成回调（username = 创建的管理员名，用于登录页提示）。 */
+  onSetupCompleted: (username: string) => void;
 }
 
-export function SetupForm({ onAuthenticated }: LoginFormProps) {
+export function SetupForm({ onSetupCompleted }: SetupFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const {
@@ -34,7 +34,10 @@ export function SetupForm({ onAuthenticated }: LoginFormProps) {
         display_name: data.displayName || undefined,
       }),
     onSuccess: (response) => {
-      onAuthenticated(response.user);
+      // ★V2 setup 不自动登录：后端只回 `{id, username}`（无 token/无 user，
+      // 与 V1 AuthResponse 自动登录语义偏离，登记见 SetupCompletedResponse）。
+      // 完成后转登录页用新管理员账号登录。
+      onSetupCompleted(response.username);
     },
   });
 
