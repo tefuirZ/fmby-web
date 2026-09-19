@@ -1,8 +1,11 @@
 import { httpClient } from "@fmby/v2-shared/api/client";
 import { isApiError } from "@fmby/v2-shared/errors";
 import type {
+  OperationsActiveSession,
+  OperationsActiveSnapshot,
   OperationsActiveUser,
   OperationsCountTrendPoint,
+  OperationsDataSourceLoadItem,
   OperationsHotItem,
   OperationsOverview,
   OperationsPlaybackTrendPoint,
@@ -43,6 +46,34 @@ interface RawOperationsPlaybackTrendPoint {
   uniqueUserCount: number;
 }
 
+interface RawOperationsActiveSession {
+  sessionId: string;
+  userId: string;
+  username: string;
+  itemId: string;
+  title: string;
+  paused: boolean;
+  positionTicks: number | null;
+  durationTicks: number | null;
+  startedAt: number;
+  updatedAt: number;
+}
+
+interface RawOperationsActiveSnapshot {
+  activeSessionCount: number;
+  runningTasks: number;
+  sessions: RawOperationsActiveSession[];
+}
+
+interface RawOperationsDataSourceLoadItem {
+  mountId: string;
+  mountName: string;
+  providerType: string;
+  activeSessionCount: number;
+  playingCount: number;
+  pausedCount: number;
+}
+
 interface RawOperationsOverview {
   days: number;
   windowStart: number;
@@ -53,6 +84,8 @@ interface RawOperationsOverview {
   mediaTrend: RawOperationsCountTrendPoint[];
   registrationTrend: RawOperationsCountTrendPoint[];
   playbackTrend: RawOperationsPlaybackTrendPoint[];
+  activeSnapshot: RawOperationsActiveSnapshot;
+  dataSourceLoad: RawOperationsDataSourceLoadItem[];
 }
 
 /** 后端端口未装配 / 能力未实现时的 fail-closed 判定。 */
@@ -121,7 +154,41 @@ function fromPlaybackTrend(r: RawOperationsPlaybackTrendPoint): OperationsPlayba
   };
 }
 
-/** 运营看板 API（V1F-08-B1 纯拉聚合，capability ViewAudit）。 */
+function fromActiveSession(r: RawOperationsActiveSession): OperationsActiveSession {
+  return {
+    sessionId: r.sessionId,
+    userId: r.userId,
+    username: r.username,
+    itemId: r.itemId,
+    title: r.title,
+    paused: r.paused,
+    positionTicks: r.positionTicks,
+    durationTicks: r.durationTicks,
+    startedAt: r.startedAt,
+    updatedAt: r.updatedAt,
+  };
+}
+
+function fromActiveSnapshot(r: RawOperationsActiveSnapshot): OperationsActiveSnapshot {
+  return {
+    activeSessionCount: r.activeSessionCount,
+    runningTasks: r.runningTasks,
+    sessions: r.sessions.map(fromActiveSession),
+  };
+}
+
+function fromDataSourceLoadItem(r: RawOperationsDataSourceLoadItem): OperationsDataSourceLoadItem {
+  return {
+    mountId: r.mountId,
+    mountName: r.mountName,
+    providerType: r.providerType,
+    activeSessionCount: r.activeSessionCount,
+    playingCount: r.playingCount,
+    pausedCount: r.pausedCount,
+  };
+}
+
+/** 运营看板 API（V1F-08-B1 纯拉聚合 + B2 活跃快照，capability ViewAudit）。 */
 export const operationsApi = {
   async overview(days: number = 7): Promise<OperationsOverview> {
     const raw = await httpClient.get<RawOperationsOverview>("/api/manage/operations/overview", {
@@ -137,6 +204,8 @@ export const operationsApi = {
       mediaTrend: raw.mediaTrend.map(fromCountTrend),
       registrationTrend: raw.registrationTrend.map(fromCountTrend),
       playbackTrend: raw.playbackTrend.map(fromPlaybackTrend),
+      activeSnapshot: fromActiveSnapshot(raw.activeSnapshot),
+      dataSourceLoad: raw.dataSourceLoad.map(fromDataSourceLoadItem),
     };
   },
 };

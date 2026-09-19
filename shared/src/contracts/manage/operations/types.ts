@@ -37,7 +37,43 @@ export interface OperationsPlaybackTrendPoint {
   uniqueUserCount: number;
 }
 
-/** 运营看板聚合响应（B1 纯拉，零填充；不含 B2/B3 字段）。 */
+/** 活跃播放会话快照行（B2；心跳窗口内未终态会话）。 */
+export interface OperationsActiveSession {
+  /** 会话 id（后端 String，非数字 EntityId）。 */
+  sessionId: string;
+  /** 用户 id（后端 wire 为字符串化 EntityId）。 */
+  userId: string;
+  username: string;
+  /** 条目 id（后端 wire 为字符串化 EntityId）。 */
+  itemId: string;
+  title: string;
+  paused: boolean;
+  /** 播放进度（tick）；后端 Option → wire 可能 null。 */
+  positionTicks: number | null;
+  /** 总时长（tick）；后端 Option → wire 可能 null。 */
+  durationTicks: number | null;
+  startedAt: number;
+  updatedAt: number;
+}
+
+/** 活跃快照组（B2：会话列表 + 进行中任务数；无观测 → 空数组/0）。 */
+export interface OperationsActiveSnapshot {
+  activeSessionCount: number;
+  runningTasks: number;
+  sessions: OperationsActiveSession[];
+}
+
+/** 数据源负载聚合行（B2；会话按挂载分摊，多挂载同播计 1）。 */
+export interface OperationsDataSourceLoadItem {
+  mountId: string;
+  mountName: string;
+  providerType: string;
+  activeSessionCount: number;
+  playingCount: number;
+  pausedCount: number;
+}
+
+/** 运营看板聚合响应（B1 纯拉 + B2 活跃快照/数据源负载，零填充）。 */
 export interface OperationsOverview {
   days: number;
   windowStart: number;
@@ -48,4 +84,6 @@ export interface OperationsOverview {
   mediaTrend: OperationsCountTrendPoint[];
   registrationTrend: OperationsCountTrendPoint[];
   playbackTrend: OperationsPlaybackTrendPoint[];
+  activeSnapshot: OperationsActiveSnapshot;
+  dataSourceLoad: OperationsDataSourceLoadItem[];
 }

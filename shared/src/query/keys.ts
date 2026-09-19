@@ -225,6 +225,10 @@ export const queryKeys = {
       overview: (days: number) => ['manage', 'operations', 'overview', days] as const,
     },
 
+    systemAbout: {
+      about: () => ['manage', 'system-about'] as const,
+    },
+
     upstreams: {
       all: () => ['manage', 'upstreams'] as const,
       list: (query?: object) => ['manage', 'upstreams', 'list', query ?? {}] as const,

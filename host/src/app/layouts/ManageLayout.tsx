@@ -9,6 +9,7 @@ import {
   Film,
   FolderHeart,
   HardDrive,
+  Info,
   KeyRound,
   LayoutDashboard,
   Library,
@@ -98,6 +99,7 @@ const manageNavTree: ManageNavNode[] = [
       { id: 'site-telegram-bot', label: 'Telegram Bot 配置', icon: Send, to: '/manage/site/telegram' },
       { id: 'site-secrets', label: '密钥链管理', icon: KeyRound, to: '/manage/site/secrets' },
       { id: 'site-advanced', label: '高级维护', icon: SlidersHorizontal, to: '/manage/site/advanced' },
+      { id: 'system-about', label: '系统关于', icon: Info, to: '/manage/system-about' },
     ],
   },
 ];
@@ -143,6 +145,7 @@ const PATH_PREFETCH_KEYS: Record<string, keyof typeof routeLoaders> = {
   '/manage/collections': 'manageCollections',
   '/manage/media-reviews': 'manageMediaReviews',
   '/manage/operations': 'manageOperations',
+  '/manage/system-about': 'manageSystemAbout',
   '/manage/events': 'manageEvents',
   '/manage/upstreams': 'manageUpstreams',
   '/manage/site/users/registration-codes': 'manageRegistrationCodes',

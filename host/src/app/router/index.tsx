@@ -248,6 +248,13 @@ export const router = createBrowserRouter([
             },
           },
           {
+            path: 'system-about',
+            lazy: async () => {
+              const { ManageSystemAboutPage } = await import('@/pages/manage/ManageSystemAboutPage');
+              return { Component: ManageSystemAboutPage };
+            },
+          },
+          {
             path: 'events',
             lazy: async () => {
               const { ManageEventsPage } = await import('@/pages/manage/ManageEventsPage');

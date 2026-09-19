@@ -73,6 +73,7 @@ export const routeLoaders = {
   manageUpstreams: () => import('@/pages/manage/ManageUpstreamsPage'),
   manageSiteSettings: () => import('@/pages/manage/ManageSiteSettingsPage'),
   manageAdvanced: () => import('@/pages/manage/ManageAdvancedPage'),
+  manageSystemAbout: () => import('@/pages/manage/ManageSystemAboutPage'),
 } as const;
 
 const fired = new Set<keyof typeof routeLoaders | string>();
