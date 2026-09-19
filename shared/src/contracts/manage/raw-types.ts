@@ -435,10 +435,19 @@ export interface RawManageScanTriggerResponse {
   library_id?: string;
   libraryId?: string;
   task_type?: string;
-  tasks: RawManagedScanTaskRecord[];
+  /** 后端真 wire：LibraryScanTriggerResponse.tasks = ScanTriggerResponse[]（http/state/scan_trigger.rs:26-39，元素为 {mountId,taskKey,taskId,created}）——非扫描任务记录。 */
+  tasks: RawScanTriggerTask[];
   skipped_source_ids?: string[];
   /** 后端 wire：因已有在途任务而未新建的挂载 id（幂等，非错误）。 */
   skippedMountIds?: string[];
+}
+
+/** POST scan-trigger 的单挂载任务结果（对位 http/state/scan_trigger.rs:26-39）。 */
+export interface RawScanTriggerTask {
+  mountId: string;
+  taskKey: string;
+  taskId: string;
+  created: boolean;
 }
 
 export interface RawManageActionResult {

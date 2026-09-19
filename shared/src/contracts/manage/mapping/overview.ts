@@ -54,7 +54,7 @@ export function mapOverview(rawInput: RawManageOverviewResponse | unknown): Mana
   // 缺省不再回落 "healthy"（编造健康状态）——由 UI 缺值显示「—」。
   const environmentStatus = readString(raw.environment_status);
   const environmentLabel =
-    environmentStatus === undefined
+    environmentStatus == null
       ? undefined
       : mapEnvironmentLabel(environmentStatus);
   const unavailableLibrarySources = readNonNegativeInteger(
@@ -73,7 +73,7 @@ export function mapOverview(rawInput: RawManageOverviewResponse | unknown): Mana
 
   return {
     environmentLabel,
-    environmentStatus: mapEnvironmentStatus(environmentStatus),
+    environmentStatus: mapEnvironmentStatus(environmentStatus ?? undefined),
     refreshedAt: readString(raw.refreshed_at) ?? FALLBACK_TIMESTAMP,
     primaryActionLabel: "查看媒体库",
     kpis: [

@@ -37,7 +37,11 @@ export function ManageSystemAboutPage() {
     return (
       <div className={styles.page}>
         <ManagePageHeader title="系统关于" description="版本、构建与运行依赖状态。" />
-        <ManageSectionCard title="加载中" description="正在探测版本与运行依赖。" />
+        <ManageSectionCard title="加载中" description="正在探测版本与运行依赖。">
+          {/* ManageSectionCard children 为必填（w2 基线 typecheck TS2741 清偿）：
+              加载态无额外面板内容，给占位符保持组件契约。 */}
+          <span />
+        </ManageSectionCard>
       </div>
     );
   }
