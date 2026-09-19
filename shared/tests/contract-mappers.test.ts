@@ -348,3 +348,198 @@ test('operations overview：空快照（无观测 → 空 sessions/0 任务/空�
   assert.equal(data.activeSnapshot.activeSessionCount, 0);
   assert.deepEqual(data.dataSourceLoad, []);
 });
+
+// ---------------------------------------------------------------------------
+// ⑤ 媒体审核工单（media-reviews）mapper：后端 ticket_to_json 18 字段 camelCase
+//    （routes/media_reviews.rs:262-283）+ hit_to_json 8 字段（:286-298）逐字段对拍。
+//    本卡结论：REVIEW 面**全对齐**（无漂移），补防回归测试锁死字段集。
+// ---------------------------------------------------------------------------
+
+const { mediaReviewsApi, isVisibilityAction } = await import(
+  '../src/contracts/manage/media-reviews/api.ts'
+);
+
+const REVIEW_WIRE = {
+  id: '10',
+  mediaItemId: '42',
+  identifyTaskId: '77',
+  currentBindingId: null,
+  reviewStage: 'AiAssist',
+  reasonCode: 'low_confidence',
+  status: 'Open',
+  priority: 3,
+  subjectSnapshotJson: '{"title":"X"}',
+  candidatesJson: '[{"id":"c1"}]',
+  aiSuggestionJson: null,
+  resolutionAction: null,
+  resolutionPayloadJson: null,
+  claimedByUserId: null,
+  claimedAt: null,
+  resolvedByUserId: null,
+  resolvedAt: null,
+  createdAt: 1_700_000_000_000,
+  updatedAt: 1_700_000_100_000,
+};
+
+test('media-reviews list：18 字段逐字段映射（wire camelCase 原样，null 不归一 0/空串）', async () => {
+  routeHandler = (url) => {
+    if (url.includes('/api/manage/media-reviews') && !url.includes('provider-search')) {
+      return jsonResponse({ items: [REVIEW_WIRE], total: 1, page: 2, pageSize: 20 });
+    }
+    return undefined;
+  };
+  const list = await mediaReviewsApi.list({ page: 2, pageSize: 20 });
+  assert.deepEqual(list.items[0], {
+    id: '10',
+    mediaItemId: '42',
+    identifyTaskId: '77',
+    currentBindingId: null,
+    reviewStage: 'AiAssist',
+    reasonCode: 'low_confidence',
+    status: 'Open',
+    priority: 3,
+    subjectSnapshotJson: '{"title":"X"}',
+    candidatesJson: '[{"id":"c1"}]',
+    aiSuggestionJson: null,
+    resolutionAction: null,
+    resolutionPayloadJson: null,
+    claimedByUserId: null,
+    claimedAt: null,
+    resolvedByUserId: null,
+    resolvedAt: null,
+    createdAt: 1_700_000_000_000,
+    updatedAt: 1_700_000_100_000,
+  }, '18 字段集与后端 ticket_to_json 一一对应（多/少字段即漂移）');
+  assert.equal(list.total, 1);
+  assert.equal(list.page, 2);
+  assert.equal(list.pageSize, 20);
+});
+
+test('media-reviews claim/release/resolve：响应是 {item} 包装（非裸工单）', async () => {
+  for (const op of ['claim', 'release', 'resolve'] as const) {
+    routeHandler = (url) => {
+      if (url.includes(`/api/manage/media-reviews/10/${op}`)) {
+        return jsonResponse({ item: REVIEW_WIRE });
+      }
+      return undefined;
+    };
+    const record =
+      op === 'claim'
+        ? await mediaReviewsApi.claim('10')
+        : op === 'release'
+          ? await mediaReviewsApi.release('10')
+          : await mediaReviewsApi.resolve('10', { action: 'Dismiss' });
+    assert.equal(record.id, '10', `${op} 响应需经 item 解包（raw.item 而非 raw）`);
+    assert.equal(record.reviewStage, 'AiAssist');
+  }
+});
+
+test('media-reviews providerSearch：candidates 8 字段映射 + q 别名发参', async () => {
+  let sentUrl = '';
+  routeHandler = (url) => {
+    if (url.includes('/api/manage/media-reviews/provider-search')) {
+      sentUrl = url;
+      return jsonResponse({
+        provider: 'tmdb',
+        query: 'Matrix',
+        candidates: [
+          {
+            provider: 'tmdb',
+            entityType: 'movie',
+            providerItemId: '603',
+            title: 'The Matrix',
+            originalTitle: 'The Matrix',
+            year: 1999,
+            overview: 'A hacker.',
+            confidence: 0.92,
+            externalId: 'tmdb:603',
+          },
+        ],
+      });
+    }
+    return undefined;
+  };
+  const res = await mediaReviewsApi.providerSearch({
+    provider: 'tmdb',
+    query: 'Matrix',
+    entityType: 'movie',
+    year: 1999,
+  });
+  assert.ok(sentUrl.includes('q=Matrix'), 'query 以 q 别名发出（后端 MediaReviewProviderSearchRequest alias="q"）');
+  assert.deepEqual(res.candidates[0], {
+    provider: 'tmdb',
+    entityType: 'movie',
+    providerItemId: '603',
+    title: 'The Matrix',
+    originalTitle: 'The Matrix',
+    year: 1999,
+    overview: 'A hacker.',
+    confidence: 0.92,
+    externalId: 'tmdb:603',
+  });
+});
+
+test('isVisibilityAction 四项与后端 ReviewAction::is_visibility 一致（多/漏即闸门错位）', () => {
+  // 后端 domain/media_review.rs:243-251：ApproveVisibilityHide | KeepVisible |
+  // RetryIdentify | RestoreVisibility 四项需 confirmed=true 二次闸门。
+  for (const action of [
+    'ApproveVisibilityHide',
+    'KeepVisible',
+    'RetryIdentify',
+    'RestoreVisibility',
+  ]) {
+    assert.equal(isVisibilityAction(action), true, `${action} 必须走 confirmed 闸门`);
+  }
+  for (const action of [
+    'ApproveScraped',
+    'RejectScraped',
+    'Dismiss',
+    'RetryScrape',
+    'ReassignBinding',
+    'ManualMatch',
+  ]) {
+    assert.equal(isVisibilityAction(action), false, `${action} 非可见性动作，不得误置闸门`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// ⑥ 刮削入队响应（snake_case 直出，dto/manage_media_scrape.rs:45-52 无 rename）：
+//    fingerprint 恒空串（V2 无任务指纹列）——mapper 原样透传，不伪造占位值。
+// ---------------------------------------------------------------------------
+
+const { mapScrapeResponse, mapPipelineRecord } = await import(
+  '../src/contracts/manage/media-items/api/mappers-metadata.ts'
+);
+
+test('mapScrapeResponse：snake_case 五字段 → camelCase（outcome 词汇原样，fingerprint 恒空串透传）', () => {
+  const result = mapScrapeResponse({
+    item_id: '42',
+    task_id: 'T-9',
+    outcome: 'skipped_fresh',
+    status: 'Pending',
+    fingerprint: '',
+  });
+  assert.deepEqual(result, {
+    itemId: '42',
+    taskId: 'T-9',
+    outcome: 'skipped_fresh',
+    status: 'Pending',
+    fingerprint: '',
+  }, '后端 DTO 零 rename → wire 是 snake_case；fingerprint 恒空串不得归一为 null/undefined');
+});
+
+test('mapPipelineRecord：V2 无识别/刮削层数据时三段 undefined（不伪造进度）', () => {
+  const record = mapPipelineRecord({
+    item_id: '42',
+    identify_task: null,
+    identity_binding: null,
+    scrape_task: null,
+    current_metadata_source: 'unknown',
+    review_status: null,
+  });
+  assert.equal(record.currentMetadataSource, 'unknown');
+  assert.equal(record.identifyTask, undefined, '未装配 → undefined（不伪造任务进度）');
+  assert.equal(record.identityBinding, undefined);
+  assert.equal(record.scrapeTask, undefined);
+  assert.equal(record.reviewStatus, undefined);
+});
