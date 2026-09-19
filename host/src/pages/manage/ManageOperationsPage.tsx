@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  buildActiveSnapshotRows,
+  buildDataSourceLoadRows,
   isOperationsUnwiredError,
   operationsApi,
 } from '@fmby/v2-shared/contracts/manage/operations';
@@ -73,6 +75,9 @@ export function ManageOperationsPage() {
   }
 
   const data = overviewQuery.data;
+  // B2 两卡渲染输入（纯函数层：ticks 缺值 → —，快照/负载缺段 → 空态，不崩）。
+  const snapshotView = buildActiveSnapshotRows(data.activeSnapshot);
+  const loadRows = buildDataSourceLoadRows(data.dataSourceLoad);
 
   return (
     <div className={styles.page}>
@@ -185,6 +190,84 @@ export function ManageOperationsPage() {
           <TrendTable title="用户注册" rows={data.registrationTrend} type="count" />
           <TrendTable title="播放趋势" rows={data.playbackTrend} type="playback" />
         </div>
+      </ManageSectionCard>
+
+      <ManageSectionCard
+        title="活跃快照"
+        description="当前在线会话与运行中任务（心跳窗口 5 分钟；进度缺值显示 —）。"
+      >
+        <div className={styles.metricsGrid}>
+          <div className={styles.metricCard}>
+            <span className={styles.metricLabel}>在线会话</span>
+            <div className={styles.metricValue}>{snapshotView.activeSessionCount}</div>
+          </div>
+          <div className={styles.metricCard}>
+            <span className={styles.metricLabel}>运行中任务</span>
+            <div className={styles.metricValue}>{snapshotView.runningTasks}</div>
+          </div>
+        </div>
+        {snapshotView.rows.length === 0 ? (
+          <div className={styles.emptyInlineState}>当前无活跃会话。</div>
+        ) : (
+          <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>用户</th>
+                  <th>条目</th>
+                  <th>状态</th>
+                  <th>进度</th>
+                  <th>开始时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshotView.rows.map((r) => (
+                  <tr key={r.key}>
+                    <td>{r.username}</td>
+                    <td>{r.title}</td>
+                    <td>{r.state === "paused" ? "暂停" : "播放中"}</td>
+                    <td>{r.progress}</td>
+                    <td className="nowrap">{formatEpochMs(r.startedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ManageSectionCard>
+
+      <ManageSectionCard
+        title="数据源负载"
+        description="按挂载聚合的活跃会话（播放中 / 暂停）。"
+      >
+        {loadRows.length === 0 ? (
+          <div className={styles.emptyInlineState}>当前无数据源负载观测。</div>
+        ) : (
+          <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>挂载</th>
+                  <th>类型</th>
+                  <th>活跃会话</th>
+                  <th>播放中</th>
+                  <th>暂停</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadRows.map((r) => (
+                  <tr key={r.key}>
+                    <td>{r.mountName}</td>
+                    <td>{r.providerType}</td>
+                    <td>{r.activeSessionCount}</td>
+                    <td>{r.playingCount}</td>
+                    <td>{r.pausedCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </ManageSectionCard>
     </div>
   );

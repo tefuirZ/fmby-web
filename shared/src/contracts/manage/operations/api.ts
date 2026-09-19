@@ -169,11 +169,20 @@ function fromActiveSession(r: RawOperationsActiveSession): OperationsActiveSessi
   };
 }
 
-function fromActiveSnapshot(r: RawOperationsActiveSnapshot): OperationsActiveSnapshot {
+/**
+ * B2 段缺值容错（诚实回落，不编造数值）：
+ * 后端端口未装配 / 老版本后端响应不含 `activeSnapshot` / `dataSourceLoad`
+ * 时，wire 该字段为 undefined——直接解引用会让整页崩溃。回落**空快照**
+ * （0 会话 + 空列表）由 UI 显示「未装配/无数据」占位。
+ */
+function fromActiveSnapshot(r: RawOperationsActiveSnapshot | undefined): OperationsActiveSnapshot {
+  if (!r) {
+    return { activeSessionCount: 0, runningTasks: 0, sessions: [] };
+  }
   return {
-    activeSessionCount: r.activeSessionCount,
-    runningTasks: r.runningTasks,
-    sessions: r.sessions.map(fromActiveSession),
+    activeSessionCount: typeof r.activeSessionCount === "number" ? r.activeSessionCount : 0,
+    runningTasks: typeof r.runningTasks === "number" ? r.runningTasks : 0,
+    sessions: Array.isArray(r.sessions) ? r.sessions.map(fromActiveSession) : [],
   };
 }
 
@@ -205,7 +214,9 @@ export const operationsApi = {
       registrationTrend: raw.registrationTrend.map(fromCountTrend),
       playbackTrend: raw.playbackTrend.map(fromPlaybackTrend),
       activeSnapshot: fromActiveSnapshot(raw.activeSnapshot),
-      dataSourceLoad: raw.dataSourceLoad.map(fromDataSourceLoadItem),
+      dataSourceLoad: Array.isArray(raw.dataSourceLoad)
+        ? raw.dataSourceLoad.map(fromDataSourceLoadItem)
+        : [],
     };
   },
 };

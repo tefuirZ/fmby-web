@@ -455,6 +455,20 @@ test('media-reviews providerSearch：candidates 8 字段映射 + q 别名发参'
             externalId: 'tmdb:603',
           },
         ],
+test('operations overview：B2 段整段缺失（后端未装配/老版本）→ 空快照兜底，不崩溃', async () => {
+  routeHandler = (url) => {
+    if (url.includes('/api/manage/operations/overview')) {
+      return jsonResponse({
+        days: 7,
+        windowStart: 1_700_000_000_000,
+        now: 1_700_060_000_000,
+        summary: { plays: 0, uniqueUsers: 0, totalMedia: 0, totalUsers: 0 },
+        hotItems: [],
+        activeUsers: [],
+        mediaTrend: [],
+        registrationTrend: [],
+        playbackTrend: [],
+        // 故意不返回 activeSnapshot / dataSourceLoad（老版本后端形态）
       });
     }
     return undefined;
@@ -542,4 +556,11 @@ test('mapPipelineRecord：V2 无识别/刮削层数据时三段 undefined（不�
   assert.equal(record.identityBinding, undefined);
   assert.equal(record.scrapeTask, undefined);
   assert.equal(record.reviewStatus, undefined);
+  const data = await operationsApi.overview(7);
+  assert.deepEqual(
+    data.activeSnapshot,
+    { activeSessionCount: 0, runningTasks: 0, sessions: [] },
+    '缺段 → 空快照兜底（诚实：不伪造观测）',
+  );
+  assert.deepEqual(data.dataSourceLoad, []);
 });
