@@ -153,7 +153,12 @@ export function LoginPage() {
       ) : null}
 
       {needsSetup ? (
-        <SetupForm onAuthenticated={handleAuthenticated} />
+        <SetupForm
+          onSetupCompleted={(username) => {
+            setMode('login');
+            setRegistrationNotice(`管理员 ${username} 创建成功，请登录`);
+          }}
+        />
       ) : mode === 'register' && registrationEnabled ? (
         <RegisterForm
           onAuthenticated={handleAuthenticated}

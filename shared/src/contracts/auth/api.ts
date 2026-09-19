@@ -78,7 +78,20 @@ export interface LogoutResponse {
 export interface RegisterResponse {
   status: 'authenticated' | 'pending_approval';
   message: string;
-  user?: User | null;
+  /**
+   * ★后端真实形态是 `serde_json::json!({ "token": token, "user": {...} })`
+   * 嵌套结构（self_register.rs:238），内层 user 字段为
+   * `{id, username, display_name, status}`，与本仓 `User` 类型**不符**。
+   * 消费端不得直接把它当 `User` 用——认证分支请经 `getSession()` 重新组装
+   * （照 `login()` 的 me 兑底先例）。
+   */
+  user?: unknown;
+}
+
+/** POST /api/auth/setup 成功响应（后端手拼 `json!({"id", "username"})`，self_register.rs:183）。V2 setup **不自动登录**，无 token/无 user。 */
+export interface SetupCompletedResponse {
+  id: number;
+  username: string;
 }
 
 export interface MeResponse {
@@ -175,9 +188,9 @@ export const authApi = {
     return httpClient.post<RegisterResponse>('/api/auth/register', { body: data });
   },
 
-  /** 初始化设置 — 创建管理员账户 */
+  /** 初始化设置 — 创建管理员账户（V2 返回 `{id, username}`，**不自动登录**；V1 原语义是 AuthResponse 自动登录，偏离已登记） */
   setup(data: SetupRequest) {
-    return httpClient.post<AuthResponse>('/api/auth/setup', { body: data });
+    return httpClient.post<SetupCompletedResponse>('/api/auth/setup', { body: data });
   },
 
   /** 获取当前会话（docs/interfaces/webui.md GET /api/auth/me） */
