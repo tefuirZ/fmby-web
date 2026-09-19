@@ -53,10 +53,10 @@ export function mapOverview(rawInput: RawManageOverviewResponse | unknown): Mana
   // VERIFY-SEMANTICS 同批诚实化（X-2 缺口）：后端 wire 无 environment_status，
   // 缺省不再回落 "healthy"（编造健康状态）——由 UI 缺值显示「—」。
   const environmentStatus = readString(raw.environment_status);
+  // readString 空串/缺字段都返回 null（string | null）：null 与 undefined 同义
+  // （wire 无 environment_status，后端 grep 证实）——统一判 falsy 缺省，不编造。
   const environmentLabel =
-    environmentStatus === undefined
-      ? undefined
-      : mapEnvironmentLabel(environmentStatus);
+    environmentStatus === null ? undefined : mapEnvironmentLabel(environmentStatus);
   const unavailableLibrarySources = readNonNegativeInteger(
     rawAlerts.unavailable_library_sources,
   );
@@ -73,7 +73,9 @@ export function mapOverview(rawInput: RawManageOverviewResponse | unknown): Mana
 
   return {
     environmentLabel,
-    environmentStatus: mapEnvironmentStatus(environmentStatus),
+    // mapEnvironmentStatus 形参 string | undefined：null 先归一为 undefined
+    // （缺省语义），不扩宽被调函数签名（保持 V1 对位口径）。
+    environmentStatus: mapEnvironmentStatus(environmentStatus ?? undefined),
     refreshedAt: readString(raw.refreshed_at) ?? FALLBACK_TIMESTAMP,
     primaryActionLabel: "查看媒体库",
     kpis: [
