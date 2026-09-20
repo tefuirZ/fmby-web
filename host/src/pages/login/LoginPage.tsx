@@ -18,7 +18,12 @@ import { Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
 import { useSession } from '@/session';
-import { authApi } from '@fmby/v2-shared/contracts/auth';
+import { authApi, identityLoginApi } from '@fmby/v2-shared/contracts/auth';
+import type {
+  IdentityProviderAvailability,
+  IdentityProviderType,
+} from '@fmby/v2-shared/contracts/auth';
+import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import type { User } from '@fmby/v2-shared/types';
 
@@ -28,6 +33,13 @@ type EntryMode = 'login' | 'register';
 import { LoginForm } from './forms/LoginForm';
 import { RegisterForm } from './forms/RegisterForm';
 import { SetupForm } from './forms/SetupForm';
+import { IdentityLoginPanel } from './forms/IdentityLoginPanel';
+import {
+  IdentityCompletionPanel,
+  pendingFromStart,
+  type PendingIdentityLogin,
+} from './forms/IdentityCompletionPanel';
+import { clearPendingIdentity, resolvePendingProvider } from './forms/identityPendingContext';
 
 function LoginShell({ children }: { children: ReactNode }) {
   return (
@@ -47,11 +59,19 @@ export function LoginPage() {
   const { login } = useSession();
   const [mode, setMode] = useState<EntryMode>('login');
   const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
+  const [pendingIdentity, setPendingIdentity] = useState<PendingIdentityLogin | null>(null);
 
   const entryQuery = useQuery({
     queryKey: queryKeys.auth.setupStatus(),
     queryFn: () => authApi.getSetupStatus(),
     retry: 2,
+  });
+
+  // 公开 provider 可用性（免会话）。失败时**不渲染入口**（不伪造可用）。
+  const providersQuery = useQuery({
+    queryKey: ['identity', 'login-providers'],
+    queryFn: () => identityLoginApi.loginReadyProviders(),
+    retry: false,
   });
 
   const needsSetup = entryQuery.data?.needs_setup ?? false;
@@ -64,7 +84,58 @@ export function LoginPage() {
     }
   }, [mode, registrationEnabled]);
 
+  // OAuth 回调回流：Google 只回 append `code`/`state`（state=challenge_id），
+  // **不回** provider。故先看 URL 是否显式带 `identity_provider`，否则用发起时
+  // 存入 sessionStorage 的上下文按 `state` 反查。
+  const callbackStateParam = searchParams.get('state');
+  const callbackChallengeId =
+    searchParams.get('challenge_id') ?? searchParams.get('challengeId') ?? callbackStateParam;
+  const callbackCode = searchParams.get('code');
+  const callbackProvider =
+    (searchParams.get('identity_provider') as IdentityProviderType | null) ??
+    (callbackChallengeId ? resolvePendingProvider(callbackChallengeId) : undefined);
+  const callbackCaptureQuery = useQuery({
+    queryKey: ['identity', 'callback', callbackProvider, callbackChallengeId, callbackCode],
+    enabled: Boolean(callbackProvider && callbackChallengeId),
+    retry: false,
+    queryFn: () =>
+      identityLoginApi.captureCallback(callbackProvider as IdentityProviderType, {
+        challengeId: callbackChallengeId ?? undefined,
+        code: callbackCode ?? undefined,
+        state: callbackStateParam ?? undefined,
+      }),
+  });
+
+  useEffect(() => {
+    const captured = callbackCaptureQuery.data;
+    if (!captured) {
+      return;
+    }
+    // 回调捕获成功 → 进入完成阶段；Google 携 code 自动完成，其余等用户输入/轮询。
+    setPendingIdentity({
+      provider: captured.provider,
+      challengeId: captured.challengeId,
+      action: captured.provider === 'google' ? 'external_callback' : 'enter_code',
+      message: captured.message,
+      suggestedCode: callbackCode ?? undefined,
+      source: 'callback',
+    });
+  }, [callbackCaptureQuery.data, callbackCode]);
+
+  function handleIdentityStarted(
+    provider: IdentityProviderAvailability,
+    result: Awaited<ReturnType<typeof identityLoginApi.start>>,
+  ) {
+    // Google：start 的 authorizeUrl 需浏览器跳转授权，不在站内展示完成面板。
+    if (provider.provider === 'google' && result.authorizeUrl) {
+      window.location.assign(result.authorizeUrl);
+      return;
+    }
+    setPendingIdentity(pendingFromStart(result));
+  }
+
   function handleAuthenticated(user: User) {
+    clearPendingIdentity();
     login(user);
     const from = getSafeRedirectPath(searchParams.get('from'));
     navigate(from, { replace: true });
@@ -159,13 +230,33 @@ export function LoginPage() {
             setRegistrationNotice(`管理员 ${username} 创建成功，请登录`);
           }}
         />
+      ) : pendingIdentity ? (
+        <IdentityCompletionPanel
+          pending={pendingIdentity}
+          onAuthenticated={handleAuthenticated}
+          onBack={() => {
+            setPendingIdentity(null);
+            setMode('login');
+          }}
+        />
       ) : mode === 'register' && registrationEnabled ? (
         <RegisterForm
           onAuthenticated={handleAuthenticated}
           onPendingApproval={handlePendingApproval}
         />
       ) : (
-        <LoginForm onAuthenticated={handleAuthenticated} />
+        <>
+          <LoginForm onAuthenticated={handleAuthenticated} />
+          {callbackCaptureQuery.isError ? (
+            <div className={styles.errorBanner} role="alert">
+              三方登录回流失败：{getErrorMessage(callbackCaptureQuery.error)}
+            </div>
+          ) : null}
+          <IdentityLoginPanel
+            providers={providersQuery.data ?? []}
+            onStarted={handleIdentityStarted}
+          />
+        </>
       )}
     </LoginShell>
   );
