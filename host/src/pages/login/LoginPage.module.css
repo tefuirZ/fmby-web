@@ -364,6 +364,89 @@
   }
 }
 
+/* ---- 第三方登录入口（THIRDPARTY-LOGIN-FLOW 前端面）---- */
+
+.identityPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.identityDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+}
+
+.identityDivider span {
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.identityButtonList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.identityButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 14px;
+  color: var(--text-1);
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body-sm);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+}
+
+.identityButton:hover:not(:disabled) {
+  border-color: var(--content-accent);
+}
+
+.identityButton:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+.identityButtonMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  font-weight: var(--font-weight-medium);
+}
+
+.secondaryButton {
+  margin-top: var(--space-2);
+  padding: 10px 14px;
+  color: var(--text-2);
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body-sm);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-default);
+}
+
+.secondaryButton:hover:not(:disabled) {
+  color: var(--text-1);
+}
+
+.secondaryButton:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
 /* ---- 移动端 ---- */
 
 @media (max-width: 480px) {
