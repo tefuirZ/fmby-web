@@ -71,10 +71,6 @@ export interface DatabaseProbeResponse {
   message?: string;
 }
 
-export interface LogoutResponse {
-  ok: boolean;
-}
-
 export interface RegisterResponse {
   status: 'authenticated' | 'pending_approval';
   message: string;
@@ -222,12 +218,13 @@ export const authApi = {
     return httpClient.post<DatabaseProbeResponse>('/api/install/probe/database', { body: data });
   },
 
-  /** 登出当前会话（docs/interfaces/webui.md POST /api/auth/logout） */
+  /** 登出当前会话（docs/interfaces/webui.md POST /api/auth/logout）。
+   * FE-CONTRACT-DRIFT-CLOSE：删除 `DELETE /api/auth/logout` 回退分支——
+   * 后端仅有 POST（routes/mod.rs:138），DELETE 恒 404，回退属假重试。
+   * POST 失败如实上抛；本地会话清理在 finally 中照常执行。 */
   async logout() {
     try {
       await httpClient.post<void>('/api/auth/logout');
-    } catch {
-      await httpClient.delete<LogoutResponse>('/api/auth/logout');
     } finally {
       clearSessionUsername();
     }

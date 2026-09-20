@@ -430,16 +430,18 @@ export interface RawManagedMountDirectoryBrowserResponse {
   }>;
 }
 
-export interface RawManageScanTriggerResponse {
-  /** 后端 wire 为 camelCase libraryId（serde rename）；snake 形状为老契约。 */
-  library_id?: string;
-  libraryId?: string;
-  task_type?: string;
-  /** 后端真 wire：LibraryScanTriggerResponse.tasks = ScanTriggerResponse[]（http/state/scan_trigger.rs:26-39，元素为 {mountId,taskKey,taskId,created}）——非扫描任务记录。 */
+/**
+ * 库级扫描触发响应（FE-CONTRACT-DRIFT-CLOSE：不再复用挂载级 DTO 形状）。
+ * 后端真 wire = `LibraryScanTriggerResponse`（http/state/scan_trigger.rs:104-112，
+ * serde camelCase rename）：{ libraryId, tasks, skippedMountIds }。
+ * 旧契约的 `task_type` / snake 形字段后端**不存在**（V2 单语义），删除。
+ */
+export interface RawManageLibraryScanTriggerResponse {
+  libraryId: string;
+  /** 该库每个挂载的任务结果（含 created 标志）。 */
   tasks: RawScanTriggerTask[];
-  skipped_source_ids?: string[];
-  /** 后端 wire：因已有在途任务而未新建的挂载 id（幂等，非错误）。 */
-  skippedMountIds?: string[];
+  /** 因已有在途任务而未新建的挂载 id（幂等，非错误）。 */
+  skippedMountIds: string[];
 }
 
 /** POST scan-trigger 的单挂载任务结果（对位 http/state/scan_trigger.rs:26-39）。 */

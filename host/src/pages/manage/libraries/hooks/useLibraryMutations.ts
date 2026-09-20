@@ -123,7 +123,8 @@ export function useLibraryMutations({
     mutationFn: (libraryId: string) => manageApi.triggerLibraryScan(libraryId, { taskType: 'manual-refresh' }),
     onSuccess: async (result, libraryId) => {
       const createdCount = result.tasks.length;
-      const skippedCount = result.skippedSourceIds.length;
+      // FE-CONTRACT-DRIFT-CLOSE：库级 DTO 拆分后字段名对齐后端 wire（skippedMountIds）。
+      const skippedCount = result.skippedMountIds.length;
       setBanner({
         variant: createdCount > 0 ? 'success' : 'info',
         title: createdCount > 0 ? '扫描任务已创建' : '当前来源正在扫描中',

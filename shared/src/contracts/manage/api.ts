@@ -35,7 +35,7 @@ import type {
   ResetUserLoginRiskRequest,
   ResetUserPasswordRequest,
   ReviewUserRegistrationRequest,
-  ManageScanTriggerResult,
+  ManageLibraryScanTriggerResult,
   ManageScansQuery,
   ManageScansResponse,
   ManageSourceAvailabilityRecoverResponse,
@@ -63,7 +63,7 @@ import type {
   RawManageOverviewResponse,
   RawManageSourceAvailabilityRecoverResponse,
   RawManageRuntimeLogsResponse,
-  RawManageScanTriggerResponse,
+  RawManageLibraryScanTriggerResponse,
   RawManagedLibraryDetailResponse,
   RawManagedLibraryRecord,
   RawManagedMountDetailResponse,
@@ -87,7 +87,7 @@ import {
   mapDangerousActionPayloadToApi,
   mapLibrariesQueryToParams,
   mapManageActionResult,
-  mapManageScanTriggerResponse,
+  mapManageLibraryScanTriggerResponse,
   mapManagedLibraryDetailResponse,
   mapManagedLibraryRecord,
   mapManagedMountDetailResponse,
@@ -280,8 +280,16 @@ export const manageApi = {
     payload: BatchDeleteManageUsersRequest,
   ): Promise<ManageBatchUsersActionResponse> {
     const raw = await httpClient.post<RawManageBatchUsersActionResponse>(
-      "/api/manage/users/batch/delete",
+      // FE-CONTRACT-DRIFT-CLOSE：V1/V2 全仓无 `/batch/delete`（打此路径恒 404，
+      // 批量硬删在 UI 断线）。后端真值 `routes/mod.rs:333` =
+      // `/api/manage/users/batch/permanent-delete`（handler
+      // `manage_users_batch_permanent_delete`，`routes/manage_users.rs:149`）。
+      "/api/manage/users/batch/permanent-delete",
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_users_batch_permanent_delete` 经
+        // require_dangerous_manage → require_confirmed，要求 `?confirmed=true`
+        //（同 batchUpdateUsers / batchDisableUsers 形态）。
+        params: { confirmed: true },
         body: {
           user_ids: payload.userIds,
           ...mapDangerousActionPayloadToApi({
@@ -785,8 +793,8 @@ export const manageApi = {
   async triggerLibraryScan(
     libraryId: string,
     payload: TriggerManageLibraryScanRequest = {},
-  ): Promise<ManageScanTriggerResult> {
-    const raw = await httpClient.post<RawManageScanTriggerResponse>(
+  ): Promise<ManageLibraryScanTriggerResult> {
+    const raw = await httpClient.post<RawManageLibraryScanTriggerResponse>(
       `/api/manage/libraries/${libraryId}/scan`,
       {
         body: {
@@ -796,7 +804,8 @@ export const manageApi = {
         },
       },
     );
-    return mapManageScanTriggerResponse(raw);
+    // FE-CONTRACT-DRIFT-CLOSE：库级专用 DTO/mapper（不复用挂载级形状）。
+    return mapManageLibraryScanTriggerResponse(raw);
   },
 
   async getMounts(query?: ManageMountsQuery): Promise<ManageMountsResponse> {
