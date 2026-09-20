@@ -718,11 +718,27 @@ export interface TriggerManageLibraryScanRequest {
   taskType?: ManageScanTaskType;
 }
 
-export interface ManageScanTriggerResult {
+/**
+ * 库级扫描触发结果（FE-CONTRACT-DRIFT-CLOSE：为库级另拆 DTO，不再复用
+ * 挂载级/扫描任务记录形状编造字段）。
+ * 后端真 wire = `LibraryScanTriggerResponse`（http/state/scan_trigger.rs:104-112）。
+ */
+export interface ManageLibraryScanTriggerResult {
   libraryId: string;
-  taskType: ManageScanTaskType;
-  tasks: ManageScanTaskRecord[];
-  skippedSourceIds: string[];
+  /** 该库每个挂载的触发结果（幂等：created=false = 已有在途任务）。 */
+  tasks: ManageLibraryScanTriggerTask[];
+  /** 因已有在途任务而未新建的挂载 id（幂等，非错误）。 */
+  skippedMountIds: string[];
+}
+
+/** 库级触发的单挂载任务结果（对位 ScanTriggerResponse，scan_trigger.rs:26-39）。 */
+export interface ManageLibraryScanTriggerTask {
+  mountId: string;
+  /** 幂等键（`scan:mount:{id}`）——前端可据此轮询状态。 */
+  taskKey: string;
+  taskId: string;
+  /** true = 本次新建；false = 已有在途任务（幂等，非错误）。 */
+  created: boolean;
 }
 
 export interface ManageMountLinkedLibrary {

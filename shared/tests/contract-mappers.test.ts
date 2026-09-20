@@ -201,42 +201,36 @@ test('getSession 失败（/api/auth/me 非 200）：reject（fail-closed），�
 });
 
 // ---------------------------------------------------------------------------
-// ③ scan trigger：created→status 幂等语义（RawScanTriggerTask 直读）。
+// ③ 库级 scan trigger mapper（FE-CONTRACT-DRIFT-CLOSE：库级专用 DTO，真值直传，
+//    不再复用挂载级形状编造 taskType / 伪 ManageScanTaskRecord）。
 // ---------------------------------------------------------------------------
 
-const { mapManageScanTriggerResponse } = await import(
+const { mapManageLibraryScanTriggerResponse } = await import(
   '../src/contracts/manage/mapping/scans.ts'
 );
 
-test('scan trigger：created=true（本次新建）→ status=pending（排队中）', () => {
-  const result = mapManageScanTriggerResponse({
+test('库级 scan trigger：tasks 真值直传（mountId/taskKey/taskId/created）', () => {
+  const result = mapManageLibraryScanTriggerResponse({
     libraryId: '5',
     tasks: [
       { mountId: '11', taskKey: 'scan:mount:11', taskId: 'T-1', created: true },
+      { mountId: '12', taskKey: 'scan:mount:12', taskId: 'T-9', created: false },
     ],
-    skippedMountIds: [],
+    skippedMountIds: ['12'],
   });
   assert.equal(result.libraryId, '5');
-  assert.equal(result.tasks.length, 1);
-  assert.equal(result.tasks[0].id, 'T-1');
-  assert.equal(result.tasks[0].mountId, '11');
-  assert.equal(result.tasks[0].status, 'pending', 'created=true → 本次新建 → pending');
-  assert.deepEqual(result.skippedSourceIds, []);
-});
-
-test('scan trigger：created=false（幂等命中在途）→ status=running + mountId 进 skippedMountIds', () => {
-  const result = mapManageScanTriggerResponse({
-    libraryId: '5',
-    tasks: [
-      { mountId: '11', taskKey: 'scan:mount:11', taskId: 'T-9', created: false },
-      { mountId: '12', taskKey: 'scan:mount:12', taskId: 'T-2', created: true },
-    ],
-    skippedMountIds: ['11'],
+  assert.equal(result.tasks.length, 2);
+  assert.deepEqual(result.tasks[0], {
+    mountId: '11',
+    taskKey: 'scan:mount:11',
+    taskId: 'T-1',
+    created: true,
   });
-  assert.equal(result.tasks[0].status, 'running', 'created=false → 已有在途 → running');
-  assert.equal(result.tasks[0].id, 'T-9', 'taskId 直读（既有任务 id，不编 "unknown"）');
-  assert.equal(result.tasks[1].status, 'pending');
-  assert.deepEqual(result.skippedSourceIds, ['11'], 'skippedMountIds 透传（幂等语义）');
+  assert.equal(result.tasks[1].taskId, 'T-9');
+  assert.equal(result.tasks[1].created, false, '幂等命中在途 → created=false');
+  assert.deepEqual(result.skippedMountIds, ['12']);
+  assert.ok(!('taskType' in result), '库级触发结果不编 taskType（V2 单语义）');
+  assert.ok(!('skippedSourceIds' in result), '字段名对齐后端 wire：skippedMountIds');
 });
 
 // ---------------------------------------------------------------------------
@@ -434,11 +428,12 @@ test('media-reviews claim/release/resolve：响应是 {item} 包装（非裸工�
   }
 });
 
-test('media-reviews providerSearch：candidates 8 字段映射 + q 别名发参', async () => {
+test('media-reviews providerSearch：candidates 9 字段映射 + q 别名发参', async () => {
   let sentUrl = '';
   routeHandler = (url) => {
     if (url.includes('/api/manage/media-reviews/provider-search')) {
       sentUrl = url;
+      // 后端 wire 真值（media_reviews.rs:288 hit_to_json，json! 手拼 camelCase）。
       return jsonResponse({
         provider: 'tmdb',
         query: 'Matrix',
@@ -455,6 +450,32 @@ test('media-reviews providerSearch：candidates 8 字段映射 + q 别名发参'
             externalId: 'tmdb:603',
           },
         ],
+      });
+    }
+    return undefined;
+  };
+  const response = await mediaReviewsApi.providerSearch({
+    provider: 'tmdb',
+    query: 'Matrix',
+  });
+  // 发参：query 走 `q` 别名（media_reviews.rs:48-54 wire 契约）。
+  assert.ok(
+    sentUrl.includes('provider=tmdb') && sentUrl.includes('q=Matrix'),
+    `providerSearch 应带 provider 与 q 发参，实得 ${sentUrl}`,
+  );
+  assert.equal(response.provider, 'tmdb');
+  assert.equal(response.query, 'Matrix');
+  assert.equal(response.candidates.length, 1);
+  const hit = response.candidates[0];
+  assert.equal(hit.provider, 'tmdb');
+  assert.equal(hit.entityType, 'movie');
+  assert.equal(hit.providerItemId, '603');
+  assert.equal(hit.title, 'The Matrix');
+  assert.equal(hit.year, 1999);
+  assert.equal(hit.confidence, 0.92);
+  assert.equal(hit.externalId, 'tmdb:603');
+});
+
 test('operations overview：B2 段整段缺失（后端未装配/老版本）→ 空快照兜底，不崩溃', async () => {
   routeHandler = (url) => {
     if (url.includes('/api/manage/operations/overview')) {
@@ -473,24 +494,13 @@ test('operations overview：B2 段整段缺失（后端未装配/老版本）→
     }
     return undefined;
   };
-  const res = await mediaReviewsApi.providerSearch({
-    provider: 'tmdb',
-    query: 'Matrix',
-    entityType: 'movie',
-    year: 1999,
-  });
-  assert.ok(sentUrl.includes('q=Matrix'), 'query 以 q 别名发出（后端 MediaReviewProviderSearchRequest alias="q"）');
-  assert.deepEqual(res.candidates[0], {
-    provider: 'tmdb',
-    entityType: 'movie',
-    providerItemId: '603',
-    title: 'The Matrix',
-    originalTitle: 'The Matrix',
-    year: 1999,
-    overview: 'A hacker.',
-    confidence: 0.92,
-    externalId: 'tmdb:603',
-  });
+  const data = await operationsApi.overview(7);
+  assert.deepEqual(
+    data.activeSnapshot,
+    { activeSessionCount: 0, runningTasks: 0, sessions: [] },
+    '缺段 → 空快照兜底（诚实：不伪造观测）',
+  );
+  assert.deepEqual(data.dataSourceLoad, []);
 });
 
 test('isVisibilityAction 四项与后端 ReviewAction::is_visibility 一致（多/漏即闸门错位）', () => {
@@ -556,11 +566,4 @@ test('mapPipelineRecord：V2 无识别/刮削层数据时三段 undefined（不�
   assert.equal(record.identityBinding, undefined);
   assert.equal(record.scrapeTask, undefined);
   assert.equal(record.reviewStatus, undefined);
-  const data = await operationsApi.overview(7);
-  assert.deepEqual(
-    data.activeSnapshot,
-    { activeSessionCount: 0, runningTasks: 0, sessions: [] },
-    '缺段 → 空快照兜底（诚实：不伪造观测）',
-  );
-  assert.deepEqual(data.dataSourceLoad, []);
 });

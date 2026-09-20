@@ -1,6 +1,9 @@
-import type { ManageScanTaskRecord, ManageScanTriggerResult } from "../types";
 import type {
-  RawManageScanTriggerResponse,
+  ManageLibraryScanTriggerResult,
+  ManageLibraryScanTriggerTask,
+} from "../types";
+import type {
+  RawManageLibraryScanTriggerResponse,
   RawManagedScanTaskRecord,
   RawScanTriggerTask,
 } from "../raw-types";
@@ -26,44 +29,31 @@ export function mapManagedScanTaskRecord(raw: RawManagedScanTaskRecord) {
   };
 }
 
-export function mapManageScanTriggerResponse(
-  raw: RawManageScanTriggerResponse,
-): ManageScanTriggerResult {
-  // 契约漂移收口：后端 wire 为 camelCase（libraryId/skippedMountIds，serde
-  // rename，见 http/state/scan_trigger.rs:104-112）；snake 形状为老契约，保留
-  // 回退兼容。tasks 元素 = {mountId,taskKey,taskId,created}，非扫描任务记录。
-  const libraryId = raw.libraryId ?? raw.library_id ?? "unknown";
-  const skippedMountIds = raw.skippedMountIds ?? raw.skipped_source_ids ?? [];
-  return {
-    libraryId,
-    taskType: mapScanTaskType("library"),
-    tasks: raw.tasks.map(mapScanTriggerTask),
-    skippedSourceIds: skippedMountIds,
-  };
-}
-
 /**
- * 后端 wire：单挂载触发结果（http/state/scan_trigger.rs:26-39）。
- * 权威声明已上移 raw-types.ts（RawScanTriggerTask，tasks 字段真类型），
- * 此处保留 import 供 mapScanTriggerTask 类型标注。
+ * 库级扫描触发响应 mapper（FE-CONTRACT-DRIFT-CLOSE：为库级另拆，不再复用
+ * 挂载级形状/编造 taskType 与伪 ManageScanTaskRecord）。
+ * 后端真 wire = `LibraryScanTriggerResponse`（http/state/scan_trigger.rs:104-112，
+ * serde camelCase rename）：{ libraryId, tasks, skippedMountIds }。
  */
-
-function mapScanTriggerTask(raw: RawScanTriggerTask): ManageScanTaskRecord {
+export function mapManageLibraryScanTriggerResponse(
+  raw: RawManageLibraryScanTriggerResponse,
+): ManageLibraryScanTriggerResult {
   return {
-    id: raw.taskId,
-    librarySourceId: "unknown",
-    libraryId: "unknown",
-    libraryName: "unknown",
-    mountId: raw.mountId,
-    mountName: "unknown",
-    sourcePath: "unknown",
-    taskType: mapScanTaskType("library"),
-    status: mapScanStatus(raw.created ? "pending" : "running"),
-    itemsFound: 0,
-    itemsUpdated: 0,
-    errorMessage: undefined,
-    startedAt: undefined,
-    completedAt: undefined,
-    createdAt: new Date().toISOString(),
+    libraryId: raw.libraryId,
+    tasks: raw.tasks.map(mapLibraryScanTriggerTask),
+    skippedMountIds: raw.skippedMountIds,
   };
 }
+
+/** 单挂载触发结果（对位 ScanTriggerResponse，scan_trigger.rs:26-39）——真值直传。 */
+export function mapLibraryScanTriggerTask(
+  raw: RawScanTriggerTask,
+): ManageLibraryScanTriggerTask {
+  return {
+    mountId: raw.mountId,
+    taskKey: raw.taskKey,
+    taskId: raw.taskId,
+    created: raw.created,
+  };
+}
+
