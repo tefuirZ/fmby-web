@@ -1,0 +1,44 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索": 搜索媒体… Ctrl K
+  - button "账号菜单：admin": admin
+- main:
+  - complementary "设置导航":
+    - text: 个人
+    - link "个人资料 昵称、头像、默认媒体库":
+      - /url: /settings/profile
+    - link "播放偏好 字幕、音轨与继续播放策略":
+      - /url: /settings/playback
+    - link "外观 主题、海报密度与动效偏好":
+      - /url: /settings/appearance
+  - text: 设置中心
+  - heading "个人资料" [level=1]
+  - paragraph: 管理个人基础信息、默认媒体库和对外展示内容。
+  - text: 按当前分组单独保存。
+  - heading "基础信息" [level=2]
+  - paragraph: 这些信息会影响账号展示与默认进入体验。
+  - text: 用户名
+  - textbox "用户名 用户名由服务端维护，此处只读展示。" [disabled]: admin
+  - text: 用户名由服务端维护，此处只读展示。 显示名称
+  - textbox "显示名称"
+  - text: 头像链接
+  - textbox "头像链接":
+    - /placeholder: https://example.com/avatar.png
+  - text: 默认媒体库
+  - combobox "默认媒体库": 不指定
+  - heading "联系与简介" [level=2]
+  - paragraph: 用于账号页和系统内展示。
+  - text: 邮箱
+  - textbox "邮箱"
+  - text: 简介
+  - textbox "简介"

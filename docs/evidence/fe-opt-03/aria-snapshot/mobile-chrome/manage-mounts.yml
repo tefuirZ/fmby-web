@@ -1,0 +1,55 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - button "切换管理模块，当前模块：媒体来源":
+    - text: 当前模块
+    - strong: 媒体来源
+    - text: 切换模块
+  - text: 管理中心
+  - heading "媒体来源" [level=1]
+  - paragraph: 这里负责把本地目录、OpenList、AList、WebDAV 或 S3 接进来，让媒体库真正能看到文件。
+  - text: 共 1 个媒体来源
+  - button "添加媒体来源"
+  - button "刷新"
+  - status: 部分媒体来源建议复核 当前共有 1 个媒体来源不是“正常”状态，建议先检查连接信息和最近校验时间。
+  - text: 正常来源 0 需关注 1 异常 0 已绑定到媒体库 0
+  - heading "来源列表" [level=2]
+  - paragraph: 支持搜索、筛选、详情抽屉、校验连接和删除操作。
+  - text: 搜索来源
+  - textbox "搜索来源":
+    - /placeholder: 名称 / 根路径 / 类型 / 关联媒体库
+  - text: 状态
+  - combobox "状态":
+    - option "全部状态" [selected]
+    - option "正常"
+    - option "需关注"
+    - option "异常"
+  - text: 类型
+  - combobox "类型":
+    - option "全部类型" [selected]
+    - option "Local"
+    - option "WebDAV"
+    - option "S3 Compatible"
+    - option "AList"
+    - option "OpenList"
+    - option "115 网盘"
+  - button "全选本页"
+  - button "反选"
+  - button "清空本页"
+  - text: 当前结果：1 条 需关注 本地文件系统 E2E 本地 未提供来源地址 本地磁盘挂载 最近校验：— 引用：媒体库绑定 0 · 媒体源 0 · 旁路资源 0 当前没有关联媒体库 列目录 随机读 旁路资源 播放目标
+  - button "详情"
+  - button "编辑"
+  - button "校验"
+  - button "删除"

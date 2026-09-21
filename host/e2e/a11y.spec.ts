@@ -167,9 +167,24 @@ test.describe('A11y — 语义标签与可访问名', () => {
     await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
   });
 
-  test('管理面导航 landmark 具名', async ({ page }) => {
+  test('管理面导航 landmark 具名', async ({ page }, testInfo) => {
     await login(page);
     await page.goto('/manage');
+
+    if (testInfo.project.name === 'mobile-chrome') {
+      // FE-OPT-03：移动档侧栏收在 Radix 抽屉内（默认未挂载 → landmark 不存在）。
+      // 这里验证**更关键的链路**：抽屉触发器可键盘聚焦 → 展开后 landmark 出现
+      // 且具名（只 skip 不验证等于放弃移动档的导航可及性）。
+      const trigger = page.getByRole('button', { name: /切换管理模块/ });
+      await expect(trigger).toBeVisible();
+      await trigger.click();
+      await expect(page.getByRole('navigation', { name: '管理中心导航' })).toBeVisible();
+      // 抽屉内导航同样须具名可朗读
+      const navs = page.getByRole('navigation', { name: '管理中心导航' });
+      await expect(navs).toHaveCount(1);
+      return;
+    }
+
     await expect(page.getByRole('navigation', { name: '管理中心导航' })).toBeVisible();
   });
 

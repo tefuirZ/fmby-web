@@ -152,7 +152,14 @@ export function ManageSecretsPage() {
         title="密钥链状态"
         description="装配期逐键记录的生效来源；env 层无法经本页覆盖（需在部署环境配置）。"
       >
-        <div className={styles.tableWrap}>
+        {/* FE-OPT-03：可横向滚动区域须可被键盘访问（axe
+            `scrollable-region-focusable`，serious）。 */}
+        <div
+          className={styles.tableWrap}
+          tabIndex={0}
+          role="region"
+          aria-label="密钥链状态列表（可横向滚动）"
+        >
           <table className={styles.table}>
             <thead>
               <tr>

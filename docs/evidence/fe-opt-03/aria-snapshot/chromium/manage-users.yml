@@ -1,0 +1,142 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索": 搜索媒体… Ctrl K
+  - button "账号菜单：admin": admin
+- main:
+  - complementary "管理中心导航":
+    - text: FMBY Admin
+    - strong: 管理工作台
+    - text: 当前模块：用户账号
+    - navigation "管理中心导航":
+      - link "管理首页":
+        - /url: /manage
+      - text: 添加媒体
+      - link "添加媒体":
+        - /url: /manage/media/add
+      - text: 任务中心
+      - link "任务中心":
+        - /url: /manage/task-center
+      - text: 媒体与刮削
+      - link "媒体条目":
+        - /url: /manage/media/items
+      - link "媒体库":
+        - /url: /manage/media/libraries
+      - link "媒体来源":
+        - /url: /manage/media/mounts
+      - link "媒体信息检测":
+        - /url: /manage/media/probe-tasks
+      - link "命名与刮削":
+        - /url: /manage/media/naming-scrape
+      - link "收藏合集":
+        - /url: /manage/collections
+      - text: 内容与运营
+      - link "媒体审核工单":
+        - /url: /manage/media-reviews
+      - link "运营看板":
+        - /url: /manage/operations
+      - link "事件中心":
+        - /url: /manage/events
+      - link "上游源":
+        - /url: /manage/upstreams
+      - text: 用户与站点 邀请与用户
+      - link "邀请与注册码":
+        - /url: /manage/site/users/registration-codes
+      - link "用户账号":
+        - /url: /manage/site/users/accounts
+      - link "权限模板":
+        - /url: /manage/site/users/role-templates
+      - link "积分与签到":
+        - /url: /manage/site/rewards
+      - text: 会话与日志
+      - link "当前会话":
+        - /url: /manage/site/security/sessions
+      - link "操作记录":
+        - /url: /manage/site/security/audit-logs
+      - link "运行日志":
+        - /url: /manage/site/security/runtime-logs
+      - link "站点设置":
+        - /url: /manage/site/settings
+      - link "授权与订阅":
+        - /url: /manage/site/license
+      - link "Telegram Bot 配置":
+        - /url: /manage/site/telegram
+      - link "邮件通道":
+        - /url: /manage/site/email
+      - link "密钥链管理":
+        - /url: /manage/site/secrets
+      - link "高级维护":
+        - /url: /manage/site/advanced
+      - link "系统关于":
+        - /url: /manage/system-about
+  - text: 管理中心
+  - heading "用户管理" [level=1]
+  - paragraph: 补齐账号详情、创建、编辑和批量软删除闭环，删除语义先明确收口为停用账号并吊销活跃会话。
+  - text: 共 1 个账号，当前第 1 / 1 页
+  - button "新建用户"
+  - button "刷新"
+  - heading "账号列表" [level=2]
+  - paragraph: 支持搜索、详情抽屉、系统角色调整、来源路径授权和批量编辑。
+  - text: 搜索用户
+  - textbox "搜索用户":
+    - /placeholder: 用户名 / 显示名 / 角色 / 来源路径
+  - text: 状态
+  - combobox "状态":
+    - option "全部状态" [selected]
+    - option "正常"
+    - option "待激活"
+    - option "已停用"
+    - option "已锁定"
+  - text: 类型
+  - combobox "类型":
+    - option "全部类型" [selected]
+    - option "人工账号"
+    - option "服务账号"
+  - text: 当前页 1 条 / 共 1 条
+  - table:
+    - rowgroup:
+      - row "选择当前页中的全部可批量操作账号 账号 角色 类型 状态 来源授权 创建时间 最近登录 最近设备 操作":
+        - columnheader "选择当前页中的全部可批量操作账号":
+          - checkbox "选择当前页中的全部可批量操作账号"
+        - columnheader "账号"
+        - columnheader "角色"
+        - columnheader "类型"
+        - columnheader "状态"
+        - columnheader "来源授权"
+        - columnheader "创建时间"
+        - columnheader "最近登录"
+        - columnheader "最近设备"
+        - columnheader "操作"
+    - rowgroup:
+      - row "选择用户 admin admin @admin 管理员 人工账号 正常 媒体库兜底 2026年9月22日 05:41 — — 详情 编辑 重置密码 解除账号风控 当前账号":
+        - cell "选择用户 admin":
+          - checkbox "选择用户 admin" [disabled]
+        - cell "admin @admin":
+          - button "admin"
+          - text: "@admin"
+        - cell "管理员"
+        - cell "人工账号"
+        - cell "正常"
+        - cell "媒体库兜底"
+        - cell "2026年9月22日 05:41"
+        - cell "—"
+        - cell "—"
+        - cell "详情 编辑 重置密码 解除账号风控 当前账号":
+          - button "详情"
+          - button "编辑"
+          - button "重置密码"
+          - button "解除账号风控"
+          - button "当前账号" [disabled]
+  - text: 每页 100 条，当前显示 1 条
+  - button "上一页" [disabled]
+  - text: 第 1 / 1 页
+  - button "下一页" [disabled]

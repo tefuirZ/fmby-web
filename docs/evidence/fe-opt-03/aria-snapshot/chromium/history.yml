@@ -1,0 +1,19 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索": 搜索媒体… Ctrl K
+  - button "账号菜单：admin": admin
+- main:
+  - heading "还没有播放历史" [level=2]
+  - paragraph: 开始播放后，继续观看、最近播放和已看完内容会自动整理到这里。
+  - link "去首页看看":
+    - /url: /

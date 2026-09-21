@@ -1,0 +1,47 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - button "切换管理模块，当前模块：高级维护":
+    - text: 当前模块
+    - strong: 高级维护
+    - text: 切换模块
+  - text: 管理中心
+  - heading "高级维护" [level=1]
+  - paragraph: 这里只放服务器健康、运行日志和维护建议，不再承接媒体来源或刮削这类模块自己的高级项。
+  - link "返回站点设置":
+    - /url: /manage/site/settings
+  - heading "系统健康" [level=2]
+  - paragraph: 只展示可判断状态的核心指标；后端未提供真值的字段显示占位横线，绝不回落看起来正常的假值。
+  - text: 当前版本
+  - strong: —
+  - text: 数据库状态
+  - strong: —
+  - text: 队列积压
+  - strong: —
+  - text: 最近备份
+  - strong: 2026年9月22日 05:44
+  - heading "风险提醒" [level=2]
+  - paragraph: 先把需要人工决策的问题集中出来。
+  - text: 提示
+  - strong: 自助注册入口未开放
+  - paragraph: 当前版本不会向访客暴露自助注册入口，请按既有人工开通流程管理账号。
+  - heading "维护动作建议" [level=2]
+  - paragraph: 当前仅展示建议项；真正写操作待后端接口就绪后继续接线。
+  - strong: 复核安全策略
+  - paragraph: 检查登录失败阈值、敏感操作确认和管理员会话寿命。
+  - paragraph: 影响范围：影响后续所有管理操作与登录保护。
+  - strong: 清理过期/吊销会话
+  - paragraph: 过期会话可复核；已吊销会话计数后端暂无法统计。
+  - paragraph: 影响范围：降低排障噪音并改善会话视图可读性。

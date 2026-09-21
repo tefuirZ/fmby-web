@@ -1,0 +1,121 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - button "切换管理模块，当前模块：站点设置":
+    - text: 当前模块
+    - strong: 站点设置
+    - text: 切换模块
+  - text: 管理中心
+  - heading "站点设置" [level=1]
+  - paragraph: 把注册、登录安全和会话时长放在一页改完，不用在后台里来回翻。
+  - link "去高级维护":
+    - /url: /manage/site/advanced
+  - button "保存站点设置" [disabled]
+  - status: 这里只放站点级常用设置。 媒体来源、媒体库、命名与刮削的高级项仍然留在各自页面里，不再把模块设置拆到全局页里。
+  - heading "快速定位" [level=2]
+  - paragraph: 直接跳到你现在要改的那一组，不用扫完整页。
+  - link "站点信息":
+    - /url: "#site-basic"
+  - link "注册与公告":
+    - /url: "#site-registration"
+  - link "登录安全":
+    - /url: "#site-security"
+  - link "会话时长":
+    - /url: "#site-session"
+  - link "品牌":
+    - /url: "#site-brand"
+  - link "兼容与高级":
+    - /url: "#site-compat"
+  - heading "站点信息" [level=2]
+  - paragraph: 这些是用户在登录页或首页最容易直接看到的内容。
+  - text: 站点名称
+  - textbox "站点名称 会显示在登录页和浏览页顶部。": FMBY 测试站点
+  - text: 会显示在登录页和浏览页顶部。 支持联系方式
+  - textbox "支持联系方式 用户遇到问题时知道该联系谁。"
+  - text: 用户遇到问题时知道该联系谁。 首页公共文案
+  - textbox "首页公共文案 适合写欢迎语、维护提示或资源站说明。": 欢迎使用 FMBY 全能媒体资产管理系统
+  - text: 适合写欢迎语、维护提示或资源站说明。
+  - heading "注册与公告" [level=2]
+  - paragraph: 控制用户能不能注册，以及是否要展示维护提醒。
+  - checkbox "启用注册码注册入口 开启后，登录页会出现\"注册码注册\"；关闭后只保留已有账号登录。"
+  - strong: 启用注册码注册入口
+  - text: 开启后，登录页会出现"注册码注册"；关闭后只保留已有账号登录。 维护横幅
+  - textbox "维护横幅 适合在维护、迁移或停机前提前通知用户。":
+    - /placeholder: 可留空
+  - text: 适合在维护、迁移或停机前提前通知用户。
+  - heading "登录安全" [level=2]
+  - paragraph: 站点级登录风控集中在这里配置，账号锁定和 IP 限流分开生效。
+  - text: 登录模式
+  - combobox "登录模式 该选项决定站点记录的登录认证强度：「仅密码」只校验账号密码，「密码 + 二次校验」把站点标记为登录需要额外一步验证。切换后建议先用一个测试账号完整走一遍登录，确认无误再对全站放开。":
+    - option "仅密码" [selected]
+    - option "密码 + 二次校验"
+  - text: 该选项决定站点记录的登录认证强度：「仅密码」只校验账号密码，「密码 + 二次校验」把站点标记为登录需要额外一步验证。切换后建议先用一个测试账号完整走一遍登录，确认无误再对全站放开。 危险操作确认
+  - combobox "危险操作确认 推荐至少保留会话确认，别让误删一路点到底。":
+    - option "不额外确认"
+    - option "确认当前会话" [selected]
+    - option "重新输入密码"
+  - text: 推荐至少保留会话确认，别让误删一路点到底。
+  - checkbox "IP 登录限流 按来源 IP 统计失败登录，用来压住同一出口的高频暴力尝试。" [checked]
+  - strong: IP 登录限流
+  - text: 按来源 IP 统计失败登录，用来压住同一出口的高频暴力尝试。 IP 限流阈值（次）
+  - spinbutton "IP 限流阈值（次）": "5"
+  - text: IP 限流窗口（分钟）
+  - spinbutton "IP 限流窗口（分钟）": "15"
+  - text: 来源 IP
+  - textbox "来源 IP 只解除该 IP 当前失败登录窗口内的限流影响，失败与解除审计都会保留。":
+    - /placeholder: 192.168.1.10 / 2001:db8::1
+  - text: 只解除该 IP 当前失败登录窗口内的限流影响，失败与解除审计都会保留。
+  - button "解除 IP 风控" [disabled]
+  - checkbox "账号失败锁定 按用户名统计失败登录，不会因为同 IP 下其它账号输错而连坐。" [checked]
+  - strong: 账号失败锁定
+  - text: 按用户名统计失败登录，不会因为同 IP 下其它账号输错而连坐。 锁定阈值（次）
+  - spinbutton "锁定阈值（次）": "5"
+  - text: 锁定时长（分钟）
+  - spinbutton "锁定时长（分钟）": "15"
+  - checkbox "修改个人资料时要求当前密码 能减少账号被接管后被静默改资料的风险。"
+  - strong: 修改个人资料时要求当前密码
+  - text: 能减少账号被接管后被静默改资料的风险。
+  - heading "会话时长" [level=2]
+  - paragraph: 控制登录多久过期，以及管理员会不会把自己挤下线。
+  - text: 用户会话时长（分钟）
+  - spinbutton "用户会话时长（分钟）": "60"
+  - text: 管理员会话时长（分钟）
+  - spinbutton "管理员会话时长（分钟）": "30"
+  - text: 记住登录天数
+  - spinbutton "记住登录天数": "14"
+  - text: 令牌轮换策略
+  - combobox "令牌轮换策略":
+    - option "每次刷新都轮换"
+    - option "每天轮换" [selected]
+    - option "仅风险场景轮换"
+  - checkbox "启用令牌轮换 开启后，登录凭据会按策略自动更新，更安全。" [checked]
+  - strong: 启用令牌轮换
+  - text: 开启后，登录凭据会按策略自动更新，更安全。
+  - checkbox "允许旧设备继续走旧登录方式 兼容性更稳，但建议只在确实有老客户端时再开。"
+  - strong: 允许旧设备继续走旧登录方式
+  - text: 兼容性更稳，但建议只在确实有老客户端时再开。
+  - checkbox "管理员只保留一个登录会话 新登录会把旧的管理员会话顶掉，适合更严的管理环境。"
+  - strong: 管理员只保留一个登录会话
+  - text: 新登录会把旧的管理员会话顶掉，适合更严的管理环境。
+  - heading "品牌（邮件与重置页）" [level=2]
+  - paragraph: 邮件中的品牌名与 logo 读取此设置；无 logo 时邮件省略 logo 段（不假造）。
+  - text: 品牌名（site_name，≤256）
+  - textbox "品牌名（site_name，≤256） 空串表示清除；缺省不改。":
+    - /placeholder: 留空 = 清除品牌名
+  - text: 空串表示清除；缺省不改。 Logo 地址（brand_logo_url，同源路径 /… 或 http(s)，≤2048）
+  - textbox "Logo 地址（brand_logo_url，同源路径 /… 或 http(s)，≤2048） 空串表示清除；拒绝 javascript:/data:（会被渲染进邮件 img src）。":
+    - /placeholder: /assets/logo.svg 或 https://…
+  - text: 空串表示清除；拒绝 javascript:/data:（会被渲染进邮件 img src）。 Logo 预览 未设置 logo（邮件将省略 logo 段）
+  - button "保存品牌设置"

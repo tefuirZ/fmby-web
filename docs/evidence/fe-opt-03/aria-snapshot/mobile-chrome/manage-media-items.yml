@@ -1,0 +1,102 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - button "切换管理模块，当前模块：媒体条目":
+    - text: 当前模块
+    - strong: 媒体条目
+    - text: 切换模块
+  - text: 管理中心
+  - heading "资源管理" [level=1]
+  - paragraph: 检索、筛选媒体资源，查看识别与刮削状态，进入详情页管理元数据、封面与字幕。
+  - text: 共 6 条资源，当前第 1 / 1 页
+  - button "刷新列表"
+  - text: 资源总数 6 真实接口分页结果 当前页有覆盖 4 元数据 / 图片 / 字幕任一命中 当前页可播放 0 来源状态为可播放 当前页待处理 6 已有海报或字幕 0 条
+  - heading "筛选与检索" [level=2]
+  - paragraph: 列表只保留管理员真会用到的筛选：资源归属、来源健康、元数据状态和本地覆盖态。
+  - text: 关键词
+  - searchbox "关键词"
+  - text: 媒体库
+  - combobox "媒体库":
+    - option "全部媒体库" [selected]
+    - option "电影库"
+  - text: 媒体类型
+  - combobox "媒体类型":
+    - option "全部类型" [selected]
+    - option "电影"
+    - option "剧集"
+    - option "季"
+    - option "单集"
+    - option "音乐"
+    - option "专辑"
+    - option "艺术家"
+  - text: 来源状态
+  - combobox "来源状态":
+    - option "全部状态" [selected]
+    - option "可播放"
+    - option "待校验"
+    - option "不可达"
+    - option "不支持"
+    - option "凭证过期"
+    - option "状态缺失"
+  - text: 元数据状态
+  - combobox "元数据状态":
+    - option "全部状态" [selected]
+    - option "正常"
+    - option "等待解析"
+    - option "解析失败"
+    - option "缺失"
+  - text: 本地覆盖
+  - combobox "本地覆盖":
+    - option "全部资源" [selected]
+    - option "仅看有覆盖"
+    - option "仅看无覆盖"
+  - text: 当前页 6 条 总计 6 条 覆盖命中 4 条
+  - heading "资源列表" [level=2]
+  - paragraph: 列表只展示海报、状态与覆盖摘要；查看与编辑请进入资源详情页。
+  - text: 默认按最近更新时间倒序
+  - article:
+    - text: 第 3 集 集 第 3 集 归属 电影库 2015 状态缺失 元数据缺失 覆盖 元数据 / 图片 / 字幕 海报 缺失 字幕 暂无 3分钟前 最近扫描 —
+    - link "查看详情":
+      - /url: /manage/media/items/205
+    - button "删除媒体源"
+  - article:
+    - text: 第 2 集 集 第 2 集 归属 电影库 2015 状态缺失 元数据缺失 覆盖 元数据 / 图片 / 字幕 海报 缺失 字幕 暂无 3分钟前 最近扫描 —
+    - link "查看详情":
+      - /url: /manage/media/items/204
+    - button "删除媒体源"
+  - article:
+    - text: 第 1 集 集 第 1 集 归属 电影库 2015 状态缺失 元数据缺失 覆盖 元数据 / 图片 / 字幕 海报 缺失 字幕 暂无 3分钟前 最近扫描 —
+    - link "查看详情":
+      - /url: /manage/media/items/203
+    - button "删除媒体源"
+  - article:
+    - text: 第 1 季 季 第 1 季 归属 电影库 2015 状态缺失 元数据缺失 覆盖 无 海报 缺失 字幕 暂无 3分钟前 最近扫描 —
+    - link "查看详情":
+      - /url: /manage/media/items/202
+    - button "删除媒体源"
+  - article:
+    - text: 苍穹浩瀚 剧集 The Expanse 归属 电影库 2015 状态缺失 元数据缺失 覆盖 无 海报 缺失 字幕 暂无 3分钟前 最近扫描 —
+    - link "查看详情":
+      - /url: /manage/media/items/201
+    - button "删除媒体源"
+  - article:
+    - text: 星际穿越 电影 Interstellar 归属 电影库 2014 状态缺失 元数据缺失 覆盖 元数据 / 图片 / 字幕 海报 缺失 字幕 暂无 3分钟前 最近扫描 —
+    - link "查看详情":
+      - /url: /manage/media/items/101
+    - button "删除媒体源"
+  - text: 每页 20 条，当前显示 6 条
+  - button "上一页" [disabled]
+  - text: 第 1 / 1 页
+  - button "下一页" [disabled]

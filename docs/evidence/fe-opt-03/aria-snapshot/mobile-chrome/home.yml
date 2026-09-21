@@ -1,0 +1,76 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - text: 热播轮播 1 / 6
+  - heading "星际穿越" [level=1]
+  - text: 2014 电影
+  - paragraph: 最近大家都在看，先放进热播轮播里占个好位置。
+  - link "立即播放":
+    - /url: /play/101
+  - link "查看详情":
+    - /url: /item/101
+  - text: 热播精选 (1/6)
+  - button "上一部热播内容"
+  - button "下一部热播内容"
+  - button "切换到 星际穿越": 星 1 星际穿越
+  - button "切换到 苍穹浩瀚": 苍 2 苍穹浩瀚
+  - button "切换到 第 1 季": 第 3 第 1 季
+  - button "切换到 第 1 集": 第 4 第 1 集
+  - button "切换到 第 2 集": 第 5 第 2 集
+  - button "切换到 第 3 集": 第 6 第 3 集
+  - heading "admin的继续观看" [level=2]
+  - paragraph: 只保留没看完的内容，顺着进度条直接续上。
+  - link "查看全部":
+    - /url: /history
+  - text: 暂时没有未看完的内容，看点新东西后会自动出现在这里。
+  - heading "最近入库" [level=2]
+  - paragraph: 先扫一眼最近刚进库的片子，挑到就直接进。
+  - link "浏览媒体库":
+    - /url: /libraries
+  - article:
+    - link "星 电影 2014 电影 2014 星际穿越":
+      - /url: /item/101
+      - text: 星 电影 2014 电影 2014
+      - heading "星际穿越" [level=3]
+  - article:
+    - link "苍 剧集 2015 剧集 2015 苍穹浩瀚":
+      - /url: /item/201
+      - text: 苍 剧集 2015 剧集 2015
+      - heading "苍穹浩瀚" [level=3]
+  - article:
+    - link "第 季度 2015 季度 2015 第 1 季":
+      - /url: /item/202
+      - text: 第 季度 2015 季度 2015
+      - heading "第 1 季" [level=3]
+  - article:
+    - link "第 剧集单集 2015 剧集单集 2015 第 1 集":
+      - /url: /item/203
+      - text: 第 剧集单集 2015 剧集单集 2015
+      - heading "第 1 集" [level=3]
+  - article:
+    - link "第 剧集单集 2015 剧集单集 2015 第 2 集":
+      - /url: /item/204
+      - text: 第 剧集单集 2015 剧集单集 2015
+      - heading "第 2 集" [level=3]
+  - article:
+    - link "第 剧集单集 2015 剧集单集 2015 第 3 集":
+      - /url: /item/205
+      - text: 第 剧集单集 2015 剧集单集 2015
+      - heading "第 3 集" [level=3]
+  - heading "媒体库入口" [level=2]
+  - paragraph: 电影、剧集、音乐都做成一排横向入口卡，进库更顺手。
+  - link "查看全部媒体库":
+    - /url: /libraries
+  - text: 继续往下滑到这里时，再展开媒体库入口。

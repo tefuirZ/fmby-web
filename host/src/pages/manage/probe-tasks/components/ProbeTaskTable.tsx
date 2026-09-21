@@ -86,7 +86,15 @@ export function ProbeTaskTable({
         </div>
       }
     >
-      <div className={styles.tableWrap}>
+      {/* FE-OPT-03：可横向滚动区域须可被键盘访问（axe
+          `scrollable-region-focusable`，serious）。tabIndex=0 使其可聚焦，
+          role=region + aria-label 让读屏器能宣告这块是什么。 */}
+      <div
+        className={styles.tableWrap}
+        tabIndex={0}
+        role="region"
+        aria-label="探测任务列表（可横向滚动）"
+      >
         <table className={styles.table}>
           <thead>
             <tr>

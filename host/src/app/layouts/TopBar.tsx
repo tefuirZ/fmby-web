@@ -127,14 +127,19 @@ export function TopBar() {
                 className={styles.userButton}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
+                // FE-OPT-03：手机档 .userName 被 display:none（TopBar.module.css），
+                // 按钮内只剩装饰头像 → axe `button-name` critical（无可辨别文本）。
+                // 补 aria-label；标签内含可见用户名，满足 WCAG 2.5.3 label-in-name。
+                aria-label={`账号菜单：${displayName}`}
                 onClick={() => setMenuOpen((prev) => !prev)}
               >
-                <span className={styles.avatar}>
+                <span className={styles.avatar} aria-hidden="true">
                   <User size={14} />
                 </span>
                 <span className={styles.userName}>{displayName}</span>
                 <ChevronDown
                   size={13}
+                  aria-hidden="true"
                   className={menuOpen ? styles.chevronOpen : styles.chevron}
                 />
               </button>

@@ -86,10 +86,14 @@ export default defineConfig({
   // 使测试被报告为 skipped（而非失败）。
   webServer: hasBinary
     ? {
-        command: 'node e2e/start.mjs',
+        // FE-OPT-03：**先 build 再 preview**。e2e 默认服务 host/dist 的已构建产物
+        // （start.mjs 仅在 dist **缺失**时才 build）→ 源码改动后若不手动 build，
+        // 跑的仍是旧产物，会把「改动未生效」误判为「修复无效」（实测踩到两次）。
+        // 前置 build 保证被验证的对象恒为当前源码（代价：每次 e2e 多约 7s）。
+        command: 'pnpm build && node e2e/start.mjs',
         url: webOrigin,
         reuseExistingServer: false,
-        timeout: 120_000,
+        timeout: 180_000,
       }
     : undefined,
 });

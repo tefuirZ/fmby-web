@@ -1,0 +1,54 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - button "切换管理模块，当前模块：媒体信息检测":
+    - text: 当前模块
+    - strong: 媒体信息检测
+    - text: 切换模块
+  - text: 管理中心
+  - heading "技术参数探测任务" [level=1]
+  - paragraph: 管理员可以直接查看当前哪个媒体库、哪个来源正在做技术参数探测，并对单条来源发起补全或强制重探。
+  - text: 当前展示 0 条来源记录
+  - button "刷新列表"
+  - text: 运行中 0 当前正在探测 排队中 0 等待执行或重试 已完成 0 已有探测快照 失败 0 需要管理员关注
+  - heading "任务列表" [level=2]
+  - paragraph: 列表按当前任务活跃度排序，优先展示正在执行或等待重试的来源。
+  - text: 搜索
+  - searchbox "搜索"
+  - text: 状态筛选
+  - combobox "状态筛选":
+    - option "全部" [selected]
+    - option "运行中"
+    - option "排队中"
+    - option "等待重试"
+    - option "已完成"
+    - option "失败"
+    - option "未入队"
+  - region "探测任务列表（可横向滚动）":
+    - table:
+      - rowgroup:
+        - row "影片 媒体库 来源 任务状态 技术摘要 最近时间 操作":
+          - columnheader "影片"
+          - columnheader "媒体库"
+          - columnheader "来源"
+          - columnheader "任务状态"
+          - columnheader "技术摘要"
+          - columnheader "最近时间"
+          - columnheader "操作"
+      - rowgroup:
+        - row "暂无探测来源 当前还没有可管理的远端技术参数探测来源。":
+          - cell "暂无探测来源 当前还没有可管理的远端技术参数探测来源。":
+            - strong: 暂无探测来源
+            - text: 当前还没有可管理的远端技术参数探测来源。
