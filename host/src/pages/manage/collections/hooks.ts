@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   peripheralsApi,
+  type ManagedCollectionMemberAddInput,
   type ManagedCollectionWriteInput,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -17,6 +18,21 @@ export function useCollectionDetailQuery(id: string | null) {
     queryKey: queryKeys.manage.collections.detail(id ?? undefined),
     queryFn: () => peripheralsApi.getCollection(id as string),
     enabled: id !== null,
+  });
+}
+
+/**
+ * 成员候选查询（GET member-candidates）。
+ *
+ * keyword 去空白后 <2 字符时**不发请求**（契约：后端必填且 ≥2，否则 400）——
+ * 省一次注定失败的往返；空态由 UI 提示，不把 400 吞成空列表。
+ */
+export function useCollectionMemberCandidatesQuery(keyword: string) {
+  const trimmed = keyword.trim();
+  return useQuery({
+    queryKey: queryKeys.manage.collections.memberCandidates(trimmed),
+    queryFn: () => peripheralsApi.listCollectionMemberCandidates(trimmed),
+    enabled: trimmed.length >= 2,
   });
 }
 
@@ -66,7 +82,17 @@ export function useCollectionMutations({ onSuccess }: UseCollectionMutationsOpti
     },
   });
 
+  const addMemberMutation = useMutation({
+    mutationFn: ({ collectionId, input }: { collectionId: string; input: ManagedCollectionMemberAddInput }) =>
+      peripheralsApi.addCollectionMember(collectionId, input),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('成员已加入合集。');
+    },
+  });
+
   return {
+    addMemberMutation,
     createMutation,
     updateMutation,
     deleteMutation,
