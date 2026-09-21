@@ -1,0 +1,144 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - button "切换管理模块，当前模块：命名与刮削":
+    - text: 当前模块
+    - strong: 命名与刮削
+    - text: 切换模块
+  - text: 管理中心
+  - heading "命名刮削设置" [level=1]
+  - paragraph: 这页收口命名清洗、识别后自动刮削、主元数据来源、元数据语言和缺失海报补刮。数据库是元数据真相源，海报会落本地缓存，不再只存一条屁用没有的外链。
+  - text: TMDB 主链路已接通 TMDB 主元数据 设置已同步 当前清洗规则版本：naming-cleanup-v6:95930e7e8d89e61854b0dbb058c85eca72e12a4b897e31222622caabe9ffd492
+  - button "重置未保存" [disabled]
+  - button "恢复默认草稿"
+  - button "保存设置" [disabled]
+  - text: 元数据语言 5 zh-CN 主元数据源 1 TMDB 主元数据 海报策略 1 跟随元数据语言 启用自定义词 0 0 条自定义规则 规则链路
+  - strong: "保存后新规则直接进入 `identify` 输入快照"
+  - paragraph: "后续重新请求识别、重新入队的旧任务都会带着新的 `rule_pack_version` 和命名证据重新计算指纹，不会继续复用旧规则的残留结果。"
+  - text: 运营方式
+  - strong: 默认词做底盘，自定义词和保留词做业务收口
+  - paragraph: 默认噪音词适合画质/编码/容器，自定义词适合字幕组、来源尾巴、内部命名规范；保留词负责兜住误杀。
+  - heading "刮削策略与语言偏好" [level=2]
+  - paragraph: 主标题来源、元数据语言、海报语言和识别后自动刮削都在这里。这里改的是系统默认策略，不是单条媒体的手工覆盖。
+  - text: 元数据
+  - strong: 元数据和字幕语言
+  - text: 元数据语言
+  - textbox "元数据语言 主标题、简介、演员、类型等默认按这个语言去取。":
+    - /placeholder: 例如：zh-CN / zh-TW / en-US
+    - text: zh-CN
+  - text: 主标题、简介、演员、类型等默认按这个语言去取。 地区偏好
+  - textbox "地区偏好 用于 TMDB 结果落地区域化标题和上映信息。":
+    - /placeholder: 例如：CN / TW / US / JP
+    - text: CN
+  - text: 用于 TMDB 结果落地区域化标题和上映信息。 默认字幕语言
+  - textbox "默认字幕语言":
+    - /placeholder: 例如：zh-CN，留空表示不指定
+    - text: zh-CN
+  - text: 标题与海报
+  - strong: 主元数据来源和海报语言
+  - text: 主元数据来源
+  - combobox "主元数据来源 主来源负责标题、简介、人物和默认图片；另一个来源只补缺失字段或外部 ID。":
+    - option "TMDB 为主" [selected]
+    - option "豆瓣为主"
+  - text: 主来源负责标题、简介、人物和默认图片；另一个来源只补缺失字段或外部 ID。 海报语言偏好
+  - combobox "海报语言偏好 海报会先下载到本地缓存，再写 sidecar 资产，不再只留外链。":
+    - option "跟随元数据语言" [selected]
+    - option "优先原始语言海报"
+    - option "接受任意语言海报"
+  - text: 海报会先下载到本地缓存，再写 sidecar 资产，不再只留外链。
+  - checkbox "识别成功后自动触发刮削 新媒体首次入库、识别绑定成功后会自动入队 scrape。关闭后只保留手动触发。" [checked]
+  - strong: 识别成功后自动触发刮削
+  - text: 新媒体首次入库、识别绑定成功后会自动入队 scrape。关闭后只保留手动触发。
+  - checkbox "刮削海报自动上传到 115 图床（多源直链加速） 开启后，刮削写盘的 poster/backdrop/thumb 会异步推送到 115 图床，前端优先消费 CDN 直链，节省家里上行带宽。需要先在「工具 / 115 图床」绑定图床凭据，未绑定时自动跳过。"
+  - strong: 刮削海报自动上传到 115 图床（多源直链加速）
+  - text: 开启后，刮削写盘的 poster/backdrop/thumb 会异步推送到 115 图床，前端优先消费 CDN 直链，节省家里上行带宽。需要先在「工具 / 115 图床」绑定图床凭据，未绑定时自动跳过。
+  - status: 当前策略说明 TMDB 负责主元数据，豆瓣只补缺失字段和外部 ID。当前海报策略：跟随元数据语言。
+  - text: 当前媒体库选择器默认会带上：电影库 可达性保护
+  - strong: 数据源可见性与失效保护
+  - checkbox "启用失效源自动隐藏 连续失败达到阈值后，这个媒体源关联的资源会从普通浏览里隐藏，历史记录只保留不可达提示。" [checked]
+  - strong: 启用失效源自动隐藏
+  - text: 连续失败达到阈值后，这个媒体源关联的资源会从普通浏览里隐藏，历史记录只保留不可达提示。 连续失败阈值
+  - spinbutton "连续失败阈值 默认 3 次；429 限流不会计数，也不会触发隐藏。": "3"
+  - text: 默认 3 次；429 限流不会计数，也不会触发隐藏。
+  - checkbox "成功一次后自动恢复 数据源恢复可读后，允许自动解除隐藏；关闭后只能管理员手动恢复。" [checked]
+  - strong: 成功一次后自动恢复
+  - text: 数据源恢复可读后，允许自动解除隐藏；关闭后只能管理员手动恢复。 无权限条目怎么展示
+  - combobox "无权限条目怎么展示 这个策略只影响来源路径没授权的资源；和数据源真实失效不是一回事。":
+    - option "直接隐藏，看不到也点不到" [selected]
+    - option "可以看到，但点开后提示无权限"
+  - text: 这个策略只影响来源路径没授权的资源；和数据源真实失效不是一回事。
+  - status: 当前阈值：连续失败 3 次 这个保护是按媒体库来源粒度生效，不是一刀切把整个库全删可见性。
+  - heading "实时预览" [level=2]
+  - paragraph: 这里走的就是后端预览接口，当前草稿会一并送进规则运行时。先看结果，再决定要不要保存。
+  - text: 路径样本
+  - textbox "路径样本":
+    - /placeholder: 例如：甄嬛传 (2011)/Season 1/甄嬛传 - S01E01 - 第 1 集 2160p WEB-DL.mkv
+  - text: 媒体库类型
+  - combobox "媒体库类型":
+    - option "电影" [selected]
+    - option "剧集"
+    - option "音乐"
+    - option "混合库"
+  - text: 预览规则版本
+  - strong: naming-cleanup-v6:95930e7e8d89e61854b0dbb058c85eca72e12a4b897e31222622caabe9ffd492
+  - status: 预览只读，不写库 你现在看到的是草稿效果，不会修改线上配置；保存后才会进入系统设置并影响后续识别任务。
+  - strong: 先丢一条真实路径进来
+  - paragraph: 没有样本路径，预览面板就只能干瞪眼，没法告诉你哪些词会被删。
+  - heading "历史媒体手动重排" [level=2]
+  - paragraph: 保存规则不会自动全库回灌。历史媒体要不要吃到新规则，由管理员在这里自己选范围、自己确认。
+  - text: Replay Identify
+  - strong: 按当前已保存规则重新入队 identify
+  - paragraph: 这个动作只重排识别队列，不会替你保存草稿，也不会关闭扫描新增/变更时的自动清洗链路。
+  - text: 重排范围
+  - combobox "重排范围 先拿单库试刀，别一上来就把全站 identify 队列打爆。":
+    - option "指定媒体库" [selected]
+    - option "全部媒体库"
+  - text: 先拿单库试刀，别一上来就把全站 identify 队列打爆。 目标媒体库
+  - combobox "目标媒体库 当前目标：电影库，只会重排这个库。":
+    - option "电影库 · 电影" [selected]
+  - text: 当前目标：电影库，只会重排这个库。 当前已保存规则版本
+  - strong: naming-cleanup-v6:95930e7e8d89e61854b0dbb058c85eca72e12a4b897e31222622caabe9ffd492
+  - strong: 当前规则已保存
+  - text: 手动重排只吃已保存版本，不会因为你改了草稿就偷偷全库开跑。
+  - button "手动重排识别"
+  - heading "缺失项批量补刮" [level=2]
+  - paragraph: 这个动作只针对缺元数据 / 缺海报的媒体入队 scrape，不会无脑全量重刷。配置改了以后，管理员自己决定要不要补。
+  - text: 范围
+  - strong: 按库补，或者全站补
+  - text: 补刮范围
+  - combobox "补刮范围":
+    - option "指定媒体库" [selected]
+    - option "全部媒体库"
+  - text: 目标媒体库
+  - combobox "目标媒体库":
+    - option "电影库 · 电影" [selected]
+  - checkbox "补刮缺失元数据 只挑 metadata_status=Missing 的媒体。" [checked]
+  - strong: 补刮缺失元数据
+  - text: 只挑 metadata_status=Missing 的媒体。
+  - checkbox "补刮缺失海报 只挑还没有 Poster / Thumb / Backdrop 的媒体。" [checked]
+  - strong: 补刮缺失海报
+  - text: 只挑还没有 Poster / Thumb / Backdrop 的媒体。
+  - button "开始补刮"
+  - text: 策略说明
+  - strong: 只补缺，不全刷
+  - paragraph: 配置变更后允许管理员自己决定要不要补刮，但系统只会命中缺元数据 / 缺海报的媒体。已经完整的媒体不会被你这一刀全砍一遍。
+  - status: 当前范围：指定媒体库 当前目标：电影库。
+  - heading "还没跑过补刮" [level=2]
+  - paragraph: 先把策略保存好，再对缺失项打一轮补刮，看看落地效果。
+  - group:
+    - text: 清洗规则
+    - strong: 展开后再编辑默认词、自定义词和保留词
+    - paragraph: 清洗规则继续保留，但不再把整页塞满。要改的时候再展开，页面才不至于像杂货铺。
+    - text: 已折叠

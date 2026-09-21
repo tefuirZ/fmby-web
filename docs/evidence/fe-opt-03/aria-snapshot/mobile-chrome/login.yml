@@ -1,0 +1,11 @@
+- heading "FMBY" [level=1]
+- paragraph: 登录以继续
+- text: 用户名
+- textbox "用户名":
+  - /placeholder: 请输入用户名
+- text: 密码
+- textbox "密码":
+  - /placeholder: 请输入密码
+- button "显示密码"
+- button "登录"
+- button "忘记密码？"

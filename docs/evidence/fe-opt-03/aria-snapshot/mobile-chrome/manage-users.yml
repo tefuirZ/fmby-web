@@ -1,0 +1,81 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - button "切换管理模块，当前模块：用户账号":
+    - text: 当前模块
+    - strong: 用户账号
+    - text: 切换模块
+  - text: 管理中心
+  - heading "用户管理" [level=1]
+  - paragraph: 补齐账号详情、创建、编辑和批量软删除闭环，删除语义先明确收口为停用账号并吊销活跃会话。
+  - text: 共 1 个账号，当前第 1 / 1 页
+  - button "新建用户"
+  - button "刷新"
+  - heading "账号列表" [level=2]
+  - paragraph: 支持搜索、详情抽屉、系统角色调整、来源路径授权和批量编辑。
+  - text: 搜索用户
+  - textbox "搜索用户":
+    - /placeholder: 用户名 / 显示名 / 角色 / 来源路径
+  - text: 状态
+  - combobox "状态":
+    - option "全部状态" [selected]
+    - option "正常"
+    - option "待激活"
+    - option "已停用"
+    - option "已锁定"
+  - text: 类型
+  - combobox "类型":
+    - option "全部类型" [selected]
+    - option "人工账号"
+    - option "服务账号"
+  - text: 当前页 1 条 / 共 1 条
+  - table:
+    - rowgroup:
+      - row "选择当前页中的全部可批量操作账号 账号 角色 类型 状态 来源授权 创建时间 最近登录 最近设备 操作":
+        - columnheader "选择当前页中的全部可批量操作账号":
+          - checkbox "选择当前页中的全部可批量操作账号"
+        - columnheader "账号"
+        - columnheader "角色"
+        - columnheader "类型"
+        - columnheader "状态"
+        - columnheader "来源授权"
+        - columnheader "创建时间"
+        - columnheader "最近登录"
+        - columnheader "最近设备"
+        - columnheader "操作"
+    - rowgroup:
+      - row "选择用户 admin admin @admin 管理员 人工账号 正常 媒体库兜底 2026年9月22日 05:33 — — 详情 编辑 重置密码 解除账号风控 当前账号":
+        - cell "选择用户 admin":
+          - checkbox "选择用户 admin" [disabled]
+        - cell "admin @admin":
+          - button "admin"
+          - text: "@admin"
+        - cell "管理员"
+        - cell "人工账号"
+        - cell "正常"
+        - cell "媒体库兜底"
+        - cell "2026年9月22日 05:33"
+        - cell "—"
+        - cell "—"
+        - cell "详情 编辑 重置密码 解除账号风控 当前账号":
+          - button "详情"
+          - button "编辑"
+          - button "重置密码"
+          - button "解除账号风控"
+          - button "当前账号" [disabled]
+  - text: 每页 100 条，当前显示 1 条
+  - button "上一页" [disabled]
+  - text: 第 1 / 1 页
+  - button "下一页" [disabled]

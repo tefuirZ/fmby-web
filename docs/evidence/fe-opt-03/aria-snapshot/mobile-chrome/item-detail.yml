@@ -1,0 +1,20 @@
+- banner:
+  - link "FMBY":
+    - /url: /
+  - navigation "主导航":
+    - link "首页":
+      - /url: /
+    - link "媒体库":
+      - /url: /libraries
+    - link "观看历史":
+      - /url: /history
+    - link "管理中心":
+      - /url: /manage
+  - button "全局搜索"
+  - button "账号菜单：admin"
+- main:
+  - complementary:
+    - text: 可直接播放
+    - heading "星际穿越" [level=1]
+    - paragraph: 2014 · 电影 · 2014 · 电影
+    - paragraph: 暂时还没有内容简介。
