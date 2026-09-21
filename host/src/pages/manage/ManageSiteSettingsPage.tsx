@@ -12,6 +12,7 @@ import {
   SiteSettingsRegistrationSection,
   SiteSettingsSecuritySection,
   SiteSettingsSessionSection,
+  SiteSettingsBrandSection,
 } from './site-settings/components';
 
 export function ManageSiteSettingsPage() {
@@ -126,6 +127,9 @@ export function ManageSiteSettingsPage() {
           <a className={styles.smallButton} href="#site-session">
             会话时长
           </a>
+          <a className={styles.smallButton} href="#site-brand">
+            品牌
+          </a>
           <a className={styles.smallButton} href="#site-compat">
             兼容与高级
           </a>
@@ -155,6 +159,8 @@ export function ManageSiteSettingsPage() {
         setDraft={setDraft}
         setSuccess={setSuccess}
       />
+
+      <SiteSettingsBrandSection />
 
       {dirty ? (
         <div className={styles.stickyBar}>

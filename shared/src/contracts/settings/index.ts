@@ -8,6 +8,7 @@ export type {
   EmailSecurity,
   EmailResetDelivery,
 } from './emailChannel.api';
+export { mapEmailChannelToDraft, buildEmailChannelPutBody } from './emailChannel.api';
 export type {
   SiteSettingsBrand,
   SiteBrandDraft,

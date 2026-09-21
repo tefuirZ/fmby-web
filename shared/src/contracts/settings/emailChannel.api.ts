@@ -90,8 +90,30 @@ function mapEmailChannel(raw: RawEmailChannelSettings): EmailChannelSettings {
   };
 }
 
-/** 草稿 → PUT body（snake_case）。password 留空则省略，不改密。 */
-function toEmailChannelApi(draft: EmailChannelDraft): Record<string, unknown> {
+/** GET 回显 → 页面草稿（填默认值；password 只写重置为空，留空=不改）。 */
+export function mapEmailChannelToDraft(settings: EmailChannelSettings): EmailChannelDraft {
+  return {
+    host: settings.host ?? '',
+    port: settings.port ?? 587,
+    security: settings.security ?? 'starttls',
+    username: settings.username ?? '',
+    password: '',
+    fromAddress: settings.fromAddress ?? '',
+    resetDelivery: settings.resetDelivery ?? 'code',
+    codeLen: settings.codeLen ?? 6,
+    codeTtlMinutes: settings.codeTtlMinutes ?? 10,
+    linkTtlMinutes: settings.linkTtlMinutes ?? 15,
+    htmlTemplate: settings.htmlTemplate ?? '',
+  };
+}
+
+/**
+ * 草稿 → PUT body（snake_case）。
+ * password 留空则省略字段（不改密）；username/html_template 空串归一为 null。
+ */
+export function buildEmailChannelPutBody(
+  draft: EmailChannelDraft,
+): Record<string, unknown> {
   const body: Record<string, unknown> = {
     host: draft.host,
     port: draft.port,
@@ -119,7 +141,7 @@ export const emailChannelApi = {
   async putEmailChannel(draft: EmailChannelDraft): Promise<EmailChannelSettings> {
     const raw = await httpClient.put<RawEmailChannelSettings>(
       '/api/settings/server/email',
-      { body: toEmailChannelApi(draft) },
+      { body: buildEmailChannelPutBody(draft) },
     );
     return mapEmailChannel(raw);
   },

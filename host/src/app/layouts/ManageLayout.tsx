@@ -13,6 +13,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Library,
+  Mail,
   Menu,
   Monitor,
   ScrollText,
@@ -97,6 +98,7 @@ const manageNavTree: ManageNavNode[] = [
       { id: 'site-settings', label: '站点设置', icon: Settings, to: '/manage/site/settings' },
       { id: 'site-license', label: '授权与订阅', icon: ShieldCheck, to: '/manage/site/license' },
       { id: 'site-telegram-bot', label: 'Telegram Bot 配置', icon: Send, to: '/manage/site/telegram' },
+      { id: 'site-email-channel', label: '邮件通道', icon: Mail, to: '/manage/site/email' },
       { id: 'site-secrets', label: '密钥链管理', icon: KeyRound, to: '/manage/site/secrets' },
       { id: 'site-advanced', label: '高级维护', icon: SlidersHorizontal, to: '/manage/site/advanced' },
       { id: 'system-about', label: '系统关于', icon: Info, to: '/manage/system-about' },
@@ -156,6 +158,7 @@ const PATH_PREFETCH_KEYS: Record<string, keyof typeof routeLoaders> = {
   '/manage/site/security/audit-logs': 'manageAuditLogs',
   '/manage/site/security/runtime-logs': 'manageRuntimeLogs',
   '/manage/site/telegram': 'manageTelegram',
+  '/manage/site/email': 'manageEmailChannel',
   '/manage/site/secrets': 'manageSecrets',
   '/manage/site/license': 'manageLicense',
 };

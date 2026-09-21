@@ -434,6 +434,13 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                path: 'email',
+                lazy: async () => {
+                  const { ManageEmailChannelPage } = await import('@/pages/manage/ManageEmailChannelPage');
+                  return { Component: ManageEmailChannelPage };
+                },
+              },
+              {
                 path: 'telegram-bot',
                 element: <ManageLegacyRedirect to="/manage/site/telegram" />,
               },
