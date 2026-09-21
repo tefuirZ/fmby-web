@@ -57,11 +57,20 @@
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
+  /* FE-OPT-02：flex 子项默认 min-width:auto，长内容会拒绝收缩并把父行撑宽
+     （metaRow 实测 309px 容器被 434px 内容顶出）。显式归零让子项可收缩。 */
+  min-width: 0;
 }
 
 .metaText {
   color: var(--text-secondary);
   font-size: var(--text-caption);
+  /* FE-OPT-02：meta 行常放版本号/哈希等**无空格长串**（如
+     `naming-cleanup-v6:95930e7e8d89…`），窄屏下不可断行会把行宽撑到 434px
+     （375 视口实测溢出 +92px）。允许任意处断行 + min-width:0 参与 flex 收缩。
+     桌面端文本短，不触发断行，渲染零变化。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .primaryButton,

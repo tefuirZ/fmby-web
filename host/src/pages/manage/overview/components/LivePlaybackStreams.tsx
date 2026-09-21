@@ -145,7 +145,9 @@ export function LivePlaybackStreams({
                       {onRevokeSession && !session.current ? (
                         <button
                           type="button"
+                          className={styles.revokeSessionButton}
                           title="强行终止此会话"
+                          aria-label={`强行终止会话：${session.userName}`}
                           disabled={isRevoking}
                           onClick={() => onRevokeSession(session.id)}
                           style={{

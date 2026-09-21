@@ -67,6 +67,20 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // FE-OPT-02（本轮新增）：真移动设备 profile（hasTouch + isMobile）。
+    //
+    // 背景（关键）：仓内所有触屏样式（--touch-min 44px）都收在
+    // `@media (hover: none) and (pointer: coarse)` 内，而 Desktop Chrome 的
+    // pointer 是 fine → 该媒体查询**永不匹配**。也就是说，仅跑 desktop project
+    // 时触屏 44px 规则根本没生效，却会被记为「0 违规」（视觉盒在触屏样式未
+    // 应用下也常达标），结论偏弱。
+    //
+    // 故新增本 project 让触屏样式真正参与渲染；原 `chromium` project 保持不变
+    // （桌面零回归对照）。用法：`npx playwright test --project=mobile-chrome`。
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+    },
   ],
   // 无服务端二进制时不拉起 webServer；各 spec 顶部 `test.skip(!E2E_ENABLED)`
   // 使测试被报告为 skipped（而非失败）。
