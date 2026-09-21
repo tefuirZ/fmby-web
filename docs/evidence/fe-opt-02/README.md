@@ -40,6 +40,11 @@ EVIDENCE_DIR=docs/evidence/fe-opt-02 pnpm --filter @fmby/v2-host test:e2e -- mob
 - **tablet-768/home**、**tablet-768/manage-site-settings**：中档断点的 browse / manage 代表。
 - **desktop-1280/{libraries,manage-overview,manage-site-settings}**：桌面档 browse / manage / 表单代表。
 
+> **降采样说明（本轮）**：`manage-naming-scrape` / `manage-overview` 两张是整页长截图
+> （原始 1031×17828），原尺寸入库会把仓库推到 2.55 MiB、触发 REPO-HYGIENE-01 的
+> 1 MiB 阻断。故入库版本为**降采样证据快照**（宽 300px、64 色量化）——
+> 用于核对「无横向溢出 / 布局形态」，**非原始像素**。原始像素见 `full/`（gitignored）。
+
 ## 未入库（全部 76 页 × 3 断点）
 
 完整清单（25 页 × 3 断点 + phone 播放页 = 76）：
