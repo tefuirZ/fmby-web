@@ -21,9 +21,18 @@ HTTP**把可验证的部分跑一遍，把不可验证的部分诚实 SKIP。
   - 退出码透传：环境不备（无 bin）→ SKIP 退出 0 不假红；跑了就真判定，FAIL 非 0；
   - 不碰后端与契约文档。
 
+**未挂进 `pnpm verify` 的理由（开放项，待主代理裁决）**：
+  本脚本第 5 步会在③不可验证时补跑 `cargo test`（后端真单测作证据）。首次编译
+  约 4.5 分钟（后续命中缓存约 20 秒），挂进 verify 会显著拖慢日常门禁，故当前
+  **只注册了独立的 `pnpm email-smoke`，未并入 verify**。
+  - 若要改为常驻：在根 package.json 的 `verify` 链里追加 `&& pnpm email-smoke`；
+  - 若要完全手动：保持现状，或给脚本加 `--no-unit-evidence` 关掉第 5 步。
+  注意：脚本对 SKIP 一律 exit 0，挂进 verify 也不会假红；只有真断言失败才非 0。
+
 用法：
   python3 scripts/e2e/email_channel_smoke.py
   python3 scripts/e2e/email_channel_smoke.py --port 18095 --dir /data/fmby-e2e-w1-email
+  python3 scripts/e2e/email_channel_smoke.py --target /data/fmby-target/ws-zcode-writer3/debug
 """
 
 from __future__ import annotations
@@ -251,7 +260,7 @@ def step5_backend_unit_evidence(repo: str) -> None:
         print("  stderr 尾部：\n" + (proc.stderr or "")[-1200:])
 
 
-def run_smoke(h, repo: str) -> int:
+def run_smoke(h, repo: str, unit_evidence: bool = True) -> int:
     skips: list[str] = []
     try:
         current = step1_get_email_channel(h)
@@ -290,7 +299,10 @@ def run_smoke(h, repo: str) -> int:
             return 1
     else:
         # start 不可验证（生产未装配邮件端口）→ 用后端真单测补证据
-        step5_backend_unit_evidence(repo)
+        if unit_evidence:
+            step5_backend_unit_evidence(repo)
+        else:
+            print("\n[5] 补充证据：--no-unit-evidence 已指定，跳过 cargo test")
 
     if skips:
         print("\n=== SKIP 项（不可验证，非绿）===")
@@ -309,6 +321,11 @@ def main() -> int:
     ap.add_argument(
         "--target", default="/data/fmby-target/ws-zcode-writer3/debug"
     )
+    ap.add_argument(
+        "--no-unit-evidence",
+        action="store_true",
+        help="跳过第 5 步 cargo test 补充证据（纯 HTTP 冒烟，最快）",
+    )
     args = ap.parse_args()
 
     mod, err = load_harness()
@@ -325,10 +342,14 @@ def main() -> int:
     CURRENT_TARGET = args.target
     h = mod["Harness"](args.port, args.dir, args.target)
     try:
+        # 冷启动判定：库不存在 → 本次要先 seed 建库（实测数秒），服务就绪窗口
+        # 需放宽（默认 10s 会在冷启动下撞窗口 → 误判 FAIL）。热启动（库已存在）
+        # 仍用默认窗口，不拖慢复跑。
+        cold = not os.path.exists(h.db)
         h.ensure_seeded()
-        h.start_server()
+        h.start_server(wait_secs=60 if cold else 10)
         h.login()  # admin/admin（seed 默认），拿 session + csrf 双工件
-        return run_smoke(h, BACKEND_REPO)
+        return run_smoke(h, BACKEND_REPO, unit_evidence=not args.no_unit_evidence)
     except mod["Fail"] as e:
         print(f"FAIL(harness): {e}")
         return 1
