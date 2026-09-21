@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import { useGridRovingFocus } from '@/features/a11y/useGridRovingFocus';
 import { LibraryDetailMediaCard } from '../components';
 import styles from '../styles/library.module.css';
 
@@ -13,11 +14,14 @@ const OVERSCAN_ROWS = 1;
 interface VirtualizedLibraryDetailGridProps {
   items: MediaCardSummary[];
   onNearTail?: () => void;
+  /** FE-LIST-KEYNAV：是否还有更多可加载（服务端分页边界语义）。 */
+  hasMore?: boolean;
 }
 
 export function VirtualizedLibraryDetailGrid({
   items,
   onNearTail,
+  hasMore = false,
 }: VirtualizedLibraryDetailGridProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState({
@@ -100,6 +104,16 @@ export function VirtualizedLibraryDetailGrid({
   const totalRows = Math.max(1, Math.ceil(items.length / layout.columns));
   const stride = layout.rowHeight + layout.gap;
   const totalHeight = totalRows * layout.rowHeight + Math.max(0, totalRows - 1) * layout.gap;
+  // FE-LIST-KEYNAV：方向键漫游（roving tabindex）。容器是 Tab 的单一停靠点，
+  // 方向键在卡片间移动焦点；走到已加载末尾触发 onNearTail 但焦点停在边界。
+  useGridRovingFocus({
+    containerRef,
+    itemCount: items.length,
+    columns: layout.columns,
+    hasMore,
+    onReachTail: onNearTail,
+    stride,
+  });
   const visibleRows = useMemo(() => {
     const rows: Array<{ index: number; items: MediaCardSummary[] }> = [];
     for (let index = layout.startRow; index <= layout.endRow; index += 1) {
@@ -141,9 +155,18 @@ export function VirtualizedLibraryDetailGrid({
               gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`,
             }}
           >
-            {row.items.map((item) => (
-              <LibraryDetailMediaCard key={item.id} item={item} />
-            ))}
+            {row.items.map((item, columnIndex) => {
+              const globalIndex = row.index * layout.columns + columnIndex;
+              return (
+                <div
+                  key={item.id}
+                  data-grid-item-index={globalIndex}
+                  className={styles.libraryVirtualizedCell}
+                >
+                  <LibraryDetailMediaCard item={item} />
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>

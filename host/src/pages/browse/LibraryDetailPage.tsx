@@ -180,6 +180,7 @@ export function LibraryDetailPage() {
         <VirtualizedLibraryDetailGrid
           items={items}
           onNearTail={actions.loadMore}
+          hasMore={vm.hasNextPage}
         />
       )}
 
