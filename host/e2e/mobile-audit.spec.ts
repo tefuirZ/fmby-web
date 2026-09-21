@@ -146,7 +146,15 @@ test.describe('responsive sweep', () => {
 
 /** ② 触控目标 ≥44px（--touch-min 纪律；mobile viewport 实测关键交互元素）。 */
 test.describe('touch targets', () => {
-  test('primary controls >= 44px on phone', async ({ page }) => {
+  test('primary controls >= 44px on phone', async ({ page }, testInfo) => {
+    // FE-OPT-02：本断言依赖触屏媒体查询 `(hover:none) and (pointer:coarse)`
+    // 下的 44px 规则。桌面 profile（Desktop Chrome，pointer:fine）**永不匹配**
+    // 该 media → 断言在那里无意义（实测会红）。故只在移动 profile 下执行；
+    // 桌面 profile 明确 skip 并说明原因（不假装通过，也不留红）。
+    test.skip(
+      testInfo.project.name !== 'mobile-chrome',
+      `触屏 44px 断言仅在 mobile-chrome profile 有意义（当前 ${testInfo.project.name} 的 pointer 非 coarse）`,
+    );
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 375, height: 812 });
     await resetBackend();
@@ -161,7 +169,42 @@ test.describe('touch targets', () => {
         if (!box || box.width === 0 || box.height === 0) continue;
         // 可点击面积判定：宽高任一 < 44 且面积 < 44*32（行内文字按钮的宽向豁免由面积补）。
         if (box.height < minSize && box.width * box.height < minSize * 32) {
-          tooSmall.push(`${label}[${i}] ${Math.round(box.width)}x${Math.round(box.height)}`);
+          // FE-OPT-02：视觉盒小的元素，可能靠 ::before 伪元素扩了命中区
+          // （与 shared Switch 同惯例）。此时**实测命中区**而非视觉盒——
+          // boundingBox 看不到伪元素，只看它会误报。
+          const hit = await els.nth(i).evaluate((el) => {
+            // elementFromPoint 只测**视口内**坐标：元素在视口外时全返回 null，
+            // 会误判命中区为 0。先滚到视口中央再探测。
+            el.scrollIntoView({ block: 'center', inline: 'center' });
+            const r = el.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            // 从中心向外找最远的、仍命中本元素（或其伪元素所属元素）的偏移
+            let maxR = 0;
+            for (let d = 21; d >= 1; d -= 1) {
+              const pts = [
+                [cx + d, cy], [cx - d, cy], [cx, cy + d], [cx, cy - d],
+              ];
+              const allHit = pts.every(([x, y]) => {
+                const t = document.elementFromPoint(x, y);
+                return t === el || el.contains(t);
+              });
+              if (allHit) { maxR = d; break; }
+            }
+            return { visualW: Math.round(r.width), visualH: Math.round(r.height), hitRadius: maxR };
+          });
+          // 命中半径 ≥21 ⇒ 命中区直径 ≥42（≈44，含取整误差）→ 视为达标
+          if (hit.hitRadius >= 21) {
+            console.log(
+              `[audit] ${label}[${i}] 视觉 ${hit.visualW}x${hit.visualH}，` +
+              `命中区直径≈${hit.hitRadius * 2}px（伪元素扩展）→ 达标`,
+            );
+            continue;
+          }
+          tooSmall.push(
+            `${label}[${i}] ${Math.round(box.width)}x${Math.round(box.height)}` +
+            `（命中区直径≈${hit.hitRadius * 2}px）`,
+          );
         }
       }
     }
@@ -195,8 +238,13 @@ test.describe('touch targets', () => {
     await audit('button', 'manage-button');
 
     console.log(`[audit] touch targets below 44px (non-exempt): ${tooSmall.length ? tooSmall.join(', ') : 'none'}`);
-    // 归档到页面变量供 handoff 统计（严格断言留给 CI：此处 ≥0 但输出明细）。
-    expect(tooSmall.length).toBeLessThanOrEqual(20);
+    // FE-OPT-02（本轮收紧）：原先 `toBeLessThanOrEqual(20)` 过于宽松——实测
+    // 19x19 的「终止会话」按钮被记入却仍判通过，等于门禁没锁住。
+    // 现已修复该按钮（触屏 ::before 扩命中区至 44x44），故断言收紧为 **0 违规**。
+    expect(
+      tooSmall,
+      `触屏点按目标 <44px：${tooSmall.join(', ')}`,
+    ).toHaveLength(0);
   });
 });
 

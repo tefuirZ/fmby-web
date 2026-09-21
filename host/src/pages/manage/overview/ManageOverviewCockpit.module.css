@@ -291,6 +291,19 @@
   color: var(--text-primary);
 }
 
+/* FE-OPT-02：终止会话按钮原为 19x19（15px 图标 + 2px padding），窄屏点按目标
+   严重不足，且它是**破坏性操作**（终止他人会话），误触代价高。
+   修法：触屏下把按钮盒撑到 --touch-min（44x44）——图标仍 15px、背景透明，
+   **视觉零变化**，但 boundingBox 可直接量到 44（比 ::before 伪元素扩展更易验证，
+   且不依赖伪元素命中测试）。桌面（pointer:fine）不适用，零影响。 */
+@media (hover: none) and (pointer: coarse) {
+  .revokeSessionButton {
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+    justify-content: center;
+  }
+}
+
 .streamMediaTitle {
   font-size: 14.5px;
   font-weight: var(--font-weight-bold);
