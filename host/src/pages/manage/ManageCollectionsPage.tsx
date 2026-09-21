@@ -10,6 +10,7 @@ import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { useCollectionDetailQuery, useCollectionMutations, useCollectionsQuery } from './collections/hooks';
 import { CollectionMemberPanel } from './collections/components/CollectionMemberPanel';
+import { CollectionMemberAdder } from './collections/components/CollectionMemberAdder';
 import {
   CollectionFormDialog,
   type CollectionFormState,
@@ -299,6 +300,10 @@ export function ManageCollectionsPage() {
                       {expanded ? (
                         <tr>
                           <td colSpan={6}>
+                            <CollectionMemberAdder
+                              collectionId={collection.id}
+                              onAdded={setBanner}
+                            />
                             <CollectionMemberPanel
                               collectionId={collection.id}
                               detailQuery={detailQuery}
