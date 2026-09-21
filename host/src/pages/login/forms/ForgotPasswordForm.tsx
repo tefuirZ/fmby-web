@@ -28,7 +28,7 @@ import clsx from 'clsx';
 
 import styles from '../LoginPage.module.css';
 import { Field, PasswordToggle, SubmitButton } from './fields';
-import { createResetSessionId } from '../resetHash';
+import { createResetSessionId, PASSWORD_RESET_HASH } from '../resetHash';
 import { resetAfterSubmitView } from '../passwordResetFlow';
 
 interface ForgotPasswordFormProps {
@@ -146,8 +146,8 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
     );
   }
 
-  // 已提交：恒显示同一防枚举文案；后续 UI 只由 delivery 决定
-  const afterView = resetAfterSubmitView(delivery);
+  // 已提交：恒显示同一防枚举文案；后续 UI 只由 delivery（+ A 形态 challenge）决定
+  const afterView = resetAfterSubmitView(delivery, sessionId);
   return (
     <div className={styles.form}>
       <div className={styles.successBanner} role="status">
@@ -203,6 +203,19 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
             text="重置密码"
           />
         </form>
+      ) : afterView === 'code-unavailable' ? (
+        // challenge 缺失 → 验证码表单提交必败，不渲染死胡同表单，引导走邮件链接
+        <div className={styles.form}>
+          <p className={styles.subtitle}>
+            请改用邮件中的重置链接完成设置：本次未取回可用的会话标识，验证码方式不可用。
+          </p>
+          <a className={styles.secondaryButton} href={PASSWORD_RESET_HASH}>
+            前往重置页
+          </a>
+          <span className={styles.fieldHint}>
+            重置页地址固定为 {PASSWORD_RESET_HASH}?ticket=…（ticket 在邮件链接里）。
+          </span>
+        </div>
       ) : afterView === 'link-notice' ? (
         <p className={styles.subtitle}>
           请查收邮件并点击其中的重置链接完成设置（链接有效期见站点配置）。

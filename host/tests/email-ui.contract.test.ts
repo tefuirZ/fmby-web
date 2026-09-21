@@ -286,10 +286,19 @@ test('④ completePasswordReset（B 形态）：只带 ticket + new_password（�
 test('③ 防枚举：确认文案为固定常量；后续 UI 仅由 delivery 决定', () => {
   assert.equal(typeof PASSWORD_RESET_START_CONFIRM_MESSAGE, 'string');
   assert.ok(PASSWORD_RESET_START_CONFIRM_MESSAGE.length > 0);
-  // 该函数签名只接收 delivery——不存在按邮箱存在性分支的输入。
-  assert.equal(resetAfterSubmitView('code'), 'code-form');
+  // 该函数签名只接收 delivery/challenge——不存在按邮箱存在性分支的输入。
+  assert.equal(resetAfterSubmitView('code', 'sess-1'), 'code-form');
   assert.equal(resetAfterSubmitView('link'), 'link-notice');
   assert.equal(resetAfterSubmitView('password'), 'password-notice');
+});
+
+test('③a challenge 为空 ⇒ 不渲染验证码表单（提交必败，改走邮件链接）', () => {
+  // 后端以 (session_id=challenge, email, code) 三元组校验；challenge 空串 ⇒ 必不匹配。
+  assert.equal(resetAfterSubmitView('code', ''), 'code-unavailable');
+  assert.equal(resetAfterSubmitView('code', '   '), 'code-unavailable');
+  assert.equal(resetAfterSubmitView('code'), 'code-unavailable');
+  // challenge 有效 ⇒ 正常渲染验证码表单
+  assert.equal(resetAfterSubmitView('code', 'sess-1'), 'code-form');
 });
 
 test('③a schema：验证码数字、新密码 ≥8', () => {
