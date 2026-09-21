@@ -43,6 +43,23 @@ export type {
   RegisterFormData,
   SetupFormData,
 } from './schemas';
+export {
+  passwordResetStartSchema,
+  passwordResetCodeSchema,
+  passwordResetLinkSchema,
+  PASSWORD_RESET_START_CONFIRM_MESSAGE,
+} from './passwordReset';
+export type {
+  PasswordResetDelivery,
+  PasswordResetStartRequest,
+  PasswordResetStartResponse,
+  PasswordResetCompleteCodeRequest,
+  PasswordResetCompleteLinkRequest,
+  PasswordResetCompleteRequest,
+  PasswordResetStartFormData,
+  PasswordResetCodeFormData,
+  PasswordResetLinkFormData,
+} from './passwordReset';
 
 export type { User, UserRole, Capability } from './user';
 export type { SessionState, SessionStatus } from './session';
