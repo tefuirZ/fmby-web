@@ -68,12 +68,17 @@ test('nextGridIndex：Home/End 在当前行内跳转', () => {
   assert.equal(nextGridIndex({ ...base, activeIndex: 6 }, 'end'), 6);
 });
 
-test('nextGridIndex：单列时 ↑↓ 退化为逐项，←→ 停住', () => {
+test('nextGridIndex：单列（一维列表/横滚轨道）时 ←→↑↓ 均为逐项移动', () => {
+  // 语义：一维轨道里按 → 应看下一张卡。若沿用二维「行内列」判断
+  // （col < cols-1，cols=1 时恒假）会让 ←/→ 完全不动 → 漫游失效。
   const single: GridKeyNavRequest = { activeIndex: 2, itemCount: 5, columns: 1, hasMore: false };
   assert.equal(nextGridIndex(single, 'up'), 1);
   assert.equal(nextGridIndex(single, 'down'), 3);
-  assert.equal(nextGridIndex(single, 'left'), 2);
-  assert.equal(nextGridIndex(single, 'right'), 2);
+  assert.equal(nextGridIndex(single, 'left'), 1);
+  assert.equal(nextGridIndex(single, 'right'), 3);
+  // 边界不环绕
+  assert.equal(nextGridIndex({ ...single, activeIndex: 0 }, 'left'), 0);
+  assert.equal(nextGridIndex({ ...single, activeIndex: 4 }, 'right'), 4);
 });
 
 test('nextGridIndex：columns<=0 时按 1 列处理（防御，不崩）', () => {

@@ -57,9 +57,14 @@ export function nextGridIndex(
   const rowCount = Math.ceil(itemCount / cols);
 
   switch (direction) {
+    // 单列（一维列表/横滚轨道）：←/→ 与 ↑/↓ 等价，逐项移动。
+    // 若仍按「行内列」判断（col < cols-1 → cols=1 时恒假），←/→ 会完全不动，
+    // 一维轨道的键盘漫游就失效了（e2e 抓到）。
     case 'left':
+      if (cols === 1) return current > 0 ? current - 1 : current;
       return col > 0 ? current - 1 : current;
     case 'right': {
+      if (cols === 1) return current < last ? current + 1 : current;
       if (col < cols - 1) {
         const target = current + 1;
         return target <= last ? target : current;
@@ -210,8 +215,16 @@ export function useGridRovingFocus({
       const tag = active.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
+      // activeRef 只在 hook 内部 focus 时更新；用户**点击**卡片或外部 focus 时
+      // 它仍是 -1，此时方向键会永远从首项算起（真 bug：点第 5 项后按 → 回到 0）。
+      // 故以当前 activeElement 所在 slot 的索引为准（activeRef 仅作兜底）。
+      const slotIndex = Number(
+        active.closest('[data-grid-item-index]')?.getAttribute('data-grid-item-index') ?? -1,
+      );
+      const currentIndex = Number.isFinite(slotIndex) && slotIndex >= 0 ? slotIndex : activeRef.current;
+
       const request: GridKeyNavRequest = {
-        activeIndex: activeRef.current,
+        activeIndex: currentIndex,
         itemCount,
         columns,
         hasMore,
