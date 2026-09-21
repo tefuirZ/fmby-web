@@ -3,6 +3,8 @@ import type {
   CollectionVisibility,
   ManagedCollectionDetailRecord,
   ManagedCollectionMemberRecord,
+  ManagedCollectionMemberCandidate,
+  ManagedCollectionMemberAddInput,
   ManagedCollectionRecord,
   ManagedCollectionWriteInput,
   RewardsAccountSummaryRecord,
@@ -49,6 +51,19 @@ interface RawManagedCollectionMember {
 interface RawManagedCollectionDetail {
   collection: RawManagedCollection;
   members: RawManagedCollectionMember[];
+}
+
+interface RawMemberCandidate {
+  item_id: string;
+  library_id: string;
+  library_name: string;
+  title: string;
+  original_title: string | null;
+  media_kind: string;
+  year: number | null;
+  overview: string | null;
+  community_rating: number | null;
+  poster_url: string | null;
 }
 
 interface RawRewardsAccount {
@@ -202,6 +217,22 @@ function fromMember(r: RawManagedCollectionMember): ManagedCollectionMemberRecor
   };
 }
 
+function fromMemberCandidate(r: RawMemberCandidate): ManagedCollectionMemberCandidate {
+  return {
+    itemId: r.item_id,
+    libraryId: r.library_id,
+    libraryName: r.library_name,
+    title: r.title,
+    originalTitle: r.original_title,
+    mediaKind: r.media_kind,
+    year: r.year,
+    // 恒 null 三字段：原样透传，不伪造（契约登记 V2 无源）
+    overview: r.overview,
+    communityRating: r.community_rating,
+    posterUrl: r.poster_url,
+  };
+}
+
 function fromAccount(r: RawRewardsAccount): RewardsPointAccountRecord {
   return {
     userId: r.user_id,
@@ -286,6 +317,38 @@ export const peripheralsApi = {
     await httpClient.delete<{ ok: boolean }>(
       `/api/manage/collections/${encodeURIComponent(id)}`,
     );
+  },
+
+  /**
+   * GET /api/manage/collections/member-candidates —— 成员候选查询。
+   *
+   * 契约（webui.md:469）：`keyword` **必填**，去空白后 ≥2 字符，否则后端 400；
+   * 响应为**裸数组**，上限 30 条。前端**不**在 keyword 不足 2 字符时发请求
+   * （省一次注定 400 的往返），但服务端校验仍以 400 为准。
+   */
+  async listCollectionMemberCandidates(
+    keyword: string,
+  ): Promise<ManagedCollectionMemberCandidate[]> {
+    const raw = await httpClient.get<RawMemberCandidate[]>(
+      '/api/manage/collections/member-candidates',
+      { params: { keyword } },
+    );
+    return raw.map(fromMemberCandidate);
+  },
+
+  /**
+   * POST /api/manage/collections/{id}/members/add —— 加入成员。
+   * body 仅 `{item_id}`（后端取条目快照写入绑定）；返回更新后的详情。
+   */
+  async addCollectionMember(
+    collectionId: string,
+    input: ManagedCollectionMemberAddInput,
+  ): Promise<ManagedCollectionDetailRecord> {
+    const raw = await httpClient.post<RawManagedCollectionDetail>(
+      `/api/manage/collections/${encodeURIComponent(collectionId)}/members/add`,
+      { body: { item_id: input.itemId } },
+    );
+    return { collection: fromCollection(raw.collection), members: raw.members.map(fromMember) };
   },
 
   async deleteCollectionMember(collectionId: string, memberId: string): Promise<void> {

@@ -56,6 +56,33 @@ export interface ManagedCollectionDetailRecord {
   members: ManagedCollectionMemberRecord[];
 }
 
+/**
+ * 合集成员候选（GET /api/manage/collections/member-candidates，响应为**裸数组**）。
+ *
+ * 契约口径（webui.md:469）：`overview` / `community_rating` / `poster_url`
+ * 因 V2 无列 / 无评分源 / 无该图片路由而**恒 null**（不伪造、不回落占位图）。
+ */
+export interface ManagedCollectionMemberCandidate {
+  itemId: string;
+  libraryId: string;
+  libraryName: string;
+  title: string;
+  originalTitle: string | null;
+  mediaKind: CollectionMemberMediaKind | string;
+  year: number | null;
+  /** 恒 null（V2 无该列）——不伪造摘要。 */
+  overview: string | null;
+  /** 恒 null（V2 无评分源）——不回落 0 分。 */
+  communityRating: number | null;
+  /** 恒 null（V2 无该图片路由）——不回落占位图。 */
+  posterUrl: string | null;
+}
+
+/** POST /api/manage/collections/{id}/members/add 入参。 */
+export interface ManagedCollectionMemberAddInput {
+  itemId: string;
+}
+
 export interface ManagedCollectionWriteInput {
   title: string;
   overview?: string;

@@ -160,6 +160,8 @@ export const queryKeys = {
         id
           ? (['manage', 'collections', 'detail', id] as const)
           : (['manage', 'collections', 'detail'] as const),
+      memberCandidates: (keyword: string) =>
+        ['manage', 'collections', 'member-candidates', keyword] as const,
     },
 
     rewards: {
