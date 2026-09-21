@@ -39,7 +39,12 @@ export function ResetPasswordForm({ ticket, onDone }: ResetPasswordFormProps) {
 
   const mutation = useMutation({
     mutationFn: (data: PasswordResetLinkFormData) =>
-      authApi.completePasswordReset({ ticket: data.ticket, new_password: data.newPassword }),
+      // B 形态：ticket 非空时后端走 ticket 分支（优先于三元组），
+      // 故三元组字段一律不带，避免误入 A 分支。
+      authApi.completePasswordReset({
+        ticket: data.ticket,
+        new_password: data.newPassword,
+      }),
     onSuccess: () => setDone(true),
   });
 

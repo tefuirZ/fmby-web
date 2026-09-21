@@ -58,13 +58,13 @@ const RAW_EMAIL = {
   host: 'smtp.example.com',
   port: 587,
   security: 'starttls',
-  username: null,
+  username: '',
   from_address: 'no-reply@example.com',
   reset_delivery: 'code',
   code_len: 6,
   code_ttl_minutes: 10,
   link_ttl_minutes: 15,
-  html_template: null,
+  html_template: '',
 };
 
 import {
@@ -101,7 +101,28 @@ test('① GET /api/settings/server/email：路径/方法正确，回显映射为
   assert.deepEqual(res.secretFieldsConfigured, ['password']);
 });
 
-test('① PUT body：password 留空则省略字段；username/html_template 空串归一 null', () => {
+test('① 12 个响应字段全部按 snake_case 读到（不得为 undefined）', async () => {
+  reset({ status: 200, json: RAW_EMAIL });
+  const res = await emailChannelApi.getEmailChannel();
+  // 用户实测：后端 DTO 无 rename_all → wire 就是 snake_case。
+  // 若误按 camelCase 读，下列字段会全为 undefined（页面空表单）。
+  for (const [key, value] of Object.entries(res)) {
+    assert.notEqual(value, undefined, `字段 ${key} 不得为 undefined`);
+  }
+  assert.equal(res.configured, true);
+  assert.equal(res.host, 'smtp.example.com');
+  assert.equal(res.port, 587);
+  assert.equal(res.security, 'starttls');
+  assert.equal(res.username, '');
+  assert.equal(res.fromAddress, 'no-reply@example.com');
+  assert.equal(res.resetDelivery, 'code');
+  assert.equal(res.codeLen, 6);
+  assert.equal(res.codeTtlMinutes, 10);
+  assert.equal(res.linkTtlMinutes, 15);
+  assert.equal(res.htmlTemplate, '');
+});
+
+test('① PUT body：password 留空则省略字段；username/html_template 空串原样发', () => {
   const body = buildEmailChannelPutBody({
     host: 'h',
     port: 587,
@@ -116,8 +137,9 @@ test('① PUT body：password 留空则省略字段；username/html_template 空
     htmlTemplate: '',
   });
   assert.equal('password' in body, false, '留空密码必须省略，避免覆盖已存凭据');
-  assert.equal(body.username, null);
-  assert.equal(body.html_template, null);
+  // username / html_template 是 Rust String（非 Option）→ 原样发空串，不可归一 null
+  assert.equal(body.username, '');
+  assert.equal(body.html_template, '');
   assert.equal(body.from_address, 'a@b.c');
 });
 
@@ -147,7 +169,7 @@ test('① GET 回显 → 草稿：password 只写重置为空、缺省补默认�
     host: '',
     port: 587,
     security: 'starttls',
-    username: null,
+    username: '',
     fromAddress: '',
     resetDelivery: 'code',
     codeLen: 6,
@@ -168,7 +190,7 @@ test('① PUT /api/settings/server/email：路径/方法正确', async () => {
     host: 'smtp.example.com',
     port: 587,
     security: 'starttls',
-    username: null,
+    username: '',
     fromAddress: 'no-reply@example.com',
     resetDelivery: 'code',
     codeLen: 6,
@@ -214,22 +236,40 @@ test('③ startPasswordReset：POST 路径 + body(email, session_id)', async () 
   assert.equal(res.delivery, 'code');
 });
 
+test('③ startPasswordReset：响应 wire 字段全 snake_case（后端裸派生，无 rename_all）', async () => {
+  reset({
+    status: 200,
+    json: { accepted: true, delivery: 'code', challenge: 'sess-1', expires_at_ms: 600000 },
+  });
+  const res = await authApi.startPasswordReset({ email: 'a@b.c', session_id: 'sess-1' });
+  // challenge 是 A 形态回填用的 session_id 来源（后端三元组校验键）
+  assert.equal(res.challenge, 'sess-1');
+  assert.equal(res.expires_at_ms, 600000);
+  assert.equal(res.accepted, true);
+  // 不得存在 camelCase 变体
+  const keys = Object.keys(res);
+  assert.ok(!keys.includes('expiresAtMs'), '响应字段名必须是 snake_case');
+});
+
 test('③ startPasswordReset：无 session_id 时不带该字段', async () => {
   reset({ status: 200, json: { accepted: true, delivery: 'link' } });
   await authApi.startPasswordReset({ email: 'a@b.c' });
   assert.deepEqual(lastCall().body, { email: 'a@b.c' });
 });
 
-test('③a completePasswordReset（A 形态）：body(session_id,email,code,new_password)，204 成功', async () => {
+test('③a completePasswordReset（A 形态）：session_id 必须等于 start 的 challenge，且带 ticket 字段', async () => {
   reset({ status: 204, json: null });
   await authApi.completePasswordReset({
+    ticket: '',
     session_id: 'sess-1',
     email: 'a@b.c',
     code: '123456',
     new_password: 'longenough1',
   });
   assert.equal(pathOf(lastCall().url), '/api/auth/password-reset/complete');
+  // wire 全 snake_case（后端 DTO 裸派生 serde，无 rename_all）
   assert.deepEqual(lastCall().body, {
+    ticket: '',
     session_id: 'sess-1',
     email: 'a@b.c',
     code: '123456',
@@ -237,7 +277,7 @@ test('③a completePasswordReset（A 形态）：body(session_id,email,code,new_
   });
 });
 
-test('④ completePasswordReset（B 形态）：body(ticket,new_password)', async () => {
+test('④ completePasswordReset（B 形态）：只带 ticket + new_password（后端 ticket 分支优先）', async () => {
   reset({ status: 204, json: null });
   await authApi.completePasswordReset({ ticket: 'tk-1', new_password: 'longenough1' });
   assert.deepEqual(lastCall().body, { ticket: 'tk-1', new_password: 'longenough1' });

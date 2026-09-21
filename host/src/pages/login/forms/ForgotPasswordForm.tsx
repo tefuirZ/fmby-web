@@ -62,15 +62,17 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
       setSubmitted(true);
       setEmail(variables.email);
       setDelivery(response.delivery);
-      if (response.challenge) {
-        setSessionId(response.challenge);
-      }
+      // A 形态回填靠 challenge；B/C 形态后端回空串。
+      setSessionId(response.challenge ?? '');
     },
   });
 
   const completeMutation = useMutation({
     mutationFn: (data: PasswordResetCodeFormData) =>
+      // A 形态：session_id 必须等于 start 响应的 challenge（后端三元组校验）；
+      // 同时带上 ticket 字段（B 分支优先，此处为空串 → 后端走 A 分支）。
       authApi.completePasswordReset({
+        ticket: '',
         session_id: sessionId,
         email,
         code: data.code,
@@ -81,8 +83,9 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
     },
   });
 
+  // session_id 后端无格式校验（缺省回退邮箱），前端生成即可；
+  // start 响应回 challenge 后以 challenge 为准（三元组校验键）。
   const onStartSubmit = handleSubmitEmail((data) => {
-    // 每次起始生成一次 session_id（后端若回 challenge 则以 challenge 为准）
     setSessionId(createResetSessionId());
     setCodeDone(false);
     startMutation.mutate(data);
