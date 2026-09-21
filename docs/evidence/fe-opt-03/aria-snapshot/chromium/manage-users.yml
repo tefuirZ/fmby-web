@@ -117,7 +117,7 @@
         - columnheader "最近设备"
         - columnheader "操作"
     - rowgroup:
-      - row "选择用户 admin admin @admin 管理员 人工账号 正常 媒体库兜底 2026年9月22日 05:32 — — 详情 编辑 重置密码 解除账号风控 当前账号":
+      - row "选择用户 admin admin @admin 管理员 人工账号 正常 媒体库兜底 2026年9月22日 05:41 — — 详情 编辑 重置密码 解除账号风控 当前账号":
         - cell "选择用户 admin":
           - checkbox "选择用户 admin" [disabled]
         - cell "admin @admin":
@@ -127,7 +127,7 @@
         - cell "人工账号"
         - cell "正常"
         - cell "媒体库兜底"
-        - cell "2026年9月22日 05:32"
+        - cell "2026年9月22日 05:41"
         - cell "—"
         - cell "—"
         - cell "详情 编辑 重置密码 解除账号风控 当前账号":

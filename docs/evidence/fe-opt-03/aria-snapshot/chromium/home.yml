@@ -30,6 +30,10 @@
   - button "切换到 第 1 集": 第 4 第 1 集
   - button "切换到 第 2 集": 第 5 第 2 集
   - button "切换到 第 3 集": 第 6 第 3 集
+  - status:
+    - text: 正在同步管理提醒 先把首页首屏内容稳住，管理提醒会在后台补上。
+    - link "进入管理中心":
+      - /url: /manage
   - heading "admin的继续观看" [level=2]
   - paragraph: 只保留没看完的内容，顺着进度条直接续上。
   - link "查看全部":

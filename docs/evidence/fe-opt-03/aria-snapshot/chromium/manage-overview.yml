@@ -81,7 +81,7 @@
   - text: 管理中心
   - heading "中控驾驶舱 (Master Cockpit)" [level=1]
   - paragraph: 全景监控硬件水位、实时流媒体推流、多源挂载与系统风险，驱动资产高效流转。
-  - text: 运行正常 巡检时间：2026年9月22日 05:33
+  - text: 运行正常 巡检时间：2026年9月22日 05:41
   - button "全量巡检刷新"
   - link "+ 快速入库":
     - /url: /manage/media/add
@@ -93,37 +93,37 @@
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:33
+    - text: · 未知设备 最近活动：21:41
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:33
+    - text: · 未知设备 最近活动：21:41
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:33
+    - text: · 未知设备 最近活动：21:41
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:32
+    - text: · 未知设备 最近活动：21:41
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:32
+    - text: · 未知设备 最近活动：21:41
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:32
+    - text: · 未知设备 最近活动：21:41
   - heading "风险雷达与行动中枢" [level=2]
   - text: 运行良好 当前暂无高优先级阻塞风险，入库与推流链路运行平稳。
   - heading "正在运行的任务队列" [level=2]
@@ -133,7 +133,7 @@
   - text: 任务队列空闲
   - paragraph: 所有挂载目录、海报与元数据已完成最新刮削与入库。
   - heading "服务器与系统脉搏" [level=2]
-  - text: 运行正常 CPU 负载 不可用 内存占用 不可用 媒体存储池 不可用 实时网络推流吞吐 ↑ 不可用 · ↓ 不可用 指标每 10 秒自动巡检 · 最近刷新：9:33:05 PM
+  - text: 运行正常 CPU 负载 不可用 内存占用 不可用 媒体存储池 不可用 实时网络推流吞吐 ↑ 不可用 · ↓ 不可用 指标每 10 秒自动巡检 · 最近刷新：9:41:29 PM
   - heading "数据源与挂载负载矩阵" [level=2]
   - text: （共 1 个存储来源）
   - link "挂载管理 ➔":

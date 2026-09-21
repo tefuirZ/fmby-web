@@ -10,7 +10,7 @@
 | libraries | 11 | 0 | header, nav[主导航], main | 0 | 4 |
 | item-detail | 7 | 0 | header, nav[主导航], main, aside | 0 | 3 |
 | settings-profile | 16 | 0 | header, nav[主导航], main, aside[设置导航], nav[设置导航（移动端）], header | 0 | 6 |
-| manage-overview | 23 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 12 |
+| manage-overview | 37 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 26 |
 | manage-media-items | 29 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 13 |
 | manage-mounts | 20 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 9 |
 | manage-probe-tasks | 12 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 7 |

@@ -5,7 +5,7 @@
 | 页面 | 可聚焦元素 | 无名控件 | landmark | 图片缺 alt | aria 节点 |
 | --- | --- | --- | --- | --- | --- |
 | login | 5 | 0 | — | 0 | 1 |
-| home | 27 | 0 | header, nav[主导航], main | 0 | 13 |
+| home | 26 | 0 | header, nav[主导航], main | 0 | 12 |
 | history | 8 | 0 | header, nav[主导航], main | 0 | 3 |
 | libraries | 11 | 0 | header, nav[主导航], main | 0 | 4 |
 | item-detail | 7 | 0 | header, nav[主导航], main, aside | 0 | 3 |

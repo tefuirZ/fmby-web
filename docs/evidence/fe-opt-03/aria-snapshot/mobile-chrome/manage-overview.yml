@@ -20,49 +20,133 @@
   - text: 管理中心
   - heading "中控驾驶舱 (Master Cockpit)" [level=1]
   - paragraph: 全景监控硬件水位、实时流媒体推流、多源挂载与系统风险，驱动资产高效流转。
-  - text: 运行正常 巡检时间：2026年9月22日 05:34
+  - text: 运行正常 巡检时间：2026年9月22日 05:43
   - button "全量巡检刷新"
   - link "+ 快速入库":
     - /url: /manage/media/add
-  - text: 实时在线播放 6 路活跃流 直链推流中 入库媒体资产 6 部/集 共 1 个媒体库 · 持续刮削更新 数据源与云盘 0/1 正常可达 ⚠️ 存储「E2E 本地」可达性异常 · 需关注 风险与告警 0 项待处理 全系统无阻塞性风险
+  - text: 实时在线播放 20 路活跃流 直链推流中 入库媒体资产 6 部/集 共 1 个媒体库 · 持续刮削更新 数据源与云盘 0/1 正常可达 ⚠️ 存储「E2E 本地」可达性异常 · 需关注 风险与告警 0 项待处理 全系统无阻塞性风险
   - heading "实时推流与在线播放" [level=2]
-  - text: （6 个在线会话）
+  - text: （20 个在线会话）
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:34
+    - text: · 未知设备 最近活动：21:43
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:34
+    - text: · 未知设备 最近活动：21:43
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:34
+    - text: · 未知设备 最近活动：21:43
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:33
+    - text: · 未知设备 最近活动：21:43
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:33
+    - text: · 未知设备 最近活动：21:43
   - article:
     - text: admin 在线会话
     - button "强行终止会话：admin"
     - text: 在线待命中（媒体库浏览）
     - strong: 未知客户端
-    - text: · 未知设备 最近活动：21:33
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:43
+  - article:
+    - text: admin 在线会话
+    - button "强行终止会话：admin"
+    - text: 在线待命中（媒体库浏览）
+    - strong: 未知客户端
+    - text: · 未知设备 最近活动：21:42
   - heading "风险雷达与行动中枢" [level=2]
   - text: 运行良好 当前暂无高优先级阻塞风险，入库与推流链路运行平稳。
   - heading "正在运行的任务队列" [level=2]
@@ -72,7 +156,7 @@
   - text: 任务队列空闲
   - paragraph: 所有挂载目录、海报与元数据已完成最新刮削与入库。
   - heading "服务器与系统脉搏" [level=2]
-  - text: 运行正常 CPU 负载 不可用 内存占用 不可用 媒体存储池 不可用 实时网络推流吞吐 ↑ 不可用 · ↓ 不可用 指标每 10 秒自动巡检 · 最近刷新：9:34:06 PM
+  - text: 运行正常 CPU 负载 不可用 内存占用 不可用 媒体存储池 不可用 实时网络推流吞吐 ↑ 不可用 · ↓ 不可用 指标每 10 秒自动巡检 · 最近刷新：9:43:57 PM
   - heading "数据源与挂载负载矩阵" [level=2]
   - text: （共 1 个存储来源）
   - link "挂载管理 ➔":
