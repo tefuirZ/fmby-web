@@ -9,6 +9,11 @@
 
 import { httpClient } from '@fmby/v2-shared/api/client';
 import type { User } from '@fmby/v2-shared/types';
+import type {
+  PasswordResetStartRequest,
+  PasswordResetStartResponse,
+  PasswordResetCompleteRequest,
+} from './passwordReset';
 
 /* ---- 请求类型 ---- */
 
@@ -228,6 +233,27 @@ export const authApi = {
     } finally {
       clearSessionUsername();
     }
+  },
+
+  /**
+   * ③ 找回密码起始（匿名）。恒返回 accepted=true（防枚举：邮箱不存在也返回）。
+   * 按 delivery 决定后续 UI（code/link/password）。
+   */
+  startPasswordReset(data: PasswordResetStartRequest): Promise<PasswordResetStartResponse> {
+    return httpClient.post<PasswordResetStartResponse>('/api/auth/password-reset/start', {
+      body: {
+        email: data.email,
+        ...(data.session_id ? { session_id: data.session_id } : {}),
+      },
+    });
+  },
+
+  /**
+   * ③a / ④ 完成重置（匿名）。A 形态 = {session_id,email,code,new_password}；
+   * B 形态 = {ticket,new_password}。成功 204（无 body）。
+   */
+  completePasswordReset(data: PasswordResetCompleteRequest): Promise<void> {
+    return httpClient.post<void>('/api/auth/password-reset/complete', { body: data });
   },
 };
 

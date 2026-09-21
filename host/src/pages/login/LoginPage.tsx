@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams, useLocation } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import clsx from 'clsx';
@@ -28,11 +28,14 @@ import { queryKeys } from '@fmby/v2-shared/query';
 import type { User } from '@fmby/v2-shared/types';
 
 import styles from './LoginPage.module.css';
-type EntryMode = 'login' | 'register';
+type EntryMode = 'login' | 'register' | 'forgot';
 
 import { LoginForm } from './forms/LoginForm';
 import { RegisterForm } from './forms/RegisterForm';
 import { SetupForm } from './forms/SetupForm';
+import { ForgotPasswordForm } from './forms/ForgotPasswordForm';
+import { ResetPasswordForm } from './forms/ResetPasswordForm';
+import { parsePasswordResetHash } from './resetHash';
 import { IdentityLoginPanel } from './forms/IdentityLoginPanel';
 import {
   IdentityCompletionPanel,
@@ -56,6 +59,7 @@ function LoginShell({ children }: { children: ReactNode }) {
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { login } = useSession();
   const [mode, setMode] = useState<EntryMode>('login');
   const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
@@ -151,6 +155,20 @@ export function LoginPage() {
     setMode(nextMode);
   }
 
+  // ④ 链接重置页：固定路由 /login#password-reset?ticket=...（同 /login，无新路由）
+  const resetTicket = parsePasswordResetHash(location.hash);
+  if (resetTicket) {
+    return (
+      <LoginShell>
+        <p className={styles.subtitle}>设置新密码</p>
+        <ResetPasswordForm
+          ticket={resetTicket}
+          onDone={() => navigate('/login', { replace: true })}
+        />
+      </LoginShell>
+    );
+  }
+
   if (entryQuery.isLoading) {
     return (
       <LoginShell>
@@ -187,9 +205,11 @@ export function LoginPage() {
           ? '创建管理员账户以开始使用'
           : mode === 'register'
             ? '输入有效注册码，完成账号创建并接入默认权限'
-            : registrationEnabled
-              ? '使用已有账号登录，或切换到注册码注册'
-              : '登录以继续'}
+            : mode === 'forgot'
+              ? '通过注册邮箱找回密码'
+              : registrationEnabled
+                ? '使用已有账号登录，或切换到注册码注册'
+                : '登录以继续'}
       </p>
 
       {registrationNotice ? (
@@ -239,6 +259,8 @@ export function LoginPage() {
             setMode('login');
           }}
         />
+      ) : mode === 'forgot' ? (
+        <ForgotPasswordForm onBackToLogin={() => handleSwitchMode('login')} />
       ) : mode === 'register' && registrationEnabled ? (
         <RegisterForm
           onAuthenticated={handleAuthenticated}
@@ -252,6 +274,13 @@ export function LoginPage() {
               三方登录回流失败：{getErrorMessage(callbackCaptureQuery.error)}
             </div>
           ) : null}
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={() => handleSwitchMode('forgot')}
+          >
+            忘记密码？
+          </button>
           <IdentityLoginPanel
             providers={providersQuery.data ?? []}
             onStarted={handleIdentityStarted}

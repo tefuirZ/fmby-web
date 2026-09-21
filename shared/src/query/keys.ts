@@ -58,12 +58,14 @@ export const queryKeys = {
       security: () => ['settings', 'server', 'security'] as const,
       sessionPolicy: () => ['settings', 'server', 'session-policy'] as const,
     },
+    emailChannel: () => ['settings', 'server', 'email-channel'] as const,
   },
 
   manage: {
     overview: () => ['manage', 'overview'] as const,
     overviewHome: () => ['manage', 'overview', 'home'] as const,
     siteSettings: () => ['manage', 'site-settings'] as const,
+    siteBrand: () => ['manage', 'site-brand'] as const,
     advanced: () => ['manage', 'advanced'] as const,
     auditLogs: () => ['manage', 'audit-logs'] as const,
     sessions: () => ['manage', 'sessions'] as const,

@@ -63,6 +63,7 @@ export const routeLoaders = {
   manageAuditLogs: () => import('@/pages/manage/ManageAuditLogsPage'),
   manageRuntimeLogs: () => import('@/pages/manage/ManageRuntimeLogsPage'),
   manageTelegram: () => import('@/pages/manage/ManageTelegramPage'),
+  manageEmailChannel: () => import('@/pages/manage/ManageEmailChannelPage'),
   manageRewards: () => import('@/pages/manage/ManageRewardsPage'),
   manageSecrets: () => import('@/pages/manage/ManageSecretsPage'),
   manageLicense: () => import('@/pages/manage/ManageLicensePage'),

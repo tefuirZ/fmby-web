@@ -20,6 +20,7 @@
     "theme-parity": "node scripts/check-theme-parity.mjs",
     "test": "pnpm -r test",
     "perf:batch": "node scripts/perf/fe-opt-04-batch.mjs",
-    "component-size": "node scripts/check-frontend-component-size.mjs"
+    "component-size": "node scripts/check-frontend-component-size.mjs",
+    "email-smoke": "python3 scripts/e2e/email_channel_smoke.py"
   }
 }
