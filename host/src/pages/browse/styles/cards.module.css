@@ -327,7 +327,12 @@
 }
 
 .posterLink:focus-visible {
-  outline: none;
+  /* FE-LIST-KEYNAV / WCAG 2.4.7：此前 `outline: none` 把全局焦点环**显式移除**，
+     键盘方向键漫游到卡片时**完全没有可见焦点指示**（实测 outline-style: none）。
+     改为可见白环（与 hover 的发光并存；仅键盘聚焦时出现，不影响鼠标视觉）。 */
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 3px;
+  border-radius: var(--radius-md, 8px);
 }
 
 .posterImage {

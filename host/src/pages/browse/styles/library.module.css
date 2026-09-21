@@ -121,6 +121,17 @@
   align-items: stretch;
 }
 
+/* FE-LIST-KEYNAV：方向键漫游定位用的单元格包裹层（新增一层，须不破坏
+   原有网格布局——cell 作为 grid item 撑满，卡片在其中 100% 宽高）。 */
+.libraryVirtualizedCell {
+  display: flex;
+  min-width: 0;
+}
+
+.libraryVirtualizedCell > * {
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .libraryDetailGrid {
     grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
