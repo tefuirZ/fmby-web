@@ -1,8 +1,10 @@
 # FE-OPT-02 审计截图索引（抽样）
 
-> **REPO-HYGIENE-01 策略**：完整截图集（76 张 / 3.9 MiB）**不入库**，只保留 8 张
-> 代表样本 + 本索引。全量集由 `mobile-audit.spec` 生成到 `full/`（**gitignored**），
+> **REPO-HYGIENE-01 策略**：完整截图集（76 张 / 3.9 MiB）**不入库**，只保留代表
+> 样本 + 本索引。全量集由 `mobile-audit.spec` 生成到 `full/`（**gitignored**），
 > 作为 CI artifact / 发布附件归档。策略全文见 [`docs/evidence-policy.md`](../../evidence-policy.md)。
+
+## 入库样本（10 张，覆盖 3 断点 × 关键页类别）
 
 ## 生成方式（本地/CI，可复现）
 
@@ -22,6 +24,8 @@ EVIDENCE_DIR=docs/evidence/fe-opt-02 pnpm --filter @fmby/v2-host test:e2e -- mob
 | phone-375 | 首页 | browse | `samples/phone-375/home.png` | 91.0 KiB |
 | phone-375 | 播放页 | playback | `samples/phone-375/playback.png` | 33.1 KiB |
 | phone-375 | 媒体库管理 | manage | `samples/phone-375/manage-libraries.png` | 41.9 KiB |
+| phone-375 | 命名刮削设置 | manage | `samples/phone-375/manage-naming-scrape.png` | 1.3 MiB |
+| phone-375 | 管理首页 | manage | `samples/phone-375/manage-overview.png` | 510 KiB |
 | tablet-768 | 首页 | browse | `samples/tablet-768/home.png` | 296.2 KiB |
 | tablet-768 | 站点设置 | manage | `samples/tablet-768/manage-site-settings.png` | 124.0 KiB |
 | desktop-1280 | 媒体库列表 | browse | `samples/desktop-1280/libraries.png` | 16.8 KiB |
