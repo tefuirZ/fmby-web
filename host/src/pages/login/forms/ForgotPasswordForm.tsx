@@ -29,6 +29,7 @@ import clsx from 'clsx';
 import styles from '../LoginPage.module.css';
 import { Field, PasswordToggle, SubmitButton } from './fields';
 import { createResetSessionId } from '../resetHash';
+import { resetAfterSubmitView } from '../passwordResetFlow';
 
 interface ForgotPasswordFormProps {
   onBackToLogin: () => void;
@@ -142,14 +143,15 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
     );
   }
 
-  // 已提交：恒显示同一防枚举文案
+  // 已提交：恒显示同一防枚举文案；后续 UI 只由 delivery 决定
+  const afterView = resetAfterSubmitView(delivery);
   return (
     <div className={styles.form}>
       <div className={styles.successBanner} role="status">
         {PASSWORD_RESET_START_CONFIRM_MESSAGE}
       </div>
 
-      {delivery === 'code' ? (
+      {afterView === 'code-form' ? (
         <form className={styles.form} onSubmit={onCodeSubmit} noValidate>
           {completeMutation.error ? (
             <div className={styles.errorBanner} role="alert">
@@ -198,7 +200,7 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
             text="重置密码"
           />
         </form>
-      ) : delivery === 'link' ? (
+      ) : afterView === 'link-notice' ? (
         <p className={styles.subtitle}>
           请查收邮件并点击其中的重置链接完成设置（链接有效期见站点配置）。
         </p>
