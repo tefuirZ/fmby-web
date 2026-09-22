@@ -256,6 +256,9 @@ export const queryKeys = {
 
     operations: {
       overview: (days: number) => ['manage', 'operations', 'overview', days] as const,
+      mountLoad: () => ['manage', 'operations', 'mount-load'] as const,
+      activePlayback: (limit?: number) =>
+        ['manage', 'operations', 'active-playback', limit ?? null] as const,
     },
 
     systemAbout: {

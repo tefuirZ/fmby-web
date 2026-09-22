@@ -5,7 +5,12 @@ import type {
   OperationsActiveSnapshot,
   OperationsActiveUser,
   OperationsCountTrendPoint,
+  OperationsActivePlaybackQuery,
+  OperationsActivePlaybackResponse,
+  OperationsActivePlaybackSession,
   OperationsDataSourceLoadItem,
+  OperationsMountLoadItem,
+  OperationsMountLoadResponse,
   OperationsHotItem,
   OperationsOverview,
   OperationsPlaybackTrendPoint,
@@ -44,6 +49,159 @@ interface RawOperationsPlaybackTrendPoint {
   date: string;
   playCount: number;
   uniqueUserCount: number;
+}
+
+interface RawOperationsMountLoadItem {
+  source_id: string;
+  source_name: string;
+  provider_type: string;
+  mount_id: string;
+  active_session_count: number;
+  playing_count: number;
+  paused_count: number;
+  media_source_count: number;
+  last_heartbeat_at: string | null;
+  load_level: string;
+  advice: string | null;
+  requests_total: number | null;
+  success_total: number | null;
+  errors_total: number | null;
+  rejected_total: number | null;
+  rate_limited_total: number | null;
+  last_hold_ms: number | null;
+}
+
+interface RawOperationsMountLoadResponse {
+  sampled_at: string;
+  cache_status: string;
+  items: RawOperationsMountLoadItem[];
+}
+
+interface RawOperationsPlaybackClient {
+  device_name: string | null;
+  client_name: string | null;
+  device_os: string | null;
+  client_version: string | null;
+}
+
+interface RawOperationsPlaybackUser {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+}
+
+interface RawOperationsPlaybackItem {
+  item_id: string;
+  title: string;
+  media_type: string;
+  series_title: string | null;
+  season_number: number | null;
+  episode_number: number | null;
+}
+
+interface RawOperationsPlaybackSource {
+  media_source_id: string;
+  source_name: string;
+  provider_type: string;
+  mount_id: string;
+}
+
+interface RawOperationsActivePlaybackSession {
+  session_id: string;
+  device_session_id: string | null;
+  remote_control_available: boolean;
+  supported_commands: string[];
+  client_connection_status: string | null;
+  last_command_status: string | null;
+  client: RawOperationsPlaybackClient;
+  client_info: string | null;
+  user: RawOperationsPlaybackUser;
+  item: RawOperationsPlaybackItem;
+  source: RawOperationsPlaybackSource;
+  status: string;
+  play_method: string | null;
+  position_ticks: number | null;
+  duration_ticks: number | null;
+  progress_percent: number | null;
+  started_at: string;
+  last_heartbeat_at: string;
+}
+
+interface RawOperationsActivePlaybackResponse {
+  sampled_at: string;
+  cache_status: string;
+  limit: number;
+  total_returned: number;
+  sessions: RawOperationsActivePlaybackSession[];
+}
+
+function fromMountLoadItem(r: RawOperationsMountLoadItem): OperationsMountLoadItem {
+  return {
+    sourceId: r.source_id,
+    sourceName: r.source_name,
+    providerType: r.provider_type,
+    mountId: r.mount_id,
+    activeSessionCount: r.active_session_count,
+    playingCount: r.playing_count,
+    pausedCount: r.paused_count,
+    mediaSourceCount: r.media_source_count,
+    lastHeartbeatAt: r.last_heartbeat_at,
+    loadLevel: r.load_level as OperationsMountLoadItem["loadLevel"],
+    advice: r.advice,
+    // ★未知（null）不得补 0 —— OUTBOUND 端口未装配时后端给 null。
+    requestsTotal: r.requests_total,
+    successTotal: r.success_total,
+    errorsTotal: r.errors_total,
+    rejectedTotal: r.rejected_total,
+    rateLimitedTotal: r.rate_limited_total,
+    lastHoldMs: r.last_hold_ms,
+  };
+}
+
+function fromActivePlaybackSession(
+  r: RawOperationsActivePlaybackSession,
+): OperationsActivePlaybackSession {
+  return {
+    sessionId: r.session_id,
+    deviceSessionId: r.device_session_id,
+    remoteControlAvailable: r.remote_control_available,
+    supportedCommands: r.supported_commands ?? [],
+    clientConnectionStatus: r.client_connection_status,
+    lastCommandStatus: r.last_command_status,
+    client: {
+      deviceName: r.client.device_name,
+      clientName: r.client.client_name,
+      deviceOs: r.client.device_os,
+      clientVersion: r.client.client_version,
+    },
+    clientInfo: r.client_info,
+    user: {
+      userId: r.user.user_id,
+      username: r.user.username,
+      displayName: r.user.display_name,
+    },
+    item: {
+      itemId: r.item.item_id,
+      title: r.item.title,
+      mediaType: r.item.media_type,
+      seriesTitle: r.item.series_title,
+      seasonNumber: r.item.season_number,
+      episodeNumber: r.item.episode_number,
+    },
+    source: {
+      mediaSourceId: r.source.media_source_id,
+      sourceName: r.source.source_name,
+      providerType: r.source.provider_type,
+      mountId: r.source.mount_id,
+    },
+    status: r.status,
+    playMethod: r.play_method,
+    positionTicks: r.position_ticks,
+    durationTicks: r.duration_ticks,
+    progressPercent: r.progress_percent,
+    startedAt: r.started_at,
+    lastHeartbeatAt: r.last_heartbeat_at,
+  };
 }
 
 interface RawOperationsActiveSession {
@@ -217,6 +375,42 @@ export const operationsApi = {
       dataSourceLoad: Array.isArray(raw.dataSourceLoad)
         ? raw.dataSourceLoad.map(fromDataSourceLoadItem)
         : [],
+    };
+  },
+
+  /**
+   * GET /api/manage/operations/data-sources/load — 数据源（挂载）负载。
+   * 能力门 ViewAudit；端口未装配 → 后端 fail-closed 500（契约层原样抛出，不返空壳）。
+   */
+  async mountLoad(): Promise<OperationsMountLoadResponse> {
+    const raw = await httpClient.get<RawOperationsMountLoadResponse>(
+      "/api/manage/operations/data-sources/load",
+    );
+    return {
+      sampledAt: raw.sampled_at,
+      cacheStatus: raw.cache_status,
+      items: (raw.items ?? []).map(fromMountLoadItem),
+    };
+  },
+
+  /**
+   * GET /api/manage/operations/playback/active — 活跃播放明细。
+   * limit：不传 = 后端缺省 200；越界由后端 clamp(1,500)（:238-241）。
+   * ★前端不替后端截断，原值上送，以响应回显的 limit 为准。
+   */
+  async activePlayback(
+    query: OperationsActivePlaybackQuery = {},
+  ): Promise<OperationsActivePlaybackResponse> {
+    const raw = await httpClient.get<RawOperationsActivePlaybackResponse>(
+      "/api/manage/operations/playback/active",
+      { params: { limit: query.limit } },
+    );
+    return {
+      sampledAt: raw.sampled_at,
+      cacheStatus: raw.cache_status,
+      limit: raw.limit,
+      totalReturned: raw.total_returned,
+      sessions: (raw.sessions ?? []).map(fromActivePlaybackSession),
     };
   },
 };

@@ -11,6 +11,7 @@ import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { EmptyTableRow, ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
+import { OperationsGapSections } from './operations/OperationsGapSections';
 
 const DAY_OPTIONS = [7, 14, 30];
 
@@ -269,6 +270,8 @@ export function ManageOperationsPage() {
           </div>
         )}
       </ManageSectionCard>
+
+      <OperationsGapSections />
     </div>
   );
 }
