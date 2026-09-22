@@ -311,6 +311,13 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                path: 'pan115-share',
+                lazy: async () => {
+                  const { Pan115SharePage } = await import('@/pages/manage/pan115-share');
+                  return { Component: Pan115SharePage };
+                },
+              },
+              {
                 path: 'probe-tasks',
                 lazy: async () => {
                   const { ManageProbeTasksPage } = await import('@/pages/manage/ManageProbeTasksPage');
