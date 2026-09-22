@@ -38,6 +38,7 @@ import {
   Pan115DirectoryBrowserSection,
   type Pan115CreatePendingActivation,
 } from './sections';
+import { useMountHealthFaultMap } from '../../hooks/useMountHealthFaultMap';
 
 export function MountDrawer({
   drawerState,
@@ -63,6 +64,8 @@ export function MountDrawer({
   onClose,
 }: MountDrawerProps) {
   const currentDetail = mountDetailQuery.data;
+  // 观察面补充文案（与列表面同源；不参与徽标判定）
+  const healthFaultActionById = useMountHealthFaultMap();
   const isDrawerOpen = drawerState !== null;
   const isWebDavS3Form =
     isWebDavProvider(formState.providerType) || isS3Provider(formState.providerType);
@@ -338,7 +341,7 @@ export function MountDrawer({
           <MountViewWarningBanners currentDetail={currentDetail} />
           <MountCredentialCard
             currentDetail={currentDetail}
-            lastFaultAction={null}
+            lastFaultAction={healthFaultActionById[currentDetail.mount.id] ?? null}
           />
           <MountOverviewSection
             currentDetail={currentDetail}
