@@ -214,3 +214,18 @@ test('⑮ 呈现层不得把密钥/密封引用带进 UI（整条链路文本自
     list.items[0].credentialStatus as string,
   ));
 });
+
+test('⑯ 列表与详情共用同一呈现函数（观察面补充不得各写一套）', () => {
+  // 权威状态正常，但观察面仍报过期（观测滞后于状态）→ 只补一句，不重复告警
+  const listBadge = resolveCredentialBadge('bound', '请重新绑定');
+  const detailBadge = resolveCredentialBadge('bound', '请重新绑定');
+  assert.deepEqual(listBadge, detailBadge, '两个面必须产出完全相同的结果');
+  assert.equal(listBadge.variant, 'success');
+  assert.equal(listBadge.needsAction, false);
+  assert.equal(shouldShowFaultSupplement('bound', MOUNT_FAULT_CREDENTIAL_EXPIRED), true);
+
+  // 状态为 expired 时，观察面不得再产生第二条告警
+  const expired = resolveCredentialBadge('expired', '请重新绑定');
+  assert.equal(expired.needsAction, true);
+  assert.equal(shouldShowFaultSupplement('expired', MOUNT_FAULT_CREDENTIAL_EXPIRED), false);
+});
