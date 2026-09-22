@@ -28,6 +28,7 @@ import {
   SlidersHorizontal,
   Users,
   X,
+  LogIn,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router';
@@ -101,6 +102,7 @@ const manageNavTree: ManageNavNode[] = [
           { id: 'site-runtime-logs', label: '运行日志', icon: FileText, to: '/manage/site/security/runtime-logs' },
         ],
       },
+      { id: 'site-auth-providers', label: '登录提供方', icon: LogIn, to: '/manage/media/auth-providers' },
       { id: 'site-settings', label: '站点设置', icon: Settings, to: '/manage/site/settings' },
       { id: 'site-license', label: '授权与订阅', icon: ShieldCheck, to: '/manage/site/license' },
       { id: 'site-telegram-bot', label: 'Telegram Bot 配置', icon: Send, to: '/manage/site/telegram' },
@@ -149,6 +151,7 @@ const PATH_PREFETCH_KEYS: Record<string, keyof typeof routeLoaders> = {
   '/manage/media/libraries': 'manageLibraries',
   '/manage/media/mounts': 'manageMounts',
   '/manage/media/probe-tasks': 'manageProbeTasks',
+  '/manage/media/auth-providers': 'manageAuthProviders',
   '/manage/media/yun139': 'manageYun139',
   '/manage/media/microsoft': 'manageMicrosoft',
   '/manage/media/naming-scrape': 'manageNamingRules',
