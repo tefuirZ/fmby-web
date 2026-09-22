@@ -123,6 +123,13 @@ export const queryKeys = {
         ['manage', 'pan115', 'sync-overview', mountId] as const,
     },
 
+    developerApi: {
+      endpoints: (query?: string) =>
+        query
+          ? (['manage', 'developer-api', 'endpoints', query] as const)
+          : (['manage', 'developer-api', 'endpoints'] as const),
+    },
+
     authProviders: {
       configs: () => ['manage', 'auth-providers', 'configs'] as const,
     },

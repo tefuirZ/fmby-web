@@ -54,6 +54,7 @@ export const routeLoaders = {
   manageMediaItemDetail: () => import('@/pages/manage/ManageMediaItemDetailPage'),
   manageLibraries: () => import('@/pages/manage/ManageLibrariesPage'),
   manageMounts: () => import('@/pages/manage/ManageMountsPage'),
+  manageDeveloperApi: () => import('@/pages/manage/developer-api'),
   manageAuthProviders: () => import('@/pages/manage/auth-providers'),
   manageYun139: () => import('@/pages/manage/yun139'),
   manageMicrosoft: () => import('@/pages/manage/microsoft'),
