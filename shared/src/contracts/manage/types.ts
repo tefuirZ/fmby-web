@@ -782,6 +782,12 @@ export interface ManageMountRecord {
   sidecarNfo: boolean;
   sidecarSubtitle: boolean;
   sidecarPoster: boolean;
+  /**
+   * 凭据状态（后端 CRED-EXPIRY-WIRE；列表与详情**同值同源派生**）。
+   * ★不含任何密钥或密封引用 —— 仅四态枚举。
+   * `null`/未知 ⇒ 前端按「未知」处理，不猜。
+   */
+  credentialStatus: ManageMountCredentialStatus | null;
 }
 
 export interface ManageMountsResponse {
@@ -856,9 +862,20 @@ export interface ManageMountLinkedSourceRecord {
   hiddenAt?: string;
 }
 
+/**
+ * 挂载凭据状态四态（后端 `derive_credential_status`）。
+ * - `bound` 已绑定且未过期
+ * - `unbound` 需凭据但无凭据记录
+ * - `expired` 已绑定但已过期（需重新授权/绑定）
+ * - `not_required` 该 provider 本不吃凭据（Local）
+ */
+export type ManageMountCredentialStatus = 'bound' | 'unbound' | 'expired' | 'not_required';
+
 export interface ManageMountDetailRecord {
   mount: ManageMountRecord;
   providerType: ManageMountProviderType;
+  /** 与 `mount.credentialStatus` **同值**（后端同源派生；read_health.rs:85）。 */
+  credentialStatus: ManageMountCredentialStatus | null;
   rootPath: string;
   configJson: Record<string, unknown>;
   capabilityState: ManageStorageCapabilitiesState;

@@ -234,6 +234,15 @@ export interface RawManagedLibraryRecord {
   actual_sources?: string[] | null;
 }
 
+/**
+ * 后端凭据状态 wire 四态（CRED-EXPIRY-WIRE）。
+ * 派生见 `crates/fmby-v2-server/src/bridges/manage/helpers.rs:47`
+ * `derive_credential_status`：Local → not_required；无凭据 → unbound；
+ * 有凭据且 expires_at <= now → expired；有凭据未过期/无过期概念 → bound。
+ * ★不回显任何密钥或密封引用。
+ */
+export type MountCredentialStatusWire = 'bound' | 'unbound' | 'expired' | 'not_required';
+
 export interface RawManagedMountRecord {
   id: string;
   name: string;
@@ -255,6 +264,12 @@ export interface RawManagedMountRecord {
   sidecar_nfo?: boolean | null;
   sidecar_subtitle?: boolean | null;
   sidecar_poster?: boolean | null;
+  /**
+   * 凭据状态（后端 `ManagedMountSummaryDto.credential_status`
+   * `crates/fmby-v2-http/src/dto/manage/mount.rs:180`；与详情同值同源派生）。
+   * 列表面据此回显；不回显任何密钥/密封引用。
+   */
+  credential_status?: MountCredentialStatusWire | null;
 }
 
 export interface RawManagedMountHealthRecord {
@@ -452,7 +467,7 @@ export interface RawManagedMountDetailResponse {
    * 有凭据 ⇒ bound；需凭据但无 ⇒ unbound；Local 等无需凭据 ⇒ not_required。
    * 不回显任何密钥/密封引用。UI 消费（过期引导 + 重绑入口）见后续卡。
    */
-  credential_status?: 'bound' | 'unbound' | 'expired' | 'not_required' | null;
+  credential_status?: MountCredentialStatusWire | null;
 }
 
 export interface RawManagedMountDirectoryBrowserResponse {

@@ -97,4 +97,5 @@ export type {
   ManageMountsHealthQuery,
   ManageMountsHealthResponse,
   MOUNT_FAULT_KIND_CREDENTIAL_EXPIRED,
+  ManageMountCredentialStatus,
 } from "./types";

@@ -10,6 +10,7 @@ import {
   getMountStatusLabel,
   hasHiddenMountReferences,
 } from '../formUtils';
+import { CredentialBadgeCell } from './CredentialBadgeCell';
 
 interface ValidateMutationShape {
   isPending: boolean;
@@ -43,6 +44,12 @@ interface MountTableProps {
   onClearVisible: () => void;
   /** FE-OPT-04 多选：反选当前页。 */
   onInvertVisible: () => void;
+
+  /**
+   * 观察面（MountHealthDto.last_fault_kind）按挂载 id 给的处置建议文案。
+   * ★只作补充：**不**重复告警（徽标权威来源仍是 credentialStatus）。
+   */
+  healthFaultActionById?: Record<string, string | null>;
 }
 
 export function MountTable({
@@ -65,6 +72,7 @@ export function MountTable({
   onSelectAll,
   onClearVisible,
   onInvertVisible,
+  healthFaultActionById = {},
 }: MountTableProps) {
   const selectedSet = new Set(selectedIds);
   const renderEmptyState = (
@@ -159,6 +167,7 @@ export function MountTable({
                     <th>数据源</th>
                     <th>类型</th>
                     <th>状态</th>
+                    <th>凭据</th>
                     <th>根路径 / 地址</th>
                     <th>能力</th>
                     <th>引用情况</th>
@@ -169,7 +178,7 @@ export function MountTable({
                 <tbody>
                   {filteredMounts.length === 0 ? (
                     <EmptyTableRow
-                      colSpan={9}
+                      colSpan={10}
                       title="没有匹配的来源"
                       description="试试更换关键词、状态或类型筛选。"
                     />
@@ -208,6 +217,12 @@ export function MountTable({
                               </span>
                             ) : null}
                           </div>
+                        </td>
+                        <td>
+                          <CredentialBadgeCell
+                            credentialStatus={mount.credentialStatus}
+                            lastFaultAction={healthFaultActionById[mount.id] ?? null}
+                          />
                         </td>
                         <td>{mount.pathLabel}</td>
                         <td>
@@ -305,6 +320,10 @@ export function MountTable({
                         variant={getManageStatusVariant(mount.healthStatus)}
                       />
                       <span className={styles.metaText}>{mount.typeLabel}</span>
+                      <CredentialBadgeCell
+                        credentialStatus={mount.credentialStatus}
+                        lastFaultAction={healthFaultActionById[mount.id] ?? null}
+                      />
                     </div>
                     <div className={styles.primaryText}>{mount.name}</div>
                     <div className={styles.mutedText}>{mount.pathLabel}</div>
