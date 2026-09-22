@@ -63,7 +63,7 @@ export function resolveCredentialBadge(
       label: '凭据已过期',
       variant: 'danger',
       needsAction: true,
-      actionLabel: '重新绑定凭据',
+      actionLabel: resolveCredentialAction(credentialStatus, '')?.label ?? '重新绑定凭据',
       hint: lastFaultAction ?? '该数据源凭据已过期，请重新授权后再使用。',
     };
   }
@@ -74,7 +74,7 @@ export function resolveCredentialBadge(
       label: '未绑定凭据',
       variant: 'warning',
       needsAction: true,
-      actionLabel: '绑定凭据',
+      actionLabel: resolveCredentialAction(credentialStatus, '')?.label ?? '绑定凭据',
       hint: '该数据源尚未绑定凭据，绑定后才能正常访问。',
     };
   }
@@ -136,4 +136,27 @@ export function findSecretLeaks(text: string): string[] {
     }
   }
   return leaks;
+}
+
+/**
+ * ★两个面（列表 / 详情）必须**同一函数**产出的动作目标，避免口径漂移。
+ * 不需要动作（bound / not_required / 未知）→ null。
+ */
+export interface CredentialActionTarget {
+  mountId: string;
+  kind: 'bind' | 'rebind';
+  label: string;
+}
+
+export function resolveCredentialAction(
+  credentialStatus: ManageMountCredentialStatus | null | undefined,
+  mountId: string,
+): CredentialActionTarget | null {
+  if (credentialStatus === 'expired') {
+    return { mountId, kind: 'rebind', label: '重新绑定凭据' };
+  }
+  if (credentialStatus === 'unbound') {
+    return { mountId, kind: 'bind', label: '绑定凭据' };
+  }
+  return null;
 }

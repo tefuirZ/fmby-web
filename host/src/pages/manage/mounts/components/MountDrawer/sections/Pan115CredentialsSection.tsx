@@ -16,6 +16,7 @@ import { isApiError } from '@fmby/v2-shared/types';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../../../ManagePages.module.css';
+import { useInvalidateCredentialState } from '../../../hooks/useInvalidateCredentialState';
 
 interface Pan115CredentialsSectionProps {
   currentDetail: ManageMountDetailRecord;
@@ -50,6 +51,8 @@ export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSec
   const queryClient = useQueryClient();
   const mountId = currentDetail.mount.id;
   const accountQueryKey = queryKeys.manage.pan115.account(mountId);
+  // W5-B：绑定/重绑成功后，凭据状态与观察面必须一起刷新（只刷一半会自相矛盾）
+  const invalidateCredentialState = useInvalidateCredentialState();
 
   const accountQuery = useQuery({
     queryKey: accountQueryKey,
@@ -81,13 +84,17 @@ export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSec
     startQrLogin: () => pan115Api.startQrLogin({}),
     pollQrStatus: (sessionId) => pan115Api.pollQrStatus(sessionId),
     activate: (sessionId) => pan115Api.activate({ sessionId, mountId, cookieApp }),
-    onActivated: () => queryClient.invalidateQueries({ queryKey: accountQueryKey }),
+    onActivated: () => {
+      queryClient.invalidateQueries({ queryKey: accountQueryKey });
+      invalidateCredentialState(mountId);
+    },
   });
 
   const refreshMutation = useMutation({
     mutationFn: () => pan115Api.refreshOpenToken(mountId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountQueryKey });
+      invalidateCredentialState(mountId);
     },
   });
 
