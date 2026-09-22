@@ -189,7 +189,7 @@ export function ManageLibrariesPage() {
         open={pendingDelete !== null}
         actionKey="delete-library"
         title={pendingDelete ? `删除媒体库：${pendingDelete.library.name}` : ''}
-        description="删除媒体库后，当前来源绑定和前台可见性都会被移除。"
+        description="删除媒体库后，当前来源绑定和前台可见性会立即从列表移除；其媒体资源与关联记录将由后台异步清理（可能耗时，期间仍可能短暂可见），清理完成前请勿重复操作。"
         impact={pendingDelete ? buildDeleteImpact(pendingDelete) : undefined}
         errorMessage={
           pendingDelete && deleteLibraryMutation.isError

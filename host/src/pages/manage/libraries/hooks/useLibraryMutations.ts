@@ -13,6 +13,7 @@ import type {
   PendingLibraryDeleteState,
 } from '../types';
 import { buildUpdateLibraryPayload } from '../formUtils';
+import { optimisticRemoveLibrary, rollbackLibraryList } from './deleteOptimistic';
 
 export interface UseLibraryMutationsCallbacks {
   setBanner: (state: BannerState | null) => void;
@@ -83,15 +84,14 @@ export function useLibraryMutations({
     onMutate: async ({ libraryId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.manage.libraries.list() });
       const previous = queryClient.getQueryData(queryKeys.manage.libraries.list());
-      queryClient.setQueryData<unknown>(
+      queryClient.setQueryData(
         queryKeys.manage.libraries.list(),
-        (old: { libraries?: { library: { id: string } }[] } | undefined) => {
-          if (!old || !Array.isArray(old.libraries)) return old;
-          return {
-            ...old,
-            libraries: old.libraries.filter((entry) => entry.library.id !== libraryId),
-          };
-        },
+        optimisticRemoveLibrary(
+          queryClient.getQueryData(queryKeys.manage.libraries.list()) as
+            | Parameters<typeof optimisticRemoveLibrary>[0]
+            | undefined,
+          libraryId,
+        ),
       );
       return { previous };
     },
@@ -103,13 +103,21 @@ export function useLibraryMutations({
       setBanner({
         variant: 'success',
         title: result.message,
-        description: '媒体库列表已重新同步。',
+        description: '媒体库已移除，媒体资源与关联记录将在后台异步清理（可能耗时）。',
       });
       await queryClient.invalidateQueries({ queryKey: queryKeys.manage.libraries.list() });
     },
     onError: (error, _variables, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(queryKeys.manage.libraries.list(), context.previous);
+        queryClient.setQueryData(
+          queryKeys.manage.libraries.list(),
+          rollbackLibraryList(
+            queryClient.getQueryData(queryKeys.manage.libraries.list()) as
+              | Parameters<typeof rollbackLibraryList>[0]
+              | undefined,
+            context.previous as Parameters<typeof rollbackLibraryList>[1] | undefined,
+          ),
+        );
       }
       setBanner({
         variant: 'error',
