@@ -64,7 +64,7 @@ export function MountDrawer({
   onClose,
 }: MountDrawerProps) {
   const currentDetail = mountDetailQuery.data;
-  // 观察面补充文案（与列表面同源；不参与徽标判定）
+  // 观察面补充文案（与列表面同源；不参与徽标判定，只在不重复告警时补一句）
   const healthFaultActionById = useMountHealthFaultMap();
   const isDrawerOpen = drawerState !== null;
   const isWebDavS3Form =
