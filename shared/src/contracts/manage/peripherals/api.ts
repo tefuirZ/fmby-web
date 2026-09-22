@@ -24,6 +24,12 @@ import type {
   RewardsEventConfigRecord,
   RewardsEventConfigWriteInput,
   RewardsLedgerEntryRecord,
+  RewardsRuleConfigRecord,
+  RewardsRedemptionRateRecord,
+  RewardsRuleVersionRecord,
+  RewardsAdminStatsRecord,
+  RewardsAdjustPointsInput,
+  RewardsAdjustResultRecord,
   RewardsPointAccountRecord,
   SecretSourceKind,
   SecretStatusEntryRecord,
@@ -168,6 +174,139 @@ interface RawRewardsEventConfig {
   daily_checkin_points: number;
   streak_bonus_points: number;
   max_streak_days: number;
+}
+
+interface RawRewardsRedemptionRate {
+  enabled: boolean;
+  points_per_unit: number;
+  min_quantity: number;
+  max_quantity: number;
+  daily_limit: number | null;
+  monthly_limit: number | null;
+}
+
+interface RawRewardsCheckinTier {
+  start_day: number;
+  end_day: number | null;
+  points: number;
+}
+
+interface RawRewardsWatchTask {
+  enabled: boolean;
+  required_minutes: number;
+}
+
+interface RawRewardsRuleConfig {
+  checkin_enabled: boolean;
+  reward_mode: string;
+  tiers: RawRewardsCheckinTier[];
+  random_min_points: number;
+  random_max_points: number;
+  watch_task: RawRewardsWatchTask;
+  allow_expired_checkin: boolean;
+  server_days: RawRewardsRedemptionRate;
+  media_request_credits: RawRewardsRedemptionRate;
+  media_request_cost: number;
+}
+
+interface RawRewardsRuleVersion {
+  id: string;
+  version: number;
+  status: string;
+  created_by: string;
+  created_at: number;
+  published_at: number;
+  config: RawRewardsRuleConfig;
+}
+
+interface RawRewardsAdminStats {
+  points_outstanding: number;
+  checkins_today: number;
+  pending_checkins: number;
+  redemptions_today: number;
+  pending_media_requests: number | null;
+  processing_media_requests: number | null;
+}
+
+interface RawAdjustPointsRequest {
+  user_id: string;
+  idempotency_key: string;
+  delta: number;
+  reason: string;
+}
+
+interface RawRewardsAdjustResult {
+  user_id: string;
+  balance: number;
+  lifetime_earned: number;
+  lifetime_spent: number;
+  applied: boolean;
+}
+
+function fromRewardsRuleConfig(r: RawRewardsRuleConfig): RewardsRuleConfigRecord {
+  return {
+    checkinEnabled: r.checkin_enabled,
+    rewardMode: r.reward_mode,
+    tiers: (r.tiers ?? []).map((tier) => ({
+      startDay: tier.start_day,
+      endDay: tier.end_day,
+      points: tier.points,
+    })),
+    randomMinPoints: r.random_min_points,
+    randomMaxPoints: r.random_max_points,
+    watchTask: {
+      enabled: r.watch_task.enabled,
+      requiredMinutes: r.watch_task.required_minutes,
+    },
+    allowExpiredCheckin: r.allow_expired_checkin,
+    serverDays: fromRedemptionRate(r.server_days),
+    mediaRequestCredits: fromRedemptionRate(r.media_request_credits),
+    mediaRequestCost: r.media_request_cost,
+  };
+}
+
+function fromRedemptionRate(r: RawRewardsRedemptionRate): RewardsRedemptionRateRecord {
+  return {
+    enabled: r.enabled,
+    pointsPerUnit: r.points_per_unit,
+    minQuantity: r.min_quantity,
+    maxQuantity: r.max_quantity,
+    dailyLimit: r.daily_limit,
+    monthlyLimit: r.monthly_limit,
+  };
+}
+
+function toRawRuleConfig(input: RewardsRuleConfigRecord): RawRewardsRuleConfig {
+  return {
+    checkin_enabled: input.checkinEnabled,
+    reward_mode: input.rewardMode,
+    tiers: (input.tiers ?? []).map((tier) => ({
+      start_day: tier.startDay,
+      end_day: tier.endDay,
+      points: tier.points,
+    })),
+    random_min_points: input.randomMinPoints,
+    random_max_points: input.randomMaxPoints,
+    watch_task: {
+      enabled: input.watchTask.enabled,
+      required_minutes: input.watchTask.requiredMinutes,
+    },
+    allow_expired_checkin: input.allowExpiredCheckin,
+    server_days: toRawRedemptionRate(input.serverDays),
+    media_request_credits: toRawRedemptionRate(input.mediaRequestCredits),
+    media_request_cost: input.mediaRequestCost,
+  };
+}
+
+function toRawRedemptionRate(r: RewardsRedemptionRateRecord): RawRewardsRedemptionRate {
+  return {
+    enabled: r.enabled,
+    points_per_unit: r.pointsPerUnit,
+    min_quantity: r.minQuantity,
+    max_quantity: r.maxQuantity,
+    daily_limit: r.dailyLimit,
+    monthly_limit: r.monthlyLimit,
+  };
 }
 
 /**
@@ -596,6 +735,72 @@ export const peripheralsApi = {
       detailJson: r.detail_json,
       createdAt: r.created_at,
     }));
+  },
+
+  /** GET /api/manage/rewards/rule — 当前生效规则（版本化）。 */
+  async getRewardsRule(): Promise<RewardsRuleVersionRecord> {
+    const raw = await httpClient.get<RawRewardsRuleVersion>('/api/manage/rewards/rule');
+    return {
+      id: raw.id,
+      version: raw.version,
+      status: raw.status,
+      createdBy: raw.created_by,
+      createdAt: raw.created_at,
+      publishedAt: raw.published_at,
+      config: fromRewardsRuleConfig(raw.config),
+    };
+  },
+
+  /** POST /api/manage/rewards/rule — 发布新版本规则（同事务 retire 旧版）。 */
+  async publishRewardsRule(config: RewardsRuleConfigRecord): Promise<RewardsRuleVersionRecord> {
+    const raw = await httpClient.post<RawRewardsRuleVersion>(
+      '/api/manage/rewards/rule',
+      { body: toRawRuleConfig(config) },
+    );
+    return {
+      id: raw.id,
+      version: raw.version,
+      status: raw.status,
+      createdBy: raw.created_by,
+      createdAt: raw.created_at,
+      publishedAt: raw.published_at,
+      config: fromRewardsRuleConfig(raw.config),
+    };
+  },
+
+  /** GET /api/manage/rewards/stats — 积分/签到管理统计。 */
+  async getRewardsAdminStats(): Promise<RewardsAdminStatsRecord> {
+    const raw = await httpClient.get<RawRewardsAdminStats>('/api/manage/rewards/stats');
+    return {
+      pointsOutstanding: raw.points_outstanding,
+      checkinsToday: raw.checkins_today,
+      pendingCheckins: raw.pending_checkins,
+      redemptionsToday: raw.redemptions_today,
+      pendingMediaRequests: raw.pending_media_requests,
+      processingMediaRequests: raw.processing_media_requests,
+    };
+  },
+
+  /** POST /api/manage/rewards/points/adjust — 管理员积分调整（单事务写账户+流水）。 */
+  async adjustRewardsPoints(input: RewardsAdjustPointsInput): Promise<RewardsAdjustResultRecord> {
+    const raw = await httpClient.post<RawRewardsAdjustResult>(
+      '/api/manage/rewards/points/adjust',
+      {
+        body: {
+          user_id: input.userId,
+          idempotency_key: input.idempotencyKey,
+          delta: input.delta,
+          reason: input.reason,
+        } satisfies RawAdjustPointsRequest,
+      },
+    );
+    return {
+      userId: raw.user_id,
+      balance: raw.balance,
+      lifetimeEarned: raw.lifetime_earned,
+      lifetimeSpent: raw.lifetime_spent,
+      applied: raw.applied,
+    };
   },
 
   async getTelegramBotStatus(): Promise<TelegramBotStatusRecord> {
