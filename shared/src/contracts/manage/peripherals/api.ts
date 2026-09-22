@@ -12,6 +12,7 @@ import type {
   ManagedCollectionRule,
   ManagedCollectionRulePreview,
   ManagedCollectionRulePreviewInput,
+  ManagedCollectionRuleInput,
   ManagedCollectionRulesUpdateInput,
   ManagedCollectionMemberOverride,
   ManagedCollectionRulePreviewItem,
@@ -261,6 +262,15 @@ function fromRule(r: RawManagedCollectionRule): ManagedCollectionRule {
   return { id: r.id, ruleType: r.rule_type, isExclusion: r.is_exclusion, values: r.values };
 }
 
+interface RawCollectionRuleInput {
+  rule_type: string;
+  is_exclusion: boolean;
+  values: string[];
+}
+function toRawRule(r: ManagedCollectionRuleInput): RawCollectionRuleInput {
+  return { rule_type: r.ruleType, is_exclusion: r.isExclusion ?? false, values: r.values };
+}
+
 function fromMemberOverride(
   r: RawManagedCollectionMemberOverride,
 ): ManagedCollectionMemberOverride {
@@ -503,7 +513,7 @@ export const peripheralsApi = {
   ): Promise<ManagedCollectionRulePreview> {
     const raw = await httpClient.post<RawManagedCollectionRulePreview>(
       '/api/manage/collections/rules/preview',
-      { body: { min_effective_members: input.minEffectiveMembers, rules: input.rules } },
+      { body: { min_effective_members: input.minEffectiveMembers, rules: input.rules.map(toRawRule) } },
     );
     return {
       matchCount: raw.match_count,
@@ -525,7 +535,7 @@ export const peripheralsApi = {
           auto_expand_enabled: input.autoExpandEnabled,
           min_effective_members: input.minEffectiveMembers,
           artwork_mode: input.artworkMode,
-          rules: input.rules,
+          rules: input.rules.map(toRawRule),
         },
       },
     );
