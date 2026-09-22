@@ -24,6 +24,8 @@ interface LibraryTableProps {
   onOpenEdit: (libraryId: string) => void;
   onRequestDelete: (library: ManageLibraryRecord) => void;
   onCreateClick: () => void;
+  onMoveLibrary: (libraryId: string, step: -1 | 1) => void;
+  reorderPending: boolean;
 }
 
 export function LibraryTable({
@@ -39,7 +41,11 @@ export function LibraryTable({
   onOpenEdit,
   onRequestDelete,
   onCreateClick,
+  onMoveLibrary,
+  reorderPending,
 }: LibraryTableProps) {
+  const fullIndex = new Map(libraries.map((library, index) => [library.id, index]));
+
   const renderEmptyState = (
     <div className={styles.emptyInlineState}>
       <div className={styles.stackText}>
@@ -112,50 +118,74 @@ export function LibraryTable({
                     <th>授权</th>
                     <th>最近更新</th>
                     <th>操作</th>
+                    <th>排序</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLibraries.length === 0 ? (
-                    <EmptyTableRow colSpan={8} title="没有匹配的媒体库" description="试试更换关键词、状态或类型筛选。" />
+                    <EmptyTableRow colSpan={9} title="没有匹配的媒体库" description="试试更换关键词、状态或类型筛选。" />
                   ) : (
-                    filteredLibraries.map((library) => (
-                      <tr key={library.id}>
-                        <td>
-                          <div className={styles.stackText}>
-                            <span className={styles.primaryText}>{library.name}</span>
-                            <span className={styles.mutedText}>{library.description || '暂无说明'}</span>
-                          </div>
-                        </td>
-                        <td>{library.typeLabel}</td>
-                        <td>
-                          <StatusBadge
-                            label={getLibraryStatusLabel(library.status)}
-                            variant={getManageStatusVariant(library.status)}
-                          />
-                        </td>
-                        <td>{library.itemCount.toLocaleString('zh-CN')}</td>
-                        <td>
-                          <div className={styles.stackText}>
-                            <span className={styles.primaryText}>
-                              {buildLibraryBindingSummary(library)}
-                            </span>
-                            <span className={styles.mutedText}>
-                              {buildLibraryBindingHint(library)}
-                            </span>
-                          </div>
-                        </td>
-                        <td>{library.visibilityLabel || '未单独授权'}</td>
-                        <td>{formatDateTime(library.updatedAt || library.lastScanAt)}</td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            <button className={styles.smallButton} type="button" onClick={() => onOpenView(library.id)}>详情</button>
-                            <button className={styles.smallButton} type="button" onClick={() => onOpenEdit(library.id)}>编辑</button>
-                            <Link className={styles.smallButton} to={`/libraries/${library.id}`}>查看前台</Link>
-                            <button className={styles.dangerButton} type="button" onClick={() => onRequestDelete(library)}>删除</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    filteredLibraries.map((library) => {
+                      const fIndex = fullIndex.get(library.id) ?? -1;
+                      const isFirst = fIndex <= 0;
+                      const isLast = fIndex === libraries.length - 1;
+                      return (
+                        <tr key={library.id}>
+                          <td>
+                            <div className={styles.stackText}>
+                              <span className={styles.primaryText}>{library.name}</span>
+                              <span className={styles.mutedText}>{library.description || '暂无说明'}</span>
+                            </div>
+                          </td>
+                          <td>{library.typeLabel}</td>
+                          <td>
+                            <StatusBadge
+                              label={getLibraryStatusLabel(library.status)}
+                              variant={getManageStatusVariant(library.status)}
+                            />
+                          </td>
+                          <td>{library.itemCount.toLocaleString('zh-CN')}</td>
+                          <td>
+                            <div className={styles.stackText}>
+                              <span className={styles.primaryText}>
+                                {buildLibraryBindingSummary(library)}
+                              </span>
+                              <span className={styles.mutedText}>
+                                {buildLibraryBindingHint(library)}
+                              </span>
+                            </div>
+                          </td>
+                          <td>{library.visibilityLabel || '未单独授权'}</td>
+                          <td>{formatDateTime(library.updatedAt || library.lastScanAt)}</td>
+                          <td>
+                            <div className={styles.rowActions}>
+                              <button className={styles.smallButton} type="button" onClick={() => onOpenView(library.id)}>详情</button>
+                              <button className={styles.smallButton} type="button" onClick={() => onOpenEdit(library.id)}>编辑</button>
+                              <Link className={styles.smallButton} to={`/libraries/${library.id}`}>查看前台</Link>
+                              <button className={styles.dangerButton} type="button" onClick={() => onRequestDelete(library)}>删除</button>
+                            </div>
+                          </td>
+                          <td>
+                            <div className={styles.rowActions}>
+                              <button
+                                className={styles.smallButton}
+                                type="button"
+                                aria-label={`将媒体库「${library.name}」上移`}
+                                disabled={isFirst || reorderPending}
+                                onClick={() => onMoveLibrary(library.id, -1)}
+                              >↑</button>
+                              <button
+                                className={styles.smallButton}
+                                type="button"
+                                aria-label={`将媒体库「${library.name}」下移`}
+                                disabled={isLast || reorderPending}
+                                onClick={() => onMoveLibrary(library.id, 1)}
+                              >↓</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -172,33 +202,52 @@ export function LibraryTable({
               </div>
             ) : (
               <div className={styles.entityGrid}>
-                {filteredLibraries.map((library) => (
-                  <div key={library.id} className={styles.entityCard}>
-                    <div className={styles.inlineMeta}>
-                      <StatusBadge label={getLibraryStatusLabel(library.status)} variant={getManageStatusVariant(library.status)} />
-                      <span className={styles.metaText}>{library.typeLabel}</span>
+                {filteredLibraries.map((library) => {
+                  const fIndex = fullIndex.get(library.id) ?? -1;
+                  const isFirst = fIndex <= 0;
+                  const isLast = fIndex === libraries.length - 1;
+                  return (
+                    <div key={library.id} className={styles.entityCard}>
+                      <div className={styles.inlineMeta}>
+                        <StatusBadge label={getLibraryStatusLabel(library.status)} variant={getManageStatusVariant(library.status)} />
+                        <span className={styles.metaText}>{library.typeLabel}</span>
+                      </div>
+                      <div className={styles.primaryText}>{library.name}</div>
+                      <div className={styles.mutedText}>{library.description || '暂无说明'}</div>
+                      <div className={styles.stackText}>
+                        <span>{library.itemCount.toLocaleString('zh-CN')} 个内容</span>
+                        <span className={styles.mutedText}>
+                          来源：{buildLibraryBindingSummary(library)}
+                        </span>
+                        <span className={styles.mutedText}>
+                          {buildLibraryBindingHint(library)}
+                        </span>
+                        <span className={styles.mutedText}>最近更新：{formatDateTime(library.updatedAt || library.lastScanAt)}</span>
+                        <span className={styles.mutedText}>授权：{library.visibilityLabel || '未单独授权'}</span>
+                      </div>
+                      <div className={styles.rowActions}>
+                        <button className={styles.smallButton} type="button" onClick={() => onOpenView(library.id)}>详情</button>
+                        <button className={styles.smallButton} type="button" onClick={() => onOpenEdit(library.id)}>编辑</button>
+                        <Link className={styles.smallButton} to={`/libraries/${library.id}`}>查看前台</Link>
+                        <button className={styles.dangerButton} type="button" onClick={() => onRequestDelete(library)}>删除</button>
+                        <button
+                          className={styles.smallButton}
+                          type="button"
+                          aria-label={`将媒体库「${library.name}」上移`}
+                          disabled={isFirst || reorderPending}
+                          onClick={() => onMoveLibrary(library.id, -1)}
+                        >↑</button>
+                        <button
+                          className={styles.smallButton}
+                          type="button"
+                          aria-label={`将媒体库「${library.name}」下移`}
+                          disabled={isLast || reorderPending}
+                          onClick={() => onMoveLibrary(library.id, 1)}
+                        >↓</button>
+                      </div>
                     </div>
-                    <div className={styles.primaryText}>{library.name}</div>
-                    <div className={styles.mutedText}>{library.description || '暂无说明'}</div>
-                    <div className={styles.stackText}>
-                      <span>{library.itemCount.toLocaleString('zh-CN')} 个内容</span>
-                      <span className={styles.mutedText}>
-                        来源：{buildLibraryBindingSummary(library)}
-                      </span>
-                      <span className={styles.mutedText}>
-                        {buildLibraryBindingHint(library)}
-                      </span>
-                      <span className={styles.mutedText}>最近更新：{formatDateTime(library.updatedAt || library.lastScanAt)}</span>
-                      <span className={styles.mutedText}>授权：{library.visibilityLabel || '未单独授权'}</span>
-                    </div>
-                    <div className={styles.rowActions}>
-                      <button className={styles.smallButton} type="button" onClick={() => onOpenView(library.id)}>详情</button>
-                      <button className={styles.smallButton} type="button" onClick={() => onOpenEdit(library.id)}>编辑</button>
-                      <Link className={styles.smallButton} to={`/libraries/${library.id}`}>查看前台</Link>
-                      <button className={styles.dangerButton} type="button" onClick={() => onRequestDelete(library)}>删除</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

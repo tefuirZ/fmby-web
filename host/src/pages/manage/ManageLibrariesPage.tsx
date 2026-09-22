@@ -26,6 +26,7 @@ import {
   useUsersPickerQuery,
   useLibraryMutations,
 } from './libraries/hooks';
+import { moveLibraryIds } from './libraries/hooks/libraryOrder';
 import { LibraryTable, LibraryDrawer } from './libraries/components';
 
 export function ManageLibrariesPage() {
@@ -43,7 +44,7 @@ export function ManageLibrariesPage() {
   const libraryDetailQuery = useLibraryDetailQuery(drawerState);
   const mountsQuery = useMountsPickerQuery(drawerState !== null);
   const usersQuery = useUsersPickerQuery(drawerState !== null);
-  const { createLibraryMutation, updateLibraryMutation, deleteLibraryMutation, triggerLibraryScanMutation } =
+  const { createLibraryMutation, updateLibraryMutation, deleteLibraryMutation, triggerLibraryScanMutation, reorderLibrariesMutation } =
     useLibraryMutations({ setBanner, setDrawerState, setPendingDelete });
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export function ManageLibrariesPage() {
   const libraries = librariesQuery.data?.items ?? [];
   const isSaving = createLibraryMutation.isPending || updateLibraryMutation.isPending;
   const isDeleting = deleteLibraryMutation.isPending;
+  const isReordering = reorderLibrariesMutation.isPending;
 
   const filteredLibraries = useMemo(() => {
     return libraries.filter((library) => {
@@ -122,6 +124,15 @@ export function ManageLibrariesPage() {
     setPendingDelete(target);
   };
 
+  // FE-LIBRARY-ORDER-UI：点击上/下移 → 本地在完整列表顺序中交换该库与邻项
+  // → 乐观重排（reorderLibrariesMutation 的 onMutate 立即改缓存）→ 后台 PUT /order 校验。
+  const handleMoveLibrary = (libraryId: string, step: -1 | 1) => {
+    const fullIds = libraries.map((library) => library.id);
+    const nextIds = moveLibraryIds(fullIds, libraryId, step);
+    if (nextIds === fullIds) return;
+    reorderLibrariesMutation.mutate(nextIds);
+  };
+
   return (
     <div className={styles.page}>
       <ManagePageHeader
@@ -163,6 +174,8 @@ export function ManageLibrariesPage() {
           })
         }
         onCreateClick={openCreateDrawer}
+        onMoveLibrary={handleMoveLibrary}
+        reorderPending={isReordering}
       />
 
       <LibraryDrawer
