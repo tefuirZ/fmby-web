@@ -14,6 +14,9 @@ interface CollectionMemberPanelProps {
   onReorderMembers: (memberIds: string[]) => void;
   reorderPending: boolean;
   reorderError: unknown;
+  /** 切换成员启用/停用（PATCH /members/{member_id} {is_enabled}）。 */
+  onToggleMemberEnabled: (member: { id: string; title: string; isEnabled: boolean }) => void;
+  togglePending: boolean;
 }
 
 export function CollectionMemberPanel({
@@ -23,6 +26,8 @@ export function CollectionMemberPanel({
   onReorderMembers,
   reorderPending,
   reorderError,
+  onToggleMemberEnabled,
+  togglePending,
 }: CollectionMemberPanelProps) {
   void collectionId;
   if (detailQuery.isPending) {
@@ -58,6 +63,7 @@ export function CollectionMemberPanel({
               <th>release 序</th>
               <th>watch 序</th>
               <th className="nowrap">排序</th>
+              <th className="nowrap">启用</th>
               <th className="nowrap">操作</th>
             </tr>
           </thead>
@@ -96,6 +102,24 @@ export function CollectionMemberPanel({
                       ↓
                     </button>
                   </div>
+                </td>
+                <td className="nowrap">
+                  <button
+                    className={styles.smallButton}
+                    type="button"
+                    disabled={togglePending}
+                    aria-pressed={member.isEnabled}
+                    aria-label={`${member.isEnabled ? '停用' : '启用'}成员「${member.titleSnapshot}」`}
+                    onClick={() =>
+                      onToggleMemberEnabled({
+                        id: member.id,
+                        title: member.titleSnapshot,
+                        isEnabled: member.isEnabled,
+                      })
+                    }
+                  >
+                    {member.isEnabled ? '停用' : '启用'}
+                  </button>
                 </td>
                 <td className="nowrap">
                   <button

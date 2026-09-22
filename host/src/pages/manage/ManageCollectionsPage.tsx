@@ -1,27 +1,23 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   isServiceUnwiredError,
   type ManagedCollectionRecord,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
-import { Checkbox, FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
+import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
 import { useBatchSelection, useBatchRunner } from '@fmby/v2-shared/hooks';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { useCollectionDetailQuery, useCollectionMutations, useCollectionsQuery } from './collections/hooks';
-import { CollectionMemberPanel } from './collections/components/CollectionMemberPanel';
-import { CollectionMemberAdder } from './collections/components/CollectionMemberAdder';
+import { CollectionListTable } from './collections/components/CollectionListTable';
 import {
   CollectionFormDialog,
   type CollectionFormState,
 } from './collections/components/CollectionFormDialog';
 import { CollectionBatchActions } from './collections/components/CollectionBatchActions';
 import {
-  SOURCE_LABELS,
-  VISIBILITY_LABELS,
   buildFormStateFromRecord,
   createInitialFormState,
-  formatEpochMs,
 } from './collections/components/labels';
 
 export function ManageCollectionsPage() {
@@ -35,12 +31,21 @@ export function ManageCollectionsPage() {
   const [pendingMemberDelete, setPendingMemberDelete] = useState<{ collectionId: string; boundItemId: string | null; memberTitle: string } | null>(null);
   const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
 
-  const { createMutation, updateMutation, deleteMutation, deleteMemberMutation, removeMemberMutation, reorderMemberMutation } =
-    useCollectionMutations({
+  const mutations = useCollectionMutations({
       onSuccess: (message) => {
         setBanner(message);
       },
     });
+  const {
+    createMutation,
+    updateMutation,
+    deleteMutation,
+    deleteMemberMutation,
+    removeMemberMutation,
+    reorderMemberMutation,
+    reorderCollectionsMutation,
+    patchMemberMutation,
+  } = mutations;
 
   const detailQuery = useCollectionDetailQuery(expandedId);
 
@@ -143,7 +148,7 @@ export function ManageCollectionsPage() {
   const hiddenCount = collections.filter((c) => c.visibility === 'Hidden').length;
 
   const actionError =
-    createMutation.error ?? updateMutation.error ?? deleteMutation.error ?? deleteMemberMutation.error ?? removeMemberMutation.error ?? reorderMemberMutation.error;
+    createMutation.error ?? updateMutation.error ?? deleteMutation.error ?? deleteMemberMutation.error ?? removeMemberMutation.error ?? reorderMemberMutation.error ?? reorderCollectionsMutation.error ?? patchMemberMutation.error;
   const formPending = createMutation.isPending || updateMutation.isPending;
 
   function openCreate() {
@@ -201,139 +206,18 @@ export function ManageCollectionsPage() {
         />
       ) : null}
 
-      <ManageSectionCard
-        title="合集列表"
-        description="点击行首箭头展开成员明细；删除合集会级联移除全部成员。"
-      >
-        {collections.length === 0 ? (
-          <div className={styles.emptyInlineState}>
-            还没有任何收藏合集，先从右上角新建一个。
-          </div>
-        ) : (
-          <div className={styles.tableWrap}>
-            <div className={styles.rowActions} style={{ marginBottom: 8 }}>
-              <button className={styles.smallButton} type="button" onClick={selection.selectAll}>
-                全选
-              </button>
-              <button className={styles.smallButton} type="button" onClick={selection.invertVisible}>
-                反选
-              </button>
-              <button className={styles.smallButton} type="button" onClick={selection.clearVisible}>
-                清空本页
-              </button>
-            </div>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th style={{ width: 36 }}>
-                    <Checkbox
-                      checked={selection.headerState === 'checked' ? true : selection.headerState === 'indeterminate' ? 'indeterminate' : false}
-                      onCheckedChange={() => {
-                        if (selection.headerState === 'checked') selection.clearVisible();
-                        else selection.selectAll();
-                      }}
-                      aria-label="全选合集"
-                    />
-                  </th>
-                  <th>合集</th>
-                  <th>来源</th>
-                  <th>可见性</th>
-                  <th>更新时间</th>
-                  <th className="nowrap">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {collections.map((collection) => {
-                  const expanded = expandedId === collection.id;
-                  return (
-                    <Fragment key={collection.id}>
-                      <tr>
-                        <td>
-                          <Checkbox
-                            checked={selection.selectedSet.has(collection.id)}
-                            onClick={(event) => {
-                              if (event.shiftKey) {
-                                event.preventDefault();
-                                selection.toggle(collection.id, !selection.selectedSet.has(collection.id), { shiftKey: true });
-                              }
-                            }}
-                            onCheckedChange={(checked) => selection.toggle(collection.id, checked === true)}
-                            aria-label={`选择合集 ${collection.title}`}
-                          />
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className={styles.smallButton}
-                            aria-expanded={expanded}
-                            onClick={() => setExpandedId(expanded ? null : collection.id)}
-                          >
-                            {expanded ? '收起' : '成员'}
-                          </button>
-                          <span style={{ marginLeft: 8 }}>{collection.title}</span>
-                        </td>
-                        <td>{SOURCE_LABELS[collection.sourceKind] ?? collection.sourceKind}</td>
-                        <td>
-                          <StatusBadge
-                            label={VISIBILITY_LABELS[collection.visibility] ?? collection.visibility}
-                            variant={collection.visibility === 'Active' ? 'success' : 'neutral'}
-                          />
-                        </td>
-                        <td className="nowrap">{formatEpochMs(collection.updatedAt)}</td>
-                        <td className="nowrap">
-                          <button
-                            className={styles.smallButton}
-                            type="button"
-                            onClick={() => openEdit(collection)}
-                          >
-                            编辑
-                          </button>
-                          <button
-                            className={styles.smallDangerButton}
-                            type="button"
-                            onClick={() => setPendingDelete(collection)}
-                          >
-                            删除
-                          </button>
-                        </td>
-                      </tr>
-                      {expanded ? (
-                        <tr>
-                          <td colSpan={6}>
-                            <CollectionMemberAdder
-                              collectionId={collection.id}
-                              onAdded={setBanner}
-                            />
-                            <CollectionMemberPanel
-                              collectionId={collection.id}
-                              detailQuery={detailQuery}
-                              onRemoveMember={(member) =>
-                                setPendingMemberDelete({
-                                  collectionId: collection.id,
-                                  boundItemId: member.boundItemId,
-                                  memberTitle: member.title,
-                                })
-                              }
-                              onReorderMembers={(memberIds) =>
-                                reorderMemberMutation.mutate({
-                                  collectionId: collection.id,
-                                  input: { memberIds },
-                                })
-                              }
-                              reorderPending={reorderMemberMutation.isPending}
-                              reorderError={reorderMemberMutation.isError ? reorderMemberMutation.error : undefined}
-                            />
-                          </td>
-                        </tr>
-                      ) : null}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </ManageSectionCard>
+      <CollectionListTable
+        collections={collections}
+        detailQuery={detailQuery}
+        selection={selection}
+        expandedId={expandedId}
+        setExpandedId={setExpandedId}
+        setPendingDelete={setPendingDelete}
+        setPendingMemberDelete={setPendingMemberDelete}
+        setBanner={setBanner}
+        onEdit={openEdit}
+        mutations={mutations}
+      />
 
       <CollectionFormDialog
         open={formOpen}
