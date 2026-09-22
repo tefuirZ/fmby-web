@@ -767,11 +767,70 @@ export interface ManageMountRecord {
   linkedLibraries: ManageMountLinkedLibrary[];
   referenceCounts: ManageMountReferenceCounts;
   unavailableBindingCount: number;
+  /**
+   * DATASOURCE-CRUD-BACKFILL-UI：以下四项后端 ManagedMountSummaryDto 已在返回
+   * （`crates/fmby-v2-http/src/dto/manage/mount.rs`），此前 mapper 直接丢弃 →
+   * 编辑态无法回填旧值。补映射，**不新增后端字段**。
+   */
+  /** R2.4 备注名（空串 = 无备注）。 */
+  note: string;
+  /** R2.3 速率配置（JSON 文本；null = 未配置）。 */
+  rateConfig: string | null;
+  /** R2.5 可见性规则（JSON 文本；`{}` = 全可见、排除优先）。 */
+  visibilityRule: string;
+  /** R2.6 旁路资源开关。 */
+  sidecarNfo: boolean;
+  sidecarSubtitle: boolean;
+  sidecarPoster: boolean;
 }
 
 export interface ManageMountsResponse {
   items: ManageMountRecord[];
 }
+
+/**
+ * 单挂载健康项（GET /api/manage/mounts/health）。
+ *
+ * 后端：`crates/fmby-v2-http/src/dto/manage.rs` `MountHealthDto`。
+ * ★诚实边界：故障字段来自扫描观测落库事实（迁移 0049）；无观测数据 → `null`
+ *   （未知），前端须显示「未知」而非 0，且不得伪造故障类别。
+ */
+export interface ManageMountHealthRecord {
+  mountId: string;
+  name: string;
+  providerType: string;
+  /** 挂载状态（V2 四态词表）。 */
+  status: string;
+  /** `healthy` / `attention` / `critical`。 */
+  healthStatus: string;
+  statusMessage: string | null;
+  /** 已达失败阈值被隐藏的绑定数（端口未装配/无行 → null）。 */
+  unavailableBindingCount: number | null;
+  /** 最近扫描失败绑定数。**恒 null**（V2 无独立事实源，勿伪造）。 */
+  attentionBindingCount: number | null;
+  lastCheckedAt: number | null;
+  /**
+   * 最近观测到的上游故障类别（蛇形词）。
+   * ★凭据过期 = `credential_expired`，是「引导重新绑定」的唯一后端依据。
+   */
+  lastFaultKind: string | null;
+  lastFaultTitle: string | null;
+  lastFaultAction: string | null;
+  lastFaultAt: number | null;
+}
+
+export interface ManageMountsHealthResponse {
+  items: ManageMountHealthRecord[];
+  total: number;
+}
+
+/** 健康等级过滤；undefined = 全部。 */
+export interface ManageMountsHealthQuery {
+  status?: 'healthy' | 'attention' | 'critical';
+}
+
+/** 凭据过期故障类别（errno wire 词，后端字典）。 */
+export const MOUNT_FAULT_KIND_CREDENTIAL_EXPIRED = 'credential_expired';
 
 export interface ManageMountsQuery {
   page?: number;

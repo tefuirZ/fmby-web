@@ -52,6 +52,8 @@ import type {
   UpdateRegistrationCodeStatusRequest,
   UpdateRoleTemplateRequest,
   UpdateUserStatusRequest,
+  ManageMountsHealthQuery,
+  ManageMountsHealthResponse,
 } from "./types";
 import type {
   RawAuditLogRecord,
@@ -77,6 +79,7 @@ import type {
   RawRegistrationCodeBatchRecord,
   RawRegistrationCodeRecord,
   RawRoleTemplateRecord,
+  RawMountsHealthResponse,
 } from "./raw-types";
 import { mapProviderTypeToApi } from "./provider-mapping";
 import {
@@ -92,6 +95,7 @@ import {
   mapManagedLibraryRecord,
   mapManagedMountDetailResponse,
   mapManagedMountRecord,
+  mapManagedMountHealthRecord,
   mapManagedProbeTaskDetailResponse,
   mapManagedProbeTaskRecord,
   mapManagedScanTaskRecord,
@@ -835,6 +839,24 @@ export const manageApi = {
       `/api/manage/mounts/${mountId}`,
     );
     return mapManagedMountDetailResponse(raw);
+  },
+
+  /**
+   * GET /api/manage/mounts/health — 挂载健康列表（不探活，只聚合既有观测事实）。
+   *
+   * 后端：`crates/fmby-v2-http/src/routes/manage/mounts.rs:196`；能力闸 MANAGE_LIBRARY。
+   * 本端点是「凭据已过期 → 引导重新绑定」的唯一后端依据（last_fault_kind）。
+   */
+  async getMountsHealth(
+    query?: ManageMountsHealthQuery,
+  ): Promise<ManageMountsHealthResponse> {
+    const raw = await httpClient.get<RawMountsHealthResponse>('/api/manage/mounts/health', {
+      params: query?.status ? { status: query.status } : undefined,
+    });
+    return {
+      items: (raw.items ?? []).map(mapManagedMountHealthRecord),
+      total: raw.total ?? 0,
+    };
   },
 
   async createMount(

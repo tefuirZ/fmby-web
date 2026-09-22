@@ -111,6 +111,7 @@ export const queryKeys = {
           ? (['manage', 'mounts', 'detail', id] as const)
           : (['manage', 'mounts', 'detail'] as const),
       picker: () => ['manage', 'mounts', 'picker'] as const,
+      health: () => ['manage', 'mounts', 'health'] as const,
     },
 
     pan115: {

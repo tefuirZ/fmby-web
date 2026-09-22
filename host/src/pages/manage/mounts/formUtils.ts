@@ -1,6 +1,7 @@
 import type {
   CreateManageMountRequest,
   ManageMountDetailRecord,
+  ManageMountHealthRecord,
   ManageMountRecord,
   ManageMountProviderType,
   ManageStorageCapabilitiesState,
@@ -41,6 +42,12 @@ export function createEmptyMountForm(): MountFormState {
     configJsonText: '{}',
     remoteConfig: createEmptyRemoteConfig(),
     preservedConfig: {},
+    note: '',
+    rateConfigText: '',
+    visibilityRuleText: '{}',
+    sidecarNfo: false,
+    sidecarSubtitle: false,
+    sidecarPoster: false,
   };
 }
 
@@ -125,6 +132,14 @@ export function buildMountFormState(detail: ManageMountDetailRecord): MountFormS
       ? { ...remoteConfig, prefix: detail.rootPath ?? '' }
       : remoteConfig,
     preservedConfig,
+    // DATASOURCE-CRUD-BACKFILL-UI：旧值回填（用户口径「管理员要看到旧数值」）。
+    // 来源均为后端 ManagedMountSummaryDto 真实返回字段，前端不伪造。
+    note: detail.mount.note ?? '',
+    rateConfigText: detail.mount.rateConfig ?? '',
+    visibilityRuleText: detail.mount.visibilityRule ?? '{}',
+    sidecarNfo: detail.mount.sidecarNfo ?? false,
+    sidecarSubtitle: detail.mount.sidecarSubtitle ?? false,
+    sidecarPoster: detail.mount.sidecarPoster ?? false,
   };
 }
 
@@ -140,10 +155,18 @@ export function buildCreateMountPayload(form: MountFormState): CreateManageMount
 }
 
 export function buildUpdateMountPayload(form: MountFormState) {
+  // ★DATASOURCE-CRUD-BACKFILL-UI：名称不可修改（用户口径）。
+  // 后端 ManagedMountUpdateRequest 虽有 name 字段但会拒；前端不得静默把新名提交，
+  // 故 PATCH 体**不含 name**（表单里该字段也只读 disabled）。
   return {
-    name: form.name.trim(),
     rootPath: normalizeMountRootPath(form),
     configJson: buildMountConfigObject(form),
+    note: form.note,
+    rateConfig: parseOptionalJsonText(form.rateConfigText),
+    visibilityRule: parseOptionalJsonText(form.visibilityRuleText) ?? {},
+    sidecarNfo: form.sidecarNfo,
+    sidecarSubtitle: form.sidecarSubtitle,
+    sidecarPoster: form.sidecarPoster,
     capabilities: form.capabilities,
     pathPolicies: form.pathPolicies,
   };
@@ -271,7 +294,19 @@ export function readConfigString(configJson: Record<string, unknown>, keys: read
   return undefined;
 }
 
-export function parseConfigJson(value: string) {
+export /**
+ * 可选 JSON 文本框：空串 → `undefined`（语义=不配置，后端理解为清空/未配置），
+ * 非法 JSON → 抛出由调用方呈现（不静默吞掉）。
+ */
+function parseOptionalJsonText(value: string): Record<string, unknown> | undefined {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return undefined;
+  }
+  return JSON.parse(trimmed) as Record<string, unknown>;
+}
+
+function parseConfigJson(value: string) {
   const trimmed = value.trim();
   if (trimmed === '') {
     return {};
@@ -794,4 +829,42 @@ export function maskSensitiveConfig(value: unknown): unknown {
       return [key, maskSensitiveConfig(entryValue)];
     }),
   );
+}
+
+/** 凭据过期故障类别（与后端 errno 字典一致）。 */
+export const MOUNT_FAULT_CREDENTIAL_EXPIRED = 'credential_expired';
+
+/**
+ * 凭据过期引导判定（纯函数，可单测）。
+ *
+ * 依据：后端 `MountHealthDto.last_fault_kind`（扫描观测落库事实，0049）。
+ * 只有明确观测到 credential_expired 才给出「重新绑定」引导；
+ * `null`（无观测）归「未知」，**不伪造**过期结论。
+ */
+export function resolveCredentialGuidance(
+  health: Pick<ManageMountHealthRecord, 'lastFaultKind' | 'lastFaultTitle' | 'lastFaultAction'> | null | undefined,
+): { kind: 'expired' | 'unknown' | 'none'; title: string | null; action: string | null } {
+  if (!health || health.lastFaultKind === null) {
+    return { kind: 'unknown', title: null, action: null };
+  }
+  if (health.lastFaultKind === MOUNT_FAULT_CREDENTIAL_EXPIRED) {
+    return {
+      kind: 'expired',
+      title: health.lastFaultTitle ?? '凭据已过期',
+      action: health.lastFaultAction ?? '请重新绑定该数据源的凭据。',
+    };
+  }
+  return { kind: 'none', title: health.lastFaultTitle, action: health.lastFaultAction };
+}
+
+/**
+ * 密钥类字段展示形态：只说「已设置 / 未设置」，不回显明文、不回显占位假值。
+ * 与 maskSensitiveConfig 的区别：后者把值替换为 '***'（仍是占位），
+ * 本函数给出管理员真正需要的状态语义。
+ */
+export function describeSecretValue(value: unknown): '已设置' | '未设置' {
+  if (value === null || value === undefined || value === '') {
+    return '未设置';
+  }
+  return '已设置';
 }

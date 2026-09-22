@@ -1,10 +1,12 @@
 import type {
   ManageMountDetailRecord,
+  ManageMountHealthRecord,
   ManageStorageCapabilitiesState,
 } from "../types";
 import type {
   RawManagedMountDetailResponse,
   RawManagedMountLinkedSourceRecord,
+  RawManagedMountHealthRecord,
   RawManagedMountRecord,
   RawManagedMountReferenceCounts,
   RawManagedSourcePathPolicyRecord,
@@ -28,6 +30,13 @@ export function mapManagedMountRecord(raw: RawManagedMountRecord) {
     lastCheckedAt: raw.last_checked_at ?? undefined,
     capabilities: raw.capabilities ?? [],
     linkedLibraries: raw.linked_libraries ?? [],
+    // DATASOURCE-CRUD-BACKFILL-UI：旧值回填（后端已返回，此前丢弃）
+    note: raw.note ?? '',
+    rateConfig: raw.rate_config ?? null,
+    visibilityRule: raw.visibility_rule ?? '{}',
+    sidecarNfo: raw.sidecar_nfo ?? false,
+    sidecarSubtitle: raw.sidecar_subtitle ?? false,
+    sidecarPoster: raw.sidecar_poster ?? false,
     referenceCounts: mapManagedMountReferenceCounts(
       raw.reference_counts,
       raw.linked_libraries?.length ?? 0,
@@ -109,5 +118,26 @@ function mapManagedSourcePathPolicyRecord(
     maxConcurrentStreams: raw.max_concurrent_streams ?? undefined,
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
+  };
+}
+
+export function mapManagedMountHealthRecord(
+  raw: RawManagedMountHealthRecord,
+): ManageMountHealthRecord {
+  return {
+    mountId: raw.mount_id,
+    name: raw.name,
+    providerType: raw.provider_type,
+    status: raw.status,
+    healthStatus: raw.health_status,
+    statusMessage: raw.status_message ?? null,
+    unavailableBindingCount: raw.unavailable_binding_count ?? null,
+    // ★恒 null 的字段也如实透传 null，不补 0（V2 无独立事实源）。
+    attentionBindingCount: raw.attention_binding_count ?? null,
+    lastCheckedAt: raw.last_checked_at ?? null,
+    lastFaultKind: raw.last_fault_kind ?? null,
+    lastFaultTitle: raw.last_fault_title ?? null,
+    lastFaultAction: raw.last_fault_action ?? null,
+    lastFaultAt: raw.last_fault_at ?? null,
   };
 }
