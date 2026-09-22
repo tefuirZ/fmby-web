@@ -242,6 +242,120 @@ export interface RewardsLedgerEntryRecord {
   createdAt: number;
 }
 
+/** 积分兑换速率配置（观看时长 / 求片抵扣，单位见各字段语义）。 */
+export interface RewardsRedemptionRateRecord {
+  /** 是否启用该兑换通道。 */
+  enabled: boolean;
+  /** 每单位积分数。 */
+  pointsPerUnit: number;
+  /** 单次最小数量。 */
+  minQuantity: number;
+  /** 单次最大数量。 */
+  maxQuantity: number;
+  /** 日上限（null = 后端未设）。 */
+  dailyLimit: number | null;
+  /** 月上限（null = 后端未设）。 */
+  monthlyLimit: number | null;
+}
+
+/** 签到阶梯奖励（按连续签到天数区间给分）。 */
+export interface RewardsCheckinTierRecord {
+  /** 区间起始天（含）。 */
+  startDay: number;
+  /** 区间结束天（null = 无限）。 */
+  endDay: number | null;
+  /** 该区间奖励积分。 */
+  points: number;
+}
+
+/** 观看任务（连续观看时长兑换积分）。 */
+export interface RewardsWatchTaskRecord {
+  enabled: boolean;
+  /** 所需观看分钟数。 */
+  requiredMinutes: number;
+}
+
+/**
+ * 版本化奖励规则配置（GET/POST /api/manage/rewards/rule）。
+ * 与旧事件配置 /api/manage/rewards/config（RewardsEventConfigRecord）字段不同：
+ * 规则含 reward_mode / tiers / random 区间 / watch_task / 兑换速率 / 求片抵扣，是完整规则。
+ */
+export interface RewardsRuleConfigRecord {
+  /** 是否启用每日签到。 */
+  checkinEnabled: boolean;
+  /** `tiered` | `random`（未知串由后端 400，不静默默认）。 */
+  rewardMode: string;
+  /** 阶梯奖励列表（reward_mode=tiered 时生效）。 */
+  tiers: RewardsCheckinTierRecord[];
+  /** random 模式最小积分。 */
+  randomMinPoints: number;
+  /** random 模式最大积分。 */
+  randomMaxPoints: number;
+  /** 观看任务配置。 */
+  watchTask: RewardsWatchTaskRecord;
+  /** 是否允许补签。 */
+  allowExpiredCheckin: boolean;
+  /** 观看时长兑换速率。 */
+  serverDays: RewardsRedemptionRateRecord;
+  /** 求片积分兑换速率。 */
+  mediaRequestCredits: RewardsRedemptionRateRecord;
+  /** 求片单次抵扣积分数。 */
+  mediaRequestCost: number;
+}
+
+/** 已发布奖励规则版本（含版本元数据 + 完整 config）。 */
+export interface RewardsRuleVersionRecord {
+  id: string;
+  /** 版本号（自增）。 */
+  version: number;
+  /** 状态：`published` / `retired` 等（后端 enum 透传）。 */
+  status: string;
+  /** 发布人用户 ID。 */
+  createdBy: string;
+  /** 创建时间（毫秒）。 */
+  createdAt: number;
+  /** 发布时间（毫秒）。 */
+  publishedAt: number;
+  config: RewardsRuleConfigRecord;
+}
+
+/** 积分/签到管理统计（GET /api/manage/rewards/stats）。 */
+export interface RewardsAdminStatsRecord {
+  /** 在途积分总额。 */
+  pointsOutstanding: number;
+  /** 今日签到数。 */
+  checkinsToday: number;
+  /** 待处理签到数。 */
+  pendingCheckins: number;
+  /** 今日兑换数。 */
+  redemptionsToday: number;
+  /** 待处理求片数（求片链 0059 独立功能；恒 null，前端不伪造 0）。 */
+  pendingMediaRequests: number | null;
+  /** 处理中（processing）求片数（恒 null，同上）。 */
+  processingMediaRequests: number | null;
+}
+
+/** 管理员积分调整请求（POST /api/manage/rewards/points/adjust）。 */
+export interface RewardsAdjustPointsInput {
+  userId: string;
+  /** 幂等键：同键重复提交返回 applied=false，余额不重复变动。 */
+  idempotencyKey: string;
+  /** 增减积分（正=加，负=减）。 */
+  delta: number;
+  /** 调整原因（前端记录，后端落流水）。 */
+  reason: string;
+}
+
+/** 积分调整结果（单事务写账户 + 流水）。 */
+export interface RewardsAdjustResultRecord {
+  userId: string;
+  balance: number;
+  lifetimeEarned: number;
+  lifetimeSpent: number;
+  /** 是否本次实际应用（false = 同幂等键流水已存在，未重复变动）。 */
+  applied: boolean;
+}
+
 export interface TelegramBotStatusRecord {
   /** `ready` / `not_configured`。 */
   health: string;

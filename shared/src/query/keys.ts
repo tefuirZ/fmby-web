@@ -179,6 +179,8 @@ export const queryKeys = {
         userId
           ? (['manage', 'rewards', 'ledger', userId, limit ?? null] as const)
           : (['manage', 'rewards', 'ledger'] as const),
+      rule: () => (['manage', 'rewards', 'rule'] as const),
+      stats: () => (['manage', 'rewards', 'stats'] as const),
     },
 
     telegramBot: {

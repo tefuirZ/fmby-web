@@ -16,6 +16,8 @@ import {
   RewardsLedgerSection,
   formatEpochMs,
 } from './rewards/RewardsLedgerSection';
+import { RewardsRuleSection } from './rewards/RewardsRuleSection';
+import { RewardsAdjustSection } from './rewards/RewardsAdjustSection';
 
 const LEDGER_LIMIT_DEFAULT = 50;
 
@@ -232,8 +234,7 @@ export function ManageRewardsPage() {
             </form>
           </ManageSectionCard>
         )}
-        <ManageSectionCard title="查询用户" description="用户 ID 即管理面「用户账号」页中的 ID。">
-          <form className={styles.fieldGroup} onSubmit={submitQuery}>
+        <ManageSectionCard title="查询用户" description="用户 ID 即管理面「用户账号」页中的 ID。">          <form className={styles.fieldGroup} onSubmit={submitQuery}>
             <label className={styles.label}>
               用户 ID（必填）
               <input
@@ -270,6 +271,8 @@ export function ManageRewardsPage() {
             </div>
           </form>
         </ManageSectionCard>
+        <RewardsRuleSection />
+        <RewardsAdjustSection />
       </div>
     );
   }
@@ -352,6 +355,8 @@ export function ManageRewardsPage() {
         onLedgerLimitChange={setLedgerLimit}
         isPending={ledgerQuery.isPending}
       />
+      <RewardsRuleSection />
+      <RewardsAdjustSection />
     </div>
   );
 }
