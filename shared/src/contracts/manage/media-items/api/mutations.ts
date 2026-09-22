@@ -59,6 +59,9 @@ export const mediaItemsMutations = {
     return httpClient.post<{ id: string; result: string; message: string }>(
       `/api/manage/media-items/${itemId}/metadata/reset`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_media_items_metadata_reset` 要求 `?confirmed=true`，
+        // 缺失则直接拒绝且不产生副作用（用户点「重置元数据」会必 400）。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
@@ -108,6 +111,8 @@ export const mediaItemsMutations = {
     return httpClient.delete<ManageActionResult>(
       `/api/manage/media-items/${itemId}/artwork/${overrideId}`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_media_items_artwork_delete` 要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
@@ -161,6 +166,8 @@ export const mediaItemsMutations = {
     return httpClient.delete<ManageActionResult>(
       `/api/manage/media-items/${itemId}/subtitles/${overrideId}`,
       {
+        // CONFIRM-GATE-ALIGN：后端 `manage_media_items_subtitle_delete` 要求 `?confirmed=true`。
+        params: { confirmed: true },
         body: mapDangerousActionPayloadToApi(payload),
       },
     );
