@@ -115,6 +115,11 @@ export const queryKeys = {
 
     pan115: {
       account: (mountId: string) => ['manage', 'pan115', 'account', mountId] as const,
+      sharePreview: (previewId: string) =>
+        ['manage', 'pan115', 'share-preview', previewId] as const,
+      shareItem: () => ['manage', 'pan115', 'share-item'] as const,
+      syncOverview: (mountId: string) =>
+        ['manage', 'pan115', 'sync-overview', mountId] as const,
     },
 
     pan115Imghost: {
