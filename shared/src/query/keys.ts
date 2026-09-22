@@ -123,6 +123,10 @@ export const queryKeys = {
         ['manage', 'pan115', 'sync-overview', mountId] as const,
     },
 
+    authProviders: {
+      configs: () => ['manage', 'auth-providers', 'configs'] as const,
+    },
+
     yun139: {
       profiles: () => ['manage', 'yun139', 'profiles'] as const,
     },
