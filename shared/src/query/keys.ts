@@ -122,6 +122,11 @@ export const queryKeys = {
         ['manage', 'pan115', 'sync-overview', mountId] as const,
     },
 
+    microsoft: {
+      configStatus: () => ['manage', 'microsoft', 'config-status'] as const,
+      profiles: () => ['manage', 'microsoft', 'profiles'] as const,
+    },
+
     pan115Imghost: {
       credentials: () => ['manage', 'pan115-imghost', 'credentials'] as const,
       assets: {
