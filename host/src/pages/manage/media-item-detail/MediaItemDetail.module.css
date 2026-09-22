@@ -445,6 +445,121 @@
   min-width: 0;
 }
 
+/* ── 身份与可见性治理 ── */
+
+.govRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.govBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.govLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.govControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.govHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.govMatch {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.govMatchForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.govMatchForm .input,
+.govMatchForm input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.candidateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.candidateItem {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.candidateActive {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.candidatePick {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.candidateTitle {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.candidateMeta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.govConfirmText {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-strong);
+}
+
+@media (max-width: 767px) {
+  .govRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
 /* ── 响应式 ── */
 
 @media (max-width: 1023px) {

@@ -16,6 +16,7 @@ export const mediaItemsApi = {
   getMediaItems: mediaItemsQueries.getMediaItems,
   getMediaItemDetail: mediaItemsQueries.getMediaItemDetail,
   getMediaItemPipeline: mediaItemsQueries.getMediaItemPipeline,
+  searchMediaItemProvider: mediaItemsQueries.searchMediaItemProvider,
 
   // 写入类 API
   updateMediaItemMetadata: mediaItemsMutations.updateMediaItemMetadata,
@@ -29,6 +30,9 @@ export const mediaItemsApi = {
   deleteMediaItemSource: mediaItemsMutations.deleteMediaItemSource,
   scanMediaItem: mediaItemsMutations.scanMediaItem,
   enqueueMediaItemScrape: mediaItemsMutations.enqueueMediaItemScrape,
+  setMediaItemVisibility: mediaItemsMutations.setMediaItemVisibility,
+  manualMatchMediaItemIdentity: mediaItemsMutations.manualMatchMediaItemIdentity,
+  identifyMediaItem: mediaItemsMutations.identifyMediaItem,
 };
 
 // 重新导出内部类型和映射函数（供其他 domain 使用）

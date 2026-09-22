@@ -14,6 +14,7 @@ import styles from './media-item-detail/MediaItemDetail.module.css';
 import {
   MediaItemArtworkSection,
   MediaItemDangerZoneSection,
+  MediaItemIdentityGovernancePanel,
   MediaItemMetadataSection,
   MediaItemOverviewSection,
   MediaItemPipelineSection,
@@ -244,6 +245,8 @@ export function ManageMediaItemDetailPage() {
       />
 
       <MediaItemPipelineSection mutations={mutations} pipelineQuery={pipelineQuery} />
+
+      <MediaItemIdentityGovernancePanel detail={detail} mutations={mutations} />
 
       <MediaItemDangerZoneSection detail={detail} mutations={mutations} />
     </div>

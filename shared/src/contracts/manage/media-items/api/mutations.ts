@@ -8,6 +8,12 @@ import { mapDangerousActionPayloadToApi } from '../../mapping';
 import type { DangerousActionRequest, ManageActionResult } from '../../types';
 import type {
   ManageMediaItemDetailRecord,
+  ManageMediaItemVisibilityResult,
+  ManageMediaItemVisibilityState,
+  ManualMatchMediaItemIdentityRequest,
+  ManualMatchMediaItemIdentityResult,
+  IdentifyMediaItemRequest,
+  IdentifyMediaItemResult,
   RequestManageMediaItemScrapeOptions,
   RequestManageMediaItemScrapeResult,
   UpdateManageMediaItemMetadataRequest,
@@ -196,6 +202,60 @@ export const mediaItemsMutations = {
   },
 
   // ========== Action Mutations ==========
+
+  /**
+   * 设置媒体项可见性（危险操作，需 `?confirmed=true`）。
+   *
+   * 后端 `manage_media_items_visibility` 要求 `require_confirmed`；缺失直接拒绝且零副作用。
+   * 状态仅接受 `visible|hidden|manualhidden|restore`，其余（含 `nopermission`）后端 400。
+   */
+  async setMediaItemVisibility(
+    itemId: string,
+    state: ManageMediaItemVisibilityState,
+    payload: DangerousActionRequest = { confirmAction: 'set-media-item-visibility' },
+  ): Promise<ManageMediaItemVisibilityResult> {
+    return httpClient.post<ManageMediaItemVisibilityResult>(
+      `/api/manage/media-items/${itemId}/visibility/${state}`,
+      {
+        // CONFIRM-GATE-ALIGN：后端 `manage_media_items_visibility` 要求 `?confirmed=true`。
+        params: { confirmed: true },
+        body: mapDangerousActionPayloadToApi(payload),
+      },
+    );
+  },
+
+  /**
+   * 手工绑定条目身份（危险操作，需 `?confirmed=true`）。
+   *
+   * 后端 `manage_media_items_identity_manual_match` 要求 `require_confirmed`。
+   */
+  async manualMatchMediaItemIdentity(
+    itemId: string,
+    payload: ManualMatchMediaItemIdentityRequest,
+    confirmation: DangerousActionRequest = { confirmAction: 'manual-match-media-item-identity' },
+  ): Promise<ManualMatchMediaItemIdentityResult> {
+    return httpClient.post<ManualMatchMediaItemIdentityResult>(
+      `/api/manage/media-items/${itemId}/identity/manual-match`,
+      {
+        // CONFIRM-GATE-ALIGN：后端 `manage_media_items_identity_manual_match` 要求 `?confirmed=true`。
+        params: { confirmed: true },
+        body: { ...payload, confirmAction: confirmation.confirmAction },
+      },
+    );
+  },
+
+  /**
+   * 触发条目级识别（幂等入队）。后端 `manage_media_items_identify` 仅能力门、不要求 confirmed。
+   */
+  async identifyMediaItem(
+    itemId: string,
+    payload: IdentifyMediaItemRequest = {},
+  ): Promise<IdentifyMediaItemResult> {
+    return httpClient.post<IdentifyMediaItemResult>(
+      `/api/manage/media-items/${itemId}/identify`,
+      { body: payload },
+    );
+  },
 
   /**
    * 扫描单个媒体项（重新扫描文件、元数据等）

@@ -7,6 +7,8 @@ import { httpClient } from '@fmby/v2-shared/api/client';
 import type {
   ManageMediaItemDetailRecord,
   ManageMediaItemPipelineRecord,
+  ManageMediaItemProviderSearchQuery,
+  ManageMediaItemProviderSearchResponse,
   ManageMediaItemsQuery,
   ManageMediaItemsResponse,
 } from '../types';
@@ -56,5 +58,27 @@ export const mediaItemsQueries = {
       `/api/manage/media-items/${itemId}/pipeline`,
     );
     return mapPipelineRecord(raw);
+  },
+
+  /**
+   * 搜索 provider 候选（人工匹配面）。
+   *
+   * 后端 `manage_media_items_provider_search` 复用统一的 metadata_provider 出站层；
+   * 候选上限由后端硬截断（V1 MAX_PROVIDER_SEARCH_CANDIDATES = 8）。能力门 `manage:libraries`。
+   */
+  async searchMediaItemProvider(
+    itemId: string,
+    query: ManageMediaItemProviderSearchQuery,
+  ): Promise<ManageMediaItemProviderSearchResponse> {
+    const raw = await httpClient.get<ManageMediaItemProviderSearchResponse>(
+      `/api/manage/media-items/${itemId}/provider-search`,
+      {
+        params: {
+          provider: query.provider || undefined,
+          q: query.query,
+        },
+      },
+    );
+    return raw;
   },
 };

@@ -398,3 +398,75 @@ export interface UpdateManageMediaItemSubtitleOverrideRequest {
   isDefault?: boolean;
   sortOrder?: number;
 }
+
+// ============ 身份与可见性治理（CRUD-MEDIA-VISIBILITY / CRUD-MEDIA-IDENTITY / IDENTIFY-TRIGGER） ============
+
+/**
+ * 条目级可见性状态。
+ *
+ * 后端 `parse_media_item_visibility_state` 仅接受 `visible|restore|hidden|manualhidden`，
+ * 其余（含 `nopermission`）一律 400，因此前端只暴露这四个有效值。
+ */
+export type ManageMediaItemVisibilityState = 'visible' | 'hidden' | 'manualhidden' | 'restore';
+
+/** `POST /api/manage/media-items/{id}/visibility/{state}` 的响应。 */
+export interface ManageMediaItemVisibilityResult {
+  ok: boolean;
+}
+
+/** `POST /api/manage/media-items/{id}/identity/manual-match` 的请求体。 */
+export interface ManualMatchMediaItemIdentityRequest {
+  provider: string;
+  providerItemId: string;
+  reason?: string;
+  /** 危险操作二次确认标记（映射后端 `confirm_action`）。 */
+  confirmAction?: string;
+}
+
+/** `POST /api/manage/media-items/{id}/identity/manual-match` 的响应（ManualMatchResponse 映射）。 */
+export interface ManualMatchMediaItemIdentityResult {
+  provider: string;
+  providerItemId: string;
+  bindingId?: string;
+  state?: string;
+}
+
+/** `POST /api/manage/media-items/{id}/identify` 的请求体（可选原因）。 */
+export interface IdentifyMediaItemRequest {
+  reason?: string;
+}
+
+/** `POST /api/manage/media-items/{id}/identify` 的响应（IdentifyTriggerResponse 映射）。 */
+export interface IdentifyMediaItemResult {
+  itemId: string;
+  taskId: string;
+  outcome: string;
+  status: string;
+  fingerprint: string;
+}
+
+/** `GET /api/manage/media-items/{id}/provider-search` 的查询参数。 */
+export interface ManageMediaItemProviderSearchQuery {
+  provider?: string;
+  query: string;
+}
+
+/** provider 候选命中（人工匹配面）。 */
+export interface ManageMediaItemProviderSearchCandidate {
+  provider: string;
+  entityType: string;
+  providerItemId: string;
+  title: string;
+  originalTitle: string | null;
+  year: number | null;
+  overview: string | null;
+  confidence: number | null;
+  externalId: string | null;
+}
+
+/** `GET /api/manage/media-items/{id}/provider-search` 的响应。 */
+export interface ManageMediaItemProviderSearchResponse {
+  provider: string;
+  query: string;
+  candidates: ManageMediaItemProviderSearchCandidate[];
+}
