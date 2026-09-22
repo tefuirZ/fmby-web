@@ -2,6 +2,7 @@ import { ManagePageHeader } from '@/pages/manage/longtail-shared/components';
 import { ShareItemBrowseSection } from './components/ShareItemBrowseSection';
 import { PreviewBrowseSection } from './components/PreviewBrowseSection';
 import { SyncSection } from './components/SyncSection';
+import { PreviewCredentialSection } from './components/PreviewCredentialSection';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 
 /**
@@ -24,6 +25,7 @@ export function Pan115SharePage() {
         description="浏览 115 分享目录、用预览凭据查看挂载网盘目录，并管理 115 挂载的同步任务。该面独立于图床工具（VITE_FEATURE_PAN115_IMGHOST）。"
       />
 
+      <PreviewCredentialSection />
       <ShareItemBrowseSection />
       <PreviewBrowseSection />
       <SyncSection />
