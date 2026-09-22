@@ -295,7 +295,7 @@ export function ManageMountsPage() {
         open={pendingDelete !== null}
         actionKey="delete-mount"
         title={pendingDelete ? `删除数据源：${pendingDelete.mountName}` : ''}
-        description="删除后，该数据源将无法继续被媒体库绑定。"
+        description="删除后该数据源会立即从列表移除；其关联的媒体库资源将由后台异步清理（可能耗时，期间仍可能短暂可见），清理完成前请勿重复操作。"
         impact={pendingDelete ? buildMountDeleteImpact(pendingDelete) : undefined}
         errorMessage={pendingDelete && deleteMountMutation.isError ? getErrorMessage(deleteMountMutation.error) : undefined}
         confirmLabel="删除来源"

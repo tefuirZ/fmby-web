@@ -11,6 +11,7 @@ import type { BannerState } from '@fmby/v2-shared/ui/types';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type { MountDrawerState, MountFormErrors, MountFormState } from '../types';
 import { buildUpdateMountPayload } from '../formUtils';
+import { optimisticRemoveMount, rollbackMountList } from './deleteOptimistic';
 
 export interface UseMountMutationsCallbacks {
   setBanner: (state: BannerState | null) => void;
@@ -84,6 +85,24 @@ export function useMountMutations({
       mountId: string;
       confirmation: DangerousActionRequest;
     }) => manageApi.deleteMount(mountId, confirmation),
+    // FE-DELETE-UX-OPTIMISTIC：确认提交瞬间先从列表缓存乐观移除该数据源
+    // （表格立刻少一行，按钮即进 pending），网络往返在后台完成；失败则回滚恢复并报错。
+    // 后端待 w2 改为「点下去只隐藏、后台异步真删」后，onSettled 的 invalidate
+    // 会重新拉取；若后端仅标记隐藏、真删尚未落地，行会回到列表（不前端假删）。
+    onMutate: async ({ mountId }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.manage.mounts.list() });
+      const previous = queryClient.getQueryData(queryKeys.manage.mounts.list());
+      queryClient.setQueryData(
+        queryKeys.manage.mounts.list(),
+        optimisticRemoveMount(
+          queryClient.getQueryData(queryKeys.manage.mounts.list()) as
+            | Parameters<typeof optimisticRemoveMount>[0]
+            | undefined,
+          mountId,
+        ),
+      );
+      return { previous };
+    },
     onSuccess: async (result, variables) => {
       const { mountId } = variables;
       queryClient.removeQueries({ queryKey: queryKeys.manage.mounts.detail(mountId) });
@@ -92,11 +111,22 @@ export function useMountMutations({
       setBanner({
         variant: 'success',
         title: result.message,
-        description: '数据源列表已重新同步。',
+        description: '数据源已移除，关联媒体库资源将在后台异步清理（可能耗时）。',
       });
       await queryClient.invalidateQueries({ queryKey: queryKeys.manage.mounts.list() });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(
+          queryKeys.manage.mounts.list(),
+          rollbackMountList(
+            queryClient.getQueryData(queryKeys.manage.mounts.list()) as
+              | Parameters<typeof rollbackMountList>[0]
+              | undefined,
+            context.previous as Parameters<typeof rollbackMountList>[1] | undefined,
+          ),
+        );
+      }
       setBanner({
         variant: 'error',
         title: '数据源删除失败',
