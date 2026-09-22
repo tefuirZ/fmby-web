@@ -13,6 +13,7 @@ import type {
   PendingLibraryDeleteState,
 } from '../types';
 import { buildUpdateLibraryPayload } from '../formUtils';
+import { optimisticRemoveLibrary, rollbackLibraryList } from './deleteOptimistic';
 
 export interface UseLibraryMutationsCallbacks {
   setBanner: (state: BannerState | null) => void;
@@ -83,15 +84,14 @@ export function useLibraryMutations({
     onMutate: async ({ libraryId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.manage.libraries.list() });
       const previous = queryClient.getQueryData(queryKeys.manage.libraries.list());
-      queryClient.setQueryData<unknown>(
+      queryClient.setQueryData(
         queryKeys.manage.libraries.list(),
-        (old: { libraries?: { library: { id: string } }[] } | undefined) => {
-          if (!old || !Array.isArray(old.libraries)) return old;
-          return {
-            ...old,
-            libraries: old.libraries.filter((entry) => entry.library.id !== libraryId),
-          };
-        },
+        optimisticRemoveLibrary(
+          queryClient.getQueryData(queryKeys.manage.libraries.list()) as
+            | Parameters<typeof optimisticRemoveLibrary>[0]
+            | undefined,
+          libraryId,
+        ),
       );
       return { previous };
     },
@@ -103,13 +103,21 @@ export function useLibraryMutations({
       setBanner({
         variant: 'success',
         title: result.message,
-        description: '媒体库列表已重新同步。',
+        description: '媒体库已移除，媒体资源与关联记录将在后台异步清理（可能耗时）。',
       });
       await queryClient.invalidateQueries({ queryKey: queryKeys.manage.libraries.list() });
     },
     onError: (error, _variables, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(queryKeys.manage.libraries.list(), context.previous);
+        queryClient.setQueryData(
+          queryKeys.manage.libraries.list(),
+          rollbackLibraryList(
+            queryClient.getQueryData(queryKeys.manage.libraries.list()) as
+              | Parameters<typeof rollbackLibraryList>[0]
+              | undefined,
+            context.previous as Parameters<typeof rollbackLibraryList>[1] | undefined,
+          ),
+        );
       }
       setBanner({
         variant: 'error',
@@ -149,5 +157,44 @@ export function useLibraryMutations({
     },
   });
 
-  return { createLibraryMutation, updateLibraryMutation, deleteLibraryMutation, triggerLibraryScanMutation };
+  const reorderLibrariesMutation = useMutation({
+    mutationFn: (libraryIds: string[]) => manageApi.reorderLibraries(libraryIds),
+    // 乐观更新：本地立即按新顺序重排（不阻塞），后台 PUT /order 校验；失败回滚并报错。
+    onMutate: async (libraryIds) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.manage.libraries.list() });
+      const previous = queryClient.getQueryData(queryKeys.manage.libraries.list()) as
+        | { items: { id: string }[] }
+        | undefined;
+      queryClient.setQueryData<unknown>(queryKeys.manage.libraries.list(), (old: unknown) => {
+        if (!old || !Array.isArray((old as { items?: unknown[] }).items)) return old;
+        const byId = new Map((previous?.items ?? []).map((e) => [e.id, e] as const));
+        const reordered = libraryIds
+          .map((id) => byId.get(id))
+          .filter((e): e is { id: string } => Boolean(e));
+        return { ...(old as object), items: reordered };
+      });
+      return { previous };
+    },
+    onSuccess: async (result) => {
+      // 以服务端返回的顺序为准（权威），覆盖乐观缓存。
+      queryClient.setQueryData(queryKeys.manage.libraries.list(), { items: result.items });
+      setBanner({
+        variant: 'success',
+        title: '媒体库顺序已保存',
+        description: '新的展示顺序已生效。',
+      });
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(queryKeys.manage.libraries.list(), context.previous);
+      }
+      setBanner({
+        variant: 'error',
+        title: '媒体库顺序保存失败',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+
+  return { createLibraryMutation, updateLibraryMutation, deleteLibraryMutation, triggerLibraryScanMutation, reorderLibrariesMutation };
 }

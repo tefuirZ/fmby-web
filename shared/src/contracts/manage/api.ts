@@ -790,6 +790,16 @@ export const manageApi = {
     return mapManageActionResult(raw);
   },
 
+  // FE-LIBRARY-ORDER-UI：媒体库排序（后端 PUT /api/manage/libraries/order，
+  // 入参 { library_ids }，返回排序后的库列表）。纯前端消费，不动后端。
+  async reorderLibraries(libraryIds: string[]): Promise<ManageLibrariesResponse> {
+    const raw = await httpClient.put<RawListResponse<RawManagedLibraryRecord>>(
+      "/api/manage/libraries/order",
+      { body: { library_ids: libraryIds } },
+    );
+    return { items: raw.items.map(mapManagedLibraryRecord) };
+  },
+
   async triggerLibraryScan(
     libraryId: string,
     payload: TriggerManageLibraryScanRequest = {},

@@ -26,6 +26,7 @@ import {
   useUsersPickerQuery,
   useLibraryMutations,
 } from './libraries/hooks';
+import { moveLibraryIds } from './libraries/hooks/libraryOrder';
 import { LibraryTable, LibraryDrawer } from './libraries/components';
 
 export function ManageLibrariesPage() {
@@ -43,7 +44,7 @@ export function ManageLibrariesPage() {
   const libraryDetailQuery = useLibraryDetailQuery(drawerState);
   const mountsQuery = useMountsPickerQuery(drawerState !== null);
   const usersQuery = useUsersPickerQuery(drawerState !== null);
-  const { createLibraryMutation, updateLibraryMutation, deleteLibraryMutation, triggerLibraryScanMutation } =
+  const { createLibraryMutation, updateLibraryMutation, deleteLibraryMutation, triggerLibraryScanMutation, reorderLibrariesMutation } =
     useLibraryMutations({ setBanner, setDrawerState, setPendingDelete });
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export function ManageLibrariesPage() {
   const libraries = librariesQuery.data?.items ?? [];
   const isSaving = createLibraryMutation.isPending || updateLibraryMutation.isPending;
   const isDeleting = deleteLibraryMutation.isPending;
+  const isReordering = reorderLibrariesMutation.isPending;
 
   const filteredLibraries = useMemo(() => {
     return libraries.filter((library) => {
@@ -122,6 +124,15 @@ export function ManageLibrariesPage() {
     setPendingDelete(target);
   };
 
+  // FE-LIBRARY-ORDER-UI：点击上/下移 → 本地在完整列表顺序中交换该库与邻项
+  // → 乐观重排（reorderLibrariesMutation 的 onMutate 立即改缓存）→ 后台 PUT /order 校验。
+  const handleMoveLibrary = (libraryId: string, step: -1 | 1) => {
+    const fullIds = libraries.map((library) => library.id);
+    const nextIds = moveLibraryIds(fullIds, libraryId, step);
+    if (nextIds === fullIds) return;
+    reorderLibrariesMutation.mutate(nextIds);
+  };
+
   return (
     <div className={styles.page}>
       <ManagePageHeader
@@ -163,6 +174,8 @@ export function ManageLibrariesPage() {
           })
         }
         onCreateClick={openCreateDrawer}
+        onMoveLibrary={handleMoveLibrary}
+        reorderPending={isReordering}
       />
 
       <LibraryDrawer
@@ -189,7 +202,7 @@ export function ManageLibrariesPage() {
         open={pendingDelete !== null}
         actionKey="delete-library"
         title={pendingDelete ? `删除媒体库：${pendingDelete.library.name}` : ''}
-        description="删除媒体库后，当前来源绑定和前台可见性都会被移除。"
+        description="删除媒体库后，当前来源绑定和前台可见性会立即从列表移除；其媒体资源与关联记录将由后台异步清理（可能耗时，期间仍可能短暂可见），清理完成前请勿重复操作。"
         impact={pendingDelete ? buildDeleteImpact(pendingDelete) : undefined}
         errorMessage={
           pendingDelete && deleteLibraryMutation.isError
