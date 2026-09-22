@@ -7,6 +7,16 @@ import type {
   ManagedCollectionMemberAddInput,
   ManagedCollectionMemberRemoveInput,
   ManagedCollectionMemberReorderInput,
+  ManagedCollectionPresetRecord,
+  ManagedCollectionPresetCreateInput,
+  ManagedCollectionRule,
+  ManagedCollectionRulePreview,
+  ManagedCollectionRulePreviewInput,
+  ManagedCollectionRulesUpdateInput,
+  ManagedCollectionMemberOverride,
+  ManagedCollectionRulePreviewItem,
+  ManagedCollectionMemberPatchInput,
+  ManagedCollectionReorderInput,
   ManagedCollectionRecord,
   ManagedCollectionWriteInput,
   RewardsAccountSummaryRecord,
@@ -31,9 +41,46 @@ interface RawManagedCollection {
   overview: string | null;
   poster_url: string | null;
   source_kind: string;
+  collection_kind: string;
+  auto_expand_enabled: boolean;
+  min_effective_members: number | null;
+  artwork_mode: string | null;
   visibility: string;
   created_at: number;
   updated_at: number;
+}
+
+interface RawManagedCollectionRule {
+  id: string;
+  rule_type: string;
+  is_exclusion: boolean;
+  values: string[];
+}
+
+interface RawManagedCollectionMemberOverride {
+  media_item_id: string;
+  override_kind: string;
+}
+
+interface RawManagedCollectionPreset {
+  key: string;
+  title: string;
+  overview: string | null;
+  item_count: number;
+}
+
+interface RawManagedCollectionRulePreviewItem {
+  id: string;
+  title: string;
+  year: number | null;
+  media_kind: string;
+}
+
+interface RawManagedCollectionRulePreview {
+  match_count: number;
+  visible: boolean;
+  sample_items: RawManagedCollectionRulePreviewItem[];
+  artwork_items: RawManagedCollectionRulePreviewItem[];
 }
 
 interface RawManagedCollectionMember {
@@ -54,6 +101,8 @@ interface RawManagedCollectionMember {
 interface RawManagedCollectionDetail {
   collection: RawManagedCollection;
   members: RawManagedCollectionMember[];
+  rules: RawManagedCollectionRule[];
+  member_overrides: RawManagedCollectionMemberOverride[];
 }
 
 interface RawMemberCandidate {
@@ -198,9 +247,36 @@ function fromCollection(r: RawManagedCollection): ManagedCollectionRecord {
     overview: r.overview,
     posterUrl: r.poster_url,
     sourceKind: r.source_kind as ManagedCollectionRecord["sourceKind"],
+    collectionKind: r.collection_kind,
+    autoExpandEnabled: r.auto_expand_enabled,
+    minEffectiveMembers: r.min_effective_members,
+    artworkMode: r.artwork_mode,
     visibility: r.visibility as CollectionVisibility,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+  };
+}
+
+function fromRule(r: RawManagedCollectionRule): ManagedCollectionRule {
+  return { id: r.id, ruleType: r.rule_type, isExclusion: r.is_exclusion, values: r.values };
+}
+
+function fromMemberOverride(
+  r: RawManagedCollectionMemberOverride,
+): ManagedCollectionMemberOverride {
+  return { mediaItemId: r.media_item_id, overrideKind: r.override_kind };
+}
+
+function fromPreviewItem(r: RawManagedCollectionRulePreviewItem): ManagedCollectionRulePreviewItem {
+  return { id: r.id, title: r.title, year: r.year, mediaKind: r.media_kind };
+}
+
+function fromDetail(r: RawManagedCollectionDetail): ManagedCollectionDetailRecord {
+  return {
+    collection: fromCollection(r.collection),
+    members: r.members.map(fromMember),
+    rules: (r.rules ?? []).map(fromRule),
+    memberOverrides: (r.member_overrides ?? []).map(fromMemberOverride),
   };
 }
 
@@ -282,7 +358,7 @@ export const peripheralsApi = {
     const raw = await httpClient.get<RawManagedCollectionDetail>(
       `/api/manage/collections/${encodeURIComponent(id)}`,
     );
-    return { collection: fromCollection(raw.collection), members: raw.members.map(fromMember) };
+    return fromDetail(raw);
   },
 
   async createCollection(
@@ -352,7 +428,7 @@ export const peripheralsApi = {
       `/api/manage/collections/${encodeURIComponent(collectionId)}/members/add`,
       { body: { item_id: input.itemId } },
     );
-    return { collection: fromCollection(raw.collection), members: raw.members.map(fromMember) };
+    return fromDetail(raw);
   },
 
   async deleteCollectionMember(collectionId: string, memberId: string): Promise<void> {
@@ -373,7 +449,7 @@ export const peripheralsApi = {
       `/api/manage/collections/${encodeURIComponent(collectionId)}/members/remove`,
       { body: { item_id: input.itemId } },
     );
-    return { collection: fromCollection(raw.collection), members: raw.members.map(fromMember) };
+    return fromDetail(raw);
   },
 
   /**
@@ -387,6 +463,98 @@ export const peripheralsApi = {
     return httpClient.post<{ ok: boolean }>(
       `/api/manage/collections/${encodeURIComponent(collectionId)}/members/reorder`,
       { body: { member_ids: input.memberIds } },
+    );
+  },
+
+  /** PUT /api/manage/collections/order —— 合集列表整体排序（整组覆写 sort_order）。 */
+  async reorderCollections(input: ManagedCollectionReorderInput): Promise<ManagedCollectionRecord[]> {
+    const raw = await httpClient.put<RawManagedCollection[]>(
+      '/api/manage/collections/order',
+      { body: { collection_ids: input.collectionIds } },
+    );
+    return raw.map(fromCollection);
+  },
+
+  /** GET /api/manage/collections/presets —— 预设模板列表（纯静态数据，零 IO）。 */
+  async listCollectionPresets(): Promise<ManagedCollectionPresetRecord[]> {
+    const raw = await httpClient.get<RawManagedCollectionPreset[]>('/api/manage/collections/presets');
+    return raw.map((r) => ({
+      key: r.key,
+      title: r.title,
+      overview: r.overview,
+      itemCount: r.item_count,
+    }));
+  },
+
+  /** POST /api/manage/collections/presets/create —— 从预设模板建合集。 */
+  async createCollectionFromPreset(
+    input: ManagedCollectionPresetCreateInput,
+  ): Promise<ManagedCollectionDetailRecord> {
+    const raw = await httpClient.post<RawManagedCollectionDetail>(
+      '/api/manage/collections/presets/create',
+      { body: { preset_key: input.presetKey } },
+    );
+    return fromDetail(raw);
+  },
+
+  /** POST /api/manage/collections/rules/preview —— 规则预览（纯计算不落库）。 */
+  async previewCollectionRules(
+    input: ManagedCollectionRulePreviewInput,
+  ): Promise<ManagedCollectionRulePreview> {
+    const raw = await httpClient.post<RawManagedCollectionRulePreview>(
+      '/api/manage/collections/rules/preview',
+      { body: { min_effective_members: input.minEffectiveMembers, rules: input.rules } },
+    );
+    return {
+      matchCount: raw.match_count,
+      visible: raw.visible,
+      sampleItems: raw.sample_items.map(fromPreviewItem),
+      artworkItems: raw.artwork_items.map(fromPreviewItem),
+    };
+  },
+
+  /** PATCH /api/manage/collections/{id}/rules —— 编辑规则合集规则（单事务覆盖替换）。 */
+  async updateCollectionRules(
+    collectionId: string,
+    input: ManagedCollectionRulesUpdateInput,
+  ): Promise<ManagedCollectionDetailRecord> {
+    const raw = await httpClient.patch<RawManagedCollectionDetail>(
+      `/api/manage/collections/${encodeURIComponent(collectionId)}/rules`,
+      {
+        body: {
+          auto_expand_enabled: input.autoExpandEnabled,
+          min_effective_members: input.minEffectiveMembers,
+          artwork_mode: input.artworkMode,
+          rules: input.rules,
+        },
+      },
+    );
+    return fromDetail(raw);
+  },
+
+  /** POST /api/manage/collections/{id}/sync —— 规则合集手动同步（仅 rule 合集支持）。 */
+  async syncCollection(collectionId: string): Promise<ManagedCollectionDetailRecord> {
+    const raw = await httpClient.post<RawManagedCollectionDetail>(
+      `/api/manage/collections/${encodeURIComponent(collectionId)}/sync`,
+    );
+    return fromDetail(raw);
+  },
+
+  /** PATCH /api/manage/collections/{id}/members/{member_id} —— 成员运行态（启用/停用/双序）。 */
+  async patchCollectionMember(
+    collectionId: string,
+    memberId: string,
+    input: ManagedCollectionMemberPatchInput,
+  ): Promise<void> {
+    await httpClient.patch<{ ok: boolean }>(
+      `/api/manage/collections/${encodeURIComponent(collectionId)}/members/${encodeURIComponent(memberId)}`,
+      {
+        body: {
+          is_enabled: input.isEnabled,
+          release_order: input.releaseOrder,
+          watch_order: input.watchOrder,
+        },
+      },
     );
   },
 

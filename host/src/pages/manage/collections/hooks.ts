@@ -4,6 +4,9 @@ import {
   type ManagedCollectionMemberAddInput,
   type ManagedCollectionMemberRemoveInput,
   type ManagedCollectionMemberReorderInput,
+  type ManagedCollectionMemberPatchInput,
+  type ManagedCollectionPresetCreateInput,
+  type ManagedCollectionRulesUpdateInput,
   type ManagedCollectionWriteInput,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -35,6 +38,13 @@ export function useCollectionMemberCandidatesQuery(keyword: string) {
     queryKey: queryKeys.manage.collections.memberCandidates(trimmed),
     queryFn: () => peripheralsApi.listCollectionMemberCandidates(trimmed),
     enabled: trimmed.length >= 2,
+  });
+}
+
+export function useCollectionPresetsQuery() {
+  return useQuery({
+    queryKey: queryKeys.manage.collections.presets(),
+    queryFn: () => peripheralsApi.listCollectionPresets(),
   });
 }
 
@@ -115,10 +125,66 @@ export function useCollectionMutations({ onSuccess }: UseCollectionMutationsOpti
     },
   });
 
+  const patchMemberMutation = useMutation({
+    mutationFn: ({
+      collectionId,
+      memberId,
+      input,
+    }: {
+      collectionId: string;
+      memberId: string;
+      input: ManagedCollectionMemberPatchInput;
+    }) => peripheralsApi.patchCollectionMember(collectionId, memberId, input),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('成员状态已更新。');
+    },
+  });
+
+  const updateCollectionRulesMutation = useMutation({
+    mutationFn: ({ collectionId, input }: { collectionId: string; input: ManagedCollectionRulesUpdateInput }) =>
+      peripheralsApi.updateCollectionRules(collectionId, input),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('规则已保存。');
+    },
+  });
+
+  const syncCollectionMutation = useMutation({
+    mutationFn: (collectionId: string) => peripheralsApi.syncCollection(collectionId),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('合集已同步。');
+    },
+  });
+
+  const createPresetCollectionMutation = useMutation({
+    mutationFn: (input: ManagedCollectionPresetCreateInput) =>
+      peripheralsApi.createCollectionFromPreset(input),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('已从预设创建合集。');
+    },
+  });
+
+  const reorderCollectionsMutation = useMutation({
+    mutationFn: (input: { collectionIds: string[] }) =>
+      peripheralsApi.reorderCollections(input),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('合集顺序已保存。');
+    },
+  });
+
   return {
     addMemberMutation,
     removeMemberMutation,
     reorderMemberMutation,
+    patchMemberMutation,
+    updateCollectionRulesMutation,
+    syncCollectionMutation,
+    createPresetCollectionMutation,
+    reorderCollectionsMutation,
     createMutation,
     updateMutation,
     deleteMutation,

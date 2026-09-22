@@ -162,6 +162,7 @@ export const queryKeys = {
           : (['manage', 'collections', 'detail'] as const),
       memberCandidates: (keyword: string) =>
         ['manage', 'collections', 'member-candidates', keyword] as const,
+      presets: () => ['manage', 'collections', 'presets'] as const,
     },
 
     rewards: {

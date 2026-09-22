@@ -10,6 +10,13 @@
  * - DELETE /api/manage/collections/{id}/members/{member_id}
  * - POST   /api/manage/collections/{id}/members/remove  （按 item_id 移除，B2 补）
  * - POST   /api/manage/collections/{id}/members/reorder  （按 member_ids 重排，B2 补）
+ * - PUT    /api/manage/collections/order  （合集列表排序，B3 补）
+ * - POST   /api/manage/collections/rules/preview  （规则预览，B3 补）
+ * - PATCH  /api/manage/collections/{id}/rules  （规则编辑，B3 补）
+ * - POST   /api/manage/collections/{id}/sync  （手动同步，B3 补）
+ * - GET    /api/manage/collections/presets  （预设模板，B3 补）
+ * - POST   /api/manage/collections/presets/create  （从预设建合集，B3 补）
+ * - PATCH  /api/manage/collections/{id}/members/{member_id}  （成员启停，B3 补）
  * - GET    /api/manage/rewards/accounts/{user_id}
  * - GET    /api/manage/rewards/accounts/{user_id}/ledger?limit=
  * - GET    /api/manage/telegram-bot/status
@@ -25,6 +32,9 @@ export type CollectionVisibility = 'Active' | 'Hidden';
 /** 合集来源形态（后端 domain `manual` / `douban_doulist` / `preset` 透传）。 */
 export type CollectionSourceKind = 'manual' | 'douban_doulist' | 'preset';
 
+/** 合集类型（后端 domain `manual` / `rule` 透传；规则合集才支持编辑规则/手动同步）。 */
+export type CollectionCollectionKind = 'manual' | 'rule' | string;
+
 /** 合集成员媒体类型（后端 domain `Movie` / `Series` / `Unknown` 透传）。 */
 export type CollectionMemberMediaKind = 'Movie' | 'Series' | 'Unknown';
 
@@ -34,6 +44,14 @@ export interface ManagedCollectionRecord {
   overview: string | null;
   posterUrl: string | null;
   sourceKind: CollectionSourceKind;
+  /** 合集类型：`rule` = 规则合集（支持编辑规则/手动同步）。GET 可能不返回 → 可选。 */
+  collectionKind: CollectionCollectionKind;
+  /** 规则合集自动扩员开关（仅 rule 合集语义有效）。 */
+  autoExpandEnabled: boolean;
+  /** 规则合集生效门槛（最少命中成员数）。 */
+  minEffectiveMembers: number | null;
+  /** 封面生成模式：auto_collage / 等（V1 同）。 */
+  artworkMode: string | null;
   visibility: CollectionVisibility;
   createdAt: number;
   updatedAt: number;
@@ -58,6 +76,97 @@ export interface ManagedCollectionMemberRecord {
 export interface ManagedCollectionDetailRecord {
   collection: ManagedCollectionRecord;
   members: ManagedCollectionMemberRecord[];
+  /** 规则合集的规则列表（manual 合集为空数组；B1 mapper 曾漏映射，本卡补回）。 */
+  rules: ManagedCollectionRule[];
+  /** 成员覆盖（如强制启用/隐藏某条目）。 */
+  memberOverrides: ManagedCollectionMemberOverride[];
+}
+
+/** 规则合集单条规则（GET /{id}/rules 与 PATCH 同形态）。 */
+export interface ManagedCollectionRule {
+  id: string;
+  ruleType: string;
+  isExclusion: boolean;
+  values: string[];
+}
+
+/** 成员覆盖（PATCH /{id}/rules 回传）。 */
+export interface ManagedCollectionMemberOverride {
+  mediaItemId: string;
+  overrideKind: string;
+}
+
+/** 规则预览（POST /rules/preview，纯计算不落库）。 */
+export interface ManagedCollectionRulePreview {
+  matchCount: number;
+  visible: boolean;
+  sampleItems: ManagedCollectionRulePreviewItem[];
+  artworkItems: ManagedCollectionRulePreviewItem[];
+}
+
+/** 预览样本条目（≤12 命中 / ≤4 封面候选）。 */
+export interface ManagedCollectionRulePreviewItem {
+  id: string;
+  title: string;
+  year: number | null;
+  mediaKind: string;
+}
+
+/** 预设模板（GET /presets，纯静态数据零 IO）。 */
+export interface ManagedCollectionPresetRecord {
+  key: string;
+  title: string;
+  overview: string | null;
+  itemCount: number;
+}
+
+/** POST /presets/create 入参。 */
+export interface ManagedCollectionPresetCreateInput {
+  presetKey: string;
+}
+
+/** 规则类型（8 类条件，后端枚举 snake_case 透传）。 */
+export type CollectionRuleType =
+  | 'person'
+  | 'genre'
+  | 'studio'
+  | 'year'
+  | 'decade'
+  | 'rating'
+  | 'library'
+  | 'media_type';
+
+/** 单条规则入参（POST /rules/preview、PATCH /{id}/rules 共用）。 */
+export interface ManagedCollectionRuleInput {
+  ruleType: CollectionRuleType | string;
+  isExclusion?: boolean;
+  values: string[];
+}
+
+/** POST /rules/preview 入参。 */
+export interface ManagedCollectionRulePreviewInput {
+  minEffectiveMembers?: number;
+  rules: ManagedCollectionRuleInput[];
+}
+
+/** PATCH /{id}/rules 入参（缺省字段保持现值；artwork_mode 回退 auto_collage）。 */
+export interface ManagedCollectionRulesUpdateInput {
+  autoExpandEnabled?: boolean;
+  minEffectiveMembers?: number;
+  artworkMode?: string;
+  rules: ManagedCollectionRuleInput[];
+}
+
+/** PATCH /{id}/members/{member_id} 入参（快照字段不可改，仅这三项是可调的运行态）。 */
+export interface ManagedCollectionMemberPatchInput {
+  isEnabled?: boolean;
+  releaseOrder?: number;
+  watchOrder?: number;
+}
+
+/** PUT /collections/order 入参（整组覆写 sort_order；必须与当前全集精确相等）。 */
+export interface ManagedCollectionReorderInput {
+  collectionIds: string[];
 }
 
 /**
