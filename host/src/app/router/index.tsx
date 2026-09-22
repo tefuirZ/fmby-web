@@ -311,6 +311,13 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                path: 'developer-api',
+                lazy: async () => {
+                  const { ManageDeveloperApiPage } = await import('@/pages/manage/developer-api');
+                  return { Component: ManageDeveloperApiPage };
+                },
+              },
+              {
                 path: 'auth-providers',
                 lazy: async () => {
                   const { ManageAuthProvidersPage } = await import('@/pages/manage/auth-providers');
