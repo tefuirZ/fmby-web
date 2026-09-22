@@ -178,6 +178,15 @@ export function ManageMountsPage() {
     setDrawerState({ mode, mountId });
   };
 
+  /**
+   * W5-B：凭据「绑定/重新绑定」入口 —— 复用**既有**编辑抽屉，不新写绑定 UI。
+   * 115 会在抽屉里渲染既有扫码绑定区（Pan115CredentialsSection）；
+   * 其它 provider 落到既有连接配置表单。
+   */
+  const openRebindDrawer = (mountId: string) => {
+    openMountDrawer(mountId, 'edit');
+  };
+
   const closeDrawer = () => {
     if (isSaving) return;
     setFormErrors({});
@@ -254,6 +263,7 @@ export function ManageMountsPage() {
         onSelectAll={selection.selectAll}
         onClearVisible={selection.clearVisible}
         onInvertVisible={selection.invertVisible}
+        onRebindMount={openRebindDrawer}
         healthFaultActionById={healthFaultActionById}
       />
 

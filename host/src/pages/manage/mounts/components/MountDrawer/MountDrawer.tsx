@@ -342,6 +342,9 @@ export function MountDrawer({
           <MountCredentialCard
             currentDetail={currentDetail}
             lastFaultAction={healthFaultActionById[currentDetail.mount.id] ?? null}
+            onRebind={
+              setDrawerState ? () => setDrawerState({ mode: 'edit', mountId: currentDetail.mount.id }) : undefined
+            }
           />
           <MountOverviewSection
             currentDetail={currentDetail}

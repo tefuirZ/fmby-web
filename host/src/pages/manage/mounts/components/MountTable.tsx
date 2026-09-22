@@ -50,6 +50,8 @@ interface MountTableProps {
    * ★只作补充：**不**重复告警（徽标权威来源仍是 credentialStatus）。
    */
   healthFaultActionById?: Record<string, string | null>;
+  /** W5-B：打开既有编辑抽屉（复用既有绑定区，不新写 UI）。 */
+  onRebindMount?: (mountId: string) => void;
 }
 
 export function MountTable({
@@ -73,6 +75,7 @@ export function MountTable({
   onClearVisible,
   onInvertVisible,
   healthFaultActionById = {},
+  onRebindMount,
 }: MountTableProps) {
   const selectedSet = new Set(selectedIds);
   const renderEmptyState = (
@@ -219,10 +222,7 @@ export function MountTable({
                           </div>
                         </td>
                         <td>
-                          <CredentialBadgeCell
-                            credentialStatus={mount.credentialStatus}
-                            lastFaultAction={healthFaultActionById[mount.id] ?? null}
-                          />
+                          <CredentialBadgeCell credentialStatus={mount.credentialStatus} lastFaultAction={healthFaultActionById[mount.id] ?? null} mountId={mount.id} onRebindMount={onRebindMount} />
                         </td>
                         <td>{mount.pathLabel}</td>
                         <td>
@@ -320,10 +320,7 @@ export function MountTable({
                         variant={getManageStatusVariant(mount.healthStatus)}
                       />
                       <span className={styles.metaText}>{mount.typeLabel}</span>
-                      <CredentialBadgeCell
-                        credentialStatus={mount.credentialStatus}
-                        lastFaultAction={healthFaultActionById[mount.id] ?? null}
-                      />
+                      <CredentialBadgeCell credentialStatus={mount.credentialStatus} lastFaultAction={healthFaultActionById[mount.id] ?? null} mountId={mount.id} onRebindMount={onRebindMount} />
                     </div>
                     <div className={styles.primaryText}>{mount.name}</div>
                     <div className={styles.mutedText}>{mount.pathLabel}</div>
