@@ -13,6 +13,7 @@ import { CollectionMemberPanel } from './collections/components/CollectionMember
 import { CollectionMemberAdder } from './collections/components/CollectionMemberAdder';
 import { CollectionPresetCreate } from './collections/components/CollectionPresetCreate';
 import { moveMemberIds } from './collections/components/memberReorder';
+import { CollectionRulesPanel } from './collections/components/CollectionRulesPanel';
 import {
   CollectionFormDialog,
   type CollectionFormState,
@@ -368,6 +369,12 @@ export function ManageCollectionsPage() {
                                 })
                               }
                               togglePending={patchMemberMutation.isPending}
+                            />
+                            <CollectionRulesPanel
+                              collectionId={collection.id}
+                              isRuleCollection={detailQuery.data?.collection.collectionKind === 'rule'}
+                              rules={detailQuery.data?.rules ?? []}
+                              minEffectiveMembers={detailQuery.data?.collection.minEffectiveMembers ?? null}
                             />
                           </td>
                         </tr>
