@@ -195,3 +195,46 @@ export interface Pan115SyncEnqueueResponse {
   accepted: boolean;
   message: string;
 }
+
+// ─── 分享下载预览（FE-PARITY-PAN115-SHARE-DL）─────────────────────────────────
+// 真源：crates/fmby-v2-http/src/routes/pan115_share_download.rs:224/228/232
+//       crates/fmby-v2-http/src/state/pan115_share_download.rs
+// wire：请求与响应**均 snake_case**（与该模块其它端点一致）。
+
+/** POST /api/manage/pan115/share-download-preview/qr-login body。 */
+export interface Pan115PreviewQrLoginRequest {
+  /** 客户端 app_id（可选；不传走默认）。 */
+  appId?: string;
+}
+
+/** 扫码登录发起响应。 */
+export interface Pan115PreviewQrLoginResponse {
+  sessionId: string;
+  uid: string;
+  /** 二维码内容（扫码用）。 */
+  qrUrl: string;
+  /** data-uri 二维码图；取图失败 → null（不阻断登录流程）。 */
+  qrImage: string | null;
+}
+
+/** GET .../qr-status 响应。 */
+export interface Pan115PreviewQrStatusResponse {
+  /** 后端状态词（pending / scanned / confirmed / expired 等，原样透传）。 */
+  status: string;
+}
+
+/** POST /api/manage/pan115/share-download-preview/create body。 */
+export interface Pan115PreviewCreateRequest {
+  /** 扫码登录拿到的会话（扫码模式）。 */
+  sessionId?: string;
+  cookieApp?: string;
+  /** 手填 cookie 模式：完整 cookie header。 */
+  cookieHeader?: string;
+  /** 复用已绑定原生 115 挂载的 cookie。 */
+  sourceMountId?: string;
+}
+
+/** create 响应。 */
+export interface Pan115PreviewCreateResponse {
+  previewId: string;
+}

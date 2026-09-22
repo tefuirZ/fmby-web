@@ -18,6 +18,11 @@ import type {
   Pan115SyncSource,
   Pan115SyncCheckpoint,
   Pan115SyncTask,
+  Pan115PreviewCreateRequest,
+  Pan115PreviewCreateResponse,
+  Pan115PreviewQrLoginRequest,
+  Pan115PreviewQrLoginResponse,
+  Pan115PreviewQrStatusResponse,
 } from "./types";
 
 interface RawAccountInfo {
@@ -340,7 +345,22 @@ function fromSyncTask(t: RawSyncTask): Pan115SyncTask {
   };
 }
 
-export interface Pan115ShareApi {
+export interface RawPreviewQrLoginResponse {
+  session_id: string;
+  uid: string;
+  qr_url: string;
+  qr_image: string | null;
+}
+
+interface RawPreviewQrStatusResponse {
+  status: string;
+}
+
+interface RawPreviewCreateResponse {
+  preview_id: string;
+}
+
+interface Pan115ShareApi {
   /** POST /api/manage/pan115/previews/{preview_id}/browse —— 预览凭据浏览网盘目录。 */
   browsePreview(
     previewId: string,
@@ -355,6 +375,13 @@ export interface Pan115ShareApi {
     mountId: string,
     req: Pan115SyncEnqueueRequest,
   ): Promise<Pan115SyncEnqueueResponse>;
+
+  /** POST /api/manage/pan115/share-download-preview/qr-login —— 发起预览登录扫码。 */
+  previewQrLogin(req?: Pan115PreviewQrLoginRequest): Promise<Pan115PreviewQrLoginResponse>;
+  /** GET /api/manage/pan115/share-download-preview/qr-status?sessionId= —— 轮询扫码状态。 */
+  previewQrStatus(sessionId: string): Promise<Pan115PreviewQrStatusResponse>;
+  /** POST /api/manage/pan115/share-download-preview/create —— 创建分享下载预览凭据。 */
+  previewCreate(req: Pan115PreviewCreateRequest): Promise<Pan115PreviewCreateResponse>;
 }
 
 // 将 4 个新方法并入 `basePan115Api`，导出为带完整类型的 `pan115Api`
@@ -409,6 +436,40 @@ export const pan115Api: typeof basePan115Api & Pan115ShareApi = {
       accepted: raw.accepted,
       message: raw.message,
     };
+  },
+  async previewQrLogin(req: Pan115PreviewQrLoginRequest = {}) {
+    const raw = await httpClient.post<RawPreviewQrLoginResponse>(
+      '/api/manage/pan115/share-download-preview/qr-login',
+      { body: { app_id: req.appId } },
+    );
+    return {
+      sessionId: raw.session_id,
+      uid: raw.uid,
+      qrUrl: raw.qr_url,
+      qrImage: raw.qr_image ?? null,
+    };
+  },
+  async previewQrStatus(sessionId: string) {
+    // ★后端按 V1 wire 取 camelCase `sessionId`（同时接受 snake_case 别名）。
+    const raw = await httpClient.get<RawPreviewQrStatusResponse>(
+      '/api/manage/pan115/share-download-preview/qr-status',
+      { params: { sessionId } },
+    );
+    return { status: raw.status };
+  },
+  async previewCreate(req: Pan115PreviewCreateRequest) {
+    const raw = await httpClient.post<RawPreviewCreateResponse>(
+      '/api/manage/pan115/share-download-preview/create',
+      {
+        body: {
+          session_id: req.sessionId,
+          cookie_app: req.cookieApp,
+          cookie_header: req.cookieHeader,
+          source_mount_id: req.sourceMountId,
+        },
+      },
+    );
+    return { previewId: raw.preview_id };
   },
 };
 
