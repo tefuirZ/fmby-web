@@ -1,4 +1,5 @@
 # BUG-SKIN-NAV-01 —— darkroom 主题卡片不可导航 Handoff
+> ⚠ 本文部分结论已被后续卡推翻/与现状不符（见 `docs/FE-REPO-DOC-CLAIM-AUDIT.md` §3；以当前 `shared/src/contracts/**` + `host/src/**` 代码为准）。
 
 ## 八行报告
 - 任务：BUG-SKIN-NAV-01 darkroom 主题卡片不可导航（major，E2E 真跑发现）。Owner：zcode-writer1（w1）。

@@ -1,4 +1,5 @@
 # FE-CONTRACT-SYNC —— 前端消费面主动对拍（契约盲区扫描）报告
+> ⚠ 本文部分结论已被后续卡推翻/与现状不符（见 `docs/FE-REPO-DOC-CLAIM-AUDIT.md` §3；以当前 `shared/src/contracts/**` + `host/src/**` 代码为准）。
 
 - **卡**：前端 registration-codes confirmed 对拍 + 契约盲区登记（小卡）
 - **分支**：前端仓 `w/zcode/writer3-fe-contract-sync`（基于前端 main `23349d2`）
