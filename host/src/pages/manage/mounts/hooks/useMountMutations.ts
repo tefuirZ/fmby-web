@@ -135,5 +135,33 @@ export function useMountMutations({
     },
   });
 
-  return { createMountMutation, updateMountMutation, deleteMountMutation };
+  const refreshAbnormalMutation = useMutation({
+    mutationFn: () => manageApi.batchRefreshAbnormalMounts(),
+    onSuccess: async (results) => {
+      const desc =
+        results.length > 0
+          ? `共 ${results.length} 个异常数据源进入刷新队列。`
+          : '当前没有检测到需要刷新的异常数据源。';
+      setBanner({
+        variant: 'success',
+        title: '已提交批量刷新异常挂载',
+        description: desc,
+      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.manage.mounts.list() });
+    },
+    onError: (error) => {
+      setBanner({
+        variant: 'error',
+        title: '批量刷新异常挂载失败',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+
+  return {
+    createMountMutation,
+    updateMountMutation,
+    deleteMountMutation,
+    refreshAbnormalMutation,
+  };
 }

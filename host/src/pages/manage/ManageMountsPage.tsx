@@ -44,11 +44,12 @@ export function ManageMountsPage() {
   const [pendingDelete, setPendingDelete] = useState<PendingMountDeleteState | null>(null);
   const [pendingAuthModeChange, setPendingAuthModeChange] = useState<MountRemoteAuthMode | null>(null);
   const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
+  const [refreshAbnormalOpen, setRefreshAbnormalOpen] = useState(false);
   const deferredKeyword = useDeferredValue(keyword.trim());
 
   const mountsQuery = useMountsQuery();
   const mountDetailQuery = useMountDetailQuery(drawerState);
-  const { createMountMutation, updateMountMutation, deleteMountMutation } = useMountMutations({
+  const { createMountMutation, updateMountMutation, deleteMountMutation, refreshAbnormalMutation } = useMountMutations({
     setBanner,
     setFormErrors,
     setDirectoryBrowser,
@@ -197,6 +198,14 @@ export function ManageMountsPage() {
           <>
             <button className={styles.primaryButton} type="button" onClick={openCreateDrawer}>添加媒体来源</button>
             <button className={styles.secondaryButton} type="button" onClick={() => mountsQuery.refetch()}>刷新</button>
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              disabled={refreshAbnormalMutation.isPending || criticalCount === 0}
+              onClick={() => setRefreshAbnormalOpen(true)}
+            >
+              {refreshAbnormalMutation.isPending ? '刷新中…' : '批量刷新异常'}
+            </button>
           </>
         }
       />
@@ -314,6 +323,31 @@ export function ManageMountsPage() {
           });
         }}
         pending={isDeleting}
+      />
+      <SensitiveActionDialog
+        open={refreshAbnormalOpen}
+        actionKey="batch-refresh-abnormal-mounts"
+        title="批量刷新异常媒体来源"
+        description="将对当前所有处于异常状态的媒体来源重新触发刷新与校验。"
+        impact={[
+          '异常来源会重新读取连接信息与文件可用性；',
+          '刷新在后台异步进行，列表状态会在完成后更新；',
+          '若某来源已彻底失效，刷新后仍会保持异常，需手动检查配置。',
+        ]}
+        errorMessage={refreshAbnormalMutation.isError ? getErrorMessage(refreshAbnormalMutation.error) : undefined}
+        confirmLabel="开始批量刷新"
+        onOpenChange={(open) => {
+          if (!open) {
+            refreshAbnormalMutation.reset();
+            setRefreshAbnormalOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          refreshAbnormalMutation.reset();
+          refreshAbnormalMutation.mutate();
+          setRefreshAbnormalOpen(false);
+        }}
+        pending={refreshAbnormalMutation.isPending}
       />
       <ConfirmDialog
         open={batchDeleteConfirmOpen}
