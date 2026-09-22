@@ -1,4 +1,5 @@
 # FE-SYNC FOLLOWUP —— pnpm typecheck 基线 + 运营看板接线核对
+> ⚠ 本文部分结论已被后续卡推翻/与现状不符（见 `docs/FE-REPO-DOC-CLAIM-AUDIT.md` §3；以当前 `shared/src/contracts/**` + `host/src/**` 代码为准）。
 
 - **分支**：前端仓 `w/zcode/writer3-fe-followup`（基于 main `6d882e9`）
 - **环境突破**：`pnpm install` 的 EACCES 根因 = 我的 worktree 由 root 建、全 root 属主；pnpm 经 `fmby-queue` 降权到 tefuir 后无法在 root 目录写 `_tmp`。`chown -R tefuir:tefuir` 对齐 w1 前端 worktree（属主 tefuir）后安装与 typecheck 均正常。**这解释了「主代理环境也未跑通」**。

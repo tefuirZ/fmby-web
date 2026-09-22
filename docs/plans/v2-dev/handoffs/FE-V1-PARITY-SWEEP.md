@@ -1,4 +1,5 @@
 # FE-V1-PARITY-SWEEP 交付报告（P1 只读审计）
+> ⚠ 本文部分结论已被后续卡推翻/与现状不符（见 `docs/FE-REPO-DOC-CLAIM-AUDIT.md` §3；以当前 `shared/src/contracts/**` + `host/src/**` 代码为准）。
 
 - 分支：`w/zcode/writer1-fe-v1-parity-sweep`（基线 = 前端 `origin/main` @ `81b24fd`）
 - 性质：**只读**——不改任何代码/契约；仅做机械扫描 + 定性 + 卡草案。

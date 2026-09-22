@@ -1,4 +1,5 @@
 # FE-COLLECTIONS-CONSUME-B1 —— collections 前端消费缺口（成员添加流）· `w/zcode/writer1-fe-collections-consume`
+> ⚠ 本文部分结论已被后续卡推翻/与现状不符（见 `docs/FE-REPO-DOC-CLAIM-AUDIT.md` §3；以当前 `shared/src/contracts/**` + `host/src/**` 代码为准）。
 
 > 基线：fmby-web `main` @ `c49795c`（含 FE-LIST-KEYNAV 成果）。
 > 来源：ORCHESTRATION-INBOX.md:7104「COLLECTIONS-FRONTEND-CONSUMPTION-GAP」。
