@@ -249,6 +249,33 @@ export interface RawManagedMountRecord {
   linked_libraries: Array<{ id: string; name: string }>;
   reference_counts?: RawManagedMountReferenceCounts | null;
   unavailable_binding_count?: number | null;
+  note?: string | null;
+  rate_config?: string | null;
+  visibility_rule?: string | null;
+  sidecar_nfo?: boolean | null;
+  sidecar_subtitle?: boolean | null;
+  sidecar_poster?: boolean | null;
+}
+
+export interface RawManagedMountHealthRecord {
+  mount_id: string;
+  name: string;
+  provider_type: string;
+  status: string;
+  health_status: string;
+  status_message: string | null;
+  unavailable_binding_count: number | null;
+  attention_binding_count: number | null;
+  last_checked_at: number | null;
+  last_fault_kind: string | null;
+  last_fault_title: string | null;
+  last_fault_action: string | null;
+  last_fault_at: number | null;
+}
+
+export interface RawMountsHealthResponse {
+  items: RawManagedMountHealthRecord[];
+  total: number;
 }
 
 export interface RawManagedMountReferenceCounts {

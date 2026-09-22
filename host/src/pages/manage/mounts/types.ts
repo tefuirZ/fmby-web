@@ -65,6 +65,13 @@ export interface MountFormState {
   configJsonText: string;
   remoteConfig: MountRemoteConfigState;
   preservedConfig: Record<string, unknown>;
+  /** 以下四项为 DATASOURCE-CRUD-BACKFILL-UI 旧值回填：编辑时必须预填旧数值。 */
+  note: string;
+  rateConfigText: string;
+  visibilityRuleText: string;
+  sidecarNfo: boolean;
+  sidecarSubtitle: boolean;
+  sidecarPoster: boolean;
 }
 
 export interface PendingMountDeleteState {

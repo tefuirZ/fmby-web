@@ -93,4 +93,8 @@ export type {
   UpdateManageUserRequest,
   BrowseManageMountDirectoriesRequest,
   UserStatus,
+  ManageMountHealthRecord,
+  ManageMountsHealthQuery,
+  ManageMountsHealthResponse,
+  MOUNT_FAULT_KIND_CREDENTIAL_EXPIRED,
 } from "./types";
