@@ -12,6 +12,7 @@ import { useCollectionDetailQuery, useCollectionMutations, useCollectionsQuery }
 import { CollectionMemberPanel } from './collections/components/CollectionMemberPanel';
 import { CollectionMemberAdder } from './collections/components/CollectionMemberAdder';
 import { CollectionPresetCreate } from './collections/components/CollectionPresetCreate';
+import { moveMemberIds } from './collections/components/memberReorder';
 import {
   CollectionFormDialog,
   type CollectionFormState,
@@ -36,7 +37,7 @@ export function ManageCollectionsPage() {
   const [pendingMemberDelete, setPendingMemberDelete] = useState<{ collectionId: string; boundItemId: string | null; memberTitle: string } | null>(null);
   const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
 
-  const { createMutation, updateMutation, deleteMutation, deleteMemberMutation, removeMemberMutation, reorderMemberMutation } =
+  const { createMutation, updateMutation, deleteMutation, deleteMemberMutation, removeMemberMutation, reorderMemberMutation, reorderCollectionsMutation, patchMemberMutation } =
     useCollectionMutations({
       onSuccess: (message) => {
         setBanner(message);
@@ -144,7 +145,7 @@ export function ManageCollectionsPage() {
   const hiddenCount = collections.filter((c) => c.visibility === 'Hidden').length;
 
   const actionError =
-    createMutation.error ?? updateMutation.error ?? deleteMutation.error ?? deleteMemberMutation.error ?? removeMemberMutation.error ?? reorderMemberMutation.error;
+    createMutation.error ?? updateMutation.error ?? deleteMutation.error ?? deleteMemberMutation.error ?? removeMemberMutation.error ?? reorderMemberMutation.error ?? reorderCollectionsMutation.error ?? patchMemberMutation.error;
   const formPending = createMutation.isPending || updateMutation.isPending;
 
   function openCreate() {
@@ -157,6 +158,18 @@ export function ManageCollectionsPage() {
     setEditingRecord(record);
     setFormState(buildFormStateFromRecord(record));
     setFormOpen(true);
+  }
+
+  function handleReorderCollections(index: number, step: -1 | 1) {
+    const next = moveMemberIds(
+      collections.map((c) => c.id),
+      index,
+      step,
+    );
+    const current = collections.map((c) => c.id);
+    if (next.join(',') !== current.join(',')) {
+      reorderCollectionsMutation.mutate({ collectionIds: next });
+    }
   }
 
   function submitForm() {
@@ -241,11 +254,12 @@ export function ManageCollectionsPage() {
                   <th>来源</th>
                   <th>可见性</th>
                   <th>更新时间</th>
+                  <th className="nowrap">排序</th>
                   <th className="nowrap">操作</th>
                 </tr>
               </thead>
               <tbody>
-                {collections.map((collection) => {
+                {collections.map((collection, index) => {
                   const expanded = expandedId === collection.id;
                   return (
                     <Fragment key={collection.id}>
@@ -283,6 +297,28 @@ export function ManageCollectionsPage() {
                         </td>
                         <td className="nowrap">{formatEpochMs(collection.updatedAt)}</td>
                         <td className="nowrap">
+                          <div className={styles.rowActions}>
+                            <button
+                              className={styles.smallButton}
+                              type="button"
+                              disabled={index === 0 || reorderCollectionsMutation.isPending}
+                              aria-label={`将合集「${collection.title}」上移`}
+                              onClick={() => handleReorderCollections(index, -1)}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              className={styles.smallButton}
+                              type="button"
+                              disabled={index === collections.length - 1 || reorderCollectionsMutation.isPending}
+                              aria-label={`将合集「${collection.title}」下移`}
+                              onClick={() => handleReorderCollections(index, 1)}
+                            >
+                              ↓
+                            </button>
+                          </div>
+                        </td>
+                        <td className="nowrap">
                           <button
                             className={styles.smallButton}
                             type="button"
@@ -301,7 +337,7 @@ export function ManageCollectionsPage() {
                       </tr>
                       {expanded ? (
                         <tr>
-                          <td colSpan={6}>
+                          <td colSpan={7}>
                             <CollectionMemberAdder
                               collectionId={collection.id}
                               onAdded={setBanner}
@@ -324,6 +360,14 @@ export function ManageCollectionsPage() {
                               }
                               reorderPending={reorderMemberMutation.isPending}
                               reorderError={reorderMemberMutation.isError ? reorderMemberMutation.error : undefined}
+                              onToggleMemberEnabled={(member) =>
+                                patchMemberMutation.mutate({
+                                  collectionId: collection.id,
+                                  memberId: member.id,
+                                  input: { isEnabled: !member.isEnabled },
+                                })
+                              }
+                              togglePending={patchMemberMutation.isPending}
                             />
                           </td>
                         </tr>
