@@ -1,7 +1,7 @@
 {
   "name": "fmby-web",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm --filter @fmby/v2-host dev",
