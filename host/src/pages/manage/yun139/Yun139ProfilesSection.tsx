@@ -16,18 +16,17 @@ import { ConfirmDialog, FeedbackState, InlineBanner, StatusBadge } from '@fmby/v
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
+import {
+  resolveCredentialExpiry,
+  isDisabled,
+  isPendingAuthorization,
+} from './credentialExpiry';
 
 function formatTime(epochMs: number | null): string {
   if (epochMs === null || !Number.isFinite(epochMs) || epochMs <= 0) {
     return '—';
   }
   return new Date(epochMs).toLocaleString('zh-CN', { hour12: false });
-}
-
-/** 凭据是否过期：后端显式给了过期时间且已过去。无该字段 → 不猜。 */
-function isExpired(profile: { authorizationExpiresAt: number | null }): boolean {
-  const exp = profile.authorizationExpiresAt;
-  return exp !== null && Number.isFinite(exp) && exp <= Date.now();
 }
 
 export function Yun139ProfilesSection() {
@@ -113,14 +112,15 @@ export function Yun139ProfilesSection() {
             </thead>
             <tbody>
               {profiles.map((profile) => {
-                const expired = isExpired(profile);
+                const expiry = resolveCredentialExpiry(profile);
+                const expired = expiry.kind === 'expired';
                 return (
                   <tr key={profile.id}>
                     <td>{profile.displayName}</td>
                     <td className={styles.mono}>{profile.accountIdentityMask ?? '—'}</td>
                     <td>
                       <StatusBadge
-                        label={expired ? '已过期' : profile.status}
+                        label={expired ? '凭据已过期' : profile.status}
                         variant={expired ? 'danger' : profile.status === 'active' ? 'success' : 'neutral'}
                       />
                     </td>
@@ -129,7 +129,14 @@ export function Yun139ProfilesSection() {
                     <td>{profile.lastErrorMessage ?? profile.lastErrorKind ?? '—'}</td>
                     <td className="nowrap">
                       {expired ? (
-                        <span className={styles.fieldHint}>请到扫码绑定区重新授权</span>
+                        <span className={styles.fieldHint}>
+                          {expiry.reason}
+                          {expiry.backendMessage ? `（后端：${expiry.backendMessage}）` : ''}
+                        </span>
+                      ) : isPendingAuthorization(profile) ? (
+                        <span className={styles.fieldHint}>待确认授权</span>
+                      ) : isDisabled(profile) ? (
+                        <span className={styles.fieldHint}>已被停用</span>
                       ) : (
                         <button
                           className={styles.smallDangerButton}
