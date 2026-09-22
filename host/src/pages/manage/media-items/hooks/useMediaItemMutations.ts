@@ -3,6 +3,9 @@ import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
 import {
   mediaItemsApi,
   type ManageMediaItemDetailRecord,
+  type ManageMediaItemVisibilityState,
+  type ManualMatchMediaItemIdentityRequest,
+  type IdentifyMediaItemRequest,
   type RequestManageMediaItemScrapeOptions,
   type UpdateManageMediaItemSubtitleOverrideRequest,
   type UpdateManageMediaItemMetadataRequest,
@@ -182,6 +185,38 @@ export function useManageMediaItemMetadataMutations(itemId?: string) {
     },
   });
 
+  const visibilityMutation = useMutation({
+    mutationFn: ({ state, confirmation }: { state: ManageMediaItemVisibilityState; confirmation: DangerousActionRequest }) =>
+      mediaItemsApi.setMediaItemVisibility(requireMediaItemId(itemId), state, confirmation),
+    onSuccess: async () => {
+      await invalidateCurrentDetail();
+      await invalidateMediaItemQueries();
+    },
+  });
+
+  const manualMatchMutation = useMutation({
+    mutationFn: ({
+      payload,
+      confirmation,
+    }: {
+      payload: ManualMatchMediaItemIdentityRequest;
+      confirmation: DangerousActionRequest;
+    }) => mediaItemsApi.manualMatchMediaItemIdentity(requireMediaItemId(itemId), payload, confirmation),
+    onSuccess: async () => {
+      await invalidateCurrentDetail();
+      await invalidateCurrentPipeline();
+      await invalidateMediaItemQueries();
+    },
+  });
+
+  const identifyMutation = useMutation({
+    mutationFn: (payload: IdentifyMediaItemRequest = {}) =>
+      mediaItemsApi.identifyMediaItem(requireMediaItemId(itemId), payload),
+    onSuccess: async () => {
+      await invalidateCurrentPipeline();
+    },
+  });
+
   return {
     updateMutation,
     resetMutation,
@@ -194,5 +229,8 @@ export function useManageMediaItemMetadataMutations(itemId?: string) {
     refreshMetadataMutation,
     scanMutation,
     enqueueScrapeMutation,
+    visibilityMutation,
+    manualMatchMutation,
+    identifyMutation,
   };
 }

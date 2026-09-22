@@ -6,3 +6,4 @@ export { MediaItemArtworkSection } from './MediaItemArtworkSection';
 export { MediaItemSubtitleSection } from './MediaItemSubtitleSection';
 export { MediaItemPipelineSection } from './MediaItemPipelineSection';
 export { MediaItemDangerZoneSection } from './MediaItemDangerZoneSection';
+export { MediaItemIdentityGovernancePanel } from './IdentityGovernancePanel';
