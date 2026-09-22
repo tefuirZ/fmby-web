@@ -19,6 +19,14 @@ import type {
   UpstreamSourceListResponse,
   UpstreamSourceRecord,
   UpstreamSourceWriteInput,
+  UpstreamAppleCmsSyncPageRequest,
+  UpstreamAppleCmsSyncPageResponse,
+  UpstreamAppleCmsSyncRequest,
+  UpstreamAppleCmsSyncResponse,
+  UpstreamEmbySyncRequest,
+  UpstreamEmbySyncResponse,
+  UpstreamSyncJob,
+  UpstreamSyncJobList,
 } from "./types";
 
 interface RawUpstreamSource {
@@ -235,7 +243,7 @@ function toWriteBody(input: UpstreamSourceWriteInput): Record<string, unknown> {
 }
 
 /** 上游源 API（V1F-02-A + S1..S4，capability ManageMount）。 */
-export const upstreamsApi = {
+const upstreamsApiBase = {
   async list(query: UpstreamSourceListQuery = {}): Promise<UpstreamSourceListResponse> {
     const raw = await httpClient.get<RawUpstreamSourceList>("/api/manage/upstreams", {
       params: {
@@ -471,6 +479,255 @@ export const upstreamsApi = {
       total: raw.total,
     };
   },
+};
+
+// ─── FE-PARITY-UPSTREAMS-SYNC：采集与同步（此前前端零消费）─────────────────────
+// 端点后端均经 `MANAGE_MOUNT` 能力门 + license 端口收口，端口未装配 fail-closed
+// 500（无 require_confirmed，故前端不额外带 confirmed 参数）；所有写操作仅登录态 +
+// 能力即可。前端必须透传后端 error_code（404 源不存在 / 409 冲突 / 500 端口未装配）。
+
+interface RawSyncJob {
+  id: string;
+  source_id: string;
+  job_kind: string;
+  status: string;
+  category_ids: string[];
+  page_size?: number | null;
+  worker_count?: number | null;
+  result_summary?: unknown;
+  last_error_message?: string | null;
+  attempt_count: number;
+  max_attempts: number;
+  created_by?: string | null;
+  started_at?: number | null;
+  finished_at?: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+interface RawAppleCmsSyncPageResponse {
+  source_id: string;
+  category_id: string;
+  library_id: string;
+  page: number;
+  page_count: number;
+  total: number;
+  imported_item_count: number;
+  imported_variant_count: number;
+  synced_at: number;
+}
+
+interface RawAppleCmsSyncResponse {
+  source_id: string;
+  page_size: number;
+  worker_count: number;
+  category_count: number;
+  discovered_category_count: number;
+  bound_category_count: number;
+  skipped_unbound_category_count: number;
+  imported_item_count: number;
+  imported_variant_count: number;
+  synced_at: number;
+}
+
+interface RawEmbySyncResponse {
+  source_id: string;
+  page_size: number;
+  category_count: number;
+  imported_item_count: number;
+  imported_variant_count: number;
+  synced_at: number;
+}
+
+interface RawSyncJobList {
+  items: RawSyncJob[];
+  total: number;
+}
+
+function fromSyncJob(r: RawSyncJob): UpstreamSyncJob {
+  return {
+    id: r.id,
+    sourceId: r.source_id,
+    jobKind: r.job_kind,
+    status: r.status,
+    categoryIds: r.category_ids ?? [],
+    pageSize: r.page_size ?? null,
+    workerCount: r.worker_count ?? null,
+    resultSummary: r.result_summary ?? {},
+    lastErrorMessage: r.last_error_message ?? null,
+    attemptCount: r.attempt_count,
+    maxAttempts: r.max_attempts,
+    createdBy: r.created_by ?? null,
+    startedAt: r.started_at ?? null,
+    finishedAt: r.finished_at ?? null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+function fromSyncJobList(r: RawSyncJobList): UpstreamSyncJobList {
+  return {
+    items: (r.items ?? []).map(fromSyncJob),
+    total: r.total ?? (r.items?.length ?? 0),
+  };
+}
+
+// 采集/导入为「写操作」但后端无 require_confirmed（fail-closed 500），直接挂到
+// 既有 upstreamsApi 对象以保持单例导出。
+const upstreamSyncExtension = {
+  /** GET /api/manage/upstreams/{id}/sync-jobs —— 同步任务列举。 */
+  listSyncJobs(id: string): Promise<UpstreamSyncJobList> {
+    return httpClient
+      .get<RawSyncJobList>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/sync-jobs`,
+      )
+      .then(fromSyncJobList);
+  },
+
+  /** GET /api/manage/upstreams/{id}/sync-jobs/{job_id} —— 单个同步作业。 */
+  getSyncJob(id: string, jobId: string): Promise<UpstreamSyncJob> {
+    return httpClient
+      .get<RawSyncJob>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/sync-jobs/${encodeURIComponent(jobId)}`,
+      )
+      .then(fromSyncJob);
+  },
+
+  /** POST /api/manage/upstreams/{id}/apple-cms/sync-page —— 单分类单页抽样采集。 */
+  appleCmsSyncPage(
+    id: string,
+    req: UpstreamAppleCmsSyncPageRequest,
+  ): Promise<UpstreamAppleCmsSyncPageResponse> {
+    return httpClient
+      .post<RawAppleCmsSyncPageResponse>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/apple-cms/sync-page`,
+        { body: { categoryId: req.categoryId, page: req.page, pageSize: req.pageSize } },
+      )
+      .then((r) => ({
+        sourceId: r.source_id,
+        categoryId: r.category_id,
+        libraryId: r.library_id,
+        page: r.page,
+        pageCount: r.page_count,
+        total: r.total,
+        importedItemCount: r.imported_item_count,
+        importedVariantCount: r.imported_variant_count,
+        syncedAt: r.synced_at,
+      }));
+  },
+
+  /** POST /api/manage/upstreams/{id}/apple-cms/sync —— AppleCMS 全量采集。 */
+  appleCmsSync(
+    id: string,
+    req: UpstreamAppleCmsSyncRequest = {},
+  ): Promise<UpstreamAppleCmsSyncResponse> {
+    return httpClient
+      .post<RawAppleCmsSyncResponse>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/apple-cms/sync`,
+        { body: { categoryId: req.categoryId, pageSize: req.pageSize, workerCount: req.workerCount } },
+      )
+      .then((r) => ({
+        sourceId: r.source_id,
+        pageSize: r.page_size,
+        workerCount: r.worker_count,
+        categoryCount: r.category_count,
+        discoveredCategoryCount: r.discovered_category_count,
+        boundCategoryCount: r.bound_category_count,
+        skippedUnboundCategoryCount: r.skipped_unbound_category_count,
+        importedItemCount: r.imported_item_count,
+        importedVariantCount: r.imported_variant_count,
+        syncedAt: r.synced_at,
+      }));
+  },
+
+  /** POST /api/manage/upstreams/{id}/emby/sync —— Emby 采集。 */
+  embySync(
+    id: string,
+    req: UpstreamEmbySyncRequest = {},
+  ): Promise<UpstreamEmbySyncResponse> {
+    return httpClient
+      .post<RawEmbySyncResponse>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/sync`,
+        { body: { categoryId: req.categoryId, pageSize: req.pageSize } },
+      )
+      .then((r) => ({
+        sourceId: r.source_id,
+        pageSize: r.page_size,
+        categoryCount: r.category_count,
+        importedItemCount: r.imported_item_count,
+        importedVariantCount: r.imported_variant_count,
+        syncedAt: r.synced_at,
+      }));
+  },
+
+  /** POST /api/manage/upstreams/{id}/emby/import/preview —— Emby 导入预览（dry-run）。 */
+  embyImportPreview(
+    id: string,
+    req: UpstreamEmbySyncRequest = {},
+  ): Promise<UpstreamEmbySyncResponse> {
+    return httpClient
+      .post<RawEmbySyncResponse>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import/preview`,
+        { body: { categoryId: req.categoryId, pageSize: req.pageSize } },
+      )
+      .then((r) => ({
+        sourceId: r.source_id,
+        pageSize: r.page_size,
+        categoryCount: r.category_count,
+        importedItemCount: r.imported_item_count,
+        importedVariantCount: r.imported_variant_count,
+        syncedAt: r.synced_at,
+      }));
+  },
+
+  /** POST /api/manage/upstreams/{id}/emby/import —— Emby 导入入队（EmbyImport 作业）。 */
+  embyImportEnqueue(
+    id: string,
+    req: UpstreamEmbySyncRequest = {},
+  ): Promise<UpstreamSyncJob> {
+    return httpClient
+      .post<RawSyncJob>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import`,
+        { body: { categoryId: req.categoryId, pageSize: req.pageSize } },
+      )
+      .then(fromSyncJob);
+  },
+
+  /** GET /api/manage/upstreams/{id}/emby/import/jobs —— Emby 导入作业列举。 */
+  listEmbyImportJobs(id: string): Promise<UpstreamSyncJobList> {
+    return httpClient
+      .get<RawSyncJobList>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import/jobs`,
+      )
+      .then(fromSyncJobList);
+  },
+
+  /** GET /api/manage/upstreams/{id}/emby/import/jobs/{job_id} —— 单个 Emby 导入作业。 */
+  getEmbyImportJob(id: string, jobId: string): Promise<UpstreamSyncJob> {
+    return httpClient
+      .get<RawSyncJob>(
+        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import/jobs/${encodeURIComponent(jobId)}`,
+      )
+      .then(fromSyncJob);
+  },
+};
+
+interface UpstreamSyncApiExtension {
+  listSyncJobs(id: string): Promise<UpstreamSyncJobList>;
+  getSyncJob(id: string, jobId: string): Promise<UpstreamSyncJob>;
+  appleCmsSyncPage(id: string, req: UpstreamAppleCmsSyncPageRequest): Promise<UpstreamAppleCmsSyncPageResponse>;
+  appleCmsSync(id: string, req?: UpstreamAppleCmsSyncRequest): Promise<UpstreamAppleCmsSyncResponse>;
+  embySync(id: string, req?: UpstreamEmbySyncRequest): Promise<UpstreamEmbySyncResponse>;
+  embyImportPreview(id: string, req?: UpstreamEmbySyncRequest): Promise<UpstreamEmbySyncResponse>;
+  embyImportEnqueue(id: string, req?: UpstreamEmbySyncRequest): Promise<UpstreamSyncJob>;
+  listEmbyImportJobs(id: string): Promise<UpstreamSyncJobList>;
+  getEmbyImportJob(id: string, jobId: string): Promise<UpstreamSyncJob>;
+}
+
+// 将采集/同步方法并入既有 upstreamsApi（保持单例导出，类型含全部原方法 + 新增）。
+export const upstreamsApi: typeof upstreamsApiBase & UpstreamSyncApiExtension = {
+  ...upstreamsApiBase,
+  ...upstreamSyncExtension,
 };
 
 function fromCategory(r: RawUpstreamCategory): UpstreamCategoryRecord {

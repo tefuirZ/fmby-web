@@ -266,6 +266,8 @@ export const queryKeys = {
         id
           ? (['manage', 'upstreams', 'presets', id] as const)
           : (['manage', 'upstreams', 'presets'] as const),
+      syncJobs: (id: string) => ['manage', 'upstreams', 'sync-jobs', id] as const,
+      embyImportJobs: (id: string) => ['manage', 'upstreams', 'emby-import-jobs', id] as const,
     },
   },
 } as const;

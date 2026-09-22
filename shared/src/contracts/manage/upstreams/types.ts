@@ -207,3 +207,90 @@ export interface UpstreamMappingApplyResult {
   boundCategoryCount: number;
   preset: UpstreamMappingPresetRecord | null;
 }
+
+// ─── 采集与同步（FE-PARITY-UPSTREAMS-SYNC）────────────────────────────────────
+
+/** AppleCMS 单分类单页抽样采集请求。 */
+export interface UpstreamAppleCmsSyncPageRequest {
+  /** 必填：上游分类 id。 */
+  categoryId: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** AppleCMS 单分类单页抽样采集响应。 */
+export interface UpstreamAppleCmsSyncPageResponse {
+  sourceId: string;
+  categoryId: string;
+  libraryId: string;
+  page: number;
+  pageCount: number;
+  total: number;
+  importedItemCount: number;
+  importedVariantCount: number;
+  syncedAt: number;
+}
+
+/** AppleCMS 全量采集请求。 */
+export interface UpstreamAppleCmsSyncRequest {
+  categoryId?: string;
+  pageSize?: number;
+  workerCount?: number;
+}
+
+/** AppleCMS 全量采集响应。 */
+export interface UpstreamAppleCmsSyncResponse {
+  sourceId: string;
+  pageSize: number;
+  workerCount: number;
+  categoryCount: number;
+  discoveredCategoryCount: number;
+  boundCategoryCount: number;
+  skippedUnboundCategoryCount: number;
+  importedItemCount: number;
+  importedVariantCount: number;
+  syncedAt: number;
+}
+
+/** Emby 采集 / 导入预览请求。 */
+export interface UpstreamEmbySyncRequest {
+  categoryId?: string;
+  pageSize?: number;
+}
+
+/** Emby 采集 / 导入预览响应。 */
+export interface UpstreamEmbySyncResponse {
+  sourceId: string;
+  pageSize: number;
+  categoryCount: number;
+  importedItemCount: number;
+  importedVariantCount: number;
+  syncedAt: number;
+}
+
+/** 同步 / 导入作业。 */
+export interface UpstreamSyncJob {
+  id: string;
+  sourceId: string;
+  jobKind: string;
+  status: string;
+  categoryIds: string[];
+  pageSize: number | null;
+  workerCount: number | null;
+  /** 成功时的结果摘要（原始 JSON；`{}` = 无结果）。 */
+  resultSummary: unknown;
+  lastErrorMessage: string | null;
+  attemptCount: number;
+  maxAttempts: number;
+  createdBy: string | null;
+  startedAt: number | null;
+  finishedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 同步 / 导入作业列表。 */
+export interface UpstreamSyncJobList {
+  items: UpstreamSyncJob[];
+  total: number;
+}

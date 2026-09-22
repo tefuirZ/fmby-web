@@ -13,6 +13,8 @@ import { UpstreamSourceListSection } from './upstreams/UpstreamSourceListSection
 import { UpstreamBindingsOverview, UpstreamBindingsSection } from './upstreams/UpstreamBindingsSection';
 import { UpstreamMappingPresetsSection } from './upstreams/UpstreamMappingPresetsSection';
 import { UpstreamMappingWizardSection } from './upstreams/UpstreamMappingWizardSection';
+import { UpstreamSyncJobsSection } from './upstreams/UpstreamSyncJobsSection';
+import { UpstreamCollectSection } from './upstreams/UpstreamCollectSection';
 
 /**
  * 上游源管理（V1F-02-A + S1..S4 + S4b）。
@@ -136,6 +138,19 @@ export function ManageUpstreamsPage() {
               <>
                 <UpstreamMappingPresetsSection sourceId={activeId} />
                 <UpstreamMappingWizardSection sourceId={activeId} />
+              </>
+            ) : (
+              <div className={styles.emptyInlineState}>请先在「上游源」Tab 选择或新建一个源。</div>
+            ),
+          },
+          {
+            value: 'collect',
+            label: '采集与同步',
+            disabled: !activeId,
+            content: activeId ? (
+              <>
+                <UpstreamCollectSection sourceId={activeId} />
+                <UpstreamSyncJobsSection sourceId={activeId} />
               </>
             ) : (
               <div className={styles.emptyInlineState}>请先在「上游源」Tab 选择或新建一个源。</div>
