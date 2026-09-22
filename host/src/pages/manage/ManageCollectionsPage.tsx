@@ -32,10 +32,10 @@ export function ManageCollectionsPage() {
   const [banner, setBanner] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ManagedCollectionRecord | null>(null);
-  const [pendingMemberDelete, setPendingMemberDelete] = useState<{ collectionId: string; memberId: string; memberTitle: string } | null>(null);
+  const [pendingMemberDelete, setPendingMemberDelete] = useState<{ collectionId: string; boundItemId: string | null; memberTitle: string } | null>(null);
   const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
 
-  const { createMutation, updateMutation, deleteMutation, deleteMemberMutation } =
+  const { createMutation, updateMutation, deleteMutation, deleteMemberMutation, removeMemberMutation, reorderMemberMutation } =
     useCollectionMutations({
       onSuccess: (message) => {
         setBanner(message);
@@ -143,7 +143,7 @@ export function ManageCollectionsPage() {
   const hiddenCount = collections.filter((c) => c.visibility === 'Hidden').length;
 
   const actionError =
-    createMutation.error ?? updateMutation.error ?? deleteMutation.error ?? deleteMemberMutation.error;
+    createMutation.error ?? updateMutation.error ?? deleteMutation.error ?? deleteMemberMutation.error ?? removeMemberMutation.error ?? reorderMemberMutation.error;
   const formPending = createMutation.isPending || updateMutation.isPending;
 
   function openCreate() {
@@ -307,13 +307,21 @@ export function ManageCollectionsPage() {
                             <CollectionMemberPanel
                               collectionId={collection.id}
                               detailQuery={detailQuery}
-                              onRemoveMember={(memberId, memberTitle) =>
+                              onRemoveMember={(member) =>
                                 setPendingMemberDelete({
                                   collectionId: collection.id,
-                                  memberId,
-                                  memberTitle,
+                                  boundItemId: member.boundItemId,
+                                  memberTitle: member.title,
                                 })
                               }
+                              onReorderMembers={(memberIds) =>
+                                reorderMemberMutation.mutate({
+                                  collectionId: collection.id,
+                                  input: { memberIds },
+                                })
+                              }
+                              reorderPending={reorderMemberMutation.isPending}
+                              reorderError={reorderMemberMutation.isError ? reorderMemberMutation.error : undefined}
                             />
                           </td>
                         </tr>
@@ -368,16 +376,16 @@ export function ManageCollectionsPage() {
           }
         }}
         pendingMemberTitle={pendingMemberDelete?.memberTitle ?? null}
-        memberDeletePending={deleteMemberMutation.isPending}
-        memberDeleteError={deleteMemberMutation.isError ? deleteMemberMutation.error : undefined}
+        memberDeletePending={removeMemberMutation.isPending}
+        memberDeleteError={removeMemberMutation.isError ? removeMemberMutation.error : undefined}
         onMemberDeleteOpenChange={(open) => {
-          if (!open && !deleteMemberMutation.isPending) setPendingMemberDelete(null);
+          if (!open && !removeMemberMutation.isPending) setPendingMemberDelete(null);
         }}
         onConfirmMemberDelete={() => {
           if (pendingMemberDelete) {
-            deleteMemberMutation.mutate({
+            removeMemberMutation.mutate({
               collectionId: pendingMemberDelete.collectionId,
-              memberId: pendingMemberDelete.memberId,
+              input: { itemId: pendingMemberDelete.boundItemId ?? '' },
             });
             setPendingMemberDelete(null);
           }

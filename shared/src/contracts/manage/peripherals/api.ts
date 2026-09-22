@@ -5,6 +5,8 @@ import type {
   ManagedCollectionMemberRecord,
   ManagedCollectionMemberCandidate,
   ManagedCollectionMemberAddInput,
+  ManagedCollectionMemberRemoveInput,
+  ManagedCollectionMemberReorderInput,
   ManagedCollectionRecord,
   ManagedCollectionWriteInput,
   RewardsAccountSummaryRecord,
@@ -37,6 +39,7 @@ interface RawManagedCollection {
 interface RawManagedCollectionMember {
   id: string;
   collection_id: string;
+  bound_item_id: string | null;
   title_snapshot: string;
   year_snapshot: number | null;
   media_kind: string;
@@ -205,6 +208,7 @@ function fromMember(r: RawManagedCollectionMember): ManagedCollectionMemberRecor
   return {
     id: r.id,
     collectionId: r.collection_id,
+    boundItemId: r.bound_item_id,
     titleSnapshot: r.title_snapshot,
     yearSnapshot: r.year_snapshot,
     mediaKind: r.media_kind as ManagedCollectionMemberRecord["mediaKind"],
@@ -354,6 +358,35 @@ export const peripheralsApi = {
   async deleteCollectionMember(collectionId: string, memberId: string): Promise<void> {
     await httpClient.delete<{ ok: boolean }>(
       `/api/manage/collections/${encodeURIComponent(collectionId)}/members/${encodeURIComponent(memberId)}`,
+    );
+  },
+
+  /**
+   * POST /api/manage/collections/{id}/members/remove —— 按条目移除成员（V1 同形态）。
+   * body 仅 `{item_id}`（取后端返回的 `bound_item_id`）；返回更新后的详情。
+   */
+  async removeCollectionMember(
+    collectionId: string,
+    input: ManagedCollectionMemberRemoveInput,
+  ): Promise<ManagedCollectionDetailRecord> {
+    const raw = await httpClient.post<RawManagedCollectionDetail>(
+      `/api/manage/collections/${encodeURIComponent(collectionId)}/members/remove`,
+      { body: { item_id: input.itemId } },
+    );
+    return { collection: fromCollection(raw.collection), members: raw.members.map(fromMember) };
+  },
+
+  /**
+   * POST /api/manage/collections/{id}/members/reorder —— 成员排序。
+   * body `{member_ids}` 顺序即目标 release_order 递增；返回 `{ok}`。
+   */
+  async reorderCollectionMembers(
+    collectionId: string,
+    input: ManagedCollectionMemberReorderInput,
+  ): Promise<{ ok: boolean }> {
+    return httpClient.post<{ ok: boolean }>(
+      `/api/manage/collections/${encodeURIComponent(collectionId)}/members/reorder`,
+      { body: { member_ids: input.memberIds } },
     );
   },
 

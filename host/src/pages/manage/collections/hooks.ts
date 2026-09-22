@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   peripheralsApi,
   type ManagedCollectionMemberAddInput,
+  type ManagedCollectionMemberRemoveInput,
+  type ManagedCollectionMemberReorderInput,
   type ManagedCollectionWriteInput,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -91,8 +93,32 @@ export function useCollectionMutations({ onSuccess }: UseCollectionMutationsOpti
     },
   });
 
+  /**
+   * 成员排序纯函数：把 index 处的成员与相邻成员交换一次（step=±1）。
+   * 越界/相邻不动时返回原序副本（不环绕），便于单测与按钮禁用判定。
+   */
+  const reorderMemberMutation = useMutation({
+    mutationFn: ({ collectionId, input }: { collectionId: string; input: ManagedCollectionMemberReorderInput }) =>
+      peripheralsApi.reorderCollectionMembers(collectionId, input),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('成员顺序已更新。');
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ collectionId, input }: { collectionId: string; input: ManagedCollectionMemberRemoveInput }) =>
+      peripheralsApi.removeCollectionMember(collectionId, input),
+    onSuccess: () => {
+      invalidate();
+      onSuccess('成员已从合集移除。');
+    },
+  });
+
   return {
     addMemberMutation,
+    removeMemberMutation,
+    reorderMemberMutation,
     createMutation,
     updateMutation,
     deleteMutation,

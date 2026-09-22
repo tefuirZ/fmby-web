@@ -8,6 +8,8 @@
  * - PATCH  /api/manage/collections/{id}
  * - DELETE /api/manage/collections/{id}
  * - DELETE /api/manage/collections/{id}/members/{member_id}
+ * - POST   /api/manage/collections/{id}/members/remove  （按 item_id 移除，B2 补）
+ * - POST   /api/manage/collections/{id}/members/reorder  （按 member_ids 重排，B2 补）
  * - GET    /api/manage/rewards/accounts/{user_id}
  * - GET    /api/manage/rewards/accounts/{user_id}/ledger?limit=
  * - GET    /api/manage/telegram-bot/status
@@ -40,6 +42,8 @@ export interface ManagedCollectionRecord {
 export interface ManagedCollectionMemberRecord {
   id: string;
   collectionId: string;
+  /** 绑定条目 id（后端 `bound_item_id`）。POST /members/remove 用 `item_id` 定位，必须透传不可丢失（B1 mapper 曾漏映射，本卡补回）。 */
+  boundItemId: string | null;
   titleSnapshot: string;
   yearSnapshot: number | null;
   mediaKind: CollectionMemberMediaKind;
@@ -81,6 +85,16 @@ export interface ManagedCollectionMemberCandidate {
 /** POST /api/manage/collections/{id}/members/add 入参。 */
 export interface ManagedCollectionMemberAddInput {
   itemId: string;
+}
+
+/** POST /api/manage/collections/{id}/members/remove 入参（按条目移除，V1 同形态）。 */
+export interface ManagedCollectionMemberRemoveInput {
+  itemId: string;
+}
+
+/** POST /api/manage/collections/{id}/members/reorder 入参：顺序即目标 release_order 递增。 */
+export interface ManagedCollectionMemberReorderInput {
+  memberIds: string[];
 }
 
 export interface ManagedCollectionWriteInput {
