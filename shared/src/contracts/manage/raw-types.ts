@@ -446,6 +446,13 @@ export interface RawManagedMountDetailResponse {
   path_policies?: RawManagedSourcePathPolicyRecord[] | null;
   linked_sources?: RawManagedMountLinkedSourceRecord[] | null;
   recent_scan_tasks?: RawManagedScanTaskRecord[] | null;
+  /**
+   * 凭据状态（后端 `ManagedMountDetailDto.credential_status`，CRED-EXPIRY-WIRE 2026-09-23）。
+   * 派生规则：微软按挂载 drive_id 取账号 expires_at（已过期 ⇒ expired）；
+   * 有凭据 ⇒ bound；需凭据但无 ⇒ unbound；Local 等无需凭据 ⇒ not_required。
+   * 不回显任何密钥/密封引用。UI 消费（过期引导 + 重绑入口）见后续卡。
+   */
+  credential_status?: 'bound' | 'unbound' | 'expired' | 'not_required' | null;
 }
 
 export interface RawManagedMountDirectoryBrowserResponse {
