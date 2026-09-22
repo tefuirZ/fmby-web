@@ -311,6 +311,13 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                path: 'yun139',
+                lazy: async () => {
+                  const { ManageYun139Page } = await import('@/pages/manage/yun139');
+                  return { Component: ManageYun139Page };
+                },
+              },
+              {
                 path: 'microsoft',
                 lazy: async () => {
                   const { ManageMicrosoftPage } = await import('@/pages/manage/microsoft');
