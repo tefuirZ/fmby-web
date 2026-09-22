@@ -16,7 +16,6 @@ import {
   supportsDirectoryBrowser,
 } from '../../formUtils';
 import { MountDirectoryBrowserCard } from '../MountDirectoryBrowserCard';
-import { MountCredentialGuidance } from '../MountCredentialGuidance';
 import { useAdvancedSectionState, useMountDrawerHandlers } from './hooks';
 import {
   BasicInfoSection,
@@ -32,6 +31,7 @@ import {
   MountLinkedSourcesSection,
   MountScanTasksSection,
   MountViewWarningBanners,
+  MountCredentialCard,
   MountDeletePanel,
   AdvancedSectionWrapper,
   Pan115CredentialsSection,
@@ -336,7 +336,10 @@ export function MountDrawer({
       ) : currentDetail ? (
         <>
           <MountViewWarningBanners currentDetail={currentDetail} />
-          <MountCredentialGuidance mountId={currentDetail.mount.id} />
+          <MountCredentialCard
+            currentDetail={currentDetail}
+            lastFaultAction={null}
+          />
           <MountOverviewSection
             currentDetail={currentDetail}
             validateMountMutation={validateMountMutation}

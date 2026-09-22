@@ -42,6 +42,8 @@ export function mapManagedMountRecord(raw: RawManagedMountRecord) {
       raw.linked_libraries?.length ?? 0,
     ),
     unavailableBindingCount: raw.unavailable_binding_count ?? 0,
+    // CRED-EXPIRY-WIRE：凭据状态（仅四态枚举，不含密钥/密封引用）；缺失 → null（未知）
+    credentialStatus: raw.credential_status ?? null,
   };
 }
 
@@ -51,6 +53,8 @@ export function mapManagedMountDetailResponse(
   return {
     mount: mapManagedMountRecord(raw.mount),
     providerType: mapProviderType(raw.provider_type),
+    // 详情顶层与 mount 内同值（后端 read_health.rs:85 明确同源派生）
+    credentialStatus: raw.credential_status ?? raw.mount?.credential_status ?? null,
     rootPath: raw.root_path,
     configJson: raw.config_json ?? {},
     capabilityState: mapManagedStorageCapabilities(raw.capability_state),

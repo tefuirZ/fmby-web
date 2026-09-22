@@ -31,6 +31,7 @@ import {
 } from './mounts/formUtils';
 import { useMountsQuery, useMountDetailQuery, useMountMutations, useMountValidation } from './mounts/hooks';
 import { MountTable, MountDrawer } from './mounts/components';
+import { useMountHealthFaultMap } from './mounts/hooks/useMountHealthFaultMap';
 
 export function ManageMountsPage() {
   const [keyword, setKeyword] = useState('');
@@ -70,6 +71,9 @@ export function ManageMountsPage() {
 
   const mounts = mountsQuery.data?.items ?? [];
   const currentDetail = mountDetailQuery.data;
+
+  // 观察面故障建议（仅补充文案；权威凭据状态是 mount.credentialStatus）
+  const healthFaultActionById = useMountHealthFaultMap();
   const isSaving = createMountMutation.isPending || updateMountMutation.isPending;
   const isDeleting = deleteMountMutation.isPending;
 
@@ -250,6 +254,7 @@ export function ManageMountsPage() {
         onSelectAll={selection.selectAll}
         onClearVisible={selection.clearVisible}
         onInvertVisible={selection.invertVisible}
+        healthFaultActionById={healthFaultActionById}
       />
 
       {runner.items.length > 0 ? (
