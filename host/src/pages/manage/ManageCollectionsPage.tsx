@@ -11,6 +11,7 @@ import { ManagePageHeader, ManageSectionCard } from './longtail-shared/component
 import { useCollectionDetailQuery, useCollectionMutations, useCollectionsQuery } from './collections/hooks';
 import { CollectionMemberPanel } from './collections/components/CollectionMemberPanel';
 import { CollectionMemberAdder } from './collections/components/CollectionMemberAdder';
+import { CollectionPresetCreate } from './collections/components/CollectionPresetCreate';
 import {
   CollectionFormDialog,
   type CollectionFormState,
@@ -205,6 +206,7 @@ export function ManageCollectionsPage() {
         title="合集列表"
         description="点击行首箭头展开成员明细；删除合集会级联移除全部成员。"
       >
+        <CollectionPresetCreate onCreated={setBanner} />
         {collections.length === 0 ? (
           <div className={styles.emptyInlineState}>
             还没有任何收藏合集，先从右上角新建一个。
