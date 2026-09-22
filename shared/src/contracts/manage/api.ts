@@ -911,6 +911,27 @@ export const manageApi = {
     return mapManagedMountDetailResponse(raw);
   },
 
+  /**
+   * 批量刷新异常挂载（危险写，需 `?confirmed=true`）。
+   *
+   * 后端 `manage_mounts_batch_refresh_abnormal` 要求 `require_confirmed`；缺失直接拒绝且零副作用。
+   * `mount_ids` 为空由桥侧选取全部异常挂载。
+   */
+  async batchRefreshAbnormalMounts(
+    payload: DangerousActionRequest = { confirmAction: 'batch-refresh-abnormal-mounts' },
+  ): Promise<ManageActionResult[]> {
+    const raw = await httpClient.post<{ results: RawManageActionResult[] }>(
+      '/api/manage/mounts/batch/refresh-abnormal',
+      {
+        // CONFIRM-GATE-ALIGN：后端 `manage_mounts_batch_refresh_abnormal` 要求 `?confirmed=true`
+        // （保留在 20 条非删除类危险闸内）。
+        params: { confirmed: true },
+        body: mapDangerousActionPayloadToApi(payload),
+      },
+    );
+    return (raw.results ?? []).map(mapManageActionResult);
+  },
+
   async getScans(query?: ManageScansQuery): Promise<ManageScansResponse> {
     const raw = await httpClient.get<RawListResponse<RawManagedScanTaskRecord>>(
       "/api/manage/scans",
