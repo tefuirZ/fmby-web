@@ -59,6 +59,7 @@ export const queryKeys = {
       sessionPolicy: () => ['settings', 'server', 'session-policy'] as const,
     },
     emailChannel: () => ['settings', 'server', 'email-channel'] as const,
+    aiAssist: () => ['settings', 'integrations', 'ai-assist'] as const,
   },
 
   manage: {
@@ -229,6 +230,14 @@ export const queryKeys = {
 
     namingScrape: {
       settings: () => ['manage', 'naming-scrape', 'settings'] as const,
+    },
+
+    aiInterventions: {
+      all: () => ['manage', 'ai-interventions'] as const,
+      threads: (query?: { limit?: number; offset?: number }) =>
+        ['manage', 'ai-interventions', 'threads', query ?? {}] as const,
+      thread: (mediaItemId: string) =>
+        ['manage', 'ai-interventions', 'thread', mediaItemId] as const,
     },
 
     runtimeLogs: (...args: unknown[]) => ['manage', 'runtime-logs', ...args] as const,
