@@ -14,8 +14,9 @@ import {
   buildUpdateBatchPayload,
   getCodeStatusAction,
 } from './registration-codes/formUtils';
+import { ManagePaidFeatureGuard } from './ManagePaidFeatureGuard';
 
-export function ManageRegistrationCodesPage() {
+export function ManageRegistrationCodesPageContent() {
   const {
     codesQuery,
     librariesQuery,
@@ -238,3 +239,16 @@ export function ManageRegistrationCodesPage() {
 }
 
 export default ManageRegistrationCodesPage;
+
+/** 付费守卫：注册码管理属于收费能力入口（照 V1 对位，feature='registration-codes'）。 */
+export function ManageRegistrationCodesPage() {
+  return (
+    <ManagePaidFeatureGuard
+      feature="registration-codes"
+      title="当前套餐未开通注册码管理"
+      description="访问注册码页时会先被 direct guard 拦住；后端仍是最终门禁真相。"
+    >
+      <ManageRegistrationCodesPageContent />
+    </ManagePaidFeatureGuard>
+  );
+}

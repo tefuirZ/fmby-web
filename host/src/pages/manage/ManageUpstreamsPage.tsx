@@ -15,6 +15,7 @@ import { UpstreamMappingPresetsSection } from './upstreams/UpstreamMappingPreset
 import { UpstreamMappingWizardSection } from './upstreams/UpstreamMappingWizardSection';
 import { UpstreamSyncJobsSection } from './upstreams/UpstreamSyncJobsSection';
 import { UpstreamCollectSection } from './upstreams/UpstreamCollectSection';
+import { ManagePaidFeatureGuard } from './ManagePaidFeatureGuard';
 
 /**
  * 上游源管理（V1F-02-A + S1..S4 + S4b）。
@@ -22,7 +23,7 @@ import { UpstreamCollectSection } from './upstreams/UpstreamCollectSection';
  * 结构：Tab1「上游源」= 源本体 CRUD + 探活 + 局域网发现（选择一行后，
  * Tab2/Tab3 针对该源操作类别绑定与映射）。
  */
-export function ManageUpstreamsPage() {
+export function ManageUpstreamsPageContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const listQuery = useQuery({
@@ -163,3 +164,16 @@ export function ManageUpstreamsPage() {
 }
 
 export default ManageUpstreamsPage;
+
+/** 付费守卫：上游网关属于收费能力入口（照 V1 对位，feature=['upstream-emby','upstream-apple-cms']）。 */
+export function ManageUpstreamsPage() {
+  return (
+    <ManagePaidFeatureGuard
+      feature={['upstream-emby', 'upstream-apple-cms']}
+      title="当前套餐未开通上游网关"
+      description="上游网关属于收费能力入口。即使直接访问 URL，也会先按前端授权可见性拦住，再由后端做最终校验。"
+    >
+      <ManageUpstreamsPageContent />
+    </ManagePaidFeatureGuard>
+  );
+}

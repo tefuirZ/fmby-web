@@ -1,4 +1,13 @@
 import { httpClient } from "@fmby/v2-shared/api/client";
+import {
+  getLicenseEntitlementCategory,
+  getLicenseEntitlementMeta,
+  getLicenseEntitlementValueType,
+  getLicenseLimitUsageLabel,
+  normalizeLicenseEntitlementValue,
+  readLicenseLimitUsage,
+} from "./entitlement";
+import { parseLicensePollStatus, parseLicenseRealtimeStatus, parseLicenseRuntimeState } from "./status";
 import type {
   LicenseActionResponseRecord,
   LicenseActivationTokenInput,
@@ -8,9 +17,6 @@ import type {
   LicenseEntitlementRecord,
   LicensePlanSummaryRecord,
   LicensePollResponseRecord,
-  LicensePollStatus,
-  LicenseRealtimeStatus,
-  LicenseRuntimeState,
   LicenseStatusRecord,
   LicenseSummaryRecord,
   LicenseUsageRecord,
@@ -134,53 +140,7 @@ interface RawLicensePollResponse {
   poll_status: string;
 }
 
-// ─── 状态枚举解析器（未知值 fail-closed 为 'unknown' 由调用方兜底，此处抛错不吞） ──
-
-const RUNTIME_STATES = new Set<LicenseRuntimeState>([
-  'unactivated',
-  'pending',
-  'active',
-  'grace',
-  'expired',
-  'invalid',
-]);
-
-const REALTIME_STATUSES = new Set<LicenseRealtimeStatus>([
-  'disabled',
-  'idle',
-  'ready',
-  'connected',
-  'error',
-  'blocked',
-]);
-
-const POLL_STATUSES = new Set<LicensePollStatus>([
-  'pending',
-  'authorized',
-  'expired',
-  'denied',
-]);
-
-function parseRuntimeState(value: string): LicenseRuntimeState {
-  if (RUNTIME_STATES.has(value as LicenseRuntimeState)) {
-    return value as LicenseRuntimeState;
-  }
-  throw new Error(`未知授权运行状态：${value}`);
-}
-
-function parseRealtimeStatus(value: string): LicenseRealtimeStatus {
-  if (REALTIME_STATUSES.has(value as LicenseRealtimeStatus)) {
-    return value as LicenseRealtimeStatus;
-  }
-  throw new Error(`未知授权 realtime 状态：${value}`);
-}
-
-function parsePollStatus(value: string): LicensePollStatus {
-  if (POLL_STATUSES.has(value as LicensePollStatus)) {
-    return value as LicensePollStatus;
-  }
-  throw new Error(`未知授权轮询状态：${value}`);
-}
+// ─── 状态枚举解析器：见 ./status.ts（照 V1 逐项对齐，此处不再重复定义） ─────────────
 
 // ─── 字段读取辅助（对外部可能缺省的原始字段 fail-closed） ────────────────────────
 
@@ -323,68 +283,11 @@ function mapSummary(
   };
 }
 
-/** 统一归一化 entitlement 值：{ value } 或 { bool/integer/string } 包装还原为原始标量。 */
-function normalizeEntitlementValue(value: unknown): unknown {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-  const record = value as Record<string, unknown>;
-  if ('value' in record) return record.value;
-  for (const key of ['bool', 'Bool', 'integer', 'Integer', 'string', 'String']) {
-    if (key in record) return record[key];
-  }
-  return value;
-}
-
-function getValueType(value: unknown): 'bool' | 'integer' | 'string' | 'unknown' {
-  if (typeof value === 'boolean') return 'bool';
-  if (typeof value === 'number' && Number.isInteger(value)) return 'integer';
-  if (typeof value === 'string') return 'string';
-  return 'unknown';
-}
-
-function getCategory(key: string): LicenseEntitlementRecord['category'] {
-  if (key.startsWith('feature.')) return 'feature';
-  if (key.startsWith('limit.')) return 'limit';
-  if (key.startsWith('policy.')) return 'policy';
-  return 'other';
-}
-
-const LIMIT_USAGE_READERS: Record<string, (usage: LicenseUsageRecord) => number> = {
-  'limit.users.max': (u) => u.userCount,
-  'limit.admins.max': (u) => u.adminCount,
-  'limit.libraries.max': (u) => u.libraryCount,
-  'limit.storage_mounts.max': (u) => u.storageMountCount,
-  'limit.storage_mounts.pan115.max': (u) => u.pan115MountCount,
-  'limit.storage_mounts.pan115_share.max': (u) => u.pan115ShareMountCount,
-  'limit.storage_mounts.microsoft.max': (u) => u.microsoftMountCount,
-  'limit.microsoft_accounts.max': (u) => u.microsoftAccountCount,
-  'limit.upstream_sources.max': (u) => u.upstreamSourceCount,
-  'limit.upstream_sources.emby.max': (u) => u.upstreamEmbyCount,
-  'limit.upstream_sources.apple_cms.max': (u) => u.upstreamAppleCmsCount,
-  'limit.concurrent_streams.max': (u) => u.activePlaybackSessionCount,
-  'limit.open_api_tokens.max': (u) => u.openApiTokenCount,
-};
-
-const LABELS: Record<string, string> = {
-  'feature.compat.emby': 'Emby/Jellyfin 兼容层',
-  'feature.pan115.provider': '115 普通网盘',
-  'feature.pan115.share': '115 分享挂载',
-  'feature.pan115.imghost': '115 图床治理',
-  'feature.storage.microsoft.provider': 'Microsoft 数据源',
-  'feature.storage.microsoft.account_pool': 'Microsoft 账号池',
-  'feature.open_api': '第三方开放 API',
-  'feature.metadata.advanced_scrape': '高级命名刮削治理',
-  'limit.activation_instances.max': '激活实例上限',
-  'limit.users.max': '用户上限',
-  'limit.admins.max': '管理员上限',
-  'limit.libraries.max': '媒体库上限',
-  'limit.storage_mounts.max': '媒体来源上限',
-  'limit.open_api_tokens.max': '开发者 API Token 上限',
-  'policy.lease.ttl_secs': 'Lease 有效期建议',
-  'policy.lease.grace_ttl_secs': '宽限期长度建议',
-  'policy.heartbeat.interval_secs': '推荐心跳间隔',
-};
-
-function displayValue(value: unknown, valueType: ReturnType<typeof getValueType>): string {
+/** 展示值（照 V1 `formatEntitlementValue`）。 */
+function displayValue(
+  value: unknown,
+  valueType: ReturnType<typeof getLicenseEntitlementValueType>,
+): string {
   switch (valueType) {
     case 'bool':
       return value ? '已启用' : '未启用';
@@ -402,13 +305,14 @@ function displayValue(value: unknown, valueType: ReturnType<typeof getValueType>
 }
 
 function mapEntitlement(raw: RawLicenseEntitlement, usage: LicenseUsageRecord): LicenseEntitlementRecord {
-  const normalized = normalizeEntitlementValue(raw.value);
-  const valueType = getValueType(normalized);
-  const category = getCategory(raw.key);
+  const normalized = normalizeLicenseEntitlementValue(raw.value);
+  const valueType = getLicenseEntitlementValueType(normalized);
+  const category = getLicenseEntitlementCategory(raw.key);
+  const meta = getLicenseEntitlementMeta(raw.key);
   const base: LicenseEntitlementRecord = {
     key: raw.key,
-    label: LABELS[raw.key] ?? raw.key,
-    description: null,
+    label: meta?.label ?? raw.key,
+    description: meta?.description ?? null,
     category,
     value: normalized,
     valueType,
@@ -418,16 +322,18 @@ function mapEntitlement(raw: RawLicenseEntitlement, usage: LicenseUsageRecord): 
     displayValue: displayValue(normalized, valueType),
     limitValue: null,
     usageValue: null,
+    usageLabel: null,
     unlimited: false,
     exhausted: false,
   };
   if (category !== 'limit') return base;
   const limitValue = base.integerValue;
-  const usageValue = LIMIT_USAGE_READERS[raw.key]?.(usage) ?? null;
+  const usageValue = readLicenseLimitUsage(raw.key, usage) ?? null;
   return {
     ...base,
     limitValue,
     usageValue,
+    usageLabel: getLicenseLimitUsageLabel(raw.key) ?? null,
     unlimited: limitValue === -1,
     exhausted: limitValue != null && limitValue >= 0 && usageValue != null && usageValue >= limitValue,
   };
@@ -435,8 +341,8 @@ function mapEntitlement(raw: RawLicenseEntitlement, usage: LicenseUsageRecord): 
 
 function mapStatus(raw: RawLicenseStatusResponse): LicenseStatusRecord {
   const usage = mapUsage(raw.usage);
-  const runtimeState = parseRuntimeState(raw.runtime_state);
-  const realtimeStatus = raw.realtime_status ? parseRealtimeStatus(raw.realtime_status) : null;
+  const runtimeState = parseLicenseRuntimeState(raw.runtime_state);
+  const realtimeStatus = raw.realtime_status ? parseLicenseRealtimeStatus(raw.realtime_status) : null;
   return {
     runtimeState,
     businessAccessAllowed: raw.business_access_allowed,
@@ -496,7 +402,7 @@ export const licenseApi = {
     const raw = await httpClient.post<RawLicensePollResponse>(`${BASE}/device-flow/poll`, {
       timeout: LICENSE_ACTION_TIMEOUT_MS,
     });
-    return { status: mapStatus(raw.status), pollStatus: parsePollStatus(raw.poll_status) };
+    return { status: mapStatus(raw.status), pollStatus: parseLicensePollStatus(raw.poll_status) };
   },
 
   async activateWithToken(input: LicenseActivationTokenInput): Promise<LicenseActionResponseRecord> {
@@ -515,28 +421,9 @@ export const licenseApi = {
   },
 };
 
-/** 供 UI 直接消费的状态守卫（六态徽标/标签用）。 */
-export const licenseRuntimeStates = {
-  unactivated: '未激活',
-  pending: '等待授权',
-  active: '有效',
-  grace: '宽限期',
-  expired: '已过期',
-  invalid: '无效',
-} as const;
-
-export const licenseRuntimeTones = {
-  unactivated: 'neutral',
-  pending: 'warning',
-  active: 'success',
-  grace: 'warning',
-  expired: 'danger',
-  invalid: 'danger',
-} as const;
-
-export const licensePollStatuses = {
-  pending: '等待授权',
-  authorized: '已授权',
-  expired: '已过期',
-  denied: '已拒绝',
-} as const;
+/** 供 UI 直接消费的状态表（照 V1 对齐；实现在 ./status.ts）。 */
+export {
+  licenseRuntimeStateLabels as licenseRuntimeStates,
+  licenseRuntimeStateTones as licenseRuntimeTones,
+  licensePollStatusLabels as licensePollStatuses,
+} from "./status";
