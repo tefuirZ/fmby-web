@@ -1,5 +1,5 @@
 import type { ManageScanTriggerResult } from "../types";
-import type { RawManageScanTriggerResponse, RawManagedScanTaskRecord } from "../raw-types";
+import type { RawManageLibraryScanTriggerResponse, RawManagedScanTaskRecord } from "../raw-types";
 export declare function mapManagedScanTaskRecord(raw: RawManagedScanTaskRecord): {
     id: string;
     librarySourceId: string;
@@ -17,5 +17,5 @@ export declare function mapManagedScanTaskRecord(raw: RawManagedScanTaskRecord):
     completedAt: string | undefined;
     createdAt: string;
 };
-export declare function mapManageScanTriggerResponse(raw: RawManageScanTriggerResponse): ManageScanTriggerResult;
+export declare function mapManageScanTriggerResponse(raw: RawManageLibraryScanTriggerResponse): ManageScanTriggerResult;
 //# sourceMappingURL=scans.d.ts.map

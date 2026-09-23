@@ -208,6 +208,7 @@ export interface RawManagedLibraryRecord {
     sources: string[];
     actual_sources?: string[] | null;
 }
+export type MountCredentialStatusWire = 'bound' | 'unbound' | 'expired' | 'not_required';
 export interface RawManagedMountRecord {
     id: string;
     name: string;
@@ -226,6 +227,8 @@ export interface RawManagedMountRecord {
     }>;
     reference_counts?: RawManagedMountReferenceCounts | null;
     unavailable_binding_count?: number | null;
+    /** 凭据状态（后端 ManagedMountSummaryDto.credential_status；与详情同值同源派生）。 */
+    credential_status?: MountCredentialStatusWire | null;
 }
 export interface RawManagedMountReferenceCounts {
     library_source_count: number;
@@ -384,6 +387,8 @@ export interface RawManagedMountDetailResponse {
     path_policies?: RawManagedSourcePathPolicyRecord[] | null;
     linked_sources?: RawManagedMountLinkedSourceRecord[] | null;
     recent_scan_tasks?: RawManagedScanTaskRecord[] | null;
+    /** 凭据状态（后端 ManagedMountDetailDto.credential_status，CRED-EXPIRY-WIRE 2026-09-23）。 */
+    credential_status?: MountCredentialStatusWire | null;
 }
 export interface RawManagedMountDirectoryBrowserResponse {
     current_path: string;
@@ -393,15 +398,13 @@ export interface RawManagedMountDirectoryBrowserResponse {
         path: string;
     }>;
 }
-export interface RawManageScanTriggerResponse {
-    library_id?: string;
-    libraryId?: string;
-    task_type?: string;
-    /** 后端 LibraryScanTriggerResponse.tasks 元素 = ScanTriggerResponse
-     * （mountId/taskKey/taskId/created）；非 RawManagedScanTaskRecord（V1 形状）。 */
+export interface RawManageLibraryScanTriggerResponse {
+    /** 后端 LibraryScanTriggerResponse serde camelCase：libraryId / tasks / skippedMountIds。 */
+    libraryId: string;
+    /** 该库每个挂载的任务结果（含 created 标志）。 */
     tasks: RawScanTriggerTask[];
-    skipped_source_ids?: string[];
-    skippedMountIds?: string[];
+    /** 因已有在途任务而未新建的挂载 id（幂等，非错误）。 */
+    skippedMountIds: string[];
 }
 export interface RawScanTriggerTask {
     mountId: string;
