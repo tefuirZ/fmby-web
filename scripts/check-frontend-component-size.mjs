@@ -11,14 +11,18 @@
  * （ratchet）思路：**存量基线 + 只降不升**。
  *
  * 口径（**棘轮优先**——红线只卡增量，存量按债务记账，否则门禁一进来就红、必被绕过）：
- * 1. 扫描 host/src + shared/src 下所有 .tsx（排除 .d.ts）；
+ * 1. 扫描 host/src + shared/src 下所有 .tsx（排除 .d.ts）**与非组件 .ts**（FE-TSC-ARTIFACTS）；
  * 2. 分级显示：>400 行 = WARN（须有拆分计划），>500 行 = 超硬红线；
+ *    - `.tsx` / 非契约 `.ts`：400 warn / 500 fail；
+ *    - 契约 `.ts`（`shared/src/contracts/**`）：400 warn（**不** fail）/ **硬上限 1200 fail**
+ *      （契约长度≈端点数量属天然长度，但须有点名天花板，逼着按端点拆分）；
  * 3. 判定 FAIL 的三条（且仅有这三条）：
  *    a. 基线外**新增**超线文件（>400）→ FAIL（新代码必须干净）；
  *    b. 基线内文件行数**上升** → FAIL（存量只许降不许升）；
- *    c. 超硬红线（>500）**且**行数上升/新增 → 已含于 a/b。
+ *    c. 超硬红线（>500）**且**行数上升/新增 → 已含于 a/b；
+ *    d. 契约 `.ts` 超 1200 硬上限 → FAIL（绝对，不进棘轮）；
  * 4. 基线内、未上升的超线文件 → **WARN 不阻塞**：它是已记账的拆分债务
- *    （本卡拆 2 个，余量见 handoff 拆分计划）；降到 ≤400 后由
+ *    （余量见 handoff 拆分计划）；降到 ≤400 后由
  *    `--update-baseline` 回收出基线。
  * 5. `--update-baseline`：重写基线清单。**只许减不许增**——若某文件本次行数
  *    高于基线记录值，拒绝写入并 FAIL（防止把变胖洗进基线）。
@@ -37,9 +41,10 @@
  *   （那是另一条规则，不在本卡）。
  *   **判定标准**：剥离注释与字符串字面量后，正则未命中任何 JSX 标签
  *   （见 `hasJsx()`）。含 JSX 即视为组件，**不适用**本豁免。
- * - 口径说明：`.ts`（含 `shared/src/contracts/**`）**不纳入**本闸。
- *   契约文件长度=端点数量（raw DTO + mapper 双件套），属天然长度而非结构问题，
- *   且已有 `contracts` 闸管其结构。
+ * - 口径说明：`.ts`（含 `shared/src/contracts/**`）**已纳入**本闸（FE-TSC-ARTIFACTS）。
+ *   契约文件长度=端点数量（raw DTO + mapper 双件套）属天然长度，故只设 400 warn +
+ *   1200 硬上限；非契约 `.ts` 与 `.tsx` 同口径（400/500 + 棘轮）。
+ *   契约是否应按端点密度另设口径 → 待裁决（见 handoff）。
  *
  * 基线（纯数据）：docs/plans/v2-dev/evidence/fe-component-size-baseline.json
  */
@@ -108,6 +113,25 @@ function walkTsx(dir) {
 }
 
 /**
+ * 递归收集非组件 `.ts`（FE-TSC-ARTIFACTS）。排除 `.d.ts`（手写环境声明，非业务代码）。
+ * 口径：非契约 .ts = 400 warn / 500 fail + 棘轮；契约 .ts = 400 warn + 硬上限 1200 fail。
+ */
+function walkTs(dir) {
+  const results = [];
+  if (!fs.existsSync(dir)) return results;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...walkTs(full));
+    } else if (entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+/**
  * 是否含 JSX。用于工具模块判定：不含任何 JSX 的 .tsx 视为纯函数集合，非组件。
  * 先剥离注释与字符串字面量，避免把注释里的 `<foo>` 或字符串里的 `<div>` 误判为 JSX。
  */
@@ -141,8 +165,8 @@ function loadBaseline() {
   return JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf-8'));
 }
 
-const files = SCAN_DIRS.flatMap(walkTsx);
-const measured = files
+const tsxFiles = SCAN_DIRS.flatMap(walkTsx);
+const measured = tsxFiles
   .map((f) => ({
     file: getRelativePath(f),
     lines: countLines(f),
@@ -152,7 +176,29 @@ const measured = files
   .sort((a, b) => b.lines - a.lines);
 
 const exempted = measured.filter((m) => m.exempt);
-const enforced = measured.filter((m) => !m.exempt);
+const enforcedTsx = measured.filter((m) => !m.exempt);
+
+// ── 非组件 .ts（FE-TSC-ARTIFACTS）──────────────────────────────────────────
+// 口径：非契约 .ts 沿用 400 warn / 500 fail + 棘轮；契约 .ts（shared/src/contracts/**）
+//      400 warn（不 fail）+ 硬上限 1200 fail——契约长度≈端点数量属天然长度，
+//      但必须有点名天花板，逼着按端点拆分而不是堆单文件。
+const CONTRACT_CEILING_LINES = 1200;
+const CONTRACT_PREFIX = 'shared/src/contracts/';
+const isContractFile = (rel) => rel.startsWith(CONTRACT_PREFIX);
+
+const tsMeasured = SCAN_DIRS.flatMap(walkTs)
+  .map((f) => ({ file: getRelativePath(f), lines: countLines(f) }))
+  .filter((m) => m.lines > WARN_LINES)
+  .sort((a, b) => b.lines - a.lines);
+
+const contractTs = tsMeasured.filter((m) => isContractFile(m.file));
+const nonContractTs = tsMeasured.filter((m) => !isContractFile(m.file));
+
+// 棘轮受管集合 = .tsx 非豁免 + 非契约 .ts（契约走硬上限，不进棘轮）。
+const enforced = [
+  ...enforcedTsx,
+  ...nonContractTs.map((m) => ({ ...m, exempt: null })),
+];
 
 const baseline = loadBaseline();
 const baselineMap = new Map((baseline?.files ?? []).map((f) => [f.file, f.lines]));
@@ -215,7 +261,7 @@ if (autoExempt.length > 0) {
   }
 }
 console.log('');
-console.log(`[1] 扫描 host/src + shared/src 的 .tsx（> ${WARN_LINES} 行 warn / > ${FAIL_LINES} 行 fail）...`);
+console.log(`[1] 扫描 host/src + shared/src 的 .tsx 与非组件 .ts（.tsx/非契约 .ts > ${WARN_LINES} warn / > ${FAIL_LINES} fail；契约 .ts > ${WARN_LINES} warn / > ${CONTRACT_CEILING_LINES} fail）...`);
 
 if (!baseline) {
   violations.push({
@@ -256,10 +302,29 @@ for (const m of enforced) {
   warnings.push({ ...m, prev });
 }
 
+// 契约 .ts：400 warn（不 fail）+ 硬上限 1200 fail（绝对，不进棘轮）。
+if (contractTs.length > 0) {
+  console.log(`\n[2b] 契约 .ts 超 ${WARN_LINES} 行：${contractTs.length} 个（> ${CONTRACT_CEILING_LINES} 行计 FAIL）`);
+  for (const m of contractTs) {
+    if (m.lines > CONTRACT_CEILING_LINES) {
+      console.log(`  [FAIL] ${m.file}: ${m.lines} 行（超契约硬上限 ${CONTRACT_CEILING_LINES}）`);
+      violations.push({
+        rule: 'Contract File Over Hard Ceiling',
+        file: m.file,
+        reason:
+          `${m.lines} 行超契约硬上限 ${CONTRACT_CEILING_LINES} 行。契约文件长度≈端点数量，` +
+          '但需有天花板：请按端点/域拆分为多个契约模块，勿堆单文件。',
+      });
+    } else {
+      console.log(`  [WARN] ${m.file}: ${m.lines} 行（契约天然长度，未超硬上限 ${CONTRACT_CEILING_LINES}）`);
+    }
+  }
+}
+
 // 基线内已降到红线以下的文件（提示更新基线，不阻塞）
 const stale = baseline
   ? baseline.files.filter((b) => {
-      const now = measured.find((m) => m.file === b.file);
+      const now = enforced.find((m) => m.file === b.file);
       return !now;
     })
   : [];
