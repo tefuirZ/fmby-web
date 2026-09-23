@@ -17,3 +17,10 @@ blob-report/
 # 仓库只保留 samples/ 抽样（≤1MiB 门禁守住）。策略见 docs/evidence-policy.md。
 docs/evidence/**/full/
 .codegraph/
+
+# FE-TSC-ARTIFACTS：tsc 声明产物不该入库（shared/tsconfig 已 noEmit:true；
+# exports/types 全指 ./src/*.ts）。历史上误入库 156 个，已删。限定到 shared/src，
+# 负向保留手写的共享环境声明（声明 *.module.css，shared 自身 typecheck 依赖）。
+shared/src/**/*.d.ts
+shared/src/**/*.d.ts.map
+!shared/src/global.d.ts
