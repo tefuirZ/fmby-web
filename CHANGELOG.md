@@ -1,3 +1,72 @@
+## [0.2.9] - 2026-09-23
+
+**本版提交**：10 个 ｜ **改动**：17 files changed, 883 insertions(+), 51 deletions(-)
+
+### 本版做了什么
+
+#### docs（文档/证据）（3）
+
+- docs(handoff): W5-F 校正提交号与测试数归属（299 含合并的 W5-E；W5-F 自身 +5）（`be91f8c`）
+- docs(handoff): W5-F V1 web-gallery 能力核对（只读，真缺只登记）（`475bd46`）
+- docs(handoff): W5-E 卡1/卡2 交付说明（`0e7459a`）
+
+#### host（应用壳/页面）（3）
+
+- feat(player): 默认播放引擎改为 ArtPlayer（W5-F 卡①）（`2f50a1c`）
+- feat(mounts): 139/AList 凭据重绑诚实缺口提示（NIGHT-FE-CRED-REBIND-HONEST，W5-E 卡2）（`d8eed72`）
+- feat(operations): 运营看板接入实时 WS（FE-OPS-REALTIME-WS，W5-E 卡1）（`0f55580`）
+
+#### 其它（3）
+
+- fix(release): 前端编号改正 0.2.1…0.2.8（用户口径：中间位=2 标记 V2 重构，所有迭代只动尾数）——上一轮 0.1.x 系误改（`53b15e3`）
+- fix(docs): 前端 CHANGELOG 版本标题真改到 0.1.x（上一提交只改了 package.json，标题漏改——如实补上）（`1f4ba03`）
+- chore(release): 版本号规则改为 0.1.* 迭代（用户裁定：前端自行维护，从 0.1.0 起）—— 8 个 tag 由 v0.2.0…v0.8.0 更正为 v0.1.0…v0.1.7（`bc2e0f8`）
+
+#### shared（契约/域映射/组件）（1）
+
+- feat(operations): 运营看板接入实时 WS（FE-OPS-REALTIME-WS，W5-E 卡1）（`0f55580`）
+
+#### scripts（门禁/工具）（1）
+
+- chore(release): cut-web.mjs auto 升位改 patch-only（用户裁定 0.1.* 迭代）（`9fb6fc7`）
+
+### 相对上版
+
+- 上版 tag：v0.2.8
+- 17 files changed, 883 insertions(+), 51 deletions(-)
+
+### 验证
+
+- pnpm verify 日志：`/tmp/fe-verify18.log`（mtime 2026-09-23T05:45:32.699Z）
+- [PASS] 33 项 / [FAIL] 0 项（本版交付前最近一次全量 verify）
+
+### 下版计划
+
+# 下版计划（前端仓 · 单一来源）
+
+> 每次发布由 `scripts/release/cut-web.mjs` 整段嵌入 `CHANGELOG.md` 当版 `### 下版计划` 节。
+
+## 本版之后立刻要做
+
+- **credential_status 消费**（W5-A）：列表/详情展示 `bound | unbound | expired | not_required`，
+  `expired` 给醒目标识 + 重绑/重新授权入口，`not_required` 不显示凭据 UI；
+  与既有 `MountHealthDto.last_fault_kind == "credential_expired"` **去重**（同一事实一个入口）。
+- **FE-PARITY-OPERATIONS-EXTRA 的真栈核验**：本版只做了静态映射 + 单测（无真栈），
+  等后端 V2 服务可跑真栈后补 e2e（`progress_percent` / `cache_status` / `supported_commands` /
+  `client_info` 的实际取值需按真响应校准）。
+- **snake_case / camelCase 分裂收口**：`manage/operations` 同目录内既有 `/overview` 是 camelCase、
+  新接的两条专用端点是 snake_case。已在测试里逐条钉死，但属于长期坑，需在一次**破坏性契约整理**中统一。
+- **contract-sync 直跑注意**：仓外还有一份陈旧 checkout `/home/tefuir/rustproject/fmby-web`，
+  直跑 `check-contract-sync.mjs` 必须带 `FMBY_WEB_DIR=/home/tefuir/rustproject/fmby-web-main`，
+  否则会读到旧副本并误报 `FRONTEND_FIELD_MISSING`。
+
+## 欠账
+
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.0`。之后应**每次合并一批就发一版**。
+- `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
+
+
 ## [0.2.8] - 2026-09-23
 
 **本版提交**：2 个 ｜ **改动**：6 files changed, 1245 insertions(+), 996 deletions(-)
