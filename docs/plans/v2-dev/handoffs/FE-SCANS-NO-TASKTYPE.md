@@ -1,9 +1,10 @@
 # FE-SCANS-NO-TASKTYPE 交付说明 · 扫描列表停发 `taskType`
 
 **仓库**：`ws-zcode-writer1-fe-scans-params`（新工作树）　**分支**：`w/zcode/writer1-fe-scans-params`
-**基点**：`origin/main` = `485812e`（web **v0.2.12**）
-**提交**：`7daf1ed`（改码 + 防回归单测）；本 handoff 为其后一笔文档提交
-**判据**：`pnpm verify` **EXIT=0**（shared **101** / host **308** / component-size **0 违规**）。
+**基点**：`origin/main` = `485812e`（v0.2.12）→ **已同步 `origin/main` = `b5f6205`**（v0.2.13，含已合入的 FE-AI-INTERVENTIONS）
+**提交**：`7daf1ed`（改码 + 防回归单测）→ `ecf5aae`（本 handoff）→ `fa5e2b9`（Merge origin/main）
+**判据（合并后）**：`pnpm verify` **EXIT=0**（shared **101** / host **320** / component-size **0 违规**）。
+**改动面（相对 `b5f6205`）**：**4 文件 / +201 −3**（零基点噪音）。
 
 ## ponytail 段
 
@@ -108,11 +109,29 @@ EXIT=0
 
 ## ⑤ 当次验证原文
 
+**（A）合并前（基点 `485812e`）**：
 ```
 $ pnpm verify          # EXIT=0
 [PASS] 版本门禁通过（四层独立版本 + 契约对齐）。
 shared test: ℹ pass 101 / ℹ fail 0
 host test:   ℹ pass 308 / ℹ fail 0
+[PASS] 仓库二进制产物在预算内。
+[PASS] 0 violations found. All frontend architectural boundaries clean.
+[PASS] 0 contract violations found.
+[PASS] 主题质量门禁通过（无 God File；总量不设限）。
+[PASS] 0 违规；3 个存量超线文件在基线内且未上升（棘轮允许，须有拆分计划）。
+[PASS] All declared domain skins satisfy required capabilities。
+```
+
+**（B）同步 `origin/main` = `b5f6205`（v0.2.13）后重跑（本卡最终判据）**：
+```
+$ git merge origin/main --no-edit   # fa5e2b9，0 冲突（提交号冲突零）
+$ git status --short | wc -l        # 0
+$ git diff --stat origin/main..HEAD # 4 文件 / +201 −3（恰为本卡）
+$ pnpm verify                       # EXIT=0
+[PASS] 版本门禁通过（四层独立版本 + 契约对齐）。
+shared test: ℹ pass 101 / ℹ fail 0
+host test:   ℹ pass 320 / ℹ fail 0      # 308(main 基线) + 12(FE-AI-INTERVENTIONS 已合入)
 [PASS] 仓库二进制产物在预算内（策略见 docs/evidence-policy.md）。
 [PASS] 0 violations found. All frontend architectural boundaries clean.
 [PASS] 0 contract violations found. All contracts & domain mappers cleanly aligned.
@@ -120,6 +139,8 @@ host test:   ℹ pass 308 / ℹ fail 0
 [PASS] 0 违规；3 个存量超线文件在基线内且未上升（棘轮允许，须有拆分计划）。
 [PASS] All declared domain skins satisfy required capabilities。
 ```
+> 同步时机说明：开工时 `origin/main` = `485812e`；交付后（写作期）远端已推进到 `b5f6205`
+> （`9154317 Merge w5: FE-AI-INTERVENTIONS` + v0.2.13），按已确立的「分支落后就同步、让评审看到干净 diff」纪律合并。
 
 **旁证（非裁决依据）**：后端仓的查询参数闸指向本工作树——
 ```
