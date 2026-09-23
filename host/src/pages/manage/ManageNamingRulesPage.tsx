@@ -26,6 +26,7 @@ import {
   NamingScrapeBatchRepairSection,
   NamingScrapeStrategySection,
 } from './naming-rules/components';
+import { AiInterventionSection } from './naming-rules/ai-intervention';
 
 export function ManageNamingRulesPage() {
   const settingsQuery = useNamingRulesSettingsQuery();
@@ -352,6 +353,8 @@ export function ManageNamingRulesPage() {
         onConfirm={confirmBatchRepair}
         pending={batchRepairMutation.isPending}
       />
+
+      <AiInterventionSection />
     </div>
   );
 }
