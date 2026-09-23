@@ -160,3 +160,43 @@ export function resolveCredentialAction(
   }
   return null;
 }
+
+/**
+ * W5-C（微软）：从挂载详情的 `configJson` 取 `drive_id`。
+ *
+ * 后端权威口径（`mount_contract_e2e.rs:1317`）：微软挂载经
+ * `config_json.drive_id` → `microsoft_graph_accounts.expires_at` 派生
+ * expired/bound。因此 `drive_id` 是挂载与微软账号的关联键。
+ *
+ * ★不猜结构：`configJson` 是开放 JSON，只按后端明确写的 `drive_id` 键读取；
+ *   取不到（非微软 / 未配置）→ null，由调用方决定是否给入口。
+ */
+export function readMountDriveId(configJson: Record<string, unknown> | null | undefined): string | null {
+  if (!configJson) {
+    return null;
+  }
+  const value = configJson.drive_id;
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+/**
+ * W5-C：判断该挂载是否适用**微软专用重绑流**。
+ * 条件（全部来自后端既有事实，不前端自造）：
+ * - providerType 为 microsoft 系
+ * - 且能取到 drive_id（否则无法定位账号，只能回落通用表单）
+ */
+export function supportsMicrosoftRebind(input: {
+  providerType?: string | null;
+  configJson?: Record<string, unknown> | null;
+}): boolean {
+  const provider = (input.providerType ?? '').toLowerCase();
+  const isMicrosoft = provider.includes('microsoft') || provider.includes('onedrive') || provider.includes('sharepoint');
+  if (!isMicrosoft) {
+    return false;
+  }
+  return readMountDriveId(input.configJson) !== null;
+}

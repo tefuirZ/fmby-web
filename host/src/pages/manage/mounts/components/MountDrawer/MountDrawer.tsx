@@ -32,6 +32,7 @@ import {
   MountScanTasksSection,
   MountViewWarningBanners,
   MountCredentialCard,
+  MicrosoftRebindSection,
   MountDeletePanel,
   AdvancedSectionWrapper,
   Pan115CredentialsSection,
@@ -39,6 +40,7 @@ import {
   type Pan115CreatePendingActivation,
 } from './sections';
 import { useMountHealthFaultMap } from '../../hooks/useMountHealthFaultMap';
+import { supportsMicrosoftRebind } from '../../credentialPresentation';
 
 export function MountDrawer({
   drawerState,
@@ -357,6 +359,12 @@ export function MountDrawer({
           />
           {currentDetail.providerType === 'pan115' ? (
             <Pan115CredentialsSection currentDetail={currentDetail} />
+          ) : null}
+          {supportsMicrosoftRebind({
+            providerType: currentDetail.providerType,
+            configJson: currentDetail.configJson,
+          }) ? (
+            <MicrosoftRebindSection currentDetail={currentDetail} />
           ) : null}
           <MountCapabilitiesViewSection currentDetail={currentDetail} />
           <MountPathPoliciesViewSection currentDetail={currentDetail} />
