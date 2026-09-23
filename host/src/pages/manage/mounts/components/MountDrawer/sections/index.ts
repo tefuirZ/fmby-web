@@ -21,3 +21,4 @@ export { Pan115CredentialsSection } from './Pan115CredentialsSection';
 export { Pan115CreateCredentialsSection, type Pan115CreatePendingActivation } from './Pan115CreateCredentialsSection';
 export { Pan115DirectoryBrowserSection } from './Pan115DirectoryBrowserSection';
 export { MountCredentialCard } from './MountCredentialCard';
+export { MicrosoftRebindSection } from './MicrosoftRebindSection';
