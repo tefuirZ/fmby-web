@@ -356,6 +356,17 @@ function fromDataSourceLoadItem(r: RawOperationsDataSourceLoadItem): OperationsD
 }
 
 /** 运营看板 API（V1F-08-B1 纯拉聚合 + B2 活跃快照，capability ViewAudit）。 */
+interface RawOperationsActiveSnapshotEvent {
+  limit?: number;
+  generated_at?: string | null;
+  sessions?: RawOperationsActivePlaybackSession[];
+}
+
+interface RawOperationsMountLoadEvent {
+  generated_at?: string | null;
+  sources?: RawOperationsMountLoadItem[];
+}
+
 export const operationsApi = {
   async overview(days: number = 7): Promise<OperationsOverview> {
     const raw = await httpClient.get<RawOperationsOverview>("/api/manage/operations/overview", {
@@ -412,5 +423,34 @@ export const operationsApi = {
       totalReturned: raw.total_returned,
       sessions: (raw.sessions ?? []).map(fromActivePlaybackSession),
     };
-  },
+  },    /** W5-E：WS `playback.active_snapshot` 事件载荷 → 看板域类型。
+     * 后端 DTO 为 {limit, generated_at, sessions[]}（snake_case），
+     * 复用既有 row mapper（fromActivePlaybackSession）；WS 快照不携带
+     * cache_status/totalReturned/sampledAt，按诚实口径补默认值（不伪造观测）。 */
+    fromActiveSnapshotEvent(raw: RawOperationsActiveSnapshotEvent | null): OperationsActivePlaybackResponse {
+      if (!raw) {
+        return { sampledAt: '', cacheStatus: 'unknown', limit: 0, totalReturned: 0, sessions: [] };
+      }
+      return {
+        sampledAt: raw.generated_at ?? '',
+        cacheStatus: 'live',
+        limit: typeof raw.limit === 'number' ? raw.limit : 0,
+        totalReturned: Array.isArray(raw.sessions) ? raw.sessions.length : 0,
+        sessions: Array.isArray(raw.sessions) ? raw.sessions.map(fromActivePlaybackSession) : [],
+      };
+    },
+
+    /** W5-E：WS `playback.source_load_snapshot` 事件载荷 → 看板域类型。
+     * 后端 DTO 为 {generated_at, sources[]}（snake_case），复用既有 row mapper（fromMountLoadItem）。 */
+    fromMountLoadEvent(raw: RawOperationsMountLoadEvent | null): OperationsMountLoadResponse {
+      if (!raw) {
+        return { sampledAt: '', cacheStatus: 'unknown', items: [] };
+      }
+      return {
+        sampledAt: raw.generated_at ?? '',
+        cacheStatus: 'live',
+        items: Array.isArray(raw.sources) ? raw.sources.map(fromMountLoadItem) : [],
+      };
+    },
+
 };

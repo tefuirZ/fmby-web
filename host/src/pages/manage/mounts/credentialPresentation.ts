@@ -200,3 +200,48 @@ export function supportsMicrosoftRebind(input: {
   }
   return readMountDriveId(input.configJson) !== null;
 }
+
+/**
+ * W5-E 卡 2（NIGHT-FE-CRED-REBIND-HONEST）：provider 重绑能力判定。
+ *
+ * 后端事实（不自造）：
+ * - 微软：`config_json.drive_id` → `microsoft_graph_accounts.expires_at` 派生 expired/bound，
+ *   且有 `startAuth/completeAuth` 重绑端点 → 真专用流（见 MicrosoftRebindSection）。
+ * - 139 / AList（`yun139` / `alist` / `openlist`）：`bridges/manage/helpers.rs:155` 的
+ *   `expires_at` 匹配**仅微软分支**，故挂载 `credential_status` 恒 `bound`（expired 不可达）；
+ *   且挂载 `config_json` 无 profile/account 关联键 → 前端不知重绑哪个档案；也无凭据重绑录入 UI。
+ *   ⇒ 这两类 provider 的重绑**需要后端先决能力**，前端不得假装能重绑（W5-C 已登记）。
+ * - 其余（local / pan115 等）：不在此判定范围。
+ *
+ * 返回：
+ * - 'microsoft'：真有专用重绑流（渲染入口）；
+ * - 'unsupported-gap'：已知 provider、但重绑需后端先决能力（渲染**诚实缺口提示**，不伪造按钮）；
+ * - 'none'：不适用。
+ */
+export type ProviderRebindSupport = 'microsoft' | 'unsupported-gap' | 'none';
+
+export function providerRebindSupport(input: {
+  providerType?: string | null;
+  credentialStatus?: string | null;
+  configJson?: Record<string, unknown> | null;
+}): ProviderRebindSupport {
+  const provider = (input.providerType ?? '').toLowerCase();
+  const isMicrosoft =
+    provider.includes('microsoft') || provider.includes('onedrive') || provider.includes('sharepoint');
+  if (isMicrosoft && readMountDriveId(input.configJson) !== null) {
+    return 'microsoft';
+  }
+  // 仅当 expired（或能力缺失）才提示缺口；其它状态不渲染重绑 UI
+  const wantsRebind =
+    input.credentialStatus === 'expired' ||
+    input.credentialStatus === 'unbound';
+  if (!wantsRebind) {
+    return 'none';
+  }
+  const isYun139 = provider.includes('yun139') || provider.includes('139');
+  const isAList = provider.includes('alist') || provider.includes('openlist');
+  if (isYun139 || isAList) {
+    return 'unsupported-gap';
+  }
+  return 'none';
+}

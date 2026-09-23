@@ -20,6 +20,7 @@ import {
   OPERATIONS_ACTIVE_PLAYBACK_LIMIT_DEFAULT,
   OPERATIONS_ACTIVE_PLAYBACK_LIMIT_MAX,
 } from '@fmby/v2-shared/contracts/manage/operations';
+import { useOperationsRealtime } from '@/features/operations/useOperationsRealtime';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -53,19 +54,33 @@ export function OperationsGapSections() {
   const loadItems = mountLoadQuery.data?.items ?? [];
   const sessions = activePlaybackQuery.data?.sessions ?? [];
 
+  // W5-E：实时通道（WS `/api/playback/realtime/ws`）。
+  // 优先级：实时快照 > REST；REST 仍作首屏与回退（WS 断开/不可用时不白屏）。
+  const realtime = useOperationsRealtime();
+  const effectiveLoadItems = realtime.mountLoad?.items ?? loadItems;
+  const effectiveSessions = realtime.activePlayback?.sessions ?? sessions;
+  const isRealtimeLive = realtime.status === 'open';
+
   return (
     <>
       <ManageSectionCard
         title="数据源负载（负载端点）"
         description="按挂载聚合的活跃会话与出站计数；负载等级与建议由后端按阈值下发。"
         actions={
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            onClick={() => void mountLoadQuery.refetch()}
-          >
-            刷新
-          </button>
+          <div className={styles.actionGroup}>
+            {isRealtimeLive ? (
+              <StatusBadge label="实时" variant="success" />
+            ) : realtime.status === 'error' || realtime.status === 'closed' ? (
+              <StatusBadge label="实时离线·REST 回退" variant="warning" />
+            ) : null}
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              onClick={() => void mountLoadQuery.refetch()}
+            >
+              刷新
+            </button>
+          </div>
         }
       >
         {mountLoadQuery.isPending ? (
@@ -96,7 +111,7 @@ export function OperationsGapSections() {
                 </tr>
               </thead>
               <tbody>
-                {loadItems.map((item) => (
+                {effectiveLoadItems.map((item) => (
                   <tr key={item.sourceId}>
                     <td>{item.sourceName}</td>
                     <td>{item.providerType}</td>
@@ -185,7 +200,7 @@ export function OperationsGapSections() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sessions.map((session) => (
+                  {effectiveSessions.map((session) => (
                     <tr key={session.sessionId}>
                       <td>{session.user.username}</td>
                       <td>{session.item.title}</td>

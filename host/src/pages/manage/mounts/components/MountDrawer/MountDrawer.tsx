@@ -38,9 +38,10 @@ import {
   Pan115CredentialsSection,
   Pan115DirectoryBrowserSection,
   type Pan115CreatePendingActivation,
+  CredentialRebindGapSection,
 } from './sections';
 import { useMountHealthFaultMap } from '../../hooks/useMountHealthFaultMap';
-import { supportsMicrosoftRebind } from '../../credentialPresentation';
+import { supportsMicrosoftRebind, providerRebindSupport } from '../../credentialPresentation';
 
 export function MountDrawer({
   drawerState,
@@ -365,6 +366,19 @@ export function MountDrawer({
             configJson: currentDetail.configJson,
           }) ? (
             <MicrosoftRebindSection currentDetail={currentDetail} />
+          ) : null}
+          {providerRebindSupport({
+            providerType: currentDetail.providerType,
+            credentialStatus: currentDetail.credentialStatus,
+            configJson: currentDetail.configJson,
+          }) === 'unsupported-gap' ? (
+            <CredentialRebindGapSection
+              providerType={currentDetail.providerType}
+              credentialStatus={currentDetail.credentialStatus}
+              onOpenConnectionConfig={() =>
+                setDrawerState({ mode: 'edit', mountId: currentDetail.mount.id })
+              }
+            />
           ) : null}
           <MountCapabilitiesViewSection currentDetail={currentDetail} />
           <MountPathPoliciesViewSection currentDetail={currentDetail} />
