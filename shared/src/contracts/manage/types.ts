@@ -924,7 +924,10 @@ export interface ManageScansQuery {
   page?: number;
   pageSize?: number;
   status?: ManageScanStatus;
-  taskType?: ManageScanTaskType;
+  // ponytail: 无 `taskType` —— 后端 `GET /api/manage/scans` 无 `task_type` 维度
+  // （`crates/fmby-v2-http/src/routes/scan_trigger.rs:131` 声明、
+  // `crates/fmby-v2-server/src/bridges/scan_trigger.rs:254` fail-loud 400）。
+  // 非空即 400，故前端不声明、不发送（FE-SCANS-NO-TASKTYPE）。
   libraryId?: string;
   mountId?: string;
   librarySourceId?: string;
