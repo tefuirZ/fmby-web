@@ -66,9 +66,11 @@ export interface LicenseEntitlementRecord {
   integerValue: number | null;
   stringValue: string | null;
   displayValue: string;
-  /** 以下三字段仅 limit 类存在（映射器填充）。 */
+  /** 以下四字段仅 limit 类存在（映射器填充）。 */
   limitValue: number | null;
   usageValue: number | null;
+  /** 用量标签（如「当前用户」）；照 V1 `getLicenseLimitUsageLabel`。 */
+  usageLabel: string | null;
   unlimited: boolean;
   exhausted: boolean;
 }
