@@ -1,4 +1,4 @@
-## [0.1.7] - 2026-09-23
+## [0.2.8] - 2026-09-23
 
 **本版提交**：2 个 ｜ **改动**：6 files changed, 1245 insertions(+), 996 deletions(-)
 
@@ -19,7 +19,7 @@
 
 ### 相对上版
 
-- 上版 tag：v0.1.6
+- 上版 tag：v0.2.7
 - 6 files changed, 1245 insertions(+), 996 deletions(-)
 
 ### 验证
@@ -49,12 +49,12 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
-## [0.1.6] - 2026-09-23
+## [0.2.7] - 2026-09-23
 
 **本版提交**：1 个 ｜ **改动**：5 files changed, 259 insertions(+)
 
@@ -66,7 +66,7 @@
 
 ### 相对上版
 
-- 上版 tag：v0.1.5
+- 上版 tag：v0.2.6
 - 5 files changed, 259 insertions(+)
 
 ### 验证
@@ -96,12 +96,12 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
-## [0.1.5] - 2026-09-23
+## [0.2.6] - 2026-09-23
 
 **本版提交**：1 个 ｜ **改动**：8 files changed, 273 insertions(+), 13 deletions(-)
 
@@ -113,7 +113,7 @@
 
 ### 相对上版
 
-- 上版 tag：v0.1.4
+- 上版 tag：v0.2.5
 - 8 files changed, 273 insertions(+), 13 deletions(-)
 
 ### 验证
@@ -143,12 +143,12 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
-## [0.1.4] - 2026-09-23
+## [0.2.5] - 2026-09-23
 
 **本版提交**：1 个 ｜ **改动**：2 files changed, 10 insertions(+), 15 deletions(-)
 
@@ -160,7 +160,7 @@
 
 ### 相对上版
 
-- 上版 tag：v0.1.3
+- 上版 tag：v0.2.4
 - 2 files changed, 10 insertions(+), 15 deletions(-)
 
 ### 验证
@@ -190,12 +190,12 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
-## [0.1.3] - 2026-09-23
+## [0.2.4] - 2026-09-23
 
 **本版提交**：1 个 ｜ **改动**：2 files changed, 25 insertions(+), 2 deletions(-)
 
@@ -207,7 +207,7 @@
 
 ### 相对上版
 
-- 上版 tag：v0.1.2
+- 上版 tag：v0.2.3
 - 2 files changed, 25 insertions(+), 2 deletions(-)
 
 ### 验证
@@ -237,12 +237,12 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
-## [0.1.2] - 2026-09-23
+## [0.2.3] - 2026-09-23
 
 **本版提交**：1 个 ｜ **改动**：13 files changed, 556 insertions(+), 5 deletions(-)
 
@@ -258,7 +258,7 @@
 
 ### 相对上版
 
-- 上版 tag：v0.1.1
+- 上版 tag：v0.2.2
 - 13 files changed, 556 insertions(+), 5 deletions(-)
 
 ### 验证
@@ -288,12 +288,12 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
-## [0.1.1] - 2026-09-23
+## [0.2.2] - 2026-09-23
 
 **本版提交**：1 个 ｜ **改动**：3 files changed, 182 insertions(+), 9 deletions(-)
 
@@ -305,7 +305,7 @@
 
 ### 相对上版
 
-- 上版 tag：v0.1.0
+- 上版 tag：v0.2.1
 - 3 files changed, 182 insertions(+), 9 deletions(-)
 
 ### 验证
@@ -335,12 +335,12 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
-## [0.1.0] - 2026-09-23
+## [0.2.1] - 2026-09-23
 
 **本版提交**：257 个 ｜ **改动**：257 个提交（首个版本，无上版对照）
 
@@ -360,7 +360,7 @@
 - feat(pan115): 分享下载预览/分享项浏览/同步 UI 接入（FE-PARITY-PAN115-SHARE）（`8042ff7`）
 - feat(mounts): 批量刷新异常挂载按钮 + 危险闸 confirmed=true（FE-PARITY-MOUNTS-REFRESH）（`782cb3c`）
 - feat(media-items): 详情补全 visibility/manual-match/identify/provider-search（FE-PARITY-MEDIA-ITEMS-DETAIL）（`37e5c72`）
-- …另有 189 条（完整：`git log --oneline ..v0.1.0`）
+- …另有 189 条（完整：`git log --oneline ..v0.2.1`）
 
 #### shared（契约/域映射/组件）（174）
 
@@ -376,7 +376,7 @@
 - feat(upstreams): 采集与同步 UI 接入（FE-PARITY-UPSTREAMS-SYNC）（`a6ee5a5`）
 - feat(pan115): 分享下载预览/分享项浏览/同步 UI 接入（FE-PARITY-PAN115-SHARE）（`8042ff7`）
 - feat(mounts): 批量刷新异常挂载按钮 + 危险闸 confirmed=true（FE-PARITY-MOUNTS-REFRESH）（`782cb3c`）
-- …另有 162 条（完整：`git log --oneline ..v0.1.0`）
+- …另有 162 条（完整：`git log --oneline ..v0.2.1`）
 
 #### themes（主题）（114）
 
@@ -392,7 +392,7 @@
 - chore(release): v0.1.109 版本号统一升版（8 文件）+ CHANGELOG（ADR-001 阶段 C 完结：WEB-GOV/C2/PERF-01/D1/FIX-02/P7-05R1 六卡）（`8e1dad1`）
 - WEB-PERF-01: L3 主题首屏性能与产物隔离（`b9933ab`）
 - feat(WEB-C2): darkroom browse.library L3 skin - Kodi-style rearrangement proof（`c90c990`）
-- …另有 102 条（完整：`git log --oneline ..v0.1.0`）
+- …另有 102 条（完整：`git log --oneline ..v0.2.1`）
 
 #### docs（文档/证据）（51）
 
@@ -408,7 +408,7 @@
 - chore(evidence): 刷新 fe-opt-03 逐页报告（最终全量跑产物）（`b5ae422`）
 - docs(FE-OPT-03-ROUND2): handoff —— 已存在/新增/诚实边界/未做项（`1a1f47e`）
 - feat(a11y): 逐页 a11y 报告（playwright 内建 ariaSnapshot，不引 axe）（`4649ba7`）
-- …另有 39 条（完整：`git log --oneline ..v0.1.0`）
+- …另有 39 条（完整：`git log --oneline ..v0.2.1`）
 
 #### 其它（20）
 
@@ -424,7 +424,7 @@
 - feat(version): 四层独立版本 + 契约对齐 + 主题 JS/TS 支持（用户裁定）（`b970f6f`）
 - chore(release): v0.1.110 版本对齐后端 + 构建产物 gitignore（tsbuildinfo）（`e56aa4b`）
 - THEME-BUILD-01: 主题独立产物构建链（L3 外挂命门收口）（`39e001e`）
-- …另有 8 条（完整：`git log --oneline ..v0.1.0`）
+- …另有 8 条（完整：`git log --oneline ..v0.2.1`）
 
 #### scripts（门禁/工具）（15）
 
@@ -440,7 +440,7 @@
 - feat(version): 四层独立版本 + 契约对齐 + 主题 JS/TS 支持（用户裁定）（`b970f6f`）
 - THEME-BUILD-01: 主题独立产物构建链（L3 外挂命门收口）（`39e001e`）
 - fix(theme-gate): 体量红线改为质量门禁（用户裁定）（`f4368dd`）
-- …另有 3 条（完整：`git log --oneline ..v0.1.0`）
+- …另有 3 条（完整：`git log --oneline ..v0.2.1`）
 
 ### 相对上版
 
@@ -474,8 +474,8 @@
 
 ## 欠账
 
-- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.1.0）——
-  本版是首个正式版本，历史提交一次性归入 `0.1.0`。之后应**每次合并一批就发一版**。
+- 前端仓在此之前**完全没有版本链**（0 tag / 无 CHANGELOG，package.json 停在 0.2.1）——
+  本版是首个正式版本，历史提交一次性归入 `0.2.1`。之后应**每次合并一批就发一版**。
 - `docs/evidence-policy.md` 的二进制预算闸已接 `pnpm verify`；后续新增截图证据注意预算。
 
 
