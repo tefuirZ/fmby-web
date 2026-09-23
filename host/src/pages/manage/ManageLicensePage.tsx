@@ -1,181 +1,66 @@
-import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  licenseApi,
-  licensePollStatuses,
-  licenseRuntimeStates,
-  licenseRuntimeTones,
-} from '@fmby/v2-shared/contracts/manage/license';
-import type { LicenseStatusRecord } from '@fmby/v2-shared/contracts/manage/license';
-import {
-  FeedbackState,
-  InlineBanner,
-  SensitiveActionDialog,
-  StatusBadge,
-  useToast,
-} from '@fmby/v2-shared/ui';
+/**
+ * 授权与订阅管理页（W5-G 卡②：照 V1 `pages/manage/license/ManageLicensePage.tsx` 对位）。
+ *
+ * 消费 5 条真实后端端点（GET status / POST device-flow / device-flow/poll /
+ * activation-token / heartbeat），不再走「后端尚未提供」的陈旧兜底面板。
+ * 组件拆分为 LicenseStatusOverview / DeviceFlowCard / ActivationTokenCard /
+ * LeaseDetailsCard / EntitlementsCard，交互模型照 V1。
+ */
+
+import { useState } from 'react';
+import { BadgeCheck, KeyRound, ReceiptText } from 'lucide-react';
+import type { LicensePollStatus } from '@fmby/v2-shared/contracts/manage/license';
+import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
-import { isApiError } from '@fmby/v2-shared/types';
-import { queryKeys } from '@fmby/v2-shared/query';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import styles from './longtail-shared/ManageShared.module.css';
-
-/** 时间字段为 epoch 毫秒；空/非法统一返回 '—'。 */
-function formatEpochMs(value: number | null | undefined): string {
-  if (!value || !Number.isFinite(value) || value <= 0) {
-    return '—';
-  }
-  return new Date(value).toLocaleString('zh-CN', { hour12: false });
-}
-
-/** 复制到剪贴板：https 安全上下文用异步 API；http/非安全上下文回退到临时 textarea。 */
-async function copyToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand('copy');
-  document.body.removeChild(textarea);
-}
-
-/**
- * 授权与订阅管理页。
- *
- * 后端端点由 D 卡按本页契约实现；在本卡交付时后端尚不存在，因此页面以
- * fail-closed 引导态呈现（API 404/无法连通）而非崩溃——契约层在此冻结，
- * 页面据此先行落地。UI 仅为毛坯，后续按预期打磨。
- */
-import { LicenseUnwiredPanel } from './license/LicenseUnwiredPanel';
+import {
+  ActivationTokenCard,
+  DeviceFlowCard,
+  EntitlementsCard,
+  LeaseDetailsCard,
+  LicenseStatusOverview,
+} from './license/components';
+import { useLicenseStatusQuery } from './license/hooks/useLicenseQueries';
+import { useLicenseMutations } from './license/hooks/useLicenseMutations';
+import { useLicenseDeviceFlowPolling } from './license/hooks/useLicenseDeviceFlowPolling';
+import type { ManageLicenseActivationTokenForm } from './license/schemas';
 
 export function ManageLicensePage() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [activationToken, setActivationToken] = useState('');
-  const [activationOpen, setActivationOpen] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const statusQuery = useLicenseStatusQuery();
+  const [autoPolling, setAutoPolling] = useState(true);
+  const [lastPollStatus, setLastPollStatus] = useState<LicensePollStatus | null>(null);
+  const [activationSuccessSerial, setActivationSuccessSerial] = useState(0);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const statusQuery = useQuery({
-    queryKey: queryKeys.manage.license.status(),
-    queryFn: async () => {
-      try {
-        return await licenseApi.getStatus();
-      } catch (err) {
-        // 后端未装配（端点不存在）时，fail-closed 呈现引导态而非让页面崩溃。
-        if (isApiError(err) && err.code === 'NOT_FOUND') return null;
-        throw err;
-      }
-    },
-    staleTime: 15_000,
+  const {
+    startDeviceFlowMutation,
+    pollDeviceFlowMutation,
+    activateWithTokenMutation,
+    heartbeatMutation,
+  } = useLicenseMutations({ onDeviceFlowPoll: setLastPollStatus });
+
+  useLicenseDeviceFlowPolling({
+    status: statusQuery.data,
+    enabled: autoPolling,
+    pollMutation: pollDeviceFlowMutation,
   });
-
-  const refreshStatus = () => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.manage.license.status() });
-  };
-
-  const startMutation = useMutation({
-    mutationFn: () => licenseApi.startDeviceFlow(),
-    onSuccess: (res) => {
-      applyActionResult(res.status);
-      toast.success({ title: '设备流已发起', description: '请在授权页面确认后回来轮询结果。' });
-    },
-    onError: (err) => {
-      setActionError(getErrorMessage(err));
-    },
-  });
-
-  const pollMutation = useMutation({
-    mutationFn: () => licenseApi.pollDeviceFlow(),
-    onSuccess: (res) => {
-      applyActionResult(res.status);
-      const label = licensePollStatuses[res.pollStatus] ?? res.pollStatus;
-      toast[res.pollStatus === 'authorized' ? 'success' : 'info']({
-        title: '设备流轮询结果',
-        description: label,
-      });
-    },
-    onError: (err) => {
-      setActionError(getErrorMessage(err));
-    },
-  });
-
-  const activateMutation = useMutation({
-    mutationFn: () => licenseApi.activateWithToken({ activationToken }),
-    onSuccess: (res) => {
-      applyActionResult(res.status);
-      setActivationOpen(false);
-      setActivationToken('');
-      toast.success({ title: '激活凭据已换取授权', description: '授权状态已刷新。' });
-    },
-    onError: (err) => {
-      setActionError(getErrorMessage(err));
-    },
-  });
-
-  const heartbeatMutation = useMutation({
-    mutationFn: () => licenseApi.heartbeat(),
-    onSuccess: (res) => {
-      applyActionResult(res.status);
-      toast.success({ title: '手动心跳已完成', description: '授权租约已续期。' });
-    },
-    onError: (err) => {
-      setActionError(getErrorMessage(err));
-    },
-  });
-
-  /** 写操作返回的 status 与查询结果合并展示，并让查询失效以同步缓存。 */
-  const applyActionResult = (status: LicenseStatusRecord) => {
-    queryClient.setQueryData(queryKeys.manage.license.status(), status);
-    refreshStatus();
-  };
-
-  // 设备流自动轮询：仅在存在 deviceFlow 且授权未进入 active 时推进；
-  // 一旦 active，后续状态靠查询失效刷新，避免无限自轮询。
-  const busy = startMutation.isPending || pollMutation.isPending || activateMutation.isPending || heartbeatMutation.isPending;
-  const timers = useRef<number[]>([]);
-  useEffect(() => {
-    if (
-      busy ||
-      statusQuery.isPending ||
-      statusQuery.isError ||
-      !statusQuery.data?.deviceFlow ||
-      statusQuery.data.runtimeState === 'active'
-    ) {
-      return;
-    }
-    const deviceFlow = statusQuery.data.deviceFlow;
-    const pollIntervalMs = Math.max(3, deviceFlow.pollIntervalSecs ?? 5) * 1000;
-    const timer = window.setTimeout(() => {
-      pollMutation.mutate();
-    }, pollIntervalMs);
-    timers.current.push(timer);
-    return () => {
-      for (const t of timers.current) window.clearTimeout(t);
-      timers.current = [];
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusQuery.data, busy, statusQuery.isPending, statusQuery.isError]);
 
   if (statusQuery.isPending) {
     return (
       <FeedbackState
         variant="loading"
-        title="正在读取授权状态"
-        description="正在获取实例激活、租约和授权服务信息。"
+        title="正在加载授权状态"
+        description="正在读取本机实例身份、SignedLease 和最近心跳记录。"
       />
     );
   }
 
-  if (statusQuery.isError) {
+  if (statusQuery.isError || !statusQuery.data) {
     return (
       <FeedbackState
         variant="error"
-        title="授权状态读取失败"
+        title="授权状态加载失败"
         description={getErrorMessage(statusQuery.error)}
         action={
           <button className={styles.primaryButton} type="button" onClick={() => statusQuery.refetch()}>
@@ -188,199 +73,118 @@ export function ManageLicensePage() {
 
   const status = statusQuery.data;
 
-  // 后端尚未装配（或返回空）→ fail-closed 引导态。
-  if (!status) {
-    return <LicenseUnwiredPanel onRetry={() => statusQuery.refetch()} />;
+  function activateWithToken(value: ManageLicenseActivationTokenForm) {
+    setSuccessMessage(null);
+    activateWithTokenMutation.mutate(value, {
+      onSuccess: () => {
+        setActivationSuccessSerial(Date.now());
+        setSuccessMessage('activation token 已换取新的 SignedLease。');
+      },
+    });
   }
-
-  const runtimeLabel = licenseRuntimeStates[status.runtimeState] ?? status.runtimeState;
-  const runtimeTone = licenseRuntimeTones[status.runtimeState] ?? 'neutral';
 
   return (
     <div className={styles.page}>
       <ManagePageHeader
         title="授权与订阅"
-        description="查看实例授权状态、租约与心跳，发起设备流或一次性凭据激活。"
+        description="集中处理 FMBY 客户端实例激活、Device Flow 轮询、SignedLease 状态、能力与限制观测。"
+        meta={
+          <>
+            <span className={styles.metaText}>实例：{status.instanceId ?? '尚未生成'}</span>
+            <span className={styles.metaText}>Lease：{status.leaseId ?? '未签发'}</span>
+          </>
+        }
         actions={
-          <button className={styles.secondaryButton} type="button" onClick={refreshStatus}>
+          <button className={styles.secondaryButton} type="button" onClick={() => statusQuery.refetch()}>
             刷新状态
           </button>
         }
       />
 
-      {actionError ? (
-        <InlineBanner variant="error" title="授权操作失败" description={actionError} />
+      {successMessage ? (
+        <InlineBanner
+          variant="success"
+          title={successMessage}
+          description="页面已使用服务端返回的授权状态更新本地视图。"
+        />
       ) : null}
 
-      <ManageSectionCard title="授权状态" description="实例激活、业务访问与租约信息。">
-        <div className={styles.metricsGrid}>
-          <div className={styles.metricCard}>
-            <div className={styles.metricValue}>
-              <StatusBadge label={runtimeLabel} variant={runtimeTone} />
-            </div>
-            <div className={styles.metricLabel}>运行态</div>
-          </div>
-          <div className={styles.metricCard}>
-            <div className={styles.metricValue}>
-              <StatusBadge
-                label={status.businessAccessAllowed ? '允许' : '阻断'}
-                variant={status.businessAccessAllowed ? 'success' : 'danger'}
-              />
-            </div>
-            <div className={styles.metricLabel}>业务访问</div>
-          </div>
-          <div className={styles.metricCard}>
-            <div className={styles.metricValue}>
-              <StatusBadge
-                label={status.realtimeEnabled ? (status.realtimeStatus ?? '未知') : '未启用'}
-                variant={status.realtimeEnabled ? 'info' : 'neutral'}
-              />
-            </div>
-            <div className={styles.metricLabel}>实时连接</div>
-          </div>
-          <div className={styles.metricCard}>
-            <div className={styles.metricValue}>{status.summary.plan.label}</div>
-            <div className={styles.metricLabel}>当前套餐</div>
-          </div>
-        </div>
-
-        <div className={styles.fieldRow} style={{ marginTop: 16 }}>
-          <div className={styles.stackText}>
-            <span className={styles.mutedText}>授权服务</span>
-            <span>{status.serverBaseUrl}</span>
-          </div>
-          <div className={styles.stackText}>
-            <span className={styles.mutedText}>产品 / 租约</span>
-            <span>
-              {status.productCode ?? '未记录'} · {status.leaseId ? status.leaseId.slice(0, 8) : '未记录'}
-            </span>
-          </div>
-          <div className={styles.stackText}>
-            <span className={styles.mutedText}>生效 / 过期</span>
-            <span>
-              {formatEpochMs(status.notBefore)} — {formatEpochMs(status.expiresAt)}
-            </span>
-          </div>
-          <div className={styles.stackText}>
-            <span className={styles.mutedText}>下次心跳</span>
-            <span>{formatEpochMs(status.nextHeartbeatAt)}</span>
-          </div>
-        </div>
-
-        <div className={styles.rowActions} style={{ marginTop: 16 }}>
-          <button
-            className={styles.primaryButton}
-            type="button"
-            disabled={busy}
-            onClick={() => heartbeatMutation.mutate()}
-          >
-            手动心跳
-          </button>
-        </div>
+      <ManageSectionCard title="授权状态" description="实例激活、业务访问、租约与实时控制通道。">
+        <LicenseStatusOverview
+          status={status}
+          heartbeatPending={heartbeatMutation.isPending}
+          heartbeatError={heartbeatMutation.error}
+          onHeartbeat={() => {
+            setSuccessMessage(null);
+            heartbeatMutation.mutate(undefined, {
+              onSuccess: () => setSuccessMessage('手动心跳已完成。'),
+            });
+          }}
+        />
       </ManageSectionCard>
 
-      <ManageSectionCard title="设备流激活" description="打开授权页面、确认用户码后轮询结果。">
-        {status.deviceFlow ? (
-          <div className={styles.stackText}>
-            <div className={styles.fieldRow}>
-              <div className={styles.stackText}>
-                <span className={styles.mutedText}>用户码</span>
-                <div className={styles.rowActions}>
-                  <span>{status.deviceFlow.userCode}</span>
-                  <button
-                    className={styles.smallButton}
-                    type="button"
-                    onClick={() =>
-                      void copyToClipboard(status.deviceFlow!.userCode)
-                        .then(() => toast.success({ title: '用户码已复制' }))
-                        .catch(() => setActionError('复制失败，请手动选择文本。'))
-                    }
-                  >
-                    复制
-                  </button>
-                </div>
-              </div>
-              <div className={styles.stackText}>
-                <span className={styles.mutedText}>过期时间</span>
-                <span>{formatEpochMs(status.deviceFlow.expiresAt)}</span>
-              </div>
-            </div>
-            <div className={styles.stackText}>
-              <span className={styles.mutedText}>授权地址</span>
-              <div className={styles.rowActions}>
-                <span>{status.deviceFlow.verificationUriComplete ?? status.deviceFlow.verificationUri}</span>
-                <button
-                  className={styles.smallButton}
-                  type="button"
-                  onClick={() =>
-                    void copyToClipboard(status.deviceFlow!.verificationUriComplete ?? status.deviceFlow!.verificationUri)
-                      .then(() => toast.success({ title: '授权地址已复制' }))
-                      .catch(() => setActionError('复制失败，请手动选择文本。'))
+      <div className={styles.twoColumn}>
+        <ManageSectionCard
+          title="Device Flow"
+          description="面向交互式管理员授权。发起后可自动轮询，也可手动轮询一次。"
+          actions={<BadgeCheck size={18} />}
+        >
+          <DeviceFlowCard
+            status={status}
+            lastPollStatus={lastPollStatus}
+            autoPolling={autoPolling}
+            startPending={startDeviceFlowMutation.isPending}
+            pollPending={pollDeviceFlowMutation.isPending}
+            startError={startDeviceFlowMutation.error}
+            pollError={pollDeviceFlowMutation.error}
+            onAutoPollingChange={setAutoPolling}
+            onStart={() => {
+              setSuccessMessage(null);
+              startDeviceFlowMutation.mutate(undefined, {
+                onSuccess: () => setSuccessMessage('Device Flow 已发起。'),
+              });
+            }}
+            onPoll={() => {
+              setSuccessMessage(null);
+              pollDeviceFlowMutation.mutate(undefined, {
+                onSuccess: (result) => {
+                  if (result.pollStatus === 'authorized') {
+                    setSuccessMessage('Device Flow 已完成授权。');
                   }
-                >
-                  复制
-                </button>
-              </div>
-            </div>
-            <div className={styles.rowActions}>
-              <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => pollMutation.mutate()}>
-                轮询一次
-              </button>
-              <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => startMutation.mutate()}>
-                重新生成
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={styles.emptyInlineState}>
-            <button className={styles.primaryButton} type="button" disabled={busy} onClick={() => startMutation.mutate()}>
-              发起设备流
-            </button>
-            <p className={styles.mutedText} style={{ marginTop: 8 }}>
-              生成授权地址后，在授权页面确认用户码即可完成激活。
-            </p>
-          </div>
-        )}
-      </ManageSectionCard>
+                },
+              });
+            }}
+          />
+        </ManageSectionCard>
 
-      <ManageSectionCard title="兑换码激活" description="粘贴授权门户返回的一次性凭据以换取授权租约。">
-        <div className={styles.fieldRow}>
-          <button className={styles.secondaryButton} type="button" onClick={() => setActivationOpen(true)}>
-            输入激活凭据
-          </button>
-        </div>
-      </ManageSectionCard>
+        <ManageSectionCard
+          title="Activation Token"
+          description="面向复制粘贴、自动部署或门户兑换后的直接激活路径。"
+          actions={<KeyRound size={18} />}
+        >
+          <ActivationTokenCard
+            pending={activateWithTokenMutation.isPending}
+            error={activateWithTokenMutation.error}
+            successSerial={activationSuccessSerial}
+            onSubmit={activateWithToken}
+          />
+        </ManageSectionCard>
+      </div>
 
-      <SensitiveActionDialog
-        open={activationOpen}
-        actionKey="activate-license-token"
-        title="激活授权凭据"
-        description="将一次性激活凭据提交到授权服务以换取新的授权租约。"
-        impact={['该操作会更新当前实例的授权凭据。']}
-        errorMessage={activateMutation.isError ? getErrorMessage(activateMutation.error) : undefined}
-        confirmLabel="确认激活"
-        pending={activateMutation.isPending}
-        onOpenChange={(open) => {
-          if (!open && !activateMutation.isPending) {
-            setActivationOpen(false);
-          }
-        }}
-        onConfirm={() => activateMutation.mutate()}
+      <ManageSectionCard
+        title="SignedLease 摘要"
+        description="这里只展示客户端已验证并持久化的签名 lease 关键字段，不展示服务端套餐或售卖语义。"
+        actions={<ReceiptText size={18} />}
       >
-        <div className={styles.fieldGroup}>
-          <label className={styles.label}>
-            一次性激活凭据
-            <input
-              className={styles.input}
-              type="password"
-              autoComplete="off"
-              value={activationToken}
-              onChange={(e) => setActivationToken(e.target.value)}
-              placeholder="粘贴授权门户生成的一次性凭据"
-            />
-          </label>
-        </div>
-      </SensitiveActionDialog>
+        <LeaseDetailsCard status={status} />
+      </ManageSectionCard>
+
+      <ManageSectionCard
+        title="能力、限制与策略"
+        description="授权页主视图改展示服务端 summary 的套餐、用户额度和能力摘要；原始 entitlement 保留在状态里供诊断。"
+      >
+        <EntitlementsCard status={status} />
+      </ManageSectionCard>
     </div>
   );
 }
