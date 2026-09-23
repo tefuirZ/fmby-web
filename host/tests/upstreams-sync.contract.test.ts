@@ -188,3 +188,23 @@ test('⑩ fail-closed：端口未装配 500 必须 reject（不吞成空）', as
   setResponse({ error_code: 'INTERNAL', message: 'upstream_sync 端口未装配' }, 500);
   await assert.rejects(() => upstreamsApi.listSyncJobs('1'));
 });
+test('⑪ getSyncJob → GET /api/manage/upstreams/{id}/sync-jobs/{job_id}（ID 均 URL 编码）', async () => {
+  installFetchStub();
+  setResponse(JOB);
+  const r = await upstreamsApi.getSyncJob('1', '600');
+  assert.equal(captured.method, 'GET');
+  assert.equal(captured.url, '/api/manage/upstreams/1/sync-jobs/600');
+  assert.equal(r.id, '600');
+  assert.equal(r.jobKind, 'EmbyImport');
+  assert.equal(r.sourceId, '1');
+  assert.equal(r.status, 'Pending');
+});
+
+test('⑫ getSyncJob → 500（端口未装配）必须 reject，不吞成空作业', async () => {
+  installFetchStub();
+  setResponse({ error: 'sync port unassembled' }, 500);
+  await assert.rejects(
+    () => upstreamsApi.getSyncJob('1', '600'),
+    (err: { status?: number }) => err.status === 500,
+  );
+});

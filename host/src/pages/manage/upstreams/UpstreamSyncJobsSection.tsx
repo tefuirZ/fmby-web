@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   upstreamsApi,
@@ -9,9 +10,30 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { getManageStatusVariant } from '@/pages/manage/longtail-shared/components';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 
-function JobRow({ job }: { job: UpstreamSyncJob }) {
+function JobRow({
+  job,
+  onSelect,
+  selected,
+}: {
+  job: UpstreamSyncJob;
+  onSelect: () => void;
+  selected: boolean;
+}) {
   return (
-    <tr>
+    <tr
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      aria-label={`查看同步作业 ${job.id} 详情`}
+      className={styles.clickableRow}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+    >
       <td className={styles.cellText}>{job.jobKind}</td>
       <td>
         <StatusBadge label={job.status} variant={getManageStatusVariant(job.status)} />
@@ -30,6 +52,7 @@ function JobRow({ job }: { job: UpstreamSyncJob }) {
  */
 export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
   const queryClient = useQueryClient();
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const syncJobsQuery = useQuery({
     queryKey: queryKeys.manage.upstreams.syncJobs(sourceId),
@@ -41,6 +64,13 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
     queryKey: queryKeys.manage.upstreams.embyImportJobs(sourceId),
     queryFn: () => upstreamsApi.listEmbyImportJobs(sourceId),
     staleTime: 10_000,
+  });
+
+  // W5-D：单个同步作业详情（list 接好了，但 getSyncJob 一直没接 UI → 补真缺口）
+  const selectedJobQuery = useQuery({
+    queryKey: queryKeys.manage.upstreams.syncJob(sourceId, selectedJobId ?? ''),
+    queryFn: () => upstreamsApi.getSyncJob(sourceId, selectedJobId as string),
+    enabled: selectedJobId !== null,
   });
 
   const refresh = () => {
@@ -115,7 +145,12 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
               </thead>
               <tbody>
                 {syncJobs.map((j) => (
-                  <JobRow key={j.id} job={j} />
+                  <JobRow
+                    key={j.id}
+                    job={j}
+                    selected={selectedJobId === j.id}
+                    onSelect={() => setSelectedJobId(j.id)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -138,13 +173,84 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
               </thead>
               <tbody>
                 {importJobs.map((j) => (
-                  <JobRow key={j.id} job={j} />
+                  <JobRow
+                    key={j.id}
+                    job={j}
+                    selected={selectedJobId === j.id}
+                    onSelect={() => setSelectedJobId(j.id)}
+                  />
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </section>
+
+      {selectedJobId ? (
+        <section className={styles.sectionCard}>
+          <div className={styles.sectionHeader}>
+            <div className={styles.headerContent}>
+              <h2 className={styles.sectionTitle}>作业详情（{selectedJobId}）</h2>
+            </div>
+            <div className={styles.headerActions}>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                onClick={() => setSelectedJobId(null)}
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+          <JobDetail jobId={selectedJobId} query={selectedJobQuery} />
+        </section>
+      ) : null}
     </>
+  );
+}
+
+function JobDetail({
+  jobId,
+  query,
+}: {
+  jobId: string;
+  query: ReturnType<typeof useQuery<UpstreamSyncJob>>;
+}) {
+  if (query.isPending) {
+    return <FeedbackState variant="loading" title="正在加载作业详情" description={`作业 ${jobId}`} />;
+  }
+  if (query.isError) {
+    return (
+      <FeedbackState
+        variant="error"
+        title="作业详情加载失败"
+        description={getErrorMessage(query.error)}
+      />
+    );
+  }
+  const job = query.data;
+  if (!job) {
+    return <div className={styles.emptyInlineState}>无作业详情。</div>;
+  }
+  return (
+    <dl className={styles.detailList}>
+      <DetailItem label="作业 ID" value={String(job.id)} />
+      <DetailItem label="类型" value={job.jobKind} />
+      <DetailItem label="状态" value={job.status} />
+      <DetailItem label="重试次数" value={`${job.attemptCount}/${job.maxAttempts}`} />
+      <DetailItem label="源 ID" value={job.sourceId} />
+      <DetailItem label="最近错误" value={job.lastErrorMessage ?? '—'} />
+      <DetailItem label="开始时间" value={job.startedAt != null ? String(job.startedAt) : '—'} />
+      <DetailItem label="结束时间" value={job.finishedAt != null ? String(job.finishedAt) : '—'} />
+    </dl>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.detailRow}>
+      <dt className={styles.detailLabel}>{label}</dt>
+      <dd className={styles.detailValue}>{value}</dd>
+    </div>
   );
 }
