@@ -990,3 +990,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:hover {
+  background-color: var(--surface-hover, rgba(255, 255, 255, 0.06));
+}
+
+.clickableRow:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: -2px;
+}
+
+.detailList {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.detailRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.detailLabel {
+  margin: 0;
+  color: var(--text-muted, #9aa0a6);
+  font-size: 13px;
+}
+
+.detailValue {
+  margin: 0;
+  word-break: break-all;
+}
