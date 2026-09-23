@@ -53,7 +53,8 @@ const commits = sh("git", ["log", "--no-merges", "--pretty=format:%h%x09%s", las
 // ── 1) 升位
 const feats = commits.filter((c) => /^feat(\(|:)/.test(c.subject)).length;
 let bump = BUMP;
-if (bump === "auto") bump = feats > 0 ? "minor" : "patch";
+// auto = patch（用户 2026-09-23 裁定：0.1.* 一直迭代，只递增最后一位；里程碑手工 --bump minor/major）
+if (bump === "auto") bump = "patch";
 const [maj, min, pat] = curVer.split(".").map(Number);
 const next = bump === "major" ? `${maj + 1}.0.0` : bump === "minor" ? `${maj}.${min + 1}.0` : `${maj}.${min}.${pat + 1}`;
 if (sh("git", ["tag", "--list", `v${next}`]).trim()) die(`tag v${next} 已存在，拒绝覆盖`);
