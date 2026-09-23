@@ -1027,3 +1027,9 @@
   margin: 0;
   word-break: break-all;
 }
+
+.actionGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
