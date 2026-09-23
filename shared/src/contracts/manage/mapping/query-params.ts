@@ -11,7 +11,6 @@ import {
   mapProbeTaskStatusToApi,
   mapRuntimeLogLevelToApi,
   mapScanStatusToApi,
-  mapScanTaskTypeToApi,
 } from "./shared";
 
 export function mapLibrariesQueryToParams(query?: ManageLibrariesQuery) {
@@ -57,7 +56,7 @@ export function mapScansQueryToParams(query?: ManageScansQuery) {
     page: query.page,
     pageSize: query.pageSize,
     status: query.status ? mapScanStatusToApi(query.status) : undefined,
-    taskType: query.taskType ? mapScanTaskTypeToApi(query.taskType) : undefined,
+    // ponytail: 不发 `taskType`（后端 fail-loud 400，见 ManageScansQuery 注释）。
     libraryId: query.libraryId,
     mountId: query.mountId,
     librarySourceId: query.librarySourceId,
