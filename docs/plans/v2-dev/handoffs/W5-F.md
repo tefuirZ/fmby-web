@@ -1,10 +1,13 @@
 # W5-F 交付说明
 
-仓库：`fmby-web-main`（分支 `w/zcode/writer1-w5f-artplayer-parity`）。判据：`pnpm verify` EXIT=0；host **299 pass / 0 fail**；shared 94 pass；component-size **0 违规**；零新依赖。
+仓库：`fmby-web-main`（分支 `w/zcode/writer1-w5f-artplayer-parity`）。
+提交：`0cce3e0`（①引擎默认）+ `0215157`（②handoff）。
+判据（当前分支 HEAD = `a051b7d`，主代理已按既有工作流把 W5-E 合入本分支）：`pnpm verify` EXIT=0；host **299 pass / 0 fail**；shared 94 pass；component-size **0 违规**；零新依赖。
+> 测试数归属：299 含随分支累积的 W5-E（+25）；**W5-F 自身增量 = +5**（`host/tests/player-config.test.ts`）。
 
 ---
 
-## ① 默认播放引擎改 ArtPlayer（commit 见 git log）
+## ① 默认播放引擎改 ArtPlayer（commit `0cce3e0`）
 
 - `host/src/features/player/playerConfig.ts:6`：`DEFAULT_PLAYER_ENGINE: PlayerEngineId = 'dplayer'` → `'artplayer'`（**只影响未设置时**）。
 - DPlayer **保留**：`PlayerEngineFactory.ts:7` 注册表 `dplayer: new DPlayerEngineAdapter()` 未动，仍可切换（`createPlayerEngine(opts, engineId)` / localStorage 偏好）。
