@@ -3,7 +3,9 @@ import type { PlayerEngineId } from './types';
 // 前缀必须与 manifest.localStorage_keys 声明一致，宿主按前缀回收本皮肤的本机偏好。
 export const PLAYER_ENGINE_STORAGE_KEY = 'darkroom:playerEngine';
 
-const DEFAULT_PLAYER_ENGINE: PlayerEngineId = 'dplayer';
+// ponytail: 默认引擎改 ArtPlayer（用户裁定）；只影响「未设置」时，已存本机偏好不变。
+// DPlayer 仍在 PlayerEngineFactory 注册表中，可切换，不删（红线）。
+const DEFAULT_PLAYER_ENGINE: PlayerEngineId = 'artplayer';
 
 export function isPlayerEngineId(value: unknown): value is PlayerEngineId {
   return value === 'dplayer' || value === 'artplayer';
