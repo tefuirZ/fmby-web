@@ -37,7 +37,7 @@ export function ManageSystemAboutPage() {
     return (
       <div className={styles.page}>
         <ManagePageHeader title="系统关于" description="版本、构建与运行依赖状态。" />
-        <ManageSectionCard title="加载中" description="正在探测版本与运行依赖。" />
+        <ManageSectionCard title="加载中" description="正在探测版本与运行依赖。" children={undefined} />
       </div>
     );
   }

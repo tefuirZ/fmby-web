@@ -334,9 +334,7 @@ export function ManageOverviewPage() {
               onRevokeSession={(sessionId) => revokeSessionMutation.mutate(sessionId)}
               isRevoking={revokeSessionMutation.isPending}
               isError={sessionsQuery.isError}
-              errorMessage={
-                sessionsQuery.isError ? getErrorMessage(sessionsQuery.error) : undefined
-              }
+              errorMessage={getErrorMessage(sessionsQuery.error)}
             />
 
             <RiskRadarPanel
