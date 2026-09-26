@@ -123,3 +123,24 @@
   host 注入的键（loaders.ts `{...navigation, refresh, loadMore}` / `{...navigation, retry, refresh}`）
   本就全在上述 5 键内；主题实际取用也仅这 5 键（扫描确认）。
 - 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0。
+
+## ④ FE-MOUNT-AGGREGATE —— **不做**（commit 5，卡面允许）
+
+- 依据（同第 0 步侦察表）：`host/src/pages/manage/mounts/formUtils.ts` 为 870 行、
+  **46 个顶层导出纯函数**，被 **22 个调用点**（21 个 mounts 组件/hook +
+  `ManageMountsPage.tsx` + `host/tests/mount-datasource-backfill.test.ts`）以函数级方式依赖。
+- 判定：把这 46 个自由函数收进 Mount 聚合根/类属**大范围行为风险重构**，对 P2 结构债 ROI 低，
+  且与本卡硬约束（每项最小改动 + `typecheck`/`build` rc=0 + 零行为变化）不相容。
+- 风险：强行做需同步改写 22 个调用点，回归面大、与其它在飞卡冲突概率高。
+- 结论：卡面明许「低收益/高风险可选不做」，故本项**不做**，仅登记依据供后续卡评估。
+
+---
+
+## 汇总
+
+| 项 | 结论 | commit |
+|---|---|---|
+| ① FE-API-AS-T | 做（可选 parse 校验槽 + 3 例测试） | `b703a22` |
+| ② FE-BARREL-CYCLE | 做（零依赖循环门禁 + 清零 4 条既有环 + 接 verify） | `4c85eb5` |
+| ③ FE-THEME-TYPE-ERASURE | 做（收紧 SkinActions；`data` 保留 + 依据） | `779f18d` |
+| ④ FE-MOUNT-AGGREGATE | 不做（低收益/高风险，依据已登记） | 本 commit |
