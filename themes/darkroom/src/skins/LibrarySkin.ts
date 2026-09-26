@@ -65,7 +65,7 @@ function FloatingActionBar(props: {
   isLive: boolean;
   lastRefreshedAt: number | null;
   canLoadMore: boolean;
-  onLoadMore: () => void;
+  onLoadMore?: () => void;
 }) {
   const { isLive, lastRefreshedAt, canLoadMore, onLoadMore } = props;
   const refreshed = lastRefreshedAt

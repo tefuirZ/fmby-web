@@ -61,7 +61,16 @@ export interface SkinRealtime {
  * - 移动端必须有：主题 skin 需含移动端布局（媒体查询/响应式，验收门禁人工核）。
  */
 export interface SkinProps {
-  /** 由 viewmodel 算好的视图数据（形状由各 domain 的 viewmodel 定义） */
+  /**
+   * 由 viewmodel 算好的视图数据（形状由各 domain 的 viewmodel 定义）。
+   *
+   * FE-MOD-P2-BATCH ③ FE-THEME-TYPE-ERASURE **有意保留 `unknown`**：主题仓
+   * （`themes/**`）禁止 import host/viewmodel/contracts 类型（`check-frontend-dupes`
+   * 主题纯度闸），若在此收紧成具体 viewmodel 类型，会把主题与 host 类型强耦合、
+   * 破坏 L3 解耦。故边界形态 = host 注入 `unknown`，主题在**自持的最小形状**上做
+   * 运行时守卫（如 `darkroom` 的 `asItemData`/`asLibraryData`），这是契约指定的
+   * 消费方式，非类型擦除缺陷。
+   */
   data: unknown;
   /** 数据就绪态（四态全覆盖 + ready） */
   state: SkinState;
@@ -74,9 +83,12 @@ export interface SkinProps {
 /**
  * 皮肤动作面（`SkinProps.actions`）。
  *
- * 基座是开放式语义键表（`Record<string, (...args: never[]) => void>`）——
- * 各域 viewmodel 的动作经 host 桥接注入，主题按需取用；host 未注入的键为
- * `undefined`，主题必须以 `?.` / `typeof === 'function'` 守卫（向后兼容）。
+ * FE-MOD-P2-BATCH ③ FE-THEME-TYPE-ERASURE：此前基座是开放式索引签名
+ * `Record<string, (...args: never[]) => void>`——它把键名与参数类型同时擦平
+ * （主题拼错键名、传错参数都不报错）。现收紧为**显式可选语义键表**：每个键的
+ * 签名由 host 侧 viewmodel 的真实动作面钉死。全部键可选，host 未注入的键为
+ * `undefined`，主题仍以 `?.` / `typeof === 'function'` 守卫（向后兼容语义不变，
+ * 仅类型面收紧；新增语义键必须在此显式登记）。
  *
  * BUG-SKIN-NAV-01：显式登记**跨域通用导航语义键**——`openItem(id)`。此前
  * 主题只有 `refresh`/`loadMore`/`retry`，即使想渲染导航也无入口，导致
@@ -88,7 +100,7 @@ export interface SkinProps {
  * （`a[href^="/item/"]` ≥ 1）要求真实锚点。host 是唯一持有路由形态的一侧，
  * 故 href 也由 host 注入——主题不拼接路由字面量（保持禁路由纯度）。
  */
-export type SkinActions = Record<string, (...args: never[]) => void> & {
+export interface SkinActions {
   /**
    * 打开条目详情（host 注入 `navigate(\`/item/${id}\`)`；主题不得自建路由）。
    *
@@ -102,7 +114,13 @@ export type SkinActions = Record<string, (...args: never[]) => void> & {
    * 做 SPA 导航（preventDefault）。缺少时主题退化为 `role=link` 锚点。
    */
   itemHref?: (id: string) => string;
-};
+  /** 重新拉取当前域数据（viewmodel `refresh: () => void`）。 */
+  refresh?: () => void;
+  /** 失败后重试（viewmodel `retry: () => void`）。 */
+  retry?: () => void;
+  /** 加载更多（viewmodel `loadMore: () => void`）。 */
+  loadMore?: () => void;
+}
 
 /** 主题导航贡献项（由 host 合并进全局导航） */
 export interface ThemeNavItem {

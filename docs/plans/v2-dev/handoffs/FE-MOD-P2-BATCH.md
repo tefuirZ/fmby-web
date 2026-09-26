@@ -106,3 +106,20 @@
   - GREEN：同命令 ⇒ `PASS(frontend-cycles)：638 个源文件依赖图无环`，`GATE_RC=0`。
   - 自测：`node scripts/check-frontend-cycles.mjs --selftest` ⇒ `SELFTEST PASSED`（相对环必检出 / 无环不误报 / `@/` 环必检出 / 跨包别名可解析），rc=0。
 - 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0（shared 104 / host 320 / themes 28）、`pnpm dupes` rc=0、`pnpm contracts` rc=0。
+
+## ③ FE-THEME-TYPE-ERASURE —— 部分做（commit 4）
+
+- `SkinActions`（`shared/src/theme/index.ts`）：由开放索引签名
+  `Record<string, (...args: never[]) => void> & { openItem?; itemHref? }` 收紧为
+  **显式可选接口** `{ openItem?; itemHref?; refresh?; retry?; loadMore? }`
+  （键与签名照 host viewmodel 真实动作面；均有文档）。
+- `data: unknown`：**有意保留**，补注释登记依据（主题禁止 import host/viewmodel
+  类型，收紧会破坏 L3 解耦；主题在自持最小形状上做运行时守卫是契约指定消费方式）。
+- **收紧真的咬住了一处隐患**：改后 typecheck 红
+  `themes/darkroom/src/skins/LibrarySkin.ts(249,7) error TS2769: Type '(() => void) | undefined' is not assignable to type '() => void'`
+  ——旧索引签名把 `actions.loadMore` 的 `undefined` 藏了；已将 `FloatingActionBar.onLoadMore`
+  改为可选（`onLoadMore?: () => void`，纯类型面；该按钮本就由 `canLoadMore` 守卫，运行期零变化）。修后 typecheck rc=0。
+- 为何不改变行为：仅类型面收紧；5 个键全可选 ⇒ 主题 `?.`/`typeof` 守卫语义不变；
+  host 注入的键（loaders.ts `{...navigation, refresh, loadMore}` / `{...navigation, retry, refresh}`）
+  本就全在上述 5 键内；主题实际取用也仅这 5 键（扫描确认）。
+- 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0。
