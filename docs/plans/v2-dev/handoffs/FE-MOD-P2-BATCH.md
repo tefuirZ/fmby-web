@@ -89,7 +89,8 @@
   - RED：`node --import ./tests/register-resolver.mjs --test tests/api-response-parse.test.ts` ⇒ `RED_RC=1`（① parse 被忽略、② 未 reject）。
   - GREEN：同命令 ⇒ `pass 3 / fail 0`，`GREEN_RC=0`。
 - 为何不改变行为：`parse` 未提供时 `raw as T` 与历史逐字等价；新增字段仅在调用方显式传入时生效；已从 `restConfig` 剔除避免传给 `fetch`。
-- 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0。
+- **棘轮收口**：首版使 `client.ts` 506→520 行，撞 `check-frontend-component-size`（存量只许降不许升）⇒ 压缩 `parse` doc/内联注释与 `httpClient` 的 `@example` 块，落回 **503 行**（↓3），棘轮 PASS。
+- 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0、`pnpm verify` rc=0。
 
 ## ② FE-BARREL-CYCLE —— 已做（commit 3）
 

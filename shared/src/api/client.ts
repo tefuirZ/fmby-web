@@ -102,16 +102,8 @@ export interface RequestConfig extends Omit<RequestInit, 'body' | 'signal'> {
   timeout?: number;
   /** 重试策略；未设置或 retries <= 0 时不重试 */
   retry?: RetryConfig;
-  /**
-   * 响应体解析/校验钩子（FE-MOD-P2-BATCH ① FE-API-AS-T）。
-   *
-   * 响应 JSON 解析为 `unknown` 后先经本函数，再作为 `T` 返回——调用方可在此
-   * 落地**运行时不变量校验**（如 zod `.parse`），校验失败直接抛错，避免
-   * `(await response.json()) as T` 的盲目类型断言把坏载荷静默当 T。
-   *
-   * 未提供时退化为历史行为（`raw as T`），零行为变更；`204`（无响应体）与
-   * 错误拦截器恢复值不经过本钩子。
-   */
+  /** 响应体解析/校验钩子（FE-API-AS-T）：JSON→unknown 后经此产出 T，可落地运行时
+   * 不变量校验（如 zod `.parse`，失败抛错）；未提供退化为历史 `raw as T`（零行为变更）。 */
   parse?: (raw: unknown) => unknown;
 }
 
@@ -395,8 +387,6 @@ async function executeOnce<T>(
       throw await mapResponseToApiError(response);
     }
     if (response.status === 204) return undefined as T;
-    // FE-API-AS-T：边界校验槽——提供 parse 时经它产出 T（运行时不变量），
-    // 未提供时退化为历史直断言。
     const raw: unknown = await response.json();
     return (parse ? parse(raw) : raw) as T;
   } catch (err) {
@@ -456,15 +446,8 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
 }
 
 /**
- * HTTP 客户端
- *
- * @example
- * ```ts
- * import { httpClient } from '@fmby/v2-shared/api/client';
- *
- * const user = await httpClient.get<User>('/api/users/me');
- * await httpClient.post('/api/auth/login', { body: { username, password } });
- * ```
+ * HTTP 客户端（用法：`await httpClient.get<User>('/api/users/me')`；写方法
+ * `await httpClient.post('/api/auth/login', { body: { username, password } })`）。
  */
 export const httpClient = {
   get<T>(path: string, config?: Omit<RequestConfig, 'body'>) {
