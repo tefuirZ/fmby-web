@@ -74,3 +74,19 @@
 2. `FE-BARREL-CYCLE`（加检测 + 修 2 条既有环）
 3. `FE-THEME-TYPE-ERASURE`（收紧 `SkinActions`；`data` 留注释依据）
 4. `FE-MOUNT-AGGREGATE`（**不做**，本文件已给依据）
+
+---
+
+# 执行记录
+
+## ① FE-API-AS-T —— 已做（commit 2）
+
+- 改动：`shared/src/api/client.ts`
+  - `RequestConfig` 增**可选** `parse?: (raw: unknown) => unknown`（运行时不变量校验槽）；
+  - `executeOnce` 解构出 `parse`（不泄漏进 `fetch` init），响应体路径改为 `(parse ? parse(raw) : raw) as T`；`204` 与错误恢复路径不经过钩子（保持原语义）。
+- 新增测试：`shared/tests/api-response-parse.test.ts`（3 例：① parse 产出 T；② 坏载荷 reject；③ 无 parse 历史行为不变）。
+- TDD 原文：
+  - RED：`node --import ./tests/register-resolver.mjs --test tests/api-response-parse.test.ts` ⇒ `RED_RC=1`（① parse 被忽略、② 未 reject）。
+  - GREEN：同命令 ⇒ `pass 3 / fail 0`，`GREEN_RC=0`。
+- 为何不改变行为：`parse` 未提供时 `raw as T` 与历史逐字等价；新增字段仅在调用方显式传入时生效；已从 `restConfig` 剔除避免传给 `fetch`。
+- 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0。

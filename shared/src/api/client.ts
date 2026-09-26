@@ -102,6 +102,17 @@ export interface RequestConfig extends Omit<RequestInit, 'body' | 'signal'> {
   timeout?: number;
   /** 重试策略；未设置或 retries <= 0 时不重试 */
   retry?: RetryConfig;
+  /**
+   * 响应体解析/校验钩子（FE-MOD-P2-BATCH ① FE-API-AS-T）。
+   *
+   * 响应 JSON 解析为 `unknown` 后先经本函数，再作为 `T` 返回——调用方可在此
+   * 落地**运行时不变量校验**（如 zod `.parse`），校验失败直接抛错，避免
+   * `(await response.json()) as T` 的盲目类型断言把坏载荷静默当 T。
+   *
+   * 未提供时退化为历史行为（`raw as T`），零行为变更；`204`（无响应体）与
+   * 错误拦截器恢复值不经过本钩子。
+   */
+  parse?: (raw: unknown) => unknown;
 }
 
 function isRawBodyInit(value: unknown): value is BodyInit {
@@ -317,7 +328,7 @@ async function executeOnce<T>(
   config: RequestConfig,
   externalSignal: AbortSignal | undefined,
 ): Promise<T> {
-  const { body, params, headers: customHeaders, timeout, signal: _s, retry: _r, ...restConfig } = config;
+  const { body, params, headers: customHeaders, timeout, signal: _s, retry: _r, parse, ...restConfig } = config;
   void _s;
   void _r;
 
@@ -384,7 +395,10 @@ async function executeOnce<T>(
       throw await mapResponseToApiError(response);
     }
     if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+    // FE-API-AS-T：边界校验槽——提供 parse 时经它产出 T（运行时不变量），
+    // 未提供时退化为历史直断言。
+    const raw: unknown = await response.json();
+    return (parse ? parse(raw) : raw) as T;
   } catch (err) {
     // 错误拦截器：允许返回数据以"恢复"（返回非 undefined 则视为成功值）
     let currentErr: unknown = err;
