@@ -16,7 +16,7 @@
  * （见下方 `DANGER_CONFIRM_DECISION` 说明，供后续卡追溯）。
  */
 
-import type { PageDomain } from './index';
+import type { PageDomain } from './pageDomain';
 
 /** 能力面键（四项必须）。 */
 export type ThemeCapabilityKey = 'realtime' | 'mobile' | 'timezone' | 'authorization';

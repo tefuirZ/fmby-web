@@ -8,8 +8,8 @@ import {
   readStringArray,
 } from '@fmby/v2-shared/api/mapping';
 import { mapArtwork } from '@fmby/v2-shared/contracts/assets';
-import { mapMediaCard } from '@fmby/v2-shared/contracts/browse/api';
-import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import { mapMediaCard } from '../api';
+import type { MediaCardSummary } from '../types';
 import type {
   ItemActor,
   ItemDetailResponse,

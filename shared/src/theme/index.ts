@@ -9,23 +9,13 @@
 import type { ComponentType } from 'react';
 
 import type { ThemeCapabilitiesDeclaration } from './capabilities';
+import type { PageDomain } from './pageDomain';
 
 export * from './capabilities';
 
-/**
- * 页面域（WEB-C1 粗粒度定版，ADR-001 §3）。
- *
- * 粗粒度原则：域内子页（如 manage 下的媒体/用户/安全）由主题在同一 skin 内
- * 自行重排——host 不按子路由细分 domain，避免 skins 键爆炸与主题碎片化。
- */
-export type PageDomain =
-  | 'browse.home'
-  | 'browse.library'
-  | 'browse.item'
-  | 'browse.play'
-  | 'manage'
-  | 'settings'
-  | 'observability';
+// FE-MOD-P2-BATCH ② FE-BARREL-CYCLE：PageDomain 定义下沉至叶子 `./pageDomain`
+// （此前定义在本文件，capabilities 又反向 import 本文件成环）；此处仍 re-export。
+export type { PageDomain };
 
 /** 全部 PageDomain 值（host 路由判定用，与上列类型逐一对应） */
 export const PAGE_DOMAINS = [

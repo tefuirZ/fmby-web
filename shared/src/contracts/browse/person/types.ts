@@ -1,4 +1,4 @@
-import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import type { MediaCardSummary } from '../types';
 
 /**
  * 人物详情视图类型（V1F-10）。

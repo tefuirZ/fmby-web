@@ -1,5 +1,5 @@
 import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
-import type { MediaCardSummary, MediaProgressSummary } from '@fmby/v2-shared/contracts/browse';
+import type { MediaCardSummary, MediaProgressSummary } from '../types';
 
 export interface ItemTechnicalInfo {
   resolutionLabel?: string;

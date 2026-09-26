@@ -2,11 +2,9 @@
 
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from '../../ManageNamingRulesPage.module.css';
-import {
-  NamingRulesCustomTermsSection,
-  NamingRulesDefaultTermsSection,
-  NamingRulesProtectedTermsSection,
-} from '.';
+import { NamingRulesCustomTermsSection } from './NamingRulesCustomTermsSection';
+import { NamingRulesDefaultTermsSection } from './NamingRulesDefaultTermsSection';
+import { NamingRulesProtectedTermsSection } from './NamingRulesProtectedTermsSection';
 import type {
   useNamingRulesPageState,
   useNamingRulesPageActions,

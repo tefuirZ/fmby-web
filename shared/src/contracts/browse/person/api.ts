@@ -1,7 +1,7 @@
 import { httpClient } from '@fmby/v2-shared/api/client';
 import { asRecord, readArray, readNumber, readString } from '@fmby/v2-shared/api/mapping';
 import { mapArtwork } from '@fmby/v2-shared/contracts/assets';
-import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import type { MediaCardSummary } from '../types';
 import type { PersonDetail, PersonItemsPage } from './types';
 
 /**

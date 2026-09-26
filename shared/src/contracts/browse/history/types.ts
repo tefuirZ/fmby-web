@@ -1,4 +1,4 @@
-import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
+import type { MediaCardSummary } from '../types';
 
 export interface HistoryEntry extends MediaCardSummary {
   playedAt?: string;

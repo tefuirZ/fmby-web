@@ -90,3 +90,19 @@
   - GREEN：同命令 ⇒ `pass 3 / fail 0`，`GREEN_RC=0`。
 - 为何不改变行为：`parse` 未提供时 `raw as T` 与历史逐字等价；新增字段仅在调用方显式传入时生效；已从 `restConfig` 剔除避免传给 `fetch`。
 - 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0。
+
+## ② FE-BARREL-CYCLE —— 已做（commit 3）
+
+- 新增门禁：`scripts/check-frontend-cycles.mjs`（零新依赖；fs walk + 正则抽模块说明符 + **注释剔除**（逐字符状态机，避免 JSDoc `@example` 假自环）+ DFS 三色找环；解析 `./`、`@/`、`@fmby/v2-shared`、`@fmby/v2-shared/*`）；带 `--selftest`。
+- 接入：`package.json` 新增 `cycles` 脚本，并插入 `verify` 链。
+- 修掉 4 条真环（2 根因）：
+  1. **contracts/browse 子模块引父 barrel**（7 行）：`{item,person,history}/{api,types}.ts` 的 `MediaCardSummary`/`MediaProgressSummary` 改 `'../types'`、`mapMediaCard` 改 `'../api'`（不再经父 barrel `@fmby/v2-shared/contracts/browse` 绕回）。
+  2. **theme barrel 环**：`PageDomain` 下沉到新叶子 `shared/src/theme/pageDomain.ts`；`index.ts` `export type { PageDomain }` 仍 re-export（对外导出面不变），`capabilities.ts` 改引 `./pageDomain`。
+  3. **naming-rules 组件 barrel 自环**：`NamingRulesCleanupPanel.tsx` 的 `from '.'` 改 3 条直连 `./NamingRules*Section` 导入。
+- 剔除了 2 条**假阳性**（`query/keys.ts:8`、`forms/useZodForm.ts:7` 均为 JSDoc `@example` 注释里的 `import`，非真依赖）——由 `stripComments` 处理。
+- 为何不改变行为：改动均为**导入路径重定向到同一模块**（父 barrel 与 `../types`/`../api` 指向同一文件；`PageDomain` 类型 re-export 面不变）；纯类型/模块图变更，无运行期逻辑。
+- TDD 原文：
+  - RED：`node scripts/check-frontend-cycles.mjs` ⇒ `FAIL…4 条模块循环依赖`，`GATE_RC=1`。
+  - GREEN：同命令 ⇒ `PASS(frontend-cycles)：638 个源文件依赖图无环`，`GATE_RC=0`。
+  - 自测：`node scripts/check-frontend-cycles.mjs --selftest` ⇒ `SELFTEST PASSED`（相对环必检出 / 无环不误报 / `@/` 环必检出 / 跨包别名可解析），rc=0。
+- 回归：`pnpm typecheck` rc=0、`pnpm build` rc=0、`pnpm -r test` rc=0（shared 104 / host 320 / themes 28）、`pnpm dupes` rc=0、`pnpm contracts` rc=0。
