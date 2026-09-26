@@ -14,13 +14,15 @@
     "dupes": "node scripts/check-frontend-dupes.mjs",
     "contracts": "node scripts/check-contract-mappers.mjs",
     "e2e": "pnpm --filter @fmby/v2-host test:e2e",
-    "verify": "pnpm versions && pnpm typecheck && pnpm build && pnpm build:themes && pnpm test && pnpm size && pnpm repo-size && pnpm dupes && pnpm contracts && pnpm theme-budget && pnpm component-size && pnpm theme-parity",
+    "verify": "pnpm versions && pnpm release:check && pnpm typecheck && pnpm build && pnpm build:themes && pnpm test && pnpm size && pnpm repo-size && pnpm dupes && pnpm contracts && pnpm theme-budget && pnpm component-size && pnpm theme-parity",
     "versions": "node scripts/check-versions.mjs",
     "theme-budget": "node scripts/check-theme-budget.mjs",
     "theme-parity": "node scripts/check-theme-parity.mjs",
     "test": "pnpm -r test",
     "perf:batch": "node scripts/perf/fe-opt-04-batch.mjs",
     "component-size": "node scripts/check-frontend-component-size.mjs",
-    "email-smoke": "python3 scripts/e2e/email_channel_smoke.py"
+    "email-smoke": "python3 scripts/e2e/email_channel_smoke.py",
+    "release:cut": "node scripts/release/cut.mjs",
+    "release:check": "node scripts/release/cut.mjs --check"
   }
 }
