@@ -145,3 +145,60 @@
 | ② FE-BARREL-CYCLE | 做（零依赖循环门禁 + 清零 4 条既有环 + 接 verify） | `4c85eb5` |
 | ③ FE-THEME-TYPE-ERASURE | 做（收紧 SkinActions；`data` 保留 + 依据） | `779f18d` |
 | ④ FE-MOUNT-AGGREGATE | 不做（低收益/高风险，依据已登记） | 本 commit |
+
+---
+
+## 证据原文（当次命令 + 输出）
+
+工具链：`node v24.15.0` / `pnpm 9.15.9`；基线 `w/zcode/fe-p2-batch` @ `1cfab4b`（前端仓 main v0.2.14）。
+
+```
+$ pnpm typecheck
+ shared typecheck: Done
+ themes/_template typecheck: Done
+ themes/darkroom typecheck: Done
+ host typecheck: Done
+-> TYPECHECK_RC=0
+
+$ pnpm build
+ ✓ built in 8.85s
+-> BUILD_RC=0
+
+$ pnpm -r test
+ shared: tests 104 / pass 104 / fail 0
+ themes/_template: tests 9 / pass 9 / fail 0
+ themes/darkroom: tests 19 / pass 19 / fail 0
+ host: tests 320 / pass 320 / fail 0
+-> TEST_RC=0
+
+$ pnpm verify
+ ... [PASS] 0 violations found. All frontend architectural boundaries clean.
+ PASS(frontend-cycles)：638 个源文件依赖图无环（shared/src + host/src + themes/*/src）
+ [PASS] 0 违规；3 个存量超线文件在基线内且未上升（棘轮允许，须有拆分计划）。
+ [PASS] All declared domain skins satisfy required capabilities.
+-> VERIFY_RC=0
+
+$ node scripts/check-frontend-cycles.mjs --selftest
+ SELFTEST PASSED：相对环必检出 / 无环不误报 / `@/` 环必检出 / 跨包别名可解析
+-> SELFTEST_RC=0
+
+$ git push -u origin w/zcode/fe-p2-batch
+ * [new branch]      w/zcode/fe-p2-batch -> w/zcode/fe-p2-batch
+-> PUSH_RC=0
+
+$ git ls-remote origin w/zcode/fe-p2-batch
+b893c2ce30e5ef39577acdecd96107bca14e3dc0	refs/heads/w/zcode/fe-p2-batch
+-> ls-remote sha == 本地 HEAD（b893c2ce30e5ef39577acdecd96107bca14e3dc0）
+```
+
+### commit 序列
+```
+9b837b7 docs(handoff): FE-MOD-P2-BATCH 只读侦察
+b703a22 refactor(api): FE-API-AS-T —— 响应边界加可选 parse 校验槽（去 as T 盲断言）
+4c85eb5 refactor(web): FE-BARREL-CYCLE —— 加前端模块循环依赖门禁并清零既有 4 条环
+779f18d refactor(theme): FE-THEME-TYPE-ERASURE —— SkinActions 收紧为显式可选键表
+17e58dd docs(handoff): FE-MOD-P2-BATCH ④ FE-MOUNT-AGGREGATE 判定不做 + 四项汇总
+b893c2c fix(api): FE-API-AS-T 收口 —— 压缩 client.ts 506→503 行过组件行数棘轮
+```
+
+红线自检：禁 `as any`/`@ts-ignore`/放宽 tsconfig = 无；未引新依赖（循环检测仅用 node 内置 `fs`/`path` + 正则，未依赖 `typescript`）；未改已发布 CHANGELOG；后端子仓未触碰。
