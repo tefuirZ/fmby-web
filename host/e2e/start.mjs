@@ -83,6 +83,11 @@ function resolveBinary(envKey, baseName) {
 const serverBin = resolveBinary('FMBY_E2E_SERVER_BIN', 'fmby-v2-server');
 const seedBin = resolveBinary('FMBY_E2E_SEED_BIN', 'fmby-e2e-seed');
 
+// E2E-FIRSTBOOT-1：空库首启模式 —— 不跑 seed、用全新空目录（无 admin/无角色/无媒体）。
+// ponytail: 只加一个 env 开关，不做 mode/profile 抽象；天花板＝「种 / 不种」二元，
+// 若将来还要「预置半装状态」再抽参数。
+const noSeed = process.env.FMBY_E2E_NO_SEED === '1';
+
 function skip(reason) {
   console.warn(`[real-server] SKIP: ${reason}`);
   rmSync(workDir, { recursive: true, force: true });
@@ -95,7 +100,7 @@ if (!serverBin) {
       `Build it with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SERVER_BIN.`,
   );
 }
-if (!seedBin) {
+if (!seedBin && !noSeed) {
   skip(
     `fmby-e2e-seed binary not found (FMBY_E2E_SEED_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
       `Build it with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SEED_BIN.`,
@@ -111,13 +116,18 @@ function runSeed() {
   });
 }
 
-const seedExit = await runSeed();
-if (seedExit !== 0) {
-  console.error('[real-server] explicit E2E seed failed');
-  rmSync(workDir, { recursive: true, force: true });
-  process.exit(1);
+if (noSeed) {
+  // E2E-FIRSTBOOT-1：空库首启 —— 只由 server 自身 bootstrap 建库（迁移建 schema、不种数据）。
+  console.log('[real-server] FMBY_E2E_NO_SEED=1 → 跳过 seed（空库首启态）');
+} else {
+  const seedExit = await runSeed();
+  if (seedExit !== 0) {
+    console.error('[real-server] explicit E2E seed failed');
+    rmSync(workDir, { recursive: true, force: true });
+    process.exit(1);
+  }
+  console.log('[real-server] explicit E2E seed complete');
 }
-console.log('[real-server] explicit E2E seed complete');
 
 // ---- ①b 组装主题运行时产物（THEME-BUILD-01 外挂形态）----
 // host registry 从 `/themes/<id>/*` 拉 manifest/tokens/index.js；后端静态面映射
