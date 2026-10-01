@@ -14,6 +14,7 @@ import { FieldError } from '@fmby/v2-shared/forms';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { copyToClipboard, formatEpochMs, safeExternalHref } from '../licenseFormat';
+import { isDeviceFlowExpired } from '../deviceFlow';
 import styles from '../../longtail-shared/ManageShared.module.css';
 
 interface DeviceFlowCardProps {
@@ -43,9 +44,21 @@ export function DeviceFlowCard({
 }: DeviceFlowCardProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const [copyError, setCopyError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const flow = status.deviceFlow;
   const verificationUrl = flow?.verificationUriComplete ?? flow?.verificationUri ?? null;
   const safeVerificationUrl = safeExternalHref(verificationUrl);
+
+  useEffect(() => {
+    if (!flow?.expiresAt || flow.expiresAt <= Date.now()) return;
+    // ponytail: flow 到期没有别的渲染触发点，用一个一次性定时器把「超时」态刷出来。
+    const timer = window.setTimeout(() => setNow(Date.now()), flow.expiresAt - Date.now() + 1000);
+    return () => window.clearTimeout(timer);
+  }, [flow?.expiresAt]);
+
+  const expired = isDeviceFlowExpired(flow, now);
+  const authorized =
+    lastPollStatus === 'authorized' || status.runtimeState === 'active' || status.runtimeState === 'grace';
 
   useEffect(() => {
     if (!copied) return;
@@ -93,7 +106,14 @@ export function DeviceFlowCard({
         </label>
       </div>
 
-      {lastPollStatus ? (
+      {expired && !authorized ? (
+        <div className={styles.rowActions}>
+          <StatusBadge label="轮询已超时" variant="danger" />
+          <span className={styles.mutedText}>
+            Device Flow 有效期已过且未授权，自动轮询已停止；请重新发起。
+          </span>
+        </div>
+      ) : lastPollStatus ? (
         <div className={styles.rowActions}>
           <StatusBadge
             label={getLicensePollStatusLabel(lastPollStatus)}
