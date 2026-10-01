@@ -70,3 +70,35 @@ export interface IdentityCallbackCapture {
   receivedCode: boolean;
   message: string;
 }
+
+/**
+ * 账号三方身份绑定项（`GET /api/account/identity-bindings` item 与 `complete` 的
+ * `binding` 段，V1 `AccountIdentityBindingDto`）。
+ *
+ * `providerUsername` / `lastUsedAt` 为 V1 有而 V2 无源的字段：如实 `null`，绝不伪造。
+ */
+export interface AccountIdentityBinding {
+  id: string;
+  provider: IdentityProviderType;
+  providerSubject: string;
+  providerEmail: string | null;
+  providerUsername: string | null;
+  providerDisplayName: string | null;
+  verifiedAt: string;
+  lastUsedAt: string | null;
+}
+
+/** `POST .../complete` 入参（逐字对应后端 `CompleteIdentityBindingRequest` 字段）。 */
+export interface IdentityBindingCompleteInput {
+  challengeId: string;
+  code?: string;
+  providerSubject?: string;
+  providerEmail?: string;
+  providerUsername?: string;
+  providerDisplayName?: string;
+}
+
+/** `POST /api/auth/identity/unbind` 结果。 */
+export interface IdentityBindingUnbindResult {
+  ok: boolean;
+}
