@@ -104,7 +104,7 @@ export function MediaItemIdentityGovernancePanel({ detail, mutations }: Identity
         provider: matchProvider.trim(),
         query: matchKeyword.trim(),
       });
-      setCandidates(res.candidates);
+      setCandidates((res.candidates ?? []).filter((entry) => Boolean(entry)));
     } catch (error) {
       toast.error({ title: '候选搜索失败', description: getErrorMessage(error) });
     } finally {

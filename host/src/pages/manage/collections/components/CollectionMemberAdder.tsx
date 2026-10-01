@@ -121,7 +121,7 @@ export function CollectionMemberAdder({
               }}
             >
               <option value="">请选择…</option>
-              {candidates.map((candidate) => (
+              {(candidates ?? []).filter((candidate) => Boolean(candidate)).map((candidate) => (
                 <option key={candidate.itemId} value={candidate.itemId}>
                   {candidate.title}
                   {candidate.year ? `（${candidate.year}）` : ''} · {candidate.libraryName}

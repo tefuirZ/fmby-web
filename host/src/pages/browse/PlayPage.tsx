@@ -27,6 +27,7 @@ import { PlaybackStage } from './play/PlaybackStage';
 import { PlayPageHeader } from './play/PlayPageHeader';
 import { PlaybackSidebar } from './play/PlaybackSidebar';
 import { PlaybackInfoBar } from './play/PlaybackInfoBar';
+import { resolveSubtitleUrl } from './subtitleUrl';
 import {
   MissingItemPanel,
   NoSourcePanel,
@@ -276,9 +277,7 @@ export function PlayPage() {
   const containerBadge = parseMimeContainer(session.mimeType);
   const audioBadge = session.audioTracks[0]?.codecLabel?.toUpperCase();
   const firstSubtitle = session.subtitleTracks[0];
-  const subtitleUrl = firstSubtitle
-    ? `${firstSubtitle.id.startsWith('/') ? '' : '/api/assets/subtitles/'}${firstSubtitle.id}`
-    : undefined;
+  const subtitleUrl = resolveSubtitleUrl(firstSubtitle?.id, itemId);
   const recommendedItems = detail?.related.slice(0, 5) ?? [];
   const hasSidebar =
     isEpisodeView ||

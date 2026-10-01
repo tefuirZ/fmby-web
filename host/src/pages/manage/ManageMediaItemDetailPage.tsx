@@ -139,7 +139,7 @@ export function ManageMediaItemDetailPage() {
     );
   }
 
-  if (!detail) {
+  if (!detail || !detail.item) {
     return (
       <div className={sharedStyles.page}>
         <BackToListLink />

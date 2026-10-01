@@ -24,7 +24,29 @@ function requireMediaItemId(itemId?: string) {
 export function useManageMediaItemMetadataMutations(itemId?: string) {
   const queryClient = useQueryClient();
 
-  const writeDetailCache = (detail: ManageMediaItemDetailRecord) => {
+  /**
+   * 写 detail 缓存前做**信封形状校验**（FE-USABILITY-FIX-1）。
+   *
+   * 本 hook 的 5 个 mutation（update/reset/artwork/subtitle/refresh）都在成功时
+   * 调它。旧实现无条件 setQueryData：若响应不是完整 detail 信封（缺 `item`、
+   * `item` 为 null、或缺必填 `title`），坏数据会进 `mediaItems.detail(id)` 缓存，
+   * 下一次渲染就在 `item.title` 上抛 `Cannot read properties of null (reading 'title')`，
+   * 详情页白屏（demo 现场） 。校验不过就不写缓存，改为失效当前 detail 让服务端真值回填。
+   */
+  const writeDetailCache = (detail: ManageMediaItemDetailRecord | null | undefined) => {
+    const isCompleteEnvelope =
+      Boolean(detail?.item) &&
+      typeof detail?.item?.id === 'string' &&
+      detail.item.id !== '' &&
+      typeof detail.item.title === 'string';
+    if (!detail || !isCompleteEnvelope) {
+      if (itemId) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.manage.mediaItems.detail(itemId),
+        });
+      }
+      return;
+    }
     queryClient.setQueryData(queryKeys.manage.mediaItems.detail(detail.item.id), detail);
   };
 
