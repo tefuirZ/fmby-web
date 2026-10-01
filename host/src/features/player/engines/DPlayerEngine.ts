@@ -1,3 +1,4 @@
+import type DPlayer from 'dplayer';
 import type {
   PlayerEngine,
   PlayerEngineAdapter,
@@ -17,16 +18,19 @@ interface DPlayerOptions {
   container: HTMLDivElement;
   autoplay: boolean;
   theme: string;
-  lang: string;
+  // 与 ambient `dplayer`（src/types/dplayer.d.ts）的字面量联合对齐：本地选项必须
+  // 可赋给 ambient 构造函数。旧实现用 `as unknown as DPlayerConstructorLike` 掩盖了
+  // 两侧 `lang/preload/video.type` 的 string↔字面量漂移。
+  lang: 'en' | 'zh-cn' | 'zh-tw';
   screenshot: boolean;
   hotkey: boolean;
-  preload: string;
+  preload: 'auto' | 'metadata' | 'none';
   volume: number;
   mutex: boolean;
   video: {
     url: string;
     pic?: string;
-    type: string;
+    type: 'auto' | 'normal' | 'hls' | 'flv' | 'dash';
   };
   contextmenu: Array<{ text: string }>;
   subtitle?: {
@@ -38,19 +42,9 @@ interface DPlayerOptions {
   };
 }
 
-interface DPlayerInstanceLike {
-  video: HTMLVideoElement;
-  on(event: DPlayerEventName, handler: () => void): void;
-  seek(time: number): void;
-  notice(text: string, time?: number, opacity?: number): void;
-  destroy(): void;
-  play(): void;
-  pause(): void;
-  speed(rate: number): void;
-  volume(value: number): void;
-}
-
-type DPlayerConstructorLike = new (options: DPlayerOptions) => DPlayerInstanceLike;
+// 直接复用 ambient 模块的默认导出类作构造器类型，替代手写的实例镜像——镜像与
+// ambient 漂移正是旧 `as unknown as DPlayerConstructorLike` 的根因。
+type DPlayerConstructorLike = typeof DPlayer;
 
 let dplayerPromise: Promise<DPlayerConstructorLike> | null = null;
 
@@ -86,9 +80,12 @@ export class DPlayerEngineAdapter implements PlayerEngineAdapter {
     }
 
     const dp = new DPlayer(dplayerOptions);
+    // ambient `on(event: string, …)` 会丢掉事件名字面量联合；薄包装把它补回来
+    // （不引入断言，也不再需要手写实例镜像）。
+    const on = (event: DPlayerEventName, handler: () => void): void => dp.on(event, handler);
     let resumed = false;
 
-    dp.on('loadedmetadata', () => {
+    on('loadedmetadata', () => {
       if (!resumed && options.resumePosition && options.resumePosition > 0) {
         resumed = true;
         dp.seek(options.resumePosition);
@@ -96,27 +93,27 @@ export class DPlayerEngineAdapter implements PlayerEngineAdapter {
       }
     });
 
-    dp.on('timeupdate', () => {
+    on('timeupdate', () => {
       options.onTimeUpdate?.(dp.video.currentTime, dp.video.duration);
     });
 
-    dp.on('play', () => {
+    on('play', () => {
       options.onPlay?.();
     });
 
-    dp.on('pause', () => {
+    on('pause', () => {
       options.onPause?.(dp.video.currentTime, dp.video.duration);
     });
 
-    dp.on('ended', () => {
+    on('ended', () => {
       options.onEnded?.(dp.video.currentTime, dp.video.duration);
     });
 
-    dp.on('error', () => {
+    on('error', () => {
       options.onError?.(dp.video.error);
     });
 
-    dp.on('seeked', () => {
+    on('seeked', () => {
       options.onSeeked?.(dp.video.currentTime);
     });
 
@@ -142,7 +139,7 @@ async function loadDPlayerConstructor(): Promise<DPlayerConstructorLike> {
     };
 
     dplayerPromise = import('dplayer')
-      .then((module) => module.default as unknown as DPlayerConstructorLike)
+      .then((module) => module.default)
       .finally(() => {
         console.log = originalLog;
       });

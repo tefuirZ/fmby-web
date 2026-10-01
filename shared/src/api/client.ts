@@ -240,9 +240,8 @@ function anySignal(signals: Array<AbortSignal | undefined>): AbortSignal | undef
   if (valid.length === 0) return undefined;
   if (valid.length === 1) return valid[0];
 
-  const anyFn = (AbortSignal as unknown as { any?: (s: AbortSignal[]) => AbortSignal }).any;
-  if (typeof anyFn === 'function') {
-    return anyFn(valid);
+  if (typeof AbortSignal.any === 'function') {
+    return AbortSignal.any(valid);
   }
 
   const controller = new AbortController();
@@ -383,6 +382,7 @@ async function executeOnce<T>(
     if (!response.ok) {
       throw await mapResponseToApiError(response);
     }
+    // ponytail: `T` 是调用方声明的泛型信任点（~150 处 httpClient.<verb><T>()），本仓范式是 get<unknown>() + 契约层防御式 mapper（asRecord/readString）收口；上限=200+非 JSON/错形不被 client 拦截、由 mapper 落地；升级路径=给 httpClient 增可选 decoder 参数并逐域迁移调用点。
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   } catch (err) {

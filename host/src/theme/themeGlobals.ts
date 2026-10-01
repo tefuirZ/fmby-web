@@ -36,8 +36,7 @@ export function exposeThemeGlobals(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  const w = window as unknown as Record<string, unknown>;
-  w.React ??= React;
-  w.ReactDOM ??= ReactDOM;
-  w.ReactJSXRuntime ??= ReactJSXRuntime;
+  window.React ??= React;
+  window.ReactDOM ??= ReactDOM;
+  window.ReactJSXRuntime ??= ReactJSXRuntime;
 }
