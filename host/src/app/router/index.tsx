@@ -181,6 +181,14 @@ export const router = createBrowserRouter([
                   return { Component: AppearanceSettingsPage };
                 },
               },
+              {
+                // FE-IDENTITY-BINDINGS：账号三方身份绑定管理（AuthGuard 下，未登录不放行）。
+                path: 'identity',
+                lazy: async () => {
+                  const { IdentityBindingsSettingsPage } = await import('@/pages/settings/IdentityBindingsSettingsPage');
+                  return { Component: IdentityBindingsSettingsPage };
+                },
+              },
               // ── 服务器级设置已统一收敛到管理端 ────────────────────────────
               // 同一份站点配置此前在「设置中心」与「管理中心」各有一套表单与
               // 一套提交路径，改一处漏一处。现只保留 /manage/site/settings，
