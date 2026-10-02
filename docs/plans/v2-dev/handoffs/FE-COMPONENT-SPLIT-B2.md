@@ -1,94 +1,81 @@
-# FE-COMPONENT-SPLIT-B2 交接（w1 · 前端仓 w/zcode/writer1-fe-split-b2）
+# FE-COMPONENT-SPLIT-B2 交接（w/fe/component-split-b2 · 重新派发续做）
 
-> B2：按「高频 + 改动频繁」顺序拆 3 个页，并顺手按裁决 A 收口
-> `mounts/formUtils.tsx`。纯结构搬迁、行为零变更。
+> 本卡为 B2 的重新派发：前序 w1 的 B2（`1dad2c8`，已合入 `origin/main`）已拆
+> `ManageCollectionsPage` / `UserDrawer` / `ManageUsersPage` + 收口 `mounts/formUtils`，
+> 把超线债务从 20 → 2。本轮在 main 尖（`a1c13f9`）上清偿剩余 2 条债务之一：
+> `host/src/pages/manage/runtimeLogPresentation.ts`（506 行）。
 
-- 基线：`origin/main` @ `d566d97`
-- 提交：`1dad2c8`（单一 green commit，本次 4 项一次做完）
-- 门禁：`pnpm verify` **12 闸全绿**（34 PASS）
-- **基线 17 → 13**（4 条已达标回收）
-
----
-
-## 1. 拆分结果
-
-| 文件 | 拆前 | 拆后 | 抽出 |
-|---|---:|---:|---|
-| `manage/ManageCollectionsPage.tsx` | 591 | **385** | `collections/components/`：`CollectionMemberPanel`(75) · `CollectionFormDialog`(118) · `CollectionBatchActions`(123) · `labels.ts`(38) |
-| `manage/users/components/UserDrawer.tsx` | 593 | **256** | `UserCreateForm`(230) · `UserEditForm`(217) |
-| `manage/ManageUsersPage.tsx` | 513 | **395** | `users/components/`：`UsersHeaderAndTable`(~150) · `UserSelectionBar`(~50) · `UserActionDialogs`(~135) · `pendingAction.ts`(38) |
-| `manage/mounts/formUtils.tsx` | 579 | — | **裁决 A**：拆为 `formUtils.ts`(552，无 JSX) + `formRenderers.tsx`(27) |
-
-**formUtils 收口细节**：全仓所有引用都是 `from '../formUtils'`（**无扩展名**），
-所以 `.tsx → .ts` 对调用方透明，无需改引用；仅 4 个使用 `renderFieldError` /
-`renderCredentialProbeStatus` 的 section 改为从 `formRenderers` 导入。
-拆后 `formUtils.ts` 无 JSX → 门禁按「工具模块」**自动豁免**（不是走 `EXEMPT_FILES`
-显式清单，是规则本身生效）；`formRenderers.tsx` 27 行，远低于红线。
-**规则未开口子**——含 JSX 仍算组件，这次只是纯函数部分真的无 JSX。
+- 分支：`w/fe/component-split-b2`（基于 `origin/main` 尖，merge 后落后 0）
+- 提交：`43f2cc5`（拆分 + 棘轮基线回收，单一 green commit）
+- 门禁（fresh 本会话）：host typecheck exit 0；`component-size` PASS 0 违规；
+  `check-frontend-dupes` / `check-contract-mappers` / `check-repo-size` 全 PASS；
+  `branch-gates.sh` PASS=1 FAIL=0（后端专用闸前端无脚本 SKIP）
 
 ---
 
-## 2. 本次踩到的坑（补充到拆法模板）
+## 1. 一句话结论
 
-上一卡记了两条（类型别另造、抽走后残留 import/就地派生值）。本卡新增三条：
+`runtimeLogPresentation.ts`（506 行，component-size 棘轮债务）按职责拆为 3 个无环子模块
++ 桶入口 re-export，主文件 506 → 10 行（≤400），`--update-baseline` 回收基线。
+**行为零变更、导出面零变更、调用方零改动**。受管超线债务 2 → 1（仅剩
+`shared/src/api/client.ts`，非组件、本轮不擅动，见 §4）。
 
-1. **「抽出 JSX 块」时块边界容易切错**，尤其条件分支：
-   `? (` … `) : xxx ? (` 这种链式三元，靠 `index('</Dialog>')` 常切到别的分支，
-   或把紧邻的 `isPending/isError` 分支一并带走。**切完立刻 `wc -l` + typecheck**，
-   行数异常小/大都是切错了。UserDrawer 本次就切错了两次（把 pending/error
-   分支包进 create 块；ManageUsersPage 把 batch-delete 确认框一起切走）。
+## 2. codegraph / 取证（先证伪，勿凭印象）
 
-2. **`onConfirm={...}` 多行块替换易失败**：`onConfirm` 体里有 `});` 时，
-   简单的「找下一个 `}}`」会提前收尾，产出语法错误的残骸（本次 TS1381/TS1382）。
-   建议按**行号切片**而非字符串匹配，或直接对整块做行区间替换。
+- 超线实证：`scripts/check-frontend-component-size.mjs` 输出 + 基线
+  `docs/plans/v2-dev/evidence/fe-component-size-baseline.json` 双证——current 受管 2 个：
+  `runtimeLogPresentation.ts`(506)、`shared/src/api/client.ts`(506)。前序 B1–B4 已将 20 → 2，
+  本轮即清偿这 2 条。
+- 引用面取证（python3 扫 import，非符号 grep）：全仓仅 **3 处**引用本文件——
+  - `host/src/pages/manage/runtime-logs/components.tsx`：`formatRuntimeTargetLabel`（值）+ `RuntimeLogView`（类型）
+  - `host/src/pages/manage/runtime-logs/RuntimeLogDetailDialog.tsx`：`RuntimeLogView`（类型）
+  → 仅引用 2 个符号，主入口 re-export 即可保面，调用方零改动（未碰这两个文件）。
+- 导出面（5 个，全部经主入口 re-export 保留，无隐式改名）：
+  `RuntimeLogFieldView` / `RuntimeLogView`（接口）+ `buildRuntimeLogView` /
+  `extractStructuredFields` / `formatRuntimeTargetLabel`（函数）。
 
-3. **props 别贪多**：`ManageUsersPage` 第一次抽 `UsersHeaderAndTable` 时列了
-   11 个回调 prop，结果调用点 85 行、净省 4 行——**等于白抽**。
-   改成把分页/筛选的**状态与设置器打包成一个 `control` 对象**（状态仍归页面所有，
-   子组件只负责调用）后，调用点降到 ~13 行，净省 ~70 行。
-   **经验：抽完发现调用点和被抽块差不多长 → 说明 prop 面太宽，要合并而非放弃。**
+## 3. RED → GREEN
 
-另外：`longtail-shared/source-governance-fields.tsx` 的 `MountOption` 由
-`interface` 改为 `export interface`——子组件要按**真实类型**声明 props，
-不另造窄类型（沿用上一卡的反面教训）。
+- **RED（基线）**：拆前 `runtimeLogPresentation.ts` = 506 行 > 500 硬红线，在基线内且未上升
+  → 棘轮 WARN 债务（不阻塞，但须有拆分计划）。component-size 受管 2 个。
+- **GREEN**：拆后为 4 文件（主入口 10 / fields 181 / formatters 205 / labels 140），全 ≤400；
+  `runtimeLogPresentation.ts` 506 → 10，脚本主动提示「可从基线移除」；
+  `--update-baseline` 回收（棘轮只降不升：506 → 9，允许）。受管 2 → 1。
+- 拆分拓扑（单向无环）：`runtimeLogLabels`（纯常量）← `runtimeLogFormatters`
+  （format*/normalize*/cleanup，仅 import `HTTP_STATUS_LABELS`）← `runtimeLogFields`
+  （extract*/build*/视图接口，import labels + formatters）← 主入口（re-export）。
+- 复用范式：FE-MOUNT-AGGREGATE 的「桶 + 子模块、主入口 re-export、纯结构搬迁不新造抽象」。
 
----
+## 4. 当次验证（fresh 输出，verification-before-completion）
 
-## 3. 剩余 13 条基线 + 建议顺序（B3 起）
+| 验证 | 命令 | 结果 |
+|---|---|---|
+| host typecheck | `host/node_modules/.bin/tsc -p host/tsconfig.app.json --noEmit` | exit 0（首轮暴露跨模块符号缺 `export`：TS2306/2459/6133；补 `export` + 修正 fields import 后重跑 exit 0） |
+| component-size | `node scripts/check-frontend-component-size.mjs` | PASS 0 违规；受管 1（client.ts）；runtimeLogPresentation 已移出基线 |
+| 基线回收 | `… --update-baseline` | 写入（只降不升，506→9） |
+| dupes | `node scripts/check-frontend-dupes.mjs` | PASS |
+| contracts | `node scripts/check-contract-mappers.mjs` | PASS |
+| repo-size | `node scripts/check-repo-size.mjs` | PASS |
+| branch-gates | `bash /root/fmby-orchestra/branch-gates.sh <wt>` | PASS=1 FAIL=0（后端闸前端 SKIP） |
 
-| 行 | 文件 |
-|---:|---|
-| 610 | `manage/ManageRegistrationCodesPage` |
-| 600 | `manage/ManageRuntimeLogsPage` |
-| 587 | `login/LoginPage` |
-| 535 | `manage/registration-codes/components/RegistrationCodeForm` |
-| 533 | `manage/naming-rules/scrape-sections` |
-| 496 | `manage/ManageOverviewPage` |
-| 484 | `manage/ManageMediaItemsPage` |
-| 463 | `manage/media-item-detail/components/MediaItemSubtitleSection` |
-| 448 | `manage/ManageNamingRulesPage` |
-| 448 | `manage/media-item-detail/components/MediaItemMetadataSection` |
-| 417 | `manage/ManageRewardsPage` |
-| 406 | `manage/mounts/components/MountDrawer/MountDrawer` |
-| 403 | `manage/ManageLicensePage` |
+> 注：fmby-web 前端验证经 `host/node_modules/.bin/tsc` 直接跑（pnpm 被 fmby-queue 全局串行
+> 排队，typecheck 卡等数分钟；直接 tsc 二进制绕过 pnpm 垫片即秒级出结果，等价 typecheck）。
+> 未碰农场。
 
-**建议下一批（B3）**：`ManageRuntimeLogsPage`(600) → `ManageRegistrationCodesPage`(610)
-→ `RegistrationCodeForm`(535)（同属一批改动面，拆法可复用）。
-**`LoginPage`(587) 建议继续往后放**：登录页改动风险面大（会话/CSRF/多因素），
-且不在管理面高频路径，收益/风险比不如管理页。
+## 5. 跳过项（ponytail：跳过了什么 / 何时再加）
 
----
+- **`shared/src/api/client.ts`（506）未拆**：它是 `shared` 核心 HTTP 客户端设施
+  （`httpClient` / `RetryConfig` / `HttpInterceptors`），**非「组件」语义**，且影响面跨页，
+  拆分风险高、需专门的 HTTP 客户端重构卡。本轮聚焦「页面呈现组件」runtimeLogPresentation，
+  保持最小必要范围。→ 仍记为超线债务，待主代理裁决是否单列卡清偿。
+- **未引依赖、未改 API 契约、未改 UI 文案、未改业务行为**：纯结构拆分。
+- **未拆 `runtimeLogFields`/`formatters`/`labels` 更细**：已各自 ≤400，达标即可，
+  过度拆分属 YAGNI；若后续某子模块涨过 400 再按需拆。
 
-## 4. 待办 / 需裁决
+## 6. 提交
 
-1. **`UsersHeaderAndTable` 的 `control` 打包是否可接受？** 这是本卡为压缩调用点
-   引入的写法（状态仍在页面、子组件只调 setter），**不在既有代码惯例里**。
-   若你希望严格「一个 prop 一个回调」的显式风格，我可以改回去——但那样
-   `ManageUsersPage` 会回到 430+ 行（超线）。**建议保留并认可该写法**。
-2. **`UserEditForm` / `UserCreateForm` 两个组件高度相似**（同为表单，仅字段
-   disabled 与提交载荷不同）。是否合并为一个带 `mode` 的 `UserForm`？
-   **本次未合并**（纯搬迁优先，合并属重构，会放大 diff 与回归面）。可入后续卡。
-3. **B3 及以后的批次**：本卡把 4 项一次做完了（时间够），已帮你把
-   `formUtils` 从队列里清掉。剩余 13 条按 §3 顺序推进即可。
-4. **门禁本身无新增需求**：棘轮仍双向生效，基线只降不升；
-   `formUtils.ts` 的自动豁免证明「无 JSX 即工具模块」这条判定标准可用。
+- `43f2cc5` refactor(fe): 拆分 runtimeLogPresentation.ts（506→≤400，回收棘轮基线）
+  —— 4 文件（1 改 + 3 新）+ 基线 json，533 插入 / 512 删除。
+- `git diff origin/main --stat` 仅含上述（不含 node_modules / 契约仓 / mirror）。
+
+Reviewed-by: pending-non-author-review
