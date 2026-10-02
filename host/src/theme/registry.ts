@@ -40,24 +40,22 @@ function loadIifeThemeEntry(src: string): Promise<ThemeEntryModule> {
     // 注入前确保宿主依赖全局桥就位（`})(React)` 需要 window.React；
     // 缺失则主题入口抛 `React is not defined`。幂等。
     exposeThemeGlobals();
-    const win = window as unknown as Record<string, unknown>;
-    const previous = win[THEME_GLOBAL_NAME];
+    const previous = window[THEME_GLOBAL_NAME];
     const script = document.createElement('script');
     script.src = src;
     script.async = true;
     script.onload = () => {
-      const win = window as unknown as Record<string, unknown>;
-      const entry = win[THEME_GLOBAL_NAME];
+      const entry = window[THEME_GLOBAL_NAME];
       // 恢复/清除全局，避免多主题（串行激活）串味。
       // 注：注入的 `var FmbyTheme = …` 在 window 上是**不可配置**属性，
       // `delete` 会抛 `Cannot delete property`（实测）——故改为**赋值**。
       if (previous === undefined) {
-        win[THEME_GLOBAL_NAME] = undefined;
+        window[THEME_GLOBAL_NAME] = undefined;
       } else {
-        win[THEME_GLOBAL_NAME] = previous;
+        window[THEME_GLOBAL_NAME] = previous;
       }
-      if (entry && typeof entry === 'object' && 'manifest' in (entry as object)) {
-        resolve(entry as ThemeEntryModule);
+      if (entry && typeof entry === 'object' && 'manifest' in entry) {
+        resolve(entry);
       } else {
         reject(new Error(`theme entry global "${THEME_GLOBAL_NAME}" missing after load: ${src}`));
       }

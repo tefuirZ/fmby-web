@@ -286,6 +286,6 @@ export function useHome(options: UseHomeOptions = {}): HomeViewModel {
     actions,
     layout,
     error: effective.error,
-    librariesSectionRef: librariesSectionRef as unknown as (node: HTMLDivElement | null) => void,
+    librariesSectionRef,
   };
 }

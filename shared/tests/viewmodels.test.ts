@@ -267,3 +267,25 @@ test('shouldLoadTechnicalFallback: 仅剧集/季且缺技术信息且目标不�
     false,
   );
 });
+
+test('shouldLoadTechnicalFallback: malformed/空 technical 不得被当作已有技术信息', () => {
+  const base = { kind: 'series', id: 'a', playbackTargetId: 'b' };
+  // 空对象 / 全空值 / 空数组字段 → 无技术信息 → 需要兜底（不得静默视为已有）
+  assert.equal(shouldLoadTechnicalFallback({ ...base, technical: {} } as never), true);
+  assert.equal(
+    shouldLoadTechnicalFallback({ ...base, technical: { resolutionLabel: '' } } as never),
+    true,
+  );
+  assert.equal(
+    shouldLoadTechnicalFallback({ ...base, technical: { videoStreams: [] } } as never),
+    true,
+  );
+  // 非空值/非空数组 → 视为已有 → 不兜底
+  assert.equal(
+    shouldLoadTechnicalFallback({
+      ...base,
+      technical: { videoStreams: [{ index: 0 }] },
+    } as never),
+    false,
+  );
+});

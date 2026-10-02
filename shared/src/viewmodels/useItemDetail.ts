@@ -17,7 +17,10 @@ import { queryKeys } from '@fmby/v2-shared/query';
 
 import { useLayoutHint } from './useLayoutHint';
 import { deriveViewState, type LayoutHint, type ViewModel, type ViewState } from './types';
-import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
+import type {
+  ItemDetailResponse,
+  ItemTechnicalInfo,
+} from '@fmby/v2-shared/contracts/browse/item';
 import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 
 /** 视图数据：已合并技术信息、剧集选项等展示形态。 */
@@ -76,7 +79,10 @@ function hasRichTechnicalInfo(technical: ItemDetailResponse['technical']): boole
   if (!technical) {
     return false;
   }
-  const entries = Object.entries(technical as unknown as Record<string, unknown>);
+  // 键空间精确限定为 ItemTechnicalInfo 自身字段（非契约边界，不再套 as unknown as
+  // Record<string, unknown>）：值统一视为 unknown 后逐个判空，避免把无索引签名的
+  // interface 扩成任意键。
+  const entries = Object.entries(technical as Record<keyof ItemTechnicalInfo, unknown>);
   return entries.some(([, value]) => {
     if (Array.isArray(value)) {
       return value.length > 0;

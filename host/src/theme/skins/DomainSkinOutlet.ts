@@ -18,6 +18,7 @@ import { Fragment, createElement, useMemo, type ReactNode } from 'react';
 import { useLocation, useParams } from 'react-router';
 import {
   resolvePageDomain,
+  type PageDomain,
   type SkinProps,
 } from '@fmby/v2-shared/theme';
 import { useTheme } from '@/theme/themeContext';
@@ -52,16 +53,12 @@ export function DomainSkinOutlet({ children }: { children: ReactNode }) {
 }
 
 function RoutedDomainSkin(props: {
-  domain: string;
+  domain: PageDomain;
   params: Readonly<Record<string, string | undefined>>;
   Skin: React.ComponentType<SkinProps>;
 }) {
   const { domain, params, Skin } = props;
-  const registry = DOMAIN_SKIN_DATA_REGISTRY as unknown as Record<
-    string,
-    React.ComponentType<DomainSkinParamsProps & { children: ReactNode }> | undefined
-  >;
-  const Provider = registry[domain];
+  const Provider = DOMAIN_SKIN_DATA_REGISTRY[domain];
   const realtime = useSkinRealtime();
 
   const content = useMemo(() => {
