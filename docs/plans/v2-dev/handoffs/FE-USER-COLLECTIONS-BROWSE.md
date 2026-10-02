@@ -102,10 +102,13 @@ node scripts/check-frontend-component-size.mjs   → GATE_EXIT=0
 
 **列表页阻塞**：需后端补 **session + BROWSE 的原生用户面列表端点**
 （建议复用 `list_collections` + Active 可见性 + 分页/检索），本卡才可补浏览列表页与导航入口。
-三选一：
-- **A**：后端另开卡补 `GET /api/collections`（原生列表）→ 本卡续做列表页 + 导航。
-- **B**：裁定前端改用 manage 列表端点（需用户具 MANAGE 能力）→ 违背「用户面」语义，不推荐。
-- **C**：前端保留详情页，列表暂不接（现状），登记为前端缺口待后端补齐。
+
+> **2026-10-02 后续（裁决进展）**：主代理已据本 handoff 的证伪结论派生后端卡
+> **USER-COLLECTIONS-LIST-BE**（`w/zcode/user-collections-list`，仓库 FMBY-V2）——
+> 即上方**选项 A** 被采纳：由后端席新建用户面列表端点（session + BROWSE + Active 闸），
+> 并要求后端**独立复核**本节结论（若列表其实存在则停手回报，不重复造）。
+> ⇒ 本前端卡的列表半边**暂挂起**，待该后端卡合并后由前端补列表页 + 导航入口；
+> 详情半边已交付（不受阻塞）。三选一收敂为：A 已启动，B/C 不再需要。
 
 ---
 
