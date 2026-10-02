@@ -50,6 +50,14 @@ export function mapCreateMountPayloadToApi(payload: CreateManageMountRequest) {
     capabilities: payload.capabilities
       ? mapStorageCapabilitiesToApi(payload.capabilities)
       : undefined,
+    // FE-MOUNT-CONFIG-UI：R2.3–R2.6 六字段穿透（后端 ManagedMountCreateRequest
+    // 已实装，deny_unknown_fields ⇒ 此前静默丢弃后重写也进不了后端）。
+    note: payload.note,
+    rate_config: payload.rateConfig,
+    sidecar_nfo: payload.sidecarNfo,
+    sidecar_subtitle: payload.sidecarSubtitle,
+    sidecar_poster: payload.sidecarPoster,
+    visibility_rule: payload.visibilityRule,
   };
 }
 
@@ -63,6 +71,14 @@ export function mapUpdateMountPayloadToApi(payload: UpdateManageMountRequest) {
     capabilities: payload.capabilities
       ? mapStorageCapabilitiesToApi(payload.capabilities)
       : undefined,
+    // FE-MOUNT-CONFIG-UI：六字段穿透；rate_config `null` = 显式清除（后端
+    // `Some(null)`/`Some(缺省)` 语义见 ManagedMountUpdateRequest 注释）。
+    note: payload.note,
+    rate_config: payload.rateConfig,
+    sidecar_nfo: payload.sidecarNfo,
+    sidecar_subtitle: payload.sidecarSubtitle,
+    sidecar_poster: payload.sidecarPoster,
+    visibility_rule: payload.visibilityRule,
   };
 }
 

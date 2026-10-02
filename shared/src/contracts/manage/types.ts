@@ -909,6 +909,18 @@ export interface CreateManageMountRequest {
   status?: string;
   capabilities?: ManageStorageCapabilitiesState;
   pathPolicies?: ManageSourcePathPolicyInput[];
+  /** R2.4 备注名（后端 ManagedMountCreateRequest.note）。 */
+  note?: string;
+  /** R2.3 速率配置（JSON；后端 rate_config）。 */
+  rateConfig?: Record<string, unknown> | null;
+  /** R2.6 旁路开关（后端 sidecar_nfo）。 */
+  sidecarNfo?: boolean;
+  /** R2.6 旁路开关（后端 sidecar_subtitle）。 */
+  sidecarSubtitle?: boolean;
+  /** R2.6 旁路开关（后端 sidecar_poster）。 */
+  sidecarPoster?: boolean;
+  /** R2.5 可见性规则（JSON；缺省/`{}` = 全可见、排除优先，后端 visibility_rule）。 */
+  visibilityRule?: Record<string, unknown>;
 }
 
 export interface UpdateManageMountRequest {
@@ -918,6 +930,18 @@ export interface UpdateManageMountRequest {
   status?: string;
   capabilities?: ManageStorageCapabilitiesState;
   pathPolicies?: ManageSourcePathPolicyInput[];
+  /** R2.4 备注名（`Some` = 替换；缺省 = 保留存量）。 */
+  note?: string;
+  /** R2.3 速率配置（JSON；`null` = 清除，`undefined` = 保留存量）。 */
+  rateConfig?: Record<string, unknown> | null;
+  /** R2.6 旁路开关。 */
+  sidecarNfo?: boolean;
+  /** R2.6 旁路开关。 */
+  sidecarSubtitle?: boolean;
+  /** R2.6 旁路开关。 */
+  sidecarPoster?: boolean;
+  /** R2.5 可见性规则（JSON；缺省 = 保留存量）。 */
+  visibilityRule?: Record<string, unknown>;
 }
 
 export interface ManageScansQuery {
