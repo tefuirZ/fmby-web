@@ -76,7 +76,7 @@ $ cd host && node --import ./tests/register-aliases.mjs --test tests/license-pai
 **实现清单**：
 - `licenseAccess.ts`：新增 Vite-free `paidSurfaceForAuthProvider(provider)`（google→`identity-google`、telegram→`identity-telegram`，其余 null）。
 - `AuthProvidersSection.tsx`：`useLicenseStatusQuery` → google/telegram 未开通时**禁用该行 4 个开关** + 顶部 `InlineBanner`「部分登录提供方未开通」。（★修：hook 提到所有 early-return 之前，守 Rules of Hooks。）
-- `users/UserDrawer.tsx`：`isPaidFeatureEnabled(status, 'user-expiration')` → 传 `canUseUserExpiration` 给 Create/Edit 表单。
+- `users/components/UserDrawer.tsx`：`isPaidFeatureEnabled(status, 'user-expiration')` → 传 `canUseUserExpiration` 给 Create/Edit 表单。
 - `UserCreateForm.tsx` / `UserEditForm.tsx`：未开通时 `disabled` 有效期输入 + 诚实提示「当前授权未开通「账号有效期」…」。
 
 ---
