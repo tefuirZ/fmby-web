@@ -32,6 +32,7 @@ const {
   partitionBindingProviders,
   rememberPendingBinding,
   resolvePendingBinding,
+  startInputForProvider,
 } = await import('../src/pages/settings/identityBindingsPresentation');
 
 const google = {
@@ -203,4 +204,17 @@ test('consumeOAuthCallback：无暂存上下文 → 不调用 complete（不猜 
   });
   assert.equal(vars, null);
   assert.equal(called, false);
+});
+
+test('④ startInputForProvider：email 必须把邮箱带入 start（Major-2 输入面）', () => {
+  assert.deepEqual(startInputForProvider('email', '  A@B.c  ', ''), { email: 'A@B.c' });
+  // 空邮箱不编造字段：后端会如实 400「邮箱登录需要 email」，前端不静默成功。
+  assert.deepEqual(startInputForProvider('email', '   ', ''), { email: undefined });
+});
+
+test('④ startInputForProvider：google 带 redirectUri（Major-1 回站落点），telegram 无附加字段', () => {
+  assert.deepEqual(startInputForProvider('google', '', 'https://h/settings/identity'), {
+    redirectUri: 'https://h/settings/identity',
+  });
+  assert.deepEqual(startInputForProvider('telegram', '', ''), {});
 });

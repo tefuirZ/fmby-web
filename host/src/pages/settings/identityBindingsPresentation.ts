@@ -9,8 +9,33 @@ import type {
   IdentityLoginStart,
   IdentityProviderAvailability,
   IdentityProviderType,
+  IdentityStartInput,
 } from '@fmby/v2-shared/contracts/auth';
 import { bindingReadyProviders } from '@fmby/v2-shared/contracts/auth';
+
+/**
+ * 构造 `identityBindingsApi.start` 入参（按 provider 分流，challengeId 由后续 complete 携带）。
+ *
+ * - `email`：必须带邮箱（后端 `start_binding` 缺 email 即 400「邮箱登录需要 email」；
+ *   空邮箱不编造字段，交由后端如实拒绝，不静默成功）。
+ * - `google`：带 `redirectUri` = 本页 URL（后端 `start_oauth` 用其覆盖配置
+ *   redirect_uri，回站落点即本页，见 Major-1），**不**传邮箱。
+ * - 其余（telegram 等）：无附加字段，深链/轮询由 `authorizeUrl` 处理。
+ */
+export function startInputForProvider(
+  provider: IdentityProviderType,
+  email: string,
+  redirectUri: string,
+): IdentityStartInput {
+  if (provider === 'email') {
+    const trimmed = email.trim();
+    return { email: trimmed.length > 0 ? trimmed : undefined };
+  }
+  if (provider === 'google') {
+    return { redirectUri };
+  }
+  return {};
+}
 
 /** 已绑定行：绑定记录 + 展示名（缺可用性元信息时回落绑定显示名 / provider 名）。 */
 export interface BoundBindingRow {
