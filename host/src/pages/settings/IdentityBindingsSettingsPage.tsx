@@ -33,6 +33,7 @@ import {
   consumeOAuthCallback,
   partitionBindingProviders,
   rememberPendingBinding,
+  startInputForProvider,
 } from './identityBindingsPresentation';
 
 interface PendingBindingFlow {
@@ -58,13 +59,19 @@ export function IdentityBindingsSettingsPage() {
   const [code, setCode] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [unbindTarget, setUnbindTarget] = useState<IdentityProviderType | null>(null);
+  // Email 绑定需先收邮箱再 start（Major-2 输入面）：哪些 provider 正在展开邮箱输入。
+  const [emailDraftFor, setEmailDraftFor] = useState<IdentityProviderType | null>(null);
+  const [emailDraft, setEmailDraft] = useState('');
 
   const invalidateBindings = () =>
     void queryClient.invalidateQueries({ queryKey: queryKeys.settings.identityBindings() });
 
   const startMutation = useMutation({
     mutationFn: (provider: IdentityProviderType) =>
-      identityBindingsApi.start(provider, { redirectUri: window.location.href }),
+      identityBindingsApi.start(
+        provider,
+        startInputForProvider(provider, emailDraft.trim(), window.location.href),
+      ),
     onSuccess: (result: IdentityLoginStart, provider) => {
       setNotice(null);
       setCode('');
@@ -298,16 +305,69 @@ export function IdentityBindingsSettingsPage() {
                     {provider.provider}
                     {provider.configured ? '' : ' · 尚未完全配置'}
                   </span>
+                  {/* Major-2：Email 绑定需先收邮箱再 start，否则后端 400。 */}
+                  {emailDraftFor === provider.provider ? (
+                    <form
+                      className={styles.bindingCodeForm}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        if (!emailDraft.trim()) return;
+                        startMutation.mutate(provider.provider);
+                      }}
+                      noValidate
+                    >
+                      <label className={styles.field}>
+                        绑定邮箱
+                        <Input
+                          type="email"
+                          value={emailDraft}
+                          onChange={(event) => setEmailDraft(event.target.value)}
+                          autoComplete="email"
+                          placeholder="请输入要绑定的邮箱"
+                        />
+                      </label>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        type="submit"
+                        loading={startMutation.isPending && startMutation.variables === provider.provider}
+                        disabled={startMutation.isPending || emailDraft.trim().length === 0}
+                      >
+                        发送验证码
+                      </Button>
+                    </form>
+                  ) : null}
                 </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={startMutation.isPending && startMutation.variables === provider.provider}
-                  disabled={startMutation.isPending}
-                  onClick={() => startMutation.mutate(provider.provider)}
-                >
-                  绑定
-                </Button>
+                {emailDraftFor === provider.provider ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEmailDraftFor(null);
+                      setEmailDraft('');
+                    }}
+                  >
+                    取消
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={startMutation.isPending && startMutation.variables === provider.provider}
+                    disabled={startMutation.isPending}
+                    onClick={() => {
+                      // Email 多一步邮箱输入；其余 provider 直接发起。
+                      if (provider.provider === 'email') {
+                        setEmailDraft('');
+                        setEmailDraftFor(provider.provider);
+                      } else {
+                        startMutation.mutate(provider.provider);
+                      }
+                    }}
+                  >
+                    绑定
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
