@@ -53,6 +53,9 @@ export const queryKeys = {
     profile: () => ['settings', 'profile'] as const,
     appearance: () => ['settings', 'appearance'] as const,
     playback: () => ['settings', 'playback'] as const,
+    // FE-IDENTITY-BINDINGS：账号三方绑定列表 + 公开 provider 可用性。
+    identityBindings: () => ['settings', 'identity-bindings'] as const,
+    identityProviders: () => ['settings', 'identity-providers'] as const,
     server: {
       general: () => ['settings', 'server', 'general'] as const,
       security: () => ['settings', 'server', 'security'] as const,

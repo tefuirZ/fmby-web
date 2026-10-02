@@ -7,6 +7,7 @@
 
 import { asRecord, readArray, readBoolean, readNumber, readString } from '@fmby/v2-shared/api/mapping';
 import type {
+  AccountIdentityBinding,
   IdentityCallbackCapture,
   IdentityLoginStart,
   IdentityProviderAvailability,
@@ -73,8 +74,9 @@ export function mapProviderAvailability(raw: unknown): IdentityProviderAvailabil
   // 但显式 false 优先（不把「明确关闭」误读成开启）。
   const loginEnabled =
     readBoolean(record.login_enabled, record.loginEnabled) ?? enabled;
-  const bindingEnabled =
-    readBoolean(record.binding_enabled, record.bindingEnabled) ?? enabled;
+  // 绑定能力 **fail-closed**：后端公开视图逐字段下发 `binding_enabled`，缺失即
+  // 无法确认可绑定 → 一律 false（绝不回落 enabled 把「未知」当「可绑定」）。
+  const bindingEnabled = readBoolean(record.binding_enabled, record.bindingEnabled) ?? false;
   const passwordResetEnabled =
     readBoolean(record.password_reset_enabled, record.passwordResetEnabled) ?? false;
   return {
@@ -156,4 +158,49 @@ export function loginReadyProviders(
   return providers.filter(
     (provider) => provider.enabled && provider.configured && provider.loginEnabled,
   );
+}
+
+/**
+ * 绑定入口候选：`enabled && bindingEnabled`（fail-closed）。
+ *
+ * 与 `loginReadyProviders` 不同，**不**额外要求 `configured`：后端 `binding_enabled`
+ * 已表达 `allow_bind`（Telegram 走 enabled+configured 隐式开放），`configured` 与否
+ * 由后端 `start_binding` 裁决并如实报错，前端不擅自隐藏后端声明可绑的 provider。
+ */
+export function bindingReadyProviders(
+  providers: readonly IdentityProviderAvailability[],
+): IdentityProviderAvailability[] {
+  return providers.filter((provider) => provider.enabled && provider.bindingEnabled);
+}
+
+/**
+ * `GET /api/account/identity-bindings` 单个 item / `complete` 的 `binding` 段。
+ *
+ * 缺 id 或未知 provider 的条目**不可用**（无法稳定 keying / 无有效 provider），
+ * 如实返回 `null` 由列表丢弃——绝不猜测成有效绑定。
+ */
+export function mapAccountIdentityBinding(raw: unknown): AccountIdentityBinding | null {
+  const record = asRecord(raw);
+  const provider = normalizeProviderType(record.provider);
+  const id = readString(record.id);
+  if (!provider || !id) {
+    return null;
+  }
+  return {
+    id,
+    provider,
+    providerSubject: readString(record.provider_subject, record.providerSubject) ?? '',
+    providerEmail: readString(record.provider_email, record.providerEmail) ?? null,
+    providerUsername: readString(record.provider_username, record.providerUsername) ?? null,
+    providerDisplayName:
+      readString(record.provider_display_name, record.providerDisplayName) ?? null,
+    verifiedAt: readString(record.verified_at, record.verifiedAt) ?? '',
+    lastUsedAt: readString(record.last_used_at, record.lastUsedAt) ?? null,
+  };
+}
+
+/** `GET /api/account/identity-bindings` 响应（容忍 `{items}` / 裸数组；坏项丢弃）。 */
+export function mapAccountIdentityBindings(raw: unknown): AccountIdentityBinding[] {
+  const source = Array.isArray(raw) ? raw : asRecord(raw).items;
+  return readArray(source, mapAccountIdentityBinding);
 }

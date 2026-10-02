@@ -6,9 +6,12 @@
  * 请经 `../index`（auth barrel）取用 `identityLoginApi` 与 domain 类型。
  */
 
-export { completeIdentityLogin, identityLoginApi } from './api';
+export { completeIdentityLogin, identityBindingsApi, identityLoginApi } from './api';
 export {
+  bindingReadyProviders,
   loginReadyProviders,
+  mapAccountIdentityBinding,
+  mapAccountIdentityBindings,
   mapIdentityCallbackCapture,
   mapIdentityComplete,
   mapIdentityLoginStart,
@@ -19,6 +22,9 @@ export {
 } from './mappers';
 export type { IdentityCompleteOutcome } from './mappers';
 export type {
+  AccountIdentityBinding,
+  IdentityBindingCompleteInput,
+  IdentityBindingUnbindResult,
   IdentityCallbackCapture,
   IdentityLoginCompleteResult,
   IdentityLoginStart,

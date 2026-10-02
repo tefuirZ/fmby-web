@@ -67,3 +67,36 @@ export interface RawIdentityCallbackCapture {
   receivedCode?: unknown;
   message?: unknown;
 }
+
+/** `GET /api/account/identity-bindings` item（V1 `AccountIdentityBindingDto`）。 */
+export interface RawAccountIdentityBinding {
+  id?: unknown;
+  provider?: unknown;
+  provider_subject?: unknown;
+  providerSubject?: unknown;
+  provider_email?: unknown;
+  providerEmail?: unknown;
+  provider_username?: unknown;
+  providerUsername?: unknown;
+  provider_display_name?: unknown;
+  providerDisplayName?: unknown;
+  verified_at?: unknown;
+  verifiedAt?: unknown;
+  last_used_at?: unknown;
+  lastUsedAt?: unknown;
+}
+
+/** `GET /api/account/identity-bindings` 响应（`{ items: [...] }`）。 */
+export interface RawAccountIdentityBindingsResponse {
+  items?: unknown;
+}
+
+/** `POST .../complete` 响应（`{ binding: {...} }`）。 */
+export interface RawCompleteIdentityBindingResponse {
+  binding?: unknown;
+}
+
+/** `POST /api/auth/identity/unbind` 响应（`{ ok: true }`）。 */
+export interface RawUnbindIdentityBindingResponse {
+  ok?: unknown;
+}
