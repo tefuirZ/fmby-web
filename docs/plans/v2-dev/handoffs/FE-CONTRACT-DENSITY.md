@@ -28,7 +28,7 @@
 本卡为前端口径门禁，无需改契约符号；用 codegraph 确认契约文件形态与门禁扫描面：
 
 - `codegraph status` → 索引 768 文件 / 7573 节点；`shared/src/contracts/**` 全量在索引内（门禁 `walkTs` 覆盖）。
-- `codegraph query "httpClient" -p .` 确认端点入口统一为 `shared/src/api/client.ts` 导出的 `httpClient`，契约 `*.api.ts` 经 `httpClient.<verb>` 调后端（端点计数口径可靠，与脚本正则一致）。
+- `codegraph query "httpClient"` → 定义点唯一：`shared/src/api/client.ts:455`（`httpClient = { get<T>... }`）；契约 `*.api.ts` 经该导出做 `httpClient.<verb>` 调后端（如 `namingCleanupApi`、`getTelegramBotConfig` 等均为 `httpClient.get<...>` 形态）。端点计数口径可靠，与脚本正则 `httpClient\.(get|post|patch|put|delete)\s*[<(` 一致。
 
 **字面量配置证据**（脚本内阈值，改动后）：
 ```js
