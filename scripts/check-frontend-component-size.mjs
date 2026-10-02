@@ -160,6 +160,16 @@ function countLines(file) {
   return normalized === '' ? 0 : normalized.split('\n').length;
 }
 
+/**
+ * 契约端点数：统计 `httpClient.<verb>` 调用（verb ∈ get/post/patch/put/delete）。
+ * 契约 *.api.ts 的惯用形态是「HTTP 客户端调用 + 响应映射」（见 shared/src/contracts/**）。
+ * 不含类型的 `httpClient.get(...)` 与带类型的 `httpClient.get<T>(...)` 一并计入。
+ */
+function countEndpoints(source) {
+  const re = /httpClient\.(?:get|post|patch|put|delete)\s*[<(]/g;
+  return (source.match(re) || []).length;
+}
+
 function loadBaseline() {
   if (!fs.existsSync(BASELINE_PATH)) return null;
   return JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf-8'));
@@ -185,6 +195,18 @@ const enforcedTsx = measured.filter((m) => !m.exempt);
 const CONTRACT_CEILING_LINES = 1200;
 const CONTRACT_PREFIX = 'shared/src/contracts/';
 const isContractFile = (rel) => rel.startsWith(CONTRACT_PREFIX);
+
+/**
+ * 契约端点密度阈值（FE-CONTRACT-DENSITY）。
+ * 口径：density = 行数 / 端点数，仅对「含 httpClient 端点的契约文件」有意义
+ * （types.ts / raw-types.ts 等 0 端点文件密度无定义，跳过——仍走 [2b] 400 行 WARN）。
+ * - WARN_DENSITY > 120 行/端点：非阻塞，与契约 400 行 WARN 对称（端点越多允许的绝对行数越多）；
+ * - FAIL_DENSITY > 250 行/端点：绝对硬顶，与契约 1200 行硬顶对称（逼单端点重映射拆分）。
+ * 阈值经实测：当前存量最大密度 218（browse/item/api.ts），故 3 个 WARN、0 个 FAIL，
+ * 不把历史基线一次性打红（见 handoff）。
+ */
+const CONTRACT_WARN_DENSITY = 120;
+const CONTRACT_FAIL_DENSITY = 250;
 
 const tsMeasured = SCAN_DIRS.flatMap(walkTs)
   .map((f) => ({ file: getRelativePath(f), lines: countLines(f) }))
@@ -317,6 +339,40 @@ if (contractTs.length > 0) {
       });
     } else {
       console.log(`  [WARN] ${m.file}: ${m.lines} 行（契约天然长度，未超硬上限 ${CONTRACT_CEILING_LINES}）`);
+    }
+  }
+}
+
+// 契约 .ts 端点密度（FE-CONTRACT-DENSITY）：density = 行数 / 端点数。
+// 仅对含 httpClient 端点的契约文件生效；0 端点文件无密度定义，跳过（仍走 [2b]）。
+// 注意：密度检查作用于**全部**契约文件（不限 [2b] 的 400 行过滤）——短而密的单端点大响应同样要抓。
+{
+  const dense = SCAN_DIRS.flatMap(walkTs)
+    .map((f) => ({ file: getRelativePath(f), lines: countLines(f) }))
+    .filter((m) => isContractFile(m.file))
+    .map((m) => {
+      const src = fs.readFileSync(path.resolve(REPO_ROOT, m.file), 'utf-8');
+      const eps = countEndpoints(src);
+      return eps > 0 ? { ...m, endpoints: eps, density: m.lines / eps } : null;
+    })
+    .filter((m) => m !== null)
+    .sort((a, b) => b.density - a.density);
+  if (dense.length > 0) {
+    console.log(`\n[2c] 契约 *.api.ts 端点密度（行数/端点；> ${CONTRACT_WARN_DENSITY} warn，> ${CONTRACT_FAIL_DENSITY} fail）：${dense.length} 个含端点`);
+    for (const m of dense) {
+      if (m.density > CONTRACT_FAIL_DENSITY) {
+        console.log(`  [FAIL] ${m.file}: ${m.lines} 行 / ${m.endpoints} 端点 = ${m.density.toFixed(0)} 行/端点（超密度硬顶 ${CONTRACT_FAIL_DENSITY}）`);
+        violations.push({
+          rule: 'Contract Endpoint Density Over Hard Ceiling',
+          file: m.file,
+          reason:
+            `${m.lines} 行 / ${m.endpoints} 端点 = ${m.density.toFixed(0)} 行/端点，` +
+            `超契约密度硬顶 ${CONTRACT_FAIL_DENSITY} 行/端点。单端点承载过重映射（常是聚合根式大响应），` +
+            '请按响应字段域/子资源拆出独立端点或映射模块，勿堆单文件。',
+        });
+      } else if (m.density > CONTRACT_WARN_DENSITY) {
+        console.log(`  [WARN] ${m.file}: ${m.lines} 行 / ${m.endpoints} 端点 = ${m.density.toFixed(0)} 行/端点（密度偏高，未超硬顶 ${CONTRACT_FAIL_DENSITY}）`);
+      }
     }
   }
 }
