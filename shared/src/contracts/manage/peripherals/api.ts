@@ -94,6 +94,8 @@ interface RawManagedCollectionMember {
   id: string;
   collection_id: string;
   bound_item_id: string | null;
+  /** `imported` / `manual` / `rule`（后端 `member_origin`，迁移 0044）。 */
+  member_origin: string;
   title_snapshot: string;
   year_snapshot: number | null;
   media_kind: string;
@@ -436,6 +438,7 @@ function fromMember(r: RawManagedCollectionMember): ManagedCollectionMemberRecor
     id: r.id,
     collectionId: r.collection_id,
     boundItemId: r.bound_item_id,
+    memberOrigin: r.member_origin as ManagedCollectionMemberRecord["memberOrigin"],
     titleSnapshot: r.title_snapshot,
     yearSnapshot: r.year_snapshot,
     mediaKind: r.media_kind as ManagedCollectionMemberRecord["mediaKind"],
