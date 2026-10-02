@@ -38,6 +38,9 @@ export type CollectionCollectionKind = 'manual' | 'rule' | string;
 /** 合集成员媒体类型（后端 domain `Movie` / `Series` / `Unknown` 透传）。 */
 export type CollectionMemberMediaKind = 'Movie' | 'Series' | 'Unknown';
 
+/** 合集成员来源（后端 `member_origin`，迁移 0044：`imported` / `manual` / `rule`）。 */
+export type CollectionMemberOrigin = 'imported' | 'manual' | 'rule';
+
 export interface ManagedCollectionRecord {
   id: string;
   title: string;
@@ -62,6 +65,8 @@ export interface ManagedCollectionMemberRecord {
   collectionId: string;
   /** 绑定条目 id（后端 `bound_item_id`）。POST /members/remove 用 `item_id` 定位，必须透传不可丢失（B1 mapper 曾漏映射，本卡补回）。 */
   boundItemId: string | null;
+  /** 成员来源（后端 `member_origin`）：规则成员与人工收录的区分依据；FE-COLLECTIONS-CONTRACT-GAP 补齐（此前前端 12 字段，漏收该字段）。 */
+  memberOrigin: CollectionMemberOrigin;
   titleSnapshot: string;
   yearSnapshot: number | null;
   mediaKind: CollectionMemberMediaKind;
