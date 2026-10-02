@@ -105,7 +105,7 @@ interface RawManagedCollectionMember {
   updated_at: number;
 }
 
-interface RawManagedCollectionDetail {
+export interface RawManagedCollectionDetail {
   collection: RawManagedCollection;
   members: RawManagedCollectionMember[];
   rules: RawManagedCollectionRule[];
@@ -420,7 +420,9 @@ function fromPreviewItem(r: RawManagedCollectionRulePreviewItem): ManagedCollect
   return { id: r.id, title: r.title, year: r.year, mediaKind: r.media_kind };
 }
 
-function fromDetail(r: RawManagedCollectionDetail): ManagedCollectionDetailRecord {
+// FE-USER-COLLECTIONS-BROWSE：用户面 `GET /api/collections/{id}` 与 manage detail 同 DTO
+// （后端复用 `ManagedCollectionDetailDto`），故本 mapper 导出供 browse 面复用（零重复映射）。
+export function fromDetail(r: RawManagedCollectionDetail): ManagedCollectionDetailRecord {
   return {
     collection: fromCollection(r.collection),
     members: r.members.map(fromMember),
