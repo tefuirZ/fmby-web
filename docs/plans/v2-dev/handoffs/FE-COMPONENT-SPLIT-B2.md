@@ -79,3 +79,25 @@
 - `git diff origin/main --stat` 仅含上述（不含 node_modules / 契约仓 / mirror）。
 
 Reviewed-by: pending-non-author-review
+
+---
+
+## 7. 复核（席位守夜重新派发，2026-10-02）
+
+本卡被**再次派发**（前序已交付于本支：`43f2cc5` 拆分 + `de88b60` 本 handoff）。复核者
+未执行派单里的 `git checkout -B … origin/main`（会丢弃上述 2 提交）；独立复核结论：
+
+| 复核项 | 命令 | 结果 |
+|---|---|---|
+| 拆分落地 | `wc -l` | 主入口 **9**（原 506）+ 子模块 139/204/180（全 ≤400） |
+| component-size | `node scripts/check-frontend-component-size.mjs` | PASS 0 违规；受管 1（仅剩 `shared/src/api/client.ts`）|
+| host typecheck | `host/node_modules/.bin/tsc -p host/tsconfig.app.json --noEmit` | **EXIT=0** |
+| dupes / contracts / repo-size | 三脚本 | 全 PASS |
+| 基线回收 | `evidence/fe-component-size-baseline.json` | 仅剩 `client.ts`(506)——`runtimeLogPresentation` 已移出 ✓ |
+| re-export 面 | 读主入口 | 5 符号（2 类型 + 3 函数）全经桶 re-export，调用方零改动 ✓ |
+
+**补充动作**：本支此前**未推送**（`origin/w/fe/component-split-b2` 不存在）——已 `git push` 保全
+（远端尖 = `de88b60`）。分支 2 ahead / 0 behind `origin/main`，**可合并**。
+
+**残余（非本卡范围，同 §5）**：`shared/src/api/client.ts`(506) 非「组件」语义，需专门的 HTTP
+客户端重构卡，待主代理裁决是否单列。
