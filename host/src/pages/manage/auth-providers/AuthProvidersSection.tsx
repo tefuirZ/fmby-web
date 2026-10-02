@@ -18,6 +18,8 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
 import { ProviderDiagnosticsCard } from './ProviderDiagnosticsCard';
+import { isPaidFeatureEnabled, paidSurfaceForAuthProvider } from '@/pages/manage/license/licenseAccess';
+import { useLicenseStatusQuery } from '@/pages/manage/license/hooks/useLicenseQueries';
 
 function toWriteInput(item: AuthProviderConfigViewRecord): AuthProviderConfigWriteInput {
   return {
@@ -35,6 +37,7 @@ export function AuthProvidersSection() {
   const [draft, setDraft] = useState<AuthProviderConfigWriteInput[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const statusQuery = useLicenseStatusQuery();
 
   const configsQuery = useQuery({
     queryKey: queryKeys.manage.authProviders.configs(),
@@ -89,6 +92,13 @@ export function AuthProvidersSection() {
 
   const items = configsQuery.data?.items ?? [];
   const rows = draft ?? items.map(toWriteInput);
+  // 付费门：Google/Telegram 未开通时禁用其开关（不改存量值，非破坏式；
+  // 与 V1 `allowedProviders` 只筛登录面同义：禁「开」不禁「已有」）。
+  const isRowGated = (provider: string): boolean => {
+    const surface = paidSurfaceForAuthProvider(provider);
+    return surface !== null && !isPaidFeatureEnabled(statusQuery.data, surface);
+  };
+  const gatedProviders = items.filter((item) => isRowGated(item.provider));
 
   function patch(index: number, patcher: Partial<AuthProviderConfigWriteInput>) {
     setDraft((current) =>
@@ -105,6 +115,16 @@ export function AuthProvidersSection() {
     >
       {error ? <InlineBanner variant="error" title="保存失败" description={error} /> : null}
       {notice ? <InlineBanner variant="success" title={notice} /> : null}
+
+      {gatedProviders.length > 0 ? (
+        <InlineBanner
+          variant="warning"
+          title="部分登录提供方未开通"
+          description={`当前授权未开通：${gatedProviders
+            .map((item) => item.displayName || item.provider)
+            .join('、')}。如需启用请先在「授权与订阅」确认。`}
+        />
+      ) : null}
 
       {items.length === 0 ? (
         <div className={styles.emptyInlineState}>后端尚未返回任何登录提供方配置。</div>
@@ -133,6 +153,7 @@ export function AuthProvidersSection() {
                         className={styles.checkbox}
                         type="checkbox"
                         checked={row.enabled}
+                        disabled={isRowGated(item.provider)}
                         aria-label={`启用 ${item.displayName || item.provider}`}
                         onChange={(e) => patch(index, { enabled: e.target.checked })}
                       />
@@ -142,6 +163,7 @@ export function AuthProvidersSection() {
                         className={styles.checkbox}
                         type="checkbox"
                         checked={row.allowLogin}
+                        disabled={isRowGated(item.provider)}
                         aria-label={`允许登录：${item.displayName || item.provider}`}
                         onChange={(e) => patch(index, { allowLogin: e.target.checked })}
                       />
@@ -151,6 +173,7 @@ export function AuthProvidersSection() {
                         className={styles.checkbox}
                         type="checkbox"
                         checked={row.allowBinding}
+                        disabled={isRowGated(item.provider)}
                         aria-label={`允许绑定：${item.displayName || item.provider}`}
                         onChange={(e) => patch(index, { allowBinding: e.target.checked })}
                       />
@@ -160,6 +183,7 @@ export function AuthProvidersSection() {
                         className={styles.checkbox}
                         type="checkbox"
                         checked={row.allowPasswordReset}
+                        disabled={isRowGated(item.provider)}
                         aria-label={`允许找回密码：${item.displayName || item.provider}`}
                         onChange={(e) => patch(index, { allowPasswordReset: e.target.checked })}
                       />

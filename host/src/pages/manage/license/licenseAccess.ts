@@ -33,3 +33,19 @@ export function isPaidFeatureEnabled(
     ? feature.some((item) => canUsePaidFeature(visibility, item))
     : canUsePaidFeature(visibility, feature);
 }
+
+/**
+ * 登录提供方 → 付费 surface（照 V1 `SiteSettingsSecuritySection` 的
+ * `identity-google`/`identity-telegram` 字段级付费门，逐字对位）。
+ * 非付费提供方（email 等）返回 `null`（不受授权门控）。
+ */
+export function paidSurfaceForAuthProvider(provider: string): string | null {
+  switch (provider.toLowerCase()) {
+    case 'google':
+      return 'identity-google';
+    case 'telegram':
+      return 'identity-telegram';
+    default:
+      return null;
+  }
+}

@@ -24,6 +24,8 @@ import {
   parseOptionalDateTimeLocal,
   parseOptionalPositiveInt,
 } from '../formUtils';
+import { isPaidFeatureEnabled } from '@/featureFlags';
+import { useLicenseStatusQuery } from '@/pages/manage/license/hooks/useLicenseQueries';
 
 interface MutationShape<TVars> {
   isPending: boolean;
@@ -72,6 +74,9 @@ export function UserDrawer({
   onResetPassword,
   onClose,
 }: UserDrawerProps) {
+  const statusQuery = useLicenseStatusQuery();
+  // 付费门（照 V1 `canUseUserExpiration`）：`user-expiration` 未开通时禁用账号有效期字段。
+  const canUseUserExpiration = isPaidFeatureEnabled(statusQuery.data, 'user-expiration');
   const currentDetail = userDetailQuery.data;
   const mountOptions = mounts.map((mount) => ({
     id: mount.id,
@@ -93,6 +98,7 @@ export function UserDrawer({
       {drawerState?.mode === 'create' ? (
         <UserCreateForm
           formState={formState}
+          canUseUserExpiration={canUseUserExpiration}
           onChange={setFormState}
           mountsLoading={mountsLoading}
           mountsError={mountsError}
@@ -128,6 +134,7 @@ export function UserDrawer({
       ) : drawerState?.mode === 'edit' && currentDetail ? (
         <UserEditForm
           formState={formState}
+          canUseUserExpiration={canUseUserExpiration}
           onChange={setFormState}
           mountsLoading={mountsLoading}
           mountsError={mountsError}

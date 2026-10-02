@@ -13,6 +13,8 @@ import { normalizePositiveIntegerText } from '../formUtils';
 
 interface UserCreateFormProps {
   formState: UserFormState;
+  /** R2.5/付费门：`user-expiration` 未开通时禁用账号有效期（照 V1 `canUseUserExpiration`）。 */
+  canUseUserExpiration: boolean;
   onChange: (updater: (current: UserFormState) => UserFormState) => void;
   mountsLoading: boolean;
   mountsError?: string;
@@ -28,6 +30,7 @@ interface UserCreateFormProps {
 
 export function UserCreateForm({
   formState,
+  canUseUserExpiration,
   onChange,
   mountsLoading,
   mountsError,
@@ -180,8 +183,13 @@ export function UserCreateForm({
             type="datetime-local"
             value={formState.validUntil}
             onChange={(event) => onChange((current) => ({ ...current, validUntil: event.target.value }))}
+            disabled={!canUseUserExpiration}
           />
-          <span className={styles.fieldHint}>留空表示不限制账号有效期。显示与填写按 Asia/Shanghai。</span>
+          <span className={styles.fieldHint}>
+            {canUseUserExpiration
+              ? '留空表示不限制账号有效期。显示与填写按 Asia/Shanghai。'
+              : '当前授权未开通「账号有效期」，如需使用请先在「授权与订阅」确认。'}
+          </span>
         </label>
         <label className={styles.label}>
           同时播放设备上限
