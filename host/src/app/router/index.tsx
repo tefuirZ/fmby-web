@@ -153,6 +153,16 @@ export const router = createBrowserRouter([
             },
           },
           {
+            // FE-USER-COLLECTIONS-BROWSE：用户面合集详情（`GET /api/collections/{id}`）。
+            // 列表页未接：后端用户面列表只在 compat `/emby/Collections`（仅认 Emby
+            // api_key，WebUI session 不可达）——见 handoff 待裁决项。
+            path: 'collections/:collectionId',
+            lazy: async () => {
+              const { CollectionDetailPage } = await import('@/pages/browse/CollectionDetailPage');
+              return { Component: CollectionDetailPage };
+            },
+          },
+          {
             path: 'settings',
             element: <SettingsLayout />,
             children: [
