@@ -112,6 +112,43 @@ export function resolvePendingBinding(challengeId: string): PendingBinding | und
   return undefined;
 }
 
+/** OAuth 回站消费结果（同一标签跳转回 /settings/identity 后落在此页）。 */
+export interface OAuthCallbackCompletion {
+  provider: IdentityProviderType;
+  challengeId: string;
+  action: 'external_callback';
+  code: string;
+}
+
+/**
+ * 消费 OAuth 回站 query（`?code=..&state=..`，state=发起时 challengeId）。
+ *
+ * 仅当「暂存上下文存在 且 state 与 challengeId 严格相等 且 带 code」才返回完整的
+ * complete 入参，并调用 `onComplete`（页面据此喂给 completeMutation.mutate）——
+ * 这是 Major-1 修复的可证点：**回站后真正走 complete 绑定，而非静默跳过**。
+ * 任一条件不满足（无暂存 / state 不匹配 / 缺 code）一律返回 null 且不回调，
+ * 不猜测 provider、不串流。
+ */
+export function consumeOAuthCallback(
+  search: string,
+  onComplete: (vars: OAuthCallbackCompletion) => void,
+): OAuthCallbackCompletion | null {
+  const params = new URLSearchParams(search);
+  const state = params.get('state') ?? params.get('challenge_id');
+  const returnedCode = params.get('code');
+  if (!state || !returnedCode) return null;
+  const saved = resolvePendingBinding(state);
+  if (!saved) return null;
+  const vars: OAuthCallbackCompletion = {
+    provider: saved.provider,
+    challengeId: state,
+    action: 'external_callback',
+    code: returnedCode,
+  };
+  onComplete(vars);
+  return vars;
+}
+
 /** 流结束后清理回流上下文。 */
 export function clearPendingBinding(): void {
   try {

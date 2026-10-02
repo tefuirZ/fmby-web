@@ -28,6 +28,7 @@ let storageThrows = false;
 const {
   bindingCompleteRequest,
   clearPendingBinding,
+  consumeOAuthCallback,
   partitionBindingProviders,
   rememberPendingBinding,
   resolvePendingBinding,
@@ -150,4 +151,56 @@ test('③ 回流上下文：sessionStorage 不可用 → 不抛，返回 undefin
   } finally {
     storageThrows = false;
   }
+});
+
+test('★consumeOAuthCallback：回站 query + 暂存匹配 → 真正调用 complete（不静默跳过）', () => {
+  store.clear();
+  rememberPendingBinding({ challengeId: 'chl-google-1', provider: 'google' });
+  let completed: unknown = null;
+  const vars = consumeOAuthCallback('?state=chl-google-1&code=auth-code-9', (v) => {
+    completed = v;
+  });
+  assert.equal(vars?.provider, 'google');
+  assert.equal(vars?.challengeId, 'chl-google-1');
+  assert.equal(vars?.code, 'auth-code-9');
+  // 组件据此把 vars 喂给 completeMutation.mutate —— 断言 complete 被如实调用，
+  // 而不是「回站后静默无事发生」（Major-1 修复的可证点）。
+  assert.deepEqual(completed, {
+    provider: 'google',
+    challengeId: 'chl-google-1',
+    action: 'external_callback',
+    code: 'auth-code-9',
+  });
+});
+
+test('consumeOAuthCallback：缺 code → 不调用 complete（null）', () => {
+  store.clear();
+  rememberPendingBinding({ challengeId: 'chl-2', provider: 'google' });
+  let called = false;
+  const vars = consumeOAuthCallback('?state=chl-2', () => {
+    called = true;
+  });
+  assert.equal(vars, null);
+  assert.equal(called, false);
+});
+
+test('consumeOAuthCallback：state 与暂存不匹配 → 不调用 complete（防串 provider）', () => {
+  store.clear();
+  rememberPendingBinding({ challengeId: 'chl-google-1', provider: 'google' });
+  let called = false;
+  const vars = consumeOAuthCallback('?state=other-state&code=x', () => {
+    called = true;
+  });
+  assert.equal(vars, null);
+  assert.equal(called, false);
+});
+
+test('consumeOAuthCallback：无暂存上下文 → 不调用 complete（不猜 provider）', () => {
+  store.clear();
+  let called = false;
+  const vars = consumeOAuthCallback('?state=chl-google-1&code=x', () => {
+    called = true;
+  });
+  assert.equal(vars, null);
+  assert.equal(called, false);
 });

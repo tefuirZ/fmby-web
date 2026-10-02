@@ -30,9 +30,9 @@ import { SettingsPageHeader, SettingsSectionCard } from './components';
 import {
   bindingCompleteRequest,
   clearPendingBinding,
+  consumeOAuthCallback,
   partitionBindingProviders,
   rememberPendingBinding,
-  resolvePendingBinding,
 } from './identityBindingsPresentation';
 
 interface PendingBindingFlow {
@@ -63,7 +63,8 @@ export function IdentityBindingsSettingsPage() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.settings.identityBindings() });
 
   const startMutation = useMutation({
-    mutationFn: (provider: IdentityProviderType) => identityBindingsApi.start(provider),
+    mutationFn: (provider: IdentityProviderType) =>
+      identityBindingsApi.start(provider, { redirectUri: window.location.href }),
     onSuccess: (result: IdentityLoginStart, provider) => {
       setNotice(null);
       setCode('');
@@ -103,22 +104,17 @@ export function IdentityBindingsSettingsPage() {
     },
   });
 
-  // OAuth 回站（Google）：URL 带 code + state(=challengeId)，按暂存上下文反查 provider 完成。
+  // OAuth 回站（Google）：同标签跳转回本页 URL 带 code + state(=challengeId)，
+  // 按暂存上下文反查 provider 并真正调 complete 完成绑定（Major-1：不再静默跳过）。
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const state = params.get('state') ?? params.get('challenge_id');
-    const returnedCode = params.get('code');
-    if (!state || !returnedCode) return;
-    const saved = resolvePendingBinding(state);
-    if (!saved) return;
-    setPending({ provider: saved.provider, challengeId: state, action: 'external_callback' });
-    completeMutation.mutate({
-      provider: saved.provider,
-      challengeId: state,
-      action: 'external_callback',
-      code: returnedCode,
+    consumeOAuthCallback(window.location.search, (vars) => {
+      setPending({ provider: vars.provider, challengeId: vars.challengeId, action: 'external_callback' });
+      completeMutation.mutate(vars);
     });
-    window.history.replaceState(null, '', window.location.pathname);
+    if (/\[?&\](code|state)=/.test(window.location.search)) {
+      // 已消费（或无可消费）：清掉回站 query，避免刷新重复触发。
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     // 仅在挂载时处理一次回站参数。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -222,7 +218,10 @@ export function IdentityBindingsSettingsPage() {
               <a
                 className={styles.bindingLink}
                 href={pending.authorizeUrl}
-                target="_blank"
+                // Telegram 深链保持新标签打开；Google OAuth **同一标签跳转**——
+                // 授权完成后回站落点（redirect_uri = 本页 URL）才能在本页挂载树上
+                // 触发回站 effect 真正完成绑定（Major-1：避免新标签回站静默跳过）。
+                target={pending.action === 'enter_code' ? '_blank' : '_self'}
                 rel="noopener noreferrer"
               >
                 {pending.action === 'enter_code' ? '打开 Telegram Bot' : '前往授权'}

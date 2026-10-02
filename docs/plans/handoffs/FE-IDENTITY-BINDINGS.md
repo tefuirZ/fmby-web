@@ -78,22 +78,29 @@
   challengeId 恒取自对应 start，空码不编造字段（host 测试 3 条 ②）。
 - 回流上下文 `remember/resolve/clearPendingBinding`：state=challengeId 反查 provider、
   sessionStorage 不可用不抛（host 测试 2 条 ③）。
+- **Major-1 回站绑定修复**：`consumeOAuthCallback(search, onComplete)` 在回站 URL
+  （`?code=..&state=..`，state=challengeId）与暂存上下文**严格匹配且有 code**时，
+  返回 complete 入参并**真正调用** `completeMutation.mutate`（host 测试 4 条 ★，含
+  「缺 code / state 不匹配 / 无暂存」三类不静默跳过）；页面发起 Google 绑定时传
+  `redirectUri: window.location.href`（后端 start_oauth 用该值覆盖 configured
+  redirect_uri），OAuth 锚点由 `target="_blank"` 改 `_self` 同标签跳转，回站落回
+  `/settings/identity` 命中此 effect —— 验收③「回站会真正走 complete 绑定」。
 
 ---
 
 ## ③ 当次验证（原文）
 
 ```text
-# host 单测
-$ node --import ./tests/register-aliases.mjs --test tests/identity-bindings-presentation.test.ts
-ℹ tests 8  ℹ pass 8  ℹ fail 0  ℹ duration_ms 324
+# host 单测（在 host/ 子目录执行，register 脚本位于 host/tests/）
+$ cd host && node --import ./tests/register-aliases.mjs --test tests/identity-bindings-presentation.test.ts
+ℹ tests 12  ℹ pass 12  ℹ fail 0  ℹ duration_ms 574
 
-# shared 单测
-$ node --import ./tests/register-resolver.mjs --test tests/identity-bindings.test.ts
-ℹ tests 14  ℹ pass 14  ℹ fail 0  ℹ duration_ms 319
+# shared 单测（在 shared/ 子目录执行，register 脚本位于 shared/tests/）
+$ cd shared && node --import ./tests/register-resolver.mjs --test tests/identity-bindings.test.ts
+ℹ tests 14  ℹ pass 14  ℹ fail 0  ℹ duration_ms 746
 
-# host 类型检查（修复 completeVars 未读 TS6133 后）
-$ FMBY_QUEUE_ALLOW_HEAVY_LOCAL=1 ./node_modules/.bin/tsc -p tsconfig.app.json --noEmit
+# host 类型检查（在 host/ 子目录执行）
+$ cd host && FMBY_QUEUE_ALLOW_HEAVY_LOCAL=1 ./node_modules/.bin/tsc -p tsconfig.app.json --noEmit
 EXIT=0
 
 # shared 类型检查
