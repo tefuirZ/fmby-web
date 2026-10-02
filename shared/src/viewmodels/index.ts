@@ -18,6 +18,7 @@ export * from './useLibraryList';
 export * from './useLibraryDetail';
 export * from './useItemDetail';
 export * from './usePersonDetail';
+export * from './useCollectionDetail';
 export * from './useHistory';
 export * from './usePlaybackSession';
 export * from './useSearchOverlay';
