@@ -40,6 +40,14 @@ codegraph 佐证：`useOperationsRealtime` 调用方 = `OperationsGapSections`�
 > 依赖安装：worktree 新树 `pnpm install --offline --frozen-lockfile`（exit 0）；typecheck 经直调
 > `tsc` 二进制（pnpm 被 fmby-queue 全局串行，直调 tsc 秒级、等价）。
 
+
+### RED→GREEN：**不适用**（证伪卡，零代码改动）
+
+本卡经取证判定「能力已在 `origin/main` 完整实现并合入（`0f55580`）」⇒ **无新功能要实现**，
+故无 RED→GREEN 循环可写（写测试→看它失败→写实现 在本卡不成立：实现已存在且测试已绿 9/9）。
+按 ponytail「不新造实现」纪律，本卡**不动生产代码**，只补缺失的交接文档。
+若强行造一个 RED→GREEN，等于在已绿的实现上重复造轮子（且会制造第二套 WS 客户端）。
+
 ## 4. 跳过项（ponytail：跳过了什么 / 何时再加）
 
 - **不新造实现**：卡面所述能力 `0f55580` 已全量落地；重复实现 = 违反 ponytail 且制造第二套 WS 客户端。
