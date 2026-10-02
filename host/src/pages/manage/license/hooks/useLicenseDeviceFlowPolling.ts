@@ -4,6 +4,7 @@ import type {
   LicensePollResponseRecord,
   LicenseStatusRecord,
 } from '@fmby/v2-shared/contracts/manage/license';
+import { isDeviceFlowExpired } from '../deviceFlow';
 
 interface UseLicenseDeviceFlowPollingOptions {
   status?: LicenseStatusRecord;
@@ -41,9 +42,8 @@ function shouldPoll(status: LicenseStatusRecord) {
   if (status.runtimeState === 'active' || status.runtimeState === 'grace') {
     return false;
   }
-  if (!status.deviceFlow.expiresAt) return true;
   // 非展示用途：仅用 epoch 判断 Device Flow 是否还需要继续轮询。
-  return status.deviceFlow.expiresAt > Date.now();
+  return !isDeviceFlowExpired(status.deviceFlow);
 }
 
 function getPollDelayMs(status: LicenseStatusRecord) {
