@@ -21,6 +21,8 @@ export const queryKeys = {
     libraries: () => ['browse', 'libraries'] as const,
     librariesHome: () => ['browse', 'libraries', 'home'] as const,
     library: (id: string) => ['browse', 'library', id] as const,
+    // FE-USER-COLLECTIONS-BROWSE：用户面合集详情。
+    collection: (id: string) => ['browse', 'collection', id] as const,
   },
 
   history: {
