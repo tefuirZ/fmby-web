@@ -85,6 +85,14 @@ export function buildCreateMountPayload(form: MountFormState): CreateManageMount
     configJson: buildMountConfigObject(form),
     capabilities: form.capabilities,
     pathPolicies: form.pathPolicies,
+    // FE-MOUNT-CONFIG-UI：R2.3–R2.6 创建时即接受配置六字段（后端
+    // ManagedMountCreateRequest 已实装；此前只在 formState 里、payload 不带）。
+    note: form.note,
+    rateConfig: parseOptionalJsonText(form.rateConfigText) ?? null,
+    visibilityRule: parseOptionalJsonText(form.visibilityRuleText) ?? {},
+    sidecarNfo: form.sidecarNfo,
+    sidecarSubtitle: form.sidecarSubtitle,
+    sidecarPoster: form.sidecarPoster,
   };
 }
 
@@ -96,7 +104,9 @@ export function buildUpdateMountPayload(form: MountFormState) {
     rootPath: normalizeMountRootPath(form),
     configJson: buildMountConfigObject(form),
     note: form.note,
-    rateConfig: parseOptionalJsonText(form.rateConfigText),
+    // FE-MOUNT-CONFIG-UI：留空文本 ⇒ 显式 null（清除语义）。`undefined` 会被
+    // 后端当成「未提供→保留存量」，与输入框「清空=清除」的 UI 语义相悖。
+    rateConfig: parseOptionalJsonText(form.rateConfigText) ?? null,
     visibilityRule: parseOptionalJsonText(form.visibilityRuleText) ?? {},
     sidecarNfo: form.sidecarNfo,
     sidecarSubtitle: form.sidecarSubtitle,

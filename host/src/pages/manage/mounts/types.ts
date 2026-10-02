@@ -54,6 +54,10 @@ export interface MountFormErrors {
   /** 敏感输入框误填 `__sealed:` 引用（§3.3③ 防御）。 */
   accessKey?: string;
   secretKey?: string;
+  /** R2.3 速率配置 JSON 非法（FE-MOUNT-CONFIG-UI）。 */
+  rateConfig?: string;
+  /** R2.5 可见性规则 JSON 非法（FE-MOUNT-CONFIG-UI）。 */
+  visibilityRule?: string;
 }
 
 export interface MountFormState {

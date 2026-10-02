@@ -35,6 +35,7 @@ import {
   MicrosoftRebindSection,
   MountDeletePanel,
   AdvancedSectionWrapper,
+  MountConfigSection,
   Pan115CredentialsSection,
   Pan115DirectoryBrowserSection,
   type Pan115CreatePendingActivation,
@@ -196,6 +197,13 @@ export function MountDrawer({
               isSaving={isSaving}
               description="只有你需要对同一个数据源的不同目录做优先级和并发控制时，才需要这块高级配置。"
             />
+            <MountConfigSection
+              formState={formState}
+              setFormState={setFormState}
+              formErrors={formErrors}
+              setFormErrors={setFormErrors}
+              isSaving={isSaving}
+            />
             <PreservedConfigSection
               preservedConfig={formState.preservedConfig}
               title="保留的高级字段"
@@ -290,6 +298,13 @@ export function MountDrawer({
               setFormState={setFormState}
               isSaving={isSaving}
               description="这些规则只在起播前选源时生效；不配置就继续用默认逻辑，不会打扰普通管理员。"
+            />
+            <MountConfigSection
+              formState={formState}
+              setFormState={setFormState}
+              formErrors={formErrors}
+              setFormErrors={setFormErrors}
+              isSaving={isSaving}
             />
             <PreservedConfigSection
               preservedConfig={formState.preservedConfig}

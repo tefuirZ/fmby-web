@@ -23,7 +23,7 @@ import {
   normalizeRemoteMountPath,
   normalizeWebDavS3RootPath,
 } from './rootPath';
-import { SEALED_REF_INPUT_ERROR, isSealedRef, parseConfigJson, readConfigString } from './mountConfig';
+import { SEALED_REF_INPUT_ERROR, isSealedRef, parseConfigJson, parseOptionalJsonText, readConfigString } from './mountConfig';
 
 export function validateMountForm(form: MountFormState): MountFormErrors {
   const errors: MountFormErrors = {};
@@ -73,6 +73,23 @@ export function validateMountForm(form: MountFormState): MountFormErrors {
     parseConfigJson(form.configJsonText);
   } catch {
     errors.configJsonText = 'config_json 必须是合法 JSON。';
+  }
+
+  // FE-MOUNT-CONFIG-UI（R2.3/R2.5）：速率/可见性为 JSON 文本框，非法必须在
+  // 字段级拦截（此前只靠 mutation 内 JSON.parse 抣错 ⇒ 泛化 banner、无字段定位）。
+  if (form.rateConfigText.trim() !== '') {
+    try {
+      parseOptionalJsonText(form.rateConfigText);
+    } catch {
+      errors.rateConfig = '速率配置必须是合法 JSON（留空表示清除）。';
+    }
+  }
+  if (form.visibilityRuleText.trim() !== '') {
+    try {
+      parseOptionalJsonText(form.visibilityRuleText);
+    } catch {
+      errors.visibilityRule = '可见性规则必须是合法 JSON（留空表示清除）。';
+    }
   }
 
   return errors;
