@@ -26,6 +26,11 @@ export const settingsNavGroups: SettingsNavGroup[] = [
         description: '昵称、头像、默认媒体库',
       },
       {
+        to: '/settings/identity',
+        label: '账号绑定',
+        description: '三方登录方式绑定与解绑',
+      },
+      {
         to: '/settings/playback',
         label: '播放偏好',
         description: '字幕、音轨与继续播放策略',

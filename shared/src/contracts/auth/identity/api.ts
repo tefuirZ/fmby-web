@@ -16,23 +16,29 @@
  */
 
 import { httpClient } from '@fmby/v2-shared/api/client';
+import { asRecord } from '@fmby/v2-shared/api/mapping';
 import type { User } from '@fmby/v2-shared/types';
 import { mapMeResponse } from '../api';
 import {
   loginReadyProviders,
+  mapAccountIdentityBinding,
+  mapAccountIdentityBindings,
   mapIdentityCallbackCapture,
   mapIdentityComplete,
   mapIdentityLoginStart,
   mapProviderList,
   mapTelegramLoginStatus,
 } from './mappers';
-import type { RawIdentityLoginComplete } from './raw-types';
+import type { RawIdentityLoginComplete, RawIdentityLoginStart } from './raw-types';
 import type {
+  AccountIdentityBinding,
+  IdentityBindingCompleteInput,
   IdentityCallbackCapture,
   IdentityLoginCompleteResult,
   IdentityLoginStart,
   IdentityProviderAvailability,
   IdentityProviderType,
+  IdentityStartInput,
   TelegramLoginStatus,
 } from './types';
 
@@ -155,5 +161,77 @@ export const identityLoginApi = {
       throw new Error('三方登录回调响应缺少 provider。');
     }
     return mapped;
+  },
+};
+
+/**
+ * 账号三方身份绑定 API（绑定面）。
+ *
+ * 端点（main 现状）与登录面**语义不同、不合并**：
+ * - `GET  /api/account/identity-bindings`                  当前用户绑定列表（session）
+ * - `POST /api/account/identity-bindings/{provider}/start`    发起绑定（session）
+ * - `POST /api/account/identity-bindings/{provider}/complete` 完成绑定（session；**不建会话**）
+ * - `POST /api/auth/identity/unbind`                        解绑（session；需 `?confirmed=true`）
+ *
+ * 身份恒取当前 session 主体（身份不来自请求体，越权面关闭）；challenge 过期/
+ * 归属他人、端口未装配等失败**原样上抛**，绝不吞成假成功。
+ */
+export const identityBindingsApi = {
+  /** 当前用户三方绑定列表。 */
+  async list(): Promise<AccountIdentityBinding[]> {
+    return mapAccountIdentityBindings(
+      await httpClient.get<unknown>('/api/account/identity-bindings'),
+    );
+  },
+
+  /** 发起绑定：Google 返回 `authorizeUrl`；Email/Telegram 返 `enter_code`（发码/深链）。 */
+  async start(
+    provider: IdentityProviderType,
+    input: IdentityStartInput = {},
+  ): Promise<IdentityLoginStart> {
+    const raw = await httpClient.post<unknown>(
+      `/api/account/identity-bindings/${provider}/start`,
+      { body: { email: input.email, redirect_uri: input.redirectUri } },
+    );
+    const mapped = mapIdentityLoginStart(raw as RawIdentityLoginStart);
+    if (!mapped) {
+      // 形状不可用：如实报错，不构造半成品绑定流状态。
+      throw new Error('身份绑定发起响应缺少 provider / challenge_id。');
+    }
+    return mapped;
+  },
+
+  /** 完成绑定：成功返回新绑定记录；challenge 过期/越权等失败原样上抛。 */
+  async complete(
+    provider: IdentityProviderType,
+    input: IdentityBindingCompleteInput,
+  ): Promise<AccountIdentityBinding> {
+    const raw = await httpClient.post<unknown>(
+      `/api/account/identity-bindings/${provider}/complete`,
+      {
+        body: {
+          challenge_id: input.challengeId,
+          code: input.code,
+          provider_subject: input.providerSubject,
+          provider_email: input.providerEmail,
+          provider_username: input.providerUsername,
+          provider_display_name: input.providerDisplayName,
+        },
+      },
+    );
+    const record = asRecord(raw);
+    const binding = mapAccountIdentityBinding(record.binding ?? raw);
+    if (!binding) {
+      throw new Error('身份绑定完成响应缺少 binding。');
+    }
+    return binding;
+  },
+
+  /** 解绑：后端要求显式 `?confirmed=true`（破坏性操作确认闸），缺失即 400。 */
+  async unbind(provider: IdentityProviderType): Promise<void> {
+    await httpClient.post<unknown>('/api/auth/identity/unbind', {
+      params: { confirmed: 'true' },
+      body: { provider },
+    });
   },
 };
