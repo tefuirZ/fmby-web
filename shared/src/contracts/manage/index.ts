@@ -101,3 +101,9 @@ export type {
 } from "./types";
 export { adminApiTokensApi, mapAdminApiToken } from "./adminApiTokens";
 export type { AdminApiToken, AdminApiTokenCreateInput } from "./adminApiTokens";
+export { migrationApi } from "./migration";
+export type {
+  MigrationEntry,
+  MigrationInspectResponse,
+  MigrationExportResponse,
+} from "./migration";
