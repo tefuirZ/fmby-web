@@ -37,13 +37,24 @@ export interface SetupRequest {
 
 /* ---- 响应类型 ---- */
 
-export interface AuthResponse {
+/** 登录成功（后端 `status="ok"`，已建会话）。 */
+export interface AuthLoginSuccess {
+  status: 'ok';
   user: User;
-  /** MFA-TOTP（FE-MFA-TOTP-UI）：`"mfa_required"` 表示密码正确但需二因子（未建会话）。 */
-  status?: 'ok' | 'mfa_required';
-  challengeId?: string;
-  expiresAt?: number | null;
 }
+
+/**
+ * 需二因子（后端 `status="mfa_required"`）：**未建会话**——无 user/token/cookie，
+ * 前端须转 `/auth/mfa/totp/verify` 流。字段对应 `auth.rs::LoginResponse`。
+ */
+export interface AuthLoginMfaRequired {
+  status: 'mfa_required';
+  challengeId: string;
+  expiresAt: number | null;
+}
+
+/** 登录结果可辨识联合：调用点必须按 `status` 收窄（`user` 仅在 ok 分支存在）。 */
+export type AuthResponse = AuthLoginSuccess | AuthLoginMfaRequired;
 
 export type SessionResponse = User;
 
@@ -201,7 +212,7 @@ export const authApi = {
       roles: [],
       capabilities,
     };
-    return { user };
+    return { status: 'ok', user };
   },
 
   /** 当前会话与能力检查（docs/interfaces/webui.md） */

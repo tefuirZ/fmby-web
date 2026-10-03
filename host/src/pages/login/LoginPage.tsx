@@ -27,11 +27,13 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import type { User } from '@fmby/v2-shared/types';
 import type { AuthResponse } from '@fmby/v2-shared/contracts/auth';
+import type { AuthResponse } from '@fmby/v2-shared/contracts/auth';
 
 import styles from './LoginPage.module.css';
 type EntryMode = 'login' | 'register' | 'forgot';
 
 import { LoginForm } from './forms/LoginForm';
+import { MfaVerifyPanel } from './forms/MfaVerifyPanel';
 import { MfaVerifyPanel } from './forms/MfaVerifyPanel';
 import { RegisterForm } from './forms/RegisterForm';
 import { SetupForm } from './forms/SetupForm';
@@ -64,6 +66,7 @@ export function LoginPage() {
   const location = useLocation();
   const { login } = useSession();
   const [mode, setMode] = useState<EntryMode>('login');
+  const [mfaChallenge, setMfaChallenge] = useState<{ challengeId: string; expiresAt: number | null } | null>(null);
   // FE-MFA-TOTP-UI：密码正确但需二因子（后端不建会话，只回 challenge）。
   const [mfaChallenge, setMfaChallenge] = useState<{ challengeId: string; expiresAt: number | null } | null>(null);
   const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
@@ -140,6 +143,15 @@ export function LoginPage() {
       return;
     }
     setPendingIdentity(pendingFromStart(result));
+  }
+
+  function handleAuthResponse(response: AuthResponse) {
+    // FE-MFA-TOTP-UI：二因子挂起态——不导航、不建会话，转验证面板。
+    if (response.status === 'mfa_required' && response.challengeId) {
+      setMfaChallenge({ challengeId: response.challengeId, expiresAt: response.expiresAt ?? null });
+      return;
+    }
+    handleAuthenticated(response.user);
   }
 
   function handleAuthResponse(response: AuthResponse) {
@@ -278,6 +290,12 @@ export function LoginPage() {
         <RegisterForm
           onAuthenticated={handleAuthenticated}
           onPendingApproval={handlePendingApproval}
+        />
+      ) : mfaChallenge ? (
+        <MfaVerifyPanel
+          challenge={mfaChallenge}
+          onAuthenticated={handleAuthenticated}
+          onCancel={() => setMfaChallenge(null)}
         />
       ) : mfaChallenge ? (
         <MfaVerifyPanel
