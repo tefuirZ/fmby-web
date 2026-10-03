@@ -106,3 +106,76 @@ node scripts/check-contract-mappers.mjs                            ⇒ EXIT=0
 
 本卡文件（`LoginPage.tsx` / `Pan115DirectoryBrowserSection.tsx`）与在途 FE 分支零冲突（§7 实测）；
 建议与 §5 的 B/C 实现卡**一起**合，以便一次性让 `tsc`/`vite build`/体积闸恢复可判定。
+
+---
+
+# 附录：本卡**范围扩展**（第二提交）—— 完成 `AuthResponse` 收窄余项（含一处真实功能缺陷）
+
+## A1. 为什么扩展
+
+§4 原本把「LoginPage 余 2 条语义错」判为「须 MFA 作者定夺」。立案后我做了两件取证，结论改变：
+
+1. **核类型定义**：`shared/src/contracts/auth/api.ts`
+   ```ts
+   export type AuthResponse = AuthLoginSuccess | AuthLoginMfaRequired;
+   export interface AuthLoginSuccess     { status: 'ok';           user: User; }
+   export interface AuthLoginMfaRequired { status: 'mfa_required'; challengeId: string; expiresAt: number | null; }
+   ```
+   `challengeId` 是**非空 `string`** ⇒ `LoginPage.tsx` 守卫里的 `&& response.challengeId` **冗余**。
+2. **核消费方**：`LoginForm` 的唯一消费方就是 `LoginPage.tsx:290`
+   `<LoginForm onAuthenticated={handleAuthResponse} />`（`handleAuthResponse` 的形参就是 `AuthResponse`）
+   ⇒ `LoginFormProps.onAuthenticated: (user: User) => void` 的旧签名**与调用点不符**（即 `LoginPage:290` 那条 TS2322）。
+
+## A2. ★过程中发现的**真实功能缺陷（非纯类型债）**
+
+`LoginForm.tsx` 的 `onSuccess` 原来写的是：
+```ts
+onSuccess: (response) => { onAuthenticated(response.user); }   // response: AuthResponse（联合）
+```
+当用户是二因子账号时，后端返回 `{status:'mfa_required', challengeId, expiresAt}`——
+该变体**没有 `user` 字段** ⇒ 传上去的是 `undefined` ⇒ `LoginPage.handleAuthResponse(undefined)`
+会先读 `response.status` ⇒ **TypeError**。
+⇒ **经登录表单走二因子登录在 main 上是走不通的**（MFA 功能的缺失环节），本附录一并修好。
+
+## A3. 改动（2 文件）
+
+| 文件 | 改动 |
+|---|---|
+| `host/src/pages/login/LoginPage.tsx` | 守卫 `status === 'mfa_required' && response.challengeId` → `status === 'mfa_required'`（去掉冗余项；判别式单独收窄后 else 分支即 `AuthLoginSuccess`） |
+| `host/src/pages/login/forms/LoginForm.tsx` | prop 类型 `(user: User) => void` → `(response: AuthResponse) => void`；`onAuthenticated(response.user)` → `onAuthenticated(response)`；删因此变为未用的 `User` import |
+
+**设计归属说明**：这不是我改的 API 语义 —— `LoginPage` 早已负责分流（`ok`→建会话 / `mfa_required`→二因子面板），
+本改动只是让 `LoginForm` **按既有调用点与既有联合类型**把整份响应转发上去。
+
+## A4. RED → GREEN（当次原文）
+
+```
+RED  （本分支 A+E 态，未加本附录改动）
+  cd host && tsc -p tsconfig.app.json --noEmit  ⇒ EXIT=1，**10 错**
+    5 MfaVerifyPanel.tsx / 2 CollectionsListPage.tsx / 2 LoginPage.tsx / 1 LoginForm.tsx
+
+GREEN（同一命令）
+  ⇒ EXIT=2，**10 → 7 错**；**登录组 3 条（LoginPage×2 + LoginForm×1）清零** ✅
+    余 7：MfaVerifyPanel 5（可空性，仍属该面板作者）+ CollectionsListPage 2（由 C 卡 `w/w2/fe-collections-vm` 清零）
+```
+
+## A5. 当次回归验证
+
+```
+cd shared && tsc -p . --noEmit                        ⇒ EXIT=0
+cd host   && node --test tests/*.test.ts              ⇒ tests 397 / pass 397 / fail 0
+check-frontend-component-size.mjs                     ⇒ EXIT=0
+check-contract-mappers.mjs                            ⇒ EXIT=0
+check-frontend-dupes.mjs                              ⇒ EXIT=1 —— **仍是 main 既有那条**
+   （`[queryKeys Factory] shared/src/viewmodels/useCollectionsList.ts:14`），非本附录引入；
+   该条由我的 C 卡 `w/w2/fe-collections-vm`（recover fe2 的 hook）清零。
+```
+
+## A6. 边界与风险（如实登记）
+
+- **行为变化 1 处（有意的修正）**：`status === 'mfa_required'` 且 `challengeId === ''`（退化值）时，
+  旧码会掉进 `handleAuthenticated(undefined)`（崩溃）；新码进二因子面板。
+  按 `challengeId: string` 的契约，后者才是正确语义。
+- **未做**：`MfaVerifyPanel.tsx` 的 5 条可空性（属该面板自身处理，仍归其作者）；
+  `CollectionsListPage` 2 条（C 卡负责）。
+- `ponytail:` 未引入任何新抽象/依赖/抑制手段；两文件共 +14/−5。
