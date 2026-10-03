@@ -1,316 +1,99 @@
 /**
- * 全局 Query Key Factory
+ * `useCollectionsList()` —— 用户面合集列表页视图模型（FE-USER-COLLECTIONS-LIST-PAGE-2）。
  *
- * 集中管理所有 TanStack Query 缓存键，避免内联字符串散落各处导致失效不一致。
- *
- * 用法：
- * ```ts
- * import { queryKeys } from '@fmby/v2-shared/query';
- * useQuery({ queryKey: queryKeys.manage.mounts.list(), ... });
- * queryClient.invalidateQueries({ queryKey: queryKeys.manage.mounts.list() });
- * ```
+ * 取数：`GET /api/collections`（session + BROWSE；Hidden 由后端过滤）。
+ * 页面只消费 `{ data, state, actions, layout }`，不直接 `useQuery`（WEB-B1 分层纪律）。
  */
 
-export const queryKeys = {
-  auth: {
-    setupStatus: () => ['auth', 'setup-status'] as const,
-  },
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 
-  browse: {
-    home: () => ['browse', 'home'] as const,
-    libraries: () => ['browse', 'libraries'] as const,
-    librariesHome: () => ['browse', 'libraries', 'home'] as const,
-    library: (id: string) => ['browse', 'library', id] as const,
-    // FE-USER-COLLECTIONS-BROWSE：用户面合集详情。
-    collection: (id: string) => ['browse', 'collection', id] as const,
-    // FE-USER-COLLECTIONS-LIST-PAGE-2：用户面合集列表（分页）。
-    collections: (page: number, pageSize: number) =>
-      ['browse', 'collections', page, pageSize] as const,
-  },
+import { collectionsBrowseApi } from '@fmby/v2-shared/contracts/browse';
+import type { CollectionsListPageRecord } from '@fmby/v2-shared/contracts/browse/collections';
+import { queryKeys } from '@fmby/v2-shared/query';
 
-  history: {
-    overview: () => ['history', 'overview'] as const,
-    recentHome: () => ['history', 'recent', 'home'] as const,
-  },
+import { useLayoutHint } from './useLayoutHint';
+import { deriveViewState, type LayoutHint, type ViewModel, type ViewState } from './types';
 
-  item: {
-    detail: (id: string) => ['item', id] as const,
-    // V1F-10：人物面（/people/:personId 数据面；路径 `/api/items/people/{id}`）。
-    person: (id: string) => ['item', 'person', id] as const,
-    personItems: (id: string) => ['item', 'person-items', id] as const,
-    seasonEpisodes: (seasonId: string) => ['item', 'season-episodes', seasonId] as const,
-    technicalFallback: (id?: string) => ['item', 'technical-fallback', id] as const,
-  },
+export interface CollectionsListViewData {
+  /** 当页合集（未就绪为空数组）。 */
+  items: CollectionsListPageRecord['items'];
+  /** 全量可见合集总数。 */
+  total: number;
+  /** 当前页（1-based）。 */
+  page: number;
+  /** 页大小（后端 clamp[1,200] 后回显）。 */
+  pageSize: number;
+  /** 是否还有下一页。 */
+  hasMore: boolean;
+}
 
-  playback: {
-    info: (id: string) => ['playback', id] as const,
-    item: (id: string) => ['playback-item', id] as const,
-    season: (id?: string) => ['playback-season', id] as const,
-    series: (id?: string) => ['playback-series', id] as const,
-    seriesEpisodes: (id?: string) => ['playback-series-episodes', id] as const,
-  },
+export interface CollectionsListActions {
+  /** 刷新当页。 */
+  refresh: () => void;
+}
 
-  search: {
-    results: (query: string) => ['search', query] as const,
-  },
+export type CollectionsListViewModel = ViewModel<CollectionsListViewData, CollectionsListActions>;
 
-  settings: {
-    profile: () => ['settings', 'profile'] as const,
-    appearance: () => ['settings', 'appearance'] as const,
-    playback: () => ['settings', 'playback'] as const,
-    // FE-IDENTITY-BINDINGS：账号三方绑定列表 + 公开 provider 可用性。
-    identityBindings: () => ['settings', 'identity-bindings'] as const,
-    identityProviders: () => ['settings', 'identity-providers'] as const,
-    server: {
-      general: () => ['settings', 'server', 'general'] as const,
-      security: () => ['settings', 'server', 'security'] as const,
-      sessionPolicy: () => ['settings', 'server', 'session-policy'] as const,
+export interface UseCollectionsListOptions {
+  /** 页码（1-based；默认 1）。 */
+  page?: number;
+  /** 页大小（默认 20；后端 clamp[1,200]）。 */
+  pageSize?: number;
+  /** 标题子串检索（trim 后传；空白=全量。COLLECTIONS-LIST-SEARCH 前后端已接线）。 */
+  search?: string;
+  /** 强制布局（测试/主题）。 */
+  layout?: LayoutHint;
+}
+
+/**
+ * 用户面合集列表视图模型。
+ *
+ * state 只表达**取数状态**；翻页时 `placeholderData: keepPreviousData` 保持上一页
+ * 内容（不闪空），此时 `isPlaceholderData` 下仍视为 ready。
+ */
+export function useCollectionsList(
+  options: UseCollectionsListOptions = {},
+): CollectionsListViewModel {
+  const { page = 1, pageSize = 20, search = '', layout: layoutOverride } = options;
+  const layout = useLayoutHint(layoutOverride);
+
+  // trim 归一：空白视作全量（与后端「空白=全量」口径一致，避免 '' 与 ' x ' 产生不同 cache key）。
+  const trimmedSearch = search.trim();
+  const query = useQuery({
+    queryKey: queryKeys.browse.collections(page, pageSize, trimmedSearch),
+    queryFn: () => collectionsBrowseApi.listCollections({ page, pageSize, search: trimmedSearch }),
+    placeholderData: keepPreviousData,
+  });
+
+  const data = query.data;
+  const items = data?.items ?? [];
+
+  const state: ViewState = deriveViewState(
+    {
+      data,
+      isPending: query.isPending,
+      isError: query.isError,
+      error: query.error,
+      isLoading: query.isLoading,
     },
-    emailChannel: () => ['settings', 'server', 'email-channel'] as const,
-    aiAssist: () => ['settings', 'integrations', 'ai-assist'] as const,
-  },
+    items.length === 0,
+  );
 
-  manage: {
-    overview: () => ['manage', 'overview'] as const,
-    overviewHome: () => ['manage', 'overview', 'home'] as const,
-    siteSettings: () => ['manage', 'site-settings'] as const,
-    siteBrand: () => ['manage', 'site-brand'] as const,
-    advanced: () => ['manage', 'advanced'] as const,
-    auditLogs: () => ['manage', 'audit-logs'] as const,
-    sessions: () => ['manage', 'sessions'] as const,
-    scans: () => ['manage', 'scans'] as const,
-    taskCenter: {
-      all: () => ['manage', 'task-center'] as const,
-      overview: () => ['manage', 'task-center', 'overview'] as const,
-      list: (query?: Record<string, unknown>) =>
-        ['manage', 'task-center', 'list', query ?? {}] as const,
-      detail: (category?: string, taskId?: string) =>
-        category && taskId
-          ? (['manage', 'task-center', 'detail', category, taskId] as const)
-          : (['manage', 'task-center', 'detail'] as const),
+  return {
+    data: {
+      items,
+      total: data?.total ?? 0,
+      page: data?.page ?? page,
+      pageSize: data?.pageSize ?? pageSize,
+      hasMore: data?.hasMore ?? false,
     },
-    mediaItems: {
-      all: () => ['manage', 'media-items'] as const,
-      list: (query?: Record<string, unknown>) =>
-        ['manage', 'media-items', 'list', query ?? {}] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'media-items', 'detail', id] as const)
-          : (['manage', 'media-items', 'detail'] as const),
-      pipeline: (id?: string) =>
-        id
-          ? (['manage', 'media-items', 'pipeline', id] as const)
-          : (['manage', 'media-items', 'pipeline'] as const),
-    },
-
-    libraries: {
-      list: () => ['manage', 'libraries'] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'libraries', 'detail', id] as const)
-          : (['manage', 'libraries', 'detail'] as const),
-      mountsPicker: () => ['manage', 'mounts', 'picker'] as const,
-      usersPicker: () => ['manage', 'users', 'picker'] as const,
-    },
-
-    mounts: {
-      list: () => ['manage', 'mounts'] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'mounts', 'detail', id] as const)
-          : (['manage', 'mounts', 'detail'] as const),
-      picker: () => ['manage', 'mounts', 'picker'] as const,
-      health: () => ['manage', 'mounts', 'health'] as const,
-    },
-
-    pan115: {
-      account: (mountId: string) => ['manage', 'pan115', 'account', mountId] as const,
-      sharePreview: (previewId: string) =>
-        ['manage', 'pan115', 'share-preview', previewId] as const,
-      shareItem: () => ['manage', 'pan115', 'share-item'] as const,
-      syncOverview: (mountId: string) =>
-        ['manage', 'pan115', 'sync-overview', mountId] as const,
-    },
-
-    developerApi: {
-      endpoints: (query?: string) =>
-        query
-          ? (['manage', 'developer-api', 'endpoints', query] as const)
-          : (['manage', 'developer-api', 'endpoints'] as const),
-    },
-
-    authProviders: {
-      configs: () => ['manage', 'auth-providers', 'configs'] as const,
-    },
-
-    yun139: {
-      profiles: () => ['manage', 'yun139', 'profiles'] as const,
-    },
-
-    microsoft: {
-      configStatus: () => ['manage', 'microsoft', 'config-status'] as const,
-      profiles: () => ['manage', 'microsoft', 'profiles'] as const,
-    },
-
-    pan115Imghost: {
-      credentials: () => ['manage', 'pan115-imghost', 'credentials'] as const,
-      assets: {
-        all: () => ['manage', 'pan115-imghost', 'assets'] as const,
-        list: (page: number) => ['manage', 'pan115-imghost', 'assets', page] as const,
+    state,
+    layout,
+    error: query.error,
+    actions: {
+      refresh: () => {
+        void query.refetch();
       },
     },
-
-    users: {
-      all: () => ['manage', 'users'] as const,
-      list: (query?: object) =>
-        ['manage', 'users', 'list', query ?? {}] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'users', 'detail', id] as const)
-          : (['manage', 'users', 'detail'] as const),
-    },
-
-    probeTasks: {
-      all: () => ['manage', 'probe-tasks'] as const,
-      list: (
-        statusFilter?: string,
-        keyword?: string,
-        libraryId?: string,
-        mountId?: string,
-      ) => ['manage', 'probe-tasks', statusFilter, keyword, libraryId, mountId] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'probe-tasks', 'detail', id] as const)
-          : (['manage', 'probe-tasks', 'detail'] as const),
-    },
-
-    registrationCodes: {
-      list: () => ['manage', 'registration-codes'] as const,
-    },
-
-    collections: {
-      all: () => ['manage', 'collections'] as const,
-      list: () => ['manage', 'collections', 'list'] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'collections', 'detail', id] as const)
-          : (['manage', 'collections', 'detail'] as const),
-      memberCandidates: (keyword: string) =>
-        ['manage', 'collections', 'member-candidates', keyword] as const,
-      presets: () => ['manage', 'collections', 'presets'] as const,
-    },
-
-    rewards: {
-      account: (userId?: string) =>
-        userId
-          ? (['manage', 'rewards', 'account', userId] as const)
-          : (['manage', 'rewards', 'account'] as const),
-      ledger: (userId?: string, limit?: number) =>
-        userId
-          ? (['manage', 'rewards', 'ledger', userId, limit ?? null] as const)
-          : (['manage', 'rewards', 'ledger'] as const),
-      rule: () => (['manage', 'rewards', 'rule'] as const),
-      stats: () => (['manage', 'rewards', 'stats'] as const),
-    },
-
-    telegramBot: {
-      status: () => ['manage', 'telegram-bot', 'status'] as const,
-    },
-
-    license: {
-      status: () => ['manage', 'license', 'status'] as const,
-      deviceFlow: () => ['manage', 'license', 'device-flow'] as const,
-    },
-
-    secrets: {
-      status: () => ['manage', 'secrets', 'status'] as const,
-    },
-
-    roleTemplates: {
-      list: () => ['manage', 'role-templates'] as const,
-    },
-
-    namingCleanup: {
-      settings: () => ['manage', 'naming-cleanup', 'settings'] as const,
-      preview: (payload?: Record<string, unknown>) =>
-        ['manage', 'naming-cleanup', 'preview', payload ?? {}] as const,
-    },
-
-    namingScrape: {
-      settings: () => ['manage', 'naming-scrape', 'settings'] as const,
-    },
-
-    aiInterventions: {
-      all: () => ['manage', 'ai-interventions'] as const,
-      threads: (query?: { limit?: number; offset?: number }) =>
-        ['manage', 'ai-interventions', 'threads', query ?? {}] as const,
-      thread: (mediaItemId: string) =>
-        ['manage', 'ai-interventions', 'thread', mediaItemId] as const,
-    },
-
-    runtimeLogs: (...args: unknown[]) => ['manage', 'runtime-logs', ...args] as const,
-
-    mediaReviews: {
-      all: () => ['manage', 'media-reviews'] as const,
-      list: (query?: Record<string, unknown>) =>
-        ['manage', 'media-reviews', 'list', query ?? {}] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'media-reviews', 'detail', id] as const)
-          : (['manage', 'media-reviews', 'detail'] as const),
-      providerSearch: (provider: string, query: string) =>
-        ['manage', 'media-reviews', 'provider-search', provider, query] as const,
-    },
-
-    events: {
-      list: (query?: Record<string, unknown>) =>
-        ['manage', 'events', 'list', query ?? {}] as const,
-      detail: (requestId?: string) =>
-        requestId
-          ? (['manage', 'events', 'detail', requestId] as const)
-          : (['manage', 'events', 'detail'] as const),
-    },
-
-    operations: {
-      overview: (days: number) => ['manage', 'operations', 'overview', days] as const,
-      mountLoad: () => ['manage', 'operations', 'mount-load'] as const,
-      activePlayback: (limit?: number) =>
-        ['manage', 'operations', 'active-playback', limit ?? null] as const,
-    },
-
-    systemAbout: {
-      about: () => ['manage', 'system-about'] as const,
-    },
-
-    upstreams: {
-      all: () => ['manage', 'upstreams'] as const,
-      list: (query?: object) => ['manage', 'upstreams', 'list', query ?? {}] as const,
-      detail: (id?: string) =>
-        id
-          ? (['manage', 'upstreams', 'detail', id] as const)
-          : (['manage', 'upstreams', 'detail'] as const),
-      health: (id: string) => ['manage', 'upstreams', 'health', id] as const,
-      discovery: () => ['manage', 'upstreams', 'discovery'] as const,
-      categories: (id?: string) =>
-        id
-          ? (['manage', 'upstreams', 'categories', id] as const)
-          : (['manage', 'upstreams', 'categories'] as const),
-      libraries: (id?: string) =>
-        id
-          ? (['manage', 'upstreams', 'libraries', id] as const)
-          : (['manage', 'upstreams', 'libraries'] as const),
-      bindings: (id?: string, libraryId?: string) =>
-        id
-          ? (['manage', 'upstreams', 'bindings', id, libraryId ?? null] as const)
-          : (['manage', 'upstreams', 'bindings'] as const),
-      presets: (id?: string) =>
-        id
-          ? (['manage', 'upstreams', 'presets', id] as const)
-          : (['manage', 'upstreams', 'presets'] as const),
-      syncJobs: (id: string) => ['manage', 'upstreams', 'sync-jobs', id] as const,
-      syncJob: (id: string, jobId: string) =>
-        ['manage', 'upstreams', 'sync-jobs', id, 'job', jobId] as const,
-      embyImportJobs: (id: string) => ['manage', 'upstreams', 'emby-import-jobs', id] as const,
-    },
-  },
-} as const;
+  };
+}
