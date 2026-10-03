@@ -77,12 +77,33 @@ export function buildMountFormState(detail: ManageMountDetailRecord): MountFormS
   };
 }
 
+export /**
+ * FE-MOUNT-CONFIG-UI：防御式 JSON 文本解析（非法回落 undefined，不崩保存流程）。
+ * 正常路径由 mountValidation 先行拦截并给出诚实错误；此处仅兜底。
+ */
+function parseOptionalJsonTextSafe(value: string): Record<string, unknown> | undefined {
+  try {
+    return parseOptionalJsonText(value);
+  } catch {
+    return undefined;
+  }
+}
+
 export function buildCreateMountPayload(form: MountFormState): CreateManageMountRequest {
+  // ★FE-MOUNT-CONFIG-UI：后端 ManagedMountCreateRequest 与 Update 同收
+  // note/rate_config/visibility_rule/sidecar_nfo|subtitle|poster（R2.3–R2.6），
+  // 此前 POST 丢弃这些字段（PATCH 却带）→ 新建挂载无法提交配置。对齐 PATCH 口径。
   return {
     name: form.name.trim(),
     providerType: form.providerType,
     rootPath: normalizeMountRootPath(form),
     configJson: buildMountConfigObject(form),
+    note: form.note,
+    rateConfig: parseOptionalJsonTextSafe(form.rateConfigText),
+    visibilityRule: parseOptionalJsonTextSafe(form.visibilityRuleText) ?? {},
+    sidecarNfo: form.sidecarNfo,
+    sidecarSubtitle: form.sidecarSubtitle,
+    sidecarPoster: form.sidecarPoster,
     capabilities: form.capabilities,
     pathPolicies: form.pathPolicies,
   };

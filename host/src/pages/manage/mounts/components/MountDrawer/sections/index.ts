@@ -23,3 +23,4 @@ export { Pan115DirectoryBrowserSection } from './Pan115DirectoryBrowserSection';
 export { MountCredentialCard } from './MountCredentialCard';
 export { MicrosoftRebindSection } from './MicrosoftRebindSection';
 export { CredentialRebindGapSection } from './CredentialRebindGapSection';
+export { MountConfigSection } from './MountConfigSection';

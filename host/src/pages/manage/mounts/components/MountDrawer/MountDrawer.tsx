@@ -35,6 +35,7 @@ import {
   MicrosoftRebindSection,
   MountDeletePanel,
   AdvancedSectionWrapper,
+  MountConfigSection,
   Pan115CredentialsSection,
   Pan115DirectoryBrowserSection,
   type Pan115CreatePendingActivation,
@@ -184,6 +185,7 @@ export function MountDrawer({
             />
           ) : null}
           <AdvancedSectionWrapper advancedOpen={advancedOpen} setAdvancedOpen={setAdvancedOpen}>
+            <MountConfigSection {...{ formState, setFormState, formErrors, isSaving }} />
             <CapabilitiesSection
               formState={formState}
               setFormState={setFormState}
