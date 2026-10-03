@@ -24,7 +24,6 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, FeedbackState, InlineBanner, Input, StatusBadge } from '@fmby/v2-shared/ui';
 import { rewardsApi } from '@fmby/v2-shared/contracts/rewards';
-import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './SettingsCenter.module.css';
 import { SettingsPageHeader, SettingsSectionCard } from './components';
