@@ -10,7 +10,11 @@
 
 ## 1. 总量
 
-- 后端注册 439 条 → 差集清洗后 **120 条**（119 真实现 + 1 占位；双前缀/别名/外部回调已剔）。
+> ★**增量核对（本分支 pull main 时发现）**：main 新合 `e97d3b4`（用户安全/凭据投递契约）已消费
+> `POST /api/manage/users/{id}/mfa/totp/reset` 与 `POST /api/manage/users/{id}/telegram-password-reset`
+> 两条 ⇒ 从 manage/users 组剔除，清单余 118 条。**教训：重扫清单是快照，合并窗口内会过时——派卡前请以本清单+当时 main 复核。**
+
+- 后端注册 439 条 → 差集清洗后 **120 条 → pull main 增量核减后 118 条**（117 真实现 + 1 占位；双前缀/别名/外部回调已剔）。
 
 ## 2. 分组清单（路径+方法 | 真实性 | 建议卡规模）
 
@@ -227,7 +231,7 @@
 |---|---|---|
 | GET | `/api/manage/upstreams/health` | 真实实现 |
 
-### manage/users（10 条 · 规模 M）
+### manage/users（8 条 · 规模 M）
 
 > emby-import 向导 + direct-registration/expiry-notifications 设置 + 管理员 MFA/TG 重置
 
@@ -241,8 +245,6 @@
 | POST | `/api/manage/users/emby-import/preview` | 真实实现 |
 | GET | `/api/manage/users/expiry-notifications/settings` | 真实实现 |
 | PUT | `/api/manage/users/expiry-notifications/settings` | 真实实现 |
-| POST | `/api/manage/users/{id}/mfa/totp/reset` | 真实实现 |
-| POST | `/api/manage/users/{id}/telegram-password-reset` | 真实实现 |
 
 ### manage/yun139（20 条 · 规模 M-L）
 
