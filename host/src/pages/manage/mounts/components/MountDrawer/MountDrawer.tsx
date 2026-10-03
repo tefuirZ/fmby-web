@@ -24,6 +24,7 @@ import {
   PathPoliciesSection,
   PreservedConfigSection,
   MountOverviewSection,
+  MountLibraryBindingSection,
   MountCapabilitiesViewSection,
   MountPathPoliciesViewSection,
   MountReferencesSection,
@@ -360,6 +361,7 @@ export function MountDrawer({
             setFormState={setFormState}
             setDrawerState={setDrawerState}
           />
+          <MountLibraryBindingSection mountId={currentDetail.mount.id} />
           {currentDetail.providerType === 'pan115' ? (
             <Pan115CredentialsSection currentDetail={currentDetail} />
           ) : null}
