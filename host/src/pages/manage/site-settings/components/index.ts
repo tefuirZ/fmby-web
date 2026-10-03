@@ -3,4 +3,3 @@ export { SiteSettingsRegistrationSection } from './SiteSettingsRegistrationSecti
 export { SiteSettingsSecuritySection } from './SiteSettingsSecuritySection';
 export { SiteSettingsSessionSection } from './SiteSettingsSessionSection';
 export { SiteSettingsBrandSection } from './SiteSettingsBrandSection';
-export { MfaTotpSection } from './MfaTotpSection';
