@@ -29,6 +29,8 @@ import type {
   ManageProbeTasksResponse,
   ManageRegistrationCodesResponse,
   ManageRoleTemplatesResponse,
+  ManageRuntimeLogArchivesQuery,
+  ManageRuntimeLogArchivesResponse,
   ManageRuntimeLogsQuery,
   ManageRuntimeLogsResponse,
   ResetIpLoginRiskRequest,
@@ -64,6 +66,7 @@ import type {
   RawManageBatchRegistrationCodeActionResponse,
   RawManageOverviewResponse,
   RawManageSourceAvailabilityRecoverResponse,
+  RawManageRuntimeLogArchivesResponse,
   RawManageRuntimeLogsResponse,
   RawManageLibraryScanTriggerResponse,
   RawManagedLibraryDetailResponse,
@@ -106,6 +109,8 @@ import {
   mapRegistrationCode,
   mapRegistrationCodeStatusToApi,
   mapRoleTemplateRecord,
+  mapRuntimeLogArchiveRecord,
+  mapRuntimeLogArchivesQueryToParams,
   mapRuntimeLogRecord,
   mapRuntimeLogsQueryToParams,
   mapScanTaskTypeToApi,
@@ -724,8 +729,25 @@ export const manageApi = {
     };
   },
 
-  async getAdvanced(): Promise<ManageAdvancedResponse> {
-    const raw = await httpClient.get<RawManageAdvancedResponse>(
+  /** 运行日志归档清单（能力门 VIEW_AUDIT，与同域 runtime-logs 同口径）。 */
+  async getRuntimeLogArchives(
+    query?: ManageRuntimeLogArchivesQuery,
+  ): Promise<ManageRuntimeLogArchivesResponse> {
+    const raw = await httpClient.get<RawManageRuntimeLogArchivesResponse>(
+      "/api/manage/runtime-log-archives",
+      {
+        params: mapRuntimeLogArchivesQueryToParams(query),
+      },
+    );
+    return {
+      items: (raw.items ?? []).map(mapRuntimeLogArchiveRecord),
+      total: raw.total ?? 0,
+      logDir: raw.log_dir,
+      retentionDays: raw.retention_days,
+    };
+  },
+
+  async getAdvanced(): Promise<ManageAdvancedResponse> {    const raw = await httpClient.get<RawManageAdvancedResponse>(
       "/api/manage/advanced",
     );
     return mapAdvanced(raw);

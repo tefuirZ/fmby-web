@@ -218,6 +218,26 @@ export interface RawManageRuntimeLogsResponse {
   available_targets?: string[] | null;
 }
 
+/** 运行日志归档条目（真源 `RuntimeLogArchiveDto`，wire 蛇形）。 */
+export interface RawRuntimeLogArchiveRecord {
+  id: string;
+  file_name: string;
+  log_date?: string | null;
+  compressed_size_bytes: number;
+  original_size_bytes: number;
+  compression_ratio: number;
+  created_at: string;
+  expires_at?: string | null;
+}
+
+/** 归档清单响应（真源 `ManagedRuntimeLogArchivesResponse`）。 */
+export interface RawManageRuntimeLogArchivesResponse {
+  items: RawRuntimeLogArchiveRecord[];
+  total: number;
+  log_dir: string;
+  retention_days: number;
+}
+
 export interface RawManagedLibraryRecord {
   id: string;
   name: string;

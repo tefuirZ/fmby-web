@@ -250,6 +250,8 @@ export const queryKeys = {
 
     runtimeLogs: (...args: unknown[]) => ['manage', 'runtime-logs', ...args] as const,
 
+    runtimeLogArchives: () => ['manage', 'runtime-log-archives'] as const,
+
     mediaReviews: {
       all: () => ['manage', 'media-reviews'] as const,
       list: (query?: Record<string, unknown>) =>

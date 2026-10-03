@@ -15,6 +15,7 @@ import type {
   RawRegistrationCodeBatchRecord,
   RawRegistrationCodeRecord,
   RawRoleTemplateRecord,
+  RawRuntimeLogArchiveRecord,
   RawRuntimeLogRecord,
 } from "../raw-types";
 import { mapRoleToLabel } from "../labels";
@@ -187,6 +188,19 @@ export function mapRuntimeLogRecord(raw: RawRuntimeLogRecord) {
     requestId: raw.request_id ?? undefined,
     sourceFile: raw.source_file,
     rawLine: raw.raw_line,
+  };
+}
+
+export function mapRuntimeLogArchiveRecord(raw: RawRuntimeLogArchiveRecord) {
+  return {
+    id: raw.id,
+    fileName: raw.file_name,
+    logDate: raw.log_date ?? undefined,
+    compressedSizeBytes: raw.compressed_size_bytes,
+    originalSizeBytes: raw.original_size_bytes,
+    compressionRatio: raw.compression_ratio,
+    createdAt: raw.created_at,
+    expiresAt: raw.expires_at ?? undefined,
   };
 }
 

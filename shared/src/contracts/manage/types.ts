@@ -465,6 +465,38 @@ export interface ManageRuntimeLogsResponse {
   availableTargets: string[];
 }
 
+/** 运行日志归档条目（真源 `contracts/src/dto/manage.rs::RuntimeLogArchiveDto`，8 字段）。 */
+export interface RuntimeLogArchiveRecord {
+  id: string;
+  fileName: string;
+  /** 日志日 `YYYY-MM-DD`；文件名日期无法解析 ⇒ undefined（不造假值）。 */
+  logDate?: string;
+  compressedSizeBytes: number;
+  originalSizeBytes: number;
+  /** `compressed / original`（后端口径；前端按百分比渲染）。 */
+  compressionRatio: number;
+  /** 文件 mtime（RFC3339 UTC）。 */
+  createdAt: string;
+  /** 保留到期（`log_date + retention_days`，RFC3339 UTC）；无 ⇒ undefined。 */
+  expiresAt?: string;
+}
+
+/** `GET /api/manage/runtime-log-archives` 查询（wire 主名 camelCase `pageSize`）。 */
+export interface ManageRuntimeLogArchivesQuery {
+  page?: number;
+  pageSize?: number;
+}
+
+/** 归档清单响应（真源 `ManagedRuntimeLogArchivesResponse`）。 */
+export interface ManageRuntimeLogArchivesResponse {
+  items: RuntimeLogArchiveRecord[];
+  total: number;
+  /** 归档目录（绝对路径；管理面可见，与同域 runtime-logs 的 logDir 同性质）。 */
+  logDir: string;
+  /** 保留窗（天）。 */
+  retentionDays: number;
+}
+
 export interface AdvancedSystemHealth {
   /**
    * 后端版本。**可能为 `undefined`**——后端 `/api/manage/advanced` 当前未提供该

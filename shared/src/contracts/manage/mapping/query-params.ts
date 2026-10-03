@@ -2,6 +2,7 @@ import type {
   ManageLibrariesQuery,
   ManageMountsQuery,
   ManageProbeTasksQuery,
+  ManageRuntimeLogArchivesQuery,
   ManageRuntimeLogsQuery,
   ManageScansQuery,
 } from "../types";
@@ -30,8 +31,7 @@ export function mapLibrariesQueryToParams(query?: ManageLibrariesQuery) {
   };
 }
 
-export function mapMountsQueryToParams(query?: ManageMountsQuery) {
-  if (!query) {
+export function mapMountsQueryToParams(query?: ManageMountsQuery) {  if (!query) {
     return undefined;
   }
 
@@ -96,5 +96,17 @@ export function mapRuntimeLogsQueryToParams(query?: ManageRuntimeLogsQuery) {
     requestId: query.requestId,
     user: query.user,
     all: query.all,
+  };
+}
+
+/** 归档清单查询：wire 主名 camelCase `pageSize`（后端另收 snake 别名）。 */
+export function mapRuntimeLogArchivesQueryToParams(query?: ManageRuntimeLogArchivesQuery) {
+  if (!query) {
+    return undefined;
+  }
+
+  return {
+    page: query.page,
+    pageSize: query.pageSize,
   };
 }
