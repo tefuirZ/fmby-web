@@ -1,5 +1,6 @@
 export * from "./types";
 export { operationsApi, isOperationsUnwiredError } from "./api";
+export { mediaReprocessApi } from "./api";
 export {
   EM_DASH,
   buildActiveSnapshotRows,

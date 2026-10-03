@@ -206,3 +206,79 @@ export interface OperationsActivePlaybackQuery {
 /** 后端常量镜像（仅供 UI 提示文案，判定权在后端）。 */
 export const OPERATIONS_ACTIVE_PLAYBACK_LIMIT_DEFAULT = 200;
 export const OPERATIONS_ACTIVE_PLAYBACK_LIMIT_MAX = 500;
+
+// ---------------------------------------------------------------------------
+// 媒体重处理作业面（FE-MEDIA-REPROCESS-SURFACE）
+//
+// 端点真源（origin/main）：`crates/fmby-v2-http/src/routes/router_manage.rs`
+//   GET  /api/manage/operations/media-reprocess            （limit 夹 1..100，缺省 20）
+//   POST /api/manage/operations/media-reprocess            （危险 mode 需 ?confirmed=true）
+//   GET  /api/manage/operations/media-reprocess/{id}
+//   POST /api/manage/operations/media-reprocess/{id}/cancel
+//   POST /api/manage/operations/media-reprocess/{id}/resume
+// DTO：`crates/fmby-v2-http/src/dto/manage_media_reprocess.rs`（**18 字段**）
+//
+// ★枚举 wire = **PascalCase**（mode 10 态 / status 6 态，单一真源在
+//   `fmby_v2_domain::media_reprocess`）⇒ 前端**原样透传**，不自造小写映射。
+// ★时间是 **RFC3339 字符串**（存储侧 epoch-ms）⇒ 保持字符串，不在前端转数字。
+// ★Stats 是 39 个计数（缺省 0）⇒ 用宽松记录类型承载，不逐个枚举以免与后端漂移。
+// ---------------------------------------------------------------------------
+
+/** 重处理模式（wire PascalCase，10 态，与后端逐字一致）。 */
+export type MediaReprocessMode =
+  | 'DryRun'
+  | 'LocalNormalize'
+  | 'ReconcileDuplicates'
+  | 'IncrementalIdentify'
+  | 'IncrementalScrape'
+  | 'RevalidateInheritedExternalIdValidation'
+  | 'BackfillInheritedChildMetadata'
+  | 'RefreshTmdbBoundChildMetadata'
+  | 'StructureReplayDryRun'
+  | 'StructureReplay';
+
+/** 作业状态（wire PascalCase，6 态）。 */
+export type MediaReprocessStatus =
+  | 'Pending'
+  | 'Running'
+  | 'Paused'
+  | 'Completed'
+  | 'Failed'
+  | 'Cancelled';
+
+/** 统计计数集合（后端 39 项；缺省 0）。 */
+export type MediaReprocessStats = Record<string, number>;
+
+/** 重处理作业（18 字段，时间 RFC3339）。 */
+export interface MediaReprocessTask {
+  id: string;
+  scopeLibraryId: string | null;
+  mode: MediaReprocessMode;
+  status: MediaReprocessStatus;
+  cursorMediaItemId: string | null;
+  cursorSourceId: string | null;
+  batchSize: number;
+  stats: MediaReprocessStats;
+  requestedByUserId: string | null;
+  leaseOwner: string | null;
+  leaseToken: string | null;
+  /** RFC3339；null = 无租约。 */
+  leaseExpiresAt: string | null;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  updatedAt: string;
+}
+
+/** 创建作业入参（后端 6 字段；`batch_size` 有缺省，其余 default）。 */
+export interface MediaReprocessCreateInput {
+  mode: MediaReprocessMode;
+  libraryId?: string;
+  batchSize?: number;
+  /** V1 兼容字段：后端接受但**不二次校验**（真正生效的是 `?confirmed=true`）。 */
+  confirmAction?: string;
+  sessionConfirmation?: string;
+  currentPassword?: string;
+}

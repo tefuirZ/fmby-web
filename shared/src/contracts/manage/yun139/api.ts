@@ -20,6 +20,14 @@ import type {
   Yun139OwnedBrowseResult,
   Yun139QrLoginResult,
   Yun139QrStatusResult,
+  Yun139LeaseInput,
+  Yun139LeaseResult,
+  Yun139ReportLeaseInput,
+  Yun139AccountPool,
+  Yun139CreateAccountPoolInput,
+  Yun139UpdateAccountPoolInput,
+  Yun139AccountPoolMember,
+  Yun139AddAccountPoolMemberInput,
 } from './types';
 
 interface RawQrLoginResponse {
@@ -213,4 +221,240 @@ export const yun139Api = {
   ): Promise<Yun139ActivateResult> {
     return httpClient.post<Yun139ActivateResult>(`${BASE}/activate`, { body });
   },
+
+  // -------------------------------------------------------------------------
+  // 账号池「段 B 调度运维」（FE-YUN139-ACCOUNT-POOLS）
+  // 端点真源：crates/fmby-v2-http/src/routes/yun139_accounts.rs（MANAGE_MOUNT）
+  // DTO：crates/fmby-v2-http/src/state/yun139_accounts.rs
+  // -------------------------------------------------------------------------
+
+  /**
+   * POST .../account-pools/{poolId}/lease — 从账号池试租借一个账号。
+   * ★`sticky_key` 可省 ⇒ 省略时**不发送**，不臆造缺省。
+   */
+  async leaseFromPool(
+    poolId: string,
+    input: Yun139LeaseInput = {},
+  ): Promise<Yun139LeaseResult> {
+    const body: Record<string, unknown> = {};
+    if (input.stickyKey !== undefined) body.sticky_key = input.stickyKey;
+    const raw = await httpClient.post<RawYun139LeaseResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}/lease`,
+      { body },
+    );
+    return {
+      poolId: raw.pool_id ?? null,
+      leaseId: raw.lease_id,
+      profileId: raw.profile_id,
+      displayName: raw.display_name,
+      // epoch 毫秒（租借 TTL）⇒ 原样透传，不转字符串
+      expiresAt: raw.expires_at,
+    };
+  },
+
+  /**
+   * POST .../account-pools/{poolId}/report — 租借结果回写（成功/失败 + 可选冷却）。
+   * ★可选字段（lease_id / cooldown_seconds）省略时**不发送**；缺省由池配置决定。
+   */
+  async reportLease(
+    poolId: string,
+    input: Yun139ReportLeaseInput,
+  ): Promise<boolean> {
+    const body: Record<string, unknown> = {
+      profile_id: input.profileId,
+      success: input.success,
+    };
+    if (input.leaseId !== undefined) body.lease_id = input.leaseId;
+    if (input.cooldownSeconds !== undefined) {
+      body.cooldown_seconds = input.cooldownSeconds;
+    }
+    const raw = await httpClient.post<RawOkResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}/report`,
+      { body },
+    );
+    return raw.ok;
+  },
+
+  // 账号池「段 A」：池 CRUD + 成员管理（FE-YUN139-POOLS-SEG-A）
+  // 端点真源：crates/fmby-v2-http/src/routes/yun139_accounts.rs（MANAGE_MOUNT）
+  // DTO：crates/fmby-v2-http/src/state/yun139_accounts.rs（时间均为 epoch 毫秒）
+  // -------------------------------------------------------------------------
+
+  /** GET 池列表 → items 解包。 */
+  async listAccountPools(): Promise<Yun139AccountPool[]> {
+    const raw = await httpClient.get<RawPoolsResponse>(`${BASE}/account-pools`);
+    return (raw.items ?? []).map(fromPool);
+  },
+
+  /** POST 建池 → 解 { pool }。可选字段省略 ⇒ 不发送。 */
+  async createAccountPool(
+    input: Yun139CreateAccountPoolInput,
+  ): Promise<Yun139AccountPool> {
+    const body: Record<string, unknown> = { name: input.name };
+    if (input.description !== undefined) body.description = input.description;
+    if (input.strategy !== undefined) body.strategy = input.strategy;
+    if (input.cooldownSeconds !== undefined) {
+      body.cooldown_seconds = input.cooldownSeconds;
+    }
+    if (input.maxConcurrent !== undefined) {
+      body.max_concurrent = input.maxConcurrent;
+    }
+    const raw = await httpClient.post<RawPoolResponse>(`${BASE}/account-pools`, {
+      body,
+    });
+    return fromPool(raw.pool);
+  },
+
+  /** GET 单个池 → 解 { pool }。 */
+  async getAccountPool(poolId: string): Promise<Yun139AccountPool> {
+    const raw = await httpClient.get<RawPoolResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}`,
+    );
+    return fromPool(raw.pool);
+  },
+
+  /** PUT 改池（PATCH 语义：只发传入字段）→ 解 { pool }。 */
+  async updateAccountPool(
+    poolId: string,
+    input: Yun139UpdateAccountPoolInput,
+  ): Promise<Yun139AccountPool> {
+    const body: Record<string, unknown> = {};
+    if (input.name !== undefined) body.name = input.name;
+    if (input.description !== undefined) body.description = input.description;
+    if (input.strategy !== undefined) body.strategy = input.strategy;
+    if (input.cooldownSeconds !== undefined) {
+      body.cooldown_seconds = input.cooldownSeconds;
+    }
+    if (input.maxConcurrent !== undefined) {
+      body.max_concurrent = input.maxConcurrent;
+    }
+    if (input.isEnabled !== undefined) body.is_enabled = input.isEnabled;
+    const raw = await httpClient.put<RawPoolResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}`,
+      { body },
+    );
+    return fromPool(raw.pool);
+  },
+
+  /** DELETE 删池（不可逆；UI 层确认弹窗兜底）→ ok。 */
+  async deleteAccountPool(poolId: string): Promise<boolean> {
+    const raw = await httpClient.delete<RawOkResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}`,
+    );
+    return raw.ok;
+  },
+
+  /** GET 池成员列表 → items 解包。 */
+  async listAccountPoolMembers(poolId: string): Promise<Yun139AccountPoolMember[]> {
+    const raw = await httpClient.get<RawMembersResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}/members`,
+    );
+    return (raw.items ?? []).map(fromMember);
+  },
+
+  /** POST 加成员（weight 可省）→ 解 { member }。 */
+  async addAccountPoolMember(
+    poolId: string,
+    input: Yun139AddAccountPoolMemberInput,
+  ): Promise<Yun139AccountPoolMember> {
+    const body: Record<string, unknown> = { profile_id: input.profileId };
+    if (input.weight !== undefined) body.weight = input.weight;
+    const raw = await httpClient.post<RawMemberResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}/members`,
+      { body },
+    );
+    return fromMember(raw.member);
+  },
+
+  /** DELETE 移除成员 → ok。 */
+  async removeAccountPoolMember(poolId: string, profileId: string): Promise<boolean> {
+    const raw = await httpClient.delete<RawOkResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}/members/${encodeURIComponent(profileId)}`,
+    );
+    return raw.ok;
+  },
+
 };
+
+interface RawYun139LeaseResponse {
+  pool_id: string | null;
+  lease_id: string;
+  profile_id: string;
+  display_name: string;
+  /** epoch 毫秒（租借 TTL，过期自动归还）。 */
+  expires_at: number;
+}
+
+interface RawPool {
+  id: string;
+  name: string;
+  description: string | null;
+  strategy: string;
+  cooldown_seconds: number;
+  max_concurrent: number;
+  is_enabled: boolean;
+  member_count: number;
+  created_at: number;
+  updated_at: number;
+}
+
+interface RawPoolsResponse {
+  items: RawPool[];
+}
+
+interface RawPoolResponse {
+  pool: RawPool;
+}
+
+interface RawMember {
+  pool_id: string;
+  profile_id: string;
+  profile_label: string | null;
+  profile_status: string | null;
+  weight: number;
+  is_enabled: boolean;
+  last_used_at: number | null;
+  fail_count: number;
+  cooldown_until: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+interface RawMembersResponse {
+  items: RawMember[];
+}
+
+interface RawMemberResponse {
+  member: RawMember;
+}
+
+function fromPool(r: RawPool): Yun139AccountPool {
+  return {
+    id: r.id,
+    name: r.name,
+    description: r.description ?? null,
+    strategy: r.strategy,
+    cooldownSeconds: r.cooldown_seconds,
+    maxConcurrent: r.max_concurrent,
+    isEnabled: r.is_enabled,
+    memberCount: r.member_count,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+function fromMember(r: RawMember): Yun139AccountPoolMember {
+  return {
+    poolId: r.pool_id,
+    profileId: r.profile_id,
+    profileLabel: r.profile_label ?? null,
+    profileStatus: r.profile_status ?? null,
+    weight: r.weight,
+    isEnabled: r.is_enabled,
+    lastUsedAt: r.last_used_at ?? null,
+    failCount: r.fail_count,
+    cooldownUntil: r.cooldown_until ?? null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
