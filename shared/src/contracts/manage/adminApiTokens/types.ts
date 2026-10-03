@@ -1,4 +1,4 @@
-//! FE-ADMIN-SURFACE：管理面 API 令牌（`/api/manage/admin/api-tokens`）。
+//! FE-ADMIN-SURFACE：管理面 API 令牌（`/api/admin/api-tokens`）。
 //!
 //! 后端权威（FMBY-V2 `origin/main`）：
 //! - 路由 `router_manage.rs:625-629`：`POST` /`GET` `/admin/api-tokens`、

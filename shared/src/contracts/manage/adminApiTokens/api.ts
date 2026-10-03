@@ -7,7 +7,7 @@ import type {
 } from "./types";
 
 // 与 `router_manage.rs:625-629` 逐字一致（单一事实源，不另起常量）。
-const TOKENS_PATH = "/api/manage/admin/api-tokens";
+const TOKENS_PATH = "/api/admin/api-tokens";
 
 /// snake_case → camelCase（可空 `expires_at_ms` ⇒ null，不伪造时间）。
 export function mapAdminApiToken(

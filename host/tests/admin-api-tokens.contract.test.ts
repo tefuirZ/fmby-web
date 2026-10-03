@@ -28,8 +28,8 @@ test('① 契约文件存在且复用 httpClient', () => {
 test('② 三个方法打到后端真实路径', () => {
   const src = read(API);
   assert.ok(
-    src.includes('/api/manage/admin/api-tokens'),
-    '路径须与 router_manage.rs:625-629 一致',
+    src.includes('/api/admin/api-tokens'),
+    '路径须与后端真路由一致（router_core nest /api + add_admin_routes 无 manage 段）',
   );
   assert.ok(/httpClient\.get</.test(src), 'list 走 GET');
   assert.ok(/httpClient\.post</.test(src), 'create 走 POST');
