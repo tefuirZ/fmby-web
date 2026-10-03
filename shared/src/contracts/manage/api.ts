@@ -119,6 +119,35 @@ import {
   mapUserStatusToApi,
 } from "./mapping";
 
+// ── 直连注册窗口设置（FE-GAP-NEXT-1；wire = 后端 dto_registration.rs，serde(default)）──
+
+export interface DirectRegistrationSettingsRecord {
+  enabled: boolean;
+  /** epoch ms；null = 窗口起点不受限。 */
+  startAt: number | null;
+  endAt: number | null;
+  maxUsers: number | null;
+  defaultRoleTemplate: string | null;
+}
+
+interface RawDirectRegistrationSettings {
+  enabled: boolean;
+  start_at: number | null;
+  end_at: number | null;
+  max_users: number | null;
+  default_role_template: string | null;
+}
+
+function fromDirectRegistration(r: RawDirectRegistrationSettings): DirectRegistrationSettingsRecord {
+  return {
+    enabled: r.enabled,
+    startAt: r.start_at,
+    endAt: r.end_at,
+    maxUsers: r.max_users,
+    defaultRoleTemplate: r.default_role_template,
+  };
+}
+
 export const manageApi = {
   async getOverview(): Promise<ManageOverviewResponse> {
     const raw = await httpClient.get<RawManageOverviewResponse>(
@@ -431,6 +460,37 @@ export const manageApi = {
       },
     );
     return mapManageActionResult(raw);
+  },
+
+  // ── FE-GAP-NEXT-1：直连注册窗口管理端（REGISTRATION-WINDOW-ADMIN-API）──
+  // wire = 后端 manage_registration_window.rs；DTO DirectRegistrationSettingsDto
+  // （contracts/dto_registration.rs，serde(default)+deny_unknown_fields）。
+  // 门 = session + MANAGE_ACCESS；PUT 全量替换，返回落库后真值；
+  // 校验复用注册侧纯函数（非法 ⇒ Validation 诚实透传）。
+
+  async getDirectRegistrationSettings(): Promise<DirectRegistrationSettingsRecord> {
+    const raw = await httpClient.get<RawDirectRegistrationSettings>(
+      '/api/manage/users/direct-registration/settings',
+    );
+    return fromDirectRegistration(raw);
+  },
+
+  async putDirectRegistrationSettings(
+    payload: DirectRegistrationSettingsRecord,
+  ): Promise<DirectRegistrationSettingsRecord> {
+    const raw = await httpClient.put<RawDirectRegistrationSettings>(
+      '/api/manage/users/direct-registration/settings',
+      {
+        body: {
+          enabled: payload.enabled,
+          start_at: payload.startAt ?? null,
+          end_at: payload.endAt ?? null,
+          max_users: payload.maxUsers ?? null,
+          default_role_template: payload.defaultRoleTemplate ?? null,
+        },
+      },
+    );
+    return fromDirectRegistration(raw);
   },
 
   async getRegistrationCodes(): Promise<ManageRegistrationCodesResponse> {
