@@ -7,7 +7,7 @@
  * - 认证相关类型
  */
 
-export { authApi, mapMeResponse } from './api';
+export { authApi, mapMeResponse, SESSION_USERNAME_STORAGE_KEY } from './api';
 export type {
   LoginRequest,
   RegisterRequest,
