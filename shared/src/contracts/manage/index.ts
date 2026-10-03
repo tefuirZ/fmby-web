@@ -98,6 +98,7 @@ export type {
   ManageMountsHealthResponse,
   MOUNT_FAULT_KIND_CREDENTIAL_EXPIRED,
   ManageMountCredentialStatus,
+  TelegramPasswordResetReceipt,
 } from "./types";
 export { adminApiTokensApi, mapAdminApiToken } from "./adminApiTokens";
 export type { AdminApiToken, AdminApiTokenCreateInput } from "./adminApiTokens";

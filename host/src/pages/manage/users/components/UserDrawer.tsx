@@ -14,6 +14,7 @@ import styles from '../../longtail-shared/ManageShared.module.css';
 import { getManageStatusVariant } from '../../longtail-shared/components';
 import type { UserDrawerState, UserFormState } from '../types';
 import { UserCreateForm } from './UserCreateForm';
+import { UserSecurityDangerActions } from './UserSecurityDangerActions';
 import { UserEditForm } from './UserEditForm';
 import {
   getDrawerDescription,
@@ -246,6 +247,9 @@ export function UserDrawer({
               >
                 重置密码
               </button>
+            ) : null}
+            {currentDetail.accountKind !== 'service' && currentDetail.status !== 'pending' ? (
+              <UserSecurityDangerActions userId={currentDetail.id} username={currentDetail.username} />
             ) : null}
             <button className={styles.ghostButton} type="button" onClick={onClose}>关闭</button>
           </div>
