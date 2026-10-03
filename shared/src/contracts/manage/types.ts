@@ -949,3 +949,33 @@ export interface ManageActionResult {
   result: string;
   message: string;
 }
+
+// ---------------------------------------------------------------------------
+// 用户安全 / 凭据投递（FE-GAP-NEXT-2）
+//
+// 端点真源（origin/main）：`crates/fmby-v2-http/src/routes/router_core.rs`
+//   POST /api/manage/users/{id}/mfa/totp/reset
+//        → auth_mfa::post_reset_user_totp
+//        （MANAGE_ACCESS + DANGEROUS_ACTION + ?confirmed=true）→ MfaOkResponse{ ok }
+//   POST /api/manage/users/{id}/telegram-password-reset
+//        → manage_users::manage_users_schedule_telegram_password_reset
+//        （require_dangerous_manage ⇒ ?confirmed=true；未装配 ⇒ 503，非假成功）
+//        → TelegramPasswordResetReceiptDto
+//
+// ★安全红线：回执**绝不含明文密码**（后端只给 `payload_expires_at` 有效期）；
+//   前端契约层不得声明/透出任何密码字段。
+// ★幂等：幂等键走请求头 `x-idempotency-key`；不传则后端按日派生 ⇒ 前端不臆造缺省。
+// ---------------------------------------------------------------------------
+
+/** Telegram 密码重置回执（6 字段；明文密码绝不出现）。 */
+export interface TelegramPasswordResetReceipt {
+  operationId: string;
+  userId: string;
+  username: string;
+  /** true = 幂等复用既有操作（同 actor + 同幂等键重复提交）。 */
+  replayed: boolean;
+  /** 投递状态：pending/delivering/retry_waiting/delivered/failed/expired。 */
+  deliveryStatus: string;
+  /** 载荷有效期（epoch 毫秒）。 */
+  payloadExpiresAt: number;
+}
