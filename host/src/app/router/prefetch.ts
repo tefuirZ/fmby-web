@@ -79,6 +79,7 @@ export const routeLoaders = {
   manageSiteSettings: () => import('@/pages/manage/ManageSiteSettingsPage'),
   manageAdvanced: () => import('@/pages/manage/ManageAdvancedPage'),
   manageSystemAbout: () => import('@/pages/manage/ManageSystemAboutPage'),
+  manageStorageFootprint: () => import('@/pages/manage/ManageStorageFootprintPage'),
 } as const;
 
 const fired = new Set<keyof typeof routeLoaders | string>();

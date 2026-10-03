@@ -112,6 +112,7 @@ const manageNavTree: ManageNavNode[] = [
       { id: 'site-secrets', label: '密钥链管理', icon: KeyRound, to: '/manage/site/secrets' },
       { id: 'site-advanced', label: '高级维护', icon: SlidersHorizontal, to: '/manage/site/advanced' },
       { id: 'system-about', label: '系统关于', icon: Info, to: '/manage/system-about' },
+      { id: 'storage-footprint', label: '存储占用', icon: Database, to: '/manage/storage-footprint' },
     ],
   },
 ];
@@ -162,6 +163,7 @@ const PATH_PREFETCH_KEYS: Record<string, keyof typeof routeLoaders> = {
   '/manage/media-reviews': 'manageMediaReviews',
   '/manage/operations': 'manageOperations',
   '/manage/system-about': 'manageSystemAbout',
+  '/manage/storage-footprint': 'manageStorageFootprint',
   '/manage/events': 'manageEvents',
   '/manage/upstreams': 'manageUpstreams',
   '/manage/site/users/registration-codes': 'manageRegistrationCodes',

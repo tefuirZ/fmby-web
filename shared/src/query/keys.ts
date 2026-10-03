@@ -282,6 +282,10 @@ export const queryKeys = {
       about: () => ['manage', 'system-about'] as const,
     },
 
+    storageFootprint: {
+      footprint: () => ['manage', 'storage-footprint'] as const,
+    },
+
     upstreams: {
       all: () => ['manage', 'upstreams'] as const,
       list: (query?: object) => ['manage', 'upstreams', 'list', query ?? {}] as const,

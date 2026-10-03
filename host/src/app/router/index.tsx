@@ -282,6 +282,15 @@ export const router = createBrowserRouter([
             },
           },
           {
+            path: 'storage-footprint',
+            lazy: async () => {
+              const { ManageStorageFootprintPage } = await import(
+                '@/pages/manage/ManageStorageFootprintPage'
+              );
+              return { Component: ManageStorageFootprintPage };
+            },
+          },
+          {
             path: 'events',
             lazy: async () => {
               const { ManageEventsPage } = await import('@/pages/manage/ManageEventsPage');
