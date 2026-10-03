@@ -153,6 +153,21 @@ export const router = createBrowserRouter([
             },
           },
           {
+            // FE-CONTINUE-WATCHING：继续观看 / 最近添加（keyset 分页）。
+            path: 'continue-watching',
+            lazy: async () => {
+              const { ContinueWatchingPage } = await import('@/pages/browse/BrowsePagedListPage');
+              return { Component: ContinueWatchingPage };
+            },
+          },
+          {
+            path: 'recently-added',
+            lazy: async () => {
+              const { RecentlyAddedPage } = await import('@/pages/browse/BrowsePagedListPage');
+              return { Component: RecentlyAddedPage };
+            },
+          },
+          {
             // FE-USER-COLLECTIONS-LIST-PAGE-2：用户面合集列表（`GET /api/collections`，
             // 后端 USER-COLLECTIONS-LIST-BE）。静态段优先于 `:collectionId`。
             path: 'collections',

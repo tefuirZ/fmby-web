@@ -8,6 +8,8 @@ export type {
 } from './collections';
 export type { PersonDetail, PersonItemsPage } from './person';
 export type {
+  BrowsePagedPage,
+  BrowsePagedParams,
   BrowseFilterOption,
   BrowseHero,
   LibraryDetailResponse,
