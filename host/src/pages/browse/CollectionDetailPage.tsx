@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { useCollectionDetail } from '@fmby/v2-shared/viewmodels';
@@ -62,6 +62,9 @@ export function CollectionDetailPage() {
           ) : null}
         </div>
         <div className={styles.headerActions}>
+          <Link className={styles.secondaryButton} to="/collections">
+            返回合集列表
+          </Link>
           <button className={styles.secondaryButton} type="button" onClick={actions.refresh}>
             刷新
           </button>

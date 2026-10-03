@@ -153,6 +153,15 @@ export const router = createBrowserRouter([
             },
           },
           {
+            // FE-USER-COLLECTIONS-LIST-PAGE-2：用户面合集列表（`GET /api/collections`，
+            // 后端 USER-COLLECTIONS-LIST-BE）。静态段优先于 `:collectionId`。
+            path: 'collections',
+            lazy: async () => {
+              const { CollectionsListPage } = await import('@/pages/browse/CollectionsListPage');
+              return { Component: CollectionsListPage };
+            },
+          },
+          {
             // FE-USER-COLLECTIONS-BROWSE：用户面合集详情（`GET /api/collections/{id}`）。
             // 列表页未接：后端用户面列表只在 compat `/emby/Collections`（仅认 Emby
             // api_key，WebUI session 不可达）——见 handoff 待裁决项。
