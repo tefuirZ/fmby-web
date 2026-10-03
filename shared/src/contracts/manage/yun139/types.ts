@@ -165,3 +165,73 @@ export interface Yun139ReportLeaseInput {
   /** 失败冷却秒数；省略 ⇒ 由池配置决定。 */
   cooldownSeconds?: number;
 }
+
+// 账号池「段 A」：池 CRUD + 成员管理（FE-YUN139-POOLS-SEG-A）
+//
+// 端点真源（origin/main）：`crates/fmby-v2-http/src/routes/yun139_accounts.rs`
+//   GET/POST /api/manage/yun139/account-pools
+//   GET/PUT/DELETE /api/manage/yun139/account-pools/{id}
+//   GET/POST /api/manage/yun139/account-pools/{id}/members
+//   DELETE /api/manage/yun139/account-pools/{id}/members/{profileId}
+// DTO：`crates/fmby-v2-http/src/state/yun139_accounts.rs`
+//   Pool 10 字段 / Member 11 字段；能力门 MANAGE_MOUNT。
+//
+// ★时间字段均为 **epoch 毫秒**（created_at/updated_at/last_used_at/cooldown_until）
+//   ⇒ 原样透传，不转字符串。wire 一律 snake_case。
+// ★可选字段省略 ⇒ **不发送**，交由后端缺省/校验，前端不臆造。
+// ---------------------------------------------------------------------------
+
+/** 账号池（10 字段）。 */
+export interface Yun139AccountPool {
+  id: string;
+  name: string;
+  description: string | null;
+  /** 调度策略（后端枚举透传）。 */
+  strategy: string;
+  cooldownSeconds: number;
+  maxConcurrent: number;
+  isEnabled: boolean;
+  memberCount: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 建池入参（后端 5 字段；除 name 外均可省）。 */
+export interface Yun139CreateAccountPoolInput {
+  name: string;
+  description?: string;
+  strategy?: string;
+  cooldownSeconds?: number;
+  maxConcurrent?: number;
+}
+
+/** 改池入参（PATCH 语义：只发要改的字段）。 */
+export interface Yun139UpdateAccountPoolInput {
+  name?: string;
+  description?: string;
+  strategy?: string;
+  cooldownSeconds?: number;
+  maxConcurrent?: number;
+  isEnabled?: boolean;
+}
+
+/** 池成员（11 字段）。 */
+export interface Yun139AccountPoolMember {
+  poolId: string;
+  profileId: string;
+  profileLabel: string | null;
+  profileStatus: string | null;
+  weight: number;
+  isEnabled: boolean;
+  lastUsedAt: number | null;
+  failCount: number;
+  cooldownUntil: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 加成员入参（`weight` 可省）。 */
+export interface Yun139AddAccountPoolMemberInput {
+  profileId: string;
+  weight?: number;
+}
