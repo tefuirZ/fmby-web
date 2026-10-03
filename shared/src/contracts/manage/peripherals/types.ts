@@ -445,3 +445,62 @@ export interface SecretsOverrideResultRecord {
   applied: SecretStatusEntryRecord[];
   restartRequired: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// 用户自助「积分 / 签到」面（FE-POINTS-CHECKIN）
+//
+// 端点真源（`origin/main`）：`crates/fmby-v2-http/src/routes/router_core.rs`
+//   GET  /api/rewards/me                                → RewardsMySummaryDto
+//   GET  /api/rewards/rule                              → RewardsRuleVersionDto
+//   POST /api/rewards/checkins                          → RewardsCheckinResultDto
+//   POST /api/rewards/redemptions/server-days           → RewardsRedemptionResultDto
+//   POST /api/rewards/redemptions/media-request-credits → 同上
+// DTO：`crates/fmby-v2-http/src/state/rewards.rs`；wire 为 snake_case。
+//
+// ★复用管理面既有视图类型（账户/流水/规则版本），不重复定义。
+// ★幂等：签到当日重复 ⇒ created=false、awarded_points=0；兑换同幂等键 ⇒ applied=false。
+// ---------------------------------------------------------------------------
+
+/** 我的积分汇总（`GET /api/rewards/me`）。 */
+export interface RewardsMySummary {
+  userId: string;
+  /** null = 从未产生积分记录（诚实呈现，不伪造零余额账户）。 */
+  account: RewardsPointAccountRecord | null;
+  totalCheckinDays: number;
+  currentStreakDays: number;
+  /** 最近一笔流水；null = 无流水。 */
+  latestLedger: RewardsLedgerEntryRecord | null;
+}
+
+/** 签到结果（`POST /api/rewards/checkins`）。 */
+export interface RewardsCheckinResult {
+  /** 本次是否新建签到（false = 当日已签，幂等命中）。 */
+  created: boolean;
+  /** 本次实际入账积分（幂等命中为 0，不重复发）。 */
+  awardedPoints: number;
+  /** YYYYMMDD。 */
+  checkinDate: number;
+  streakDays: number;
+  totalCheckinDays: number;
+  status: string;
+  /** 毫秒。 */
+  checkedInAt: number;
+}
+
+/** 兑换结果（`POST /api/rewards/redemptions/*`）。 */
+export interface RewardsRedemptionResult {
+  id: string;
+  idempotencyKey: string;
+  /** 是否本次实际扣减（false = 幂等命中既有记录）。 */
+  applied: boolean;
+  redemptionType: string;
+  quantity: number;
+  pointsSpent: number;
+  ruleVersion: number;
+  /** 毫秒。 */
+  createdAt: number;
+  /** 扣减后余额真值。 */
+  balance: number;
+  /** 使用时长兑换续期后的有效期；null = 非该类型或幂等命中未续期。 */
+  validUntilAfter: number | null;
+}

@@ -24,6 +24,9 @@ import type {
   RewardsEventConfigRecord,
   RewardsEventConfigWriteInput,
   RewardsLedgerEntryRecord,
+  RewardsMySummary,
+  RewardsCheckinResult,
+  RewardsRedemptionResult,
   RewardsRuleConfigRecord,
   RewardsRedemptionRateRecord,
   RewardsRuleVersionRecord,
@@ -891,5 +894,162 @@ export const peripheralsApi = {
       applied: raw.applied.map(fromSecretEntry),
       restartRequired: raw.restart_required,
     };
+  },
+};
+
+
+// ---------------------------------------------------------------------------
+// 用户自助「积分 / 签到」面（FE-POINTS-CHECKIN）
+//
+// 端点真源（origin/main）：crates/fmby-v2-http/src/routes/router_core.rs
+// DTO：crates/fmby-v2-http/src/state/rewards.rs（wire = snake_case）
+//
+// ★幂等语义照后端，不在前端掩盖：
+//   - 当日重复签到 ⇒ created=false / awarded_points=0（不重复发分）；
+//   - 兑换同 idempotency_key ⇒ applied=false（不重复扣减）。
+// ★不造错误文案：错误由调用方经 `getErrorMessage` 展示后端原文。
+// ---------------------------------------------------------------------------
+
+interface RawRewardsMySummary {
+  user_id: string;
+  account: RawRewardsAccount | null;
+  total_checkin_days: number;
+  current_streak_days: number;
+  latest_ledger: RawRewardsLedgerEntry | null;
+}
+
+interface RawRewardsCheckinResult {
+  created: boolean;
+  awarded_points: number;
+  checkin_date: number;
+  streak_days: number;
+  total_checkin_days: number;
+  status: string;
+  checked_in_at: number;
+}
+
+interface RawRewardsRedemptionResult {
+  id: string;
+  idempotency_key: string;
+  applied: boolean;
+  redemption_type: string;
+  quantity: number;
+  points_spent: number;
+  rule_version: number;
+  created_at: number;
+  balance: number;
+  valid_until_after: number | null;
+}
+
+/** 积分流水 raw → 视图（用户面 `/api/rewards/me` 与管理面流水共用同一 wire）。 */
+function fromLedgerEntry(r: RawRewardsLedgerEntry): RewardsLedgerEntryRecord {
+  return {
+    id: r.id,
+    userId: r.user_id,
+    delta: r.delta,
+    balanceAfter: r.balance_after,
+    transactionType: r.transaction_type,
+    sourceType: r.source_type,
+    sourceId: r.source_id,
+    ruleVersion: r.rule_version ?? null,
+    detailJson: r.detail_json,
+    createdAt: r.created_at,
+  };
+}
+
+function fromMySummary(r: RawRewardsMySummary): RewardsMySummary {
+  return {
+    userId: r.user_id,
+    account: r.account ? fromAccount(r.account) : null,
+    totalCheckinDays: r.total_checkin_days,
+    currentStreakDays: r.current_streak_days,
+    latestLedger: r.latest_ledger ? fromLedgerEntry(r.latest_ledger) : null,
+  };
+}
+
+function fromCheckinResult(r: RawRewardsCheckinResult): RewardsCheckinResult {
+  return {
+    created: r.created,
+    awardedPoints: r.awarded_points,
+    checkinDate: r.checkin_date,
+    streakDays: r.streak_days,
+    totalCheckinDays: r.total_checkin_days,
+    status: r.status,
+    checkedInAt: r.checked_in_at,
+  };
+}
+
+function fromRedemptionResult(
+  r: RawRewardsRedemptionResult,
+): RewardsRedemptionResult {
+  return {
+    id: r.id,
+    idempotencyKey: r.idempotency_key,
+    applied: r.applied,
+    redemptionType: r.redemption_type,
+    quantity: r.quantity,
+    pointsSpent: r.points_spent,
+    ruleVersion: r.rule_version,
+    createdAt: r.created_at,
+    balance: r.balance,
+    validUntilAfter: r.valid_until_after ?? null,
+  };
+}
+
+export const rewardsApi = {
+  /** GET /api/rewards/me — 我的积分汇总（含签到统计与最近流水）。 */
+  async getMySummary(): Promise<RewardsMySummary> {
+    const raw = await httpClient.get<RawRewardsMySummary>('/api/rewards/me');
+    return fromMySummary(raw);
+  },
+
+  /** GET /api/rewards/rule — 当前生效奖励规则（复用管理面 `fromRewardsRuleConfig`）。 */
+  async getCurrentRule(): Promise<RewardsRuleVersionRecord> {
+    const raw = await httpClient.get<RawRewardsRuleVersion>('/api/rewards/rule');
+    return {
+      id: raw.id,
+      version: raw.version,
+      status: raw.status,
+      createdBy: raw.created_by,
+      createdAt: raw.created_at,
+      publishedAt: raw.published_at,
+      config: fromRewardsRuleConfig(raw.config),
+    };
+  },
+
+  /**
+   * POST /api/rewards/checkins — 每日签到（幂等，当日唯一）。
+   * ★body 可省：不带 source 时**不臆造请求体**（后端 `Option<Json<CheckinRequest>>`）。
+   */
+  async checkIn(source?: string): Promise<RewardsCheckinResult> {
+    const raw = await httpClient.post<RawRewardsCheckinResult>(
+      '/api/rewards/checkins',
+      source ? { body: { source } } : undefined,
+    );
+    return fromCheckinResult(raw);
+  },
+
+  /** POST /api/rewards/redemptions/server-days — 兑换使用时长。 */
+  async redeemServerDays(
+    idempotencyKey: string,
+    quantity: number,
+  ): Promise<RewardsRedemptionResult> {
+    const raw = await httpClient.post<RawRewardsRedemptionResult>(
+      '/api/rewards/redemptions/server-days',
+      { body: { idempotency_key: idempotencyKey, quantity } },
+    );
+    return fromRedemptionResult(raw);
+  },
+
+  /** POST /api/rewards/redemptions/media-request-credits — 兑换求片次数。 */
+  async redeemMediaRequestCredits(
+    idempotencyKey: string,
+    quantity: number,
+  ): Promise<RewardsRedemptionResult> {
+    const raw = await httpClient.post<RawRewardsRedemptionResult>(
+      '/api/rewards/redemptions/media-request-credits',
+      { body: { idempotency_key: idempotencyKey, quantity } },
+    );
+    return fromRedemptionResult(raw);
   },
 };
