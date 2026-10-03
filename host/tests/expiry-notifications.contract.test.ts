@@ -50,10 +50,16 @@ test('③ snake_case → camelCase 映射字段对拍（enabled / thresholdDays�
 });
 
 test('④ 诚实缺省：未配置 ⇒ enabled=true / thresholdDays=[7,3,1]', () => {
-  const src = read(API);
+  // 缺省字面量是**单一事实源**，放在 types.ts（api.ts 仅导入使用）。
+  const src = read('../../shared/src/contracts/manage/expiryNotifications/types.ts');
   assert.ok(
     /\[7,\s*3,\s*1\]/.test(src),
     '缺省阈值须与后端 DEFAULT_THRESHOLD_DAYS 一致（7,3,1）',
+  );
+  const api = read(API);
+  assert.ok(
+    api.includes('DEFAULT_EXPIRY_THRESHOLD_DAYS'),
+    'api.ts 须复用 types.ts 的缺省常量（不复制字面量）',
   );
 });
 
