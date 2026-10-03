@@ -17,8 +17,11 @@ const PAGE_SIZE = 20;
 export function CollectionsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
+  // 防抖范式（照 useSearchOverlay：页面持原始值，viewmodel 收 deferred 值）。
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
+  const search = useDeferredValue(searchInput.trim());
 
-  const vm = useCollectionsList({ page, pageSize: PAGE_SIZE });
+  const vm = useCollectionsList({ page, pageSize: PAGE_SIZE, search });
   const { items, total, pageSize, hasMore } = vm.data;
   const totalPages = useMemo(
     () => (total === 0 ? 1 : Math.ceil(total / pageSize)),
@@ -72,6 +75,19 @@ export function CollectionsListPage() {
         </div>
       </header>
 
+      <div className={styles.toolbar}>
+        <div className={styles.filterGroup}>
+          <input
+            className={styles.input}
+            placeholder="按合集名检索"
+            value={searchInput}
+            onChange={(event) => {
+              setSearchInput(event.target.value);
+              if (page > 1) setSearchParams({});
+            }}
+          />
+        </div>
+      </div>
       {items.length === 0 ? (
         <FeedbackState
           variant="empty"
@@ -81,6 +97,7 @@ export function CollectionsListPage() {
       ) : (
         <>
           <div className={styles.activeFilterRow}>
+            {search ? <span className={styles.filterChip}>检索「{search}」</span> : null}
             <span className={styles.filterChip}>
               第 {page} / {totalPages} 页
             </span>
