@@ -13,7 +13,7 @@ import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@fmby/v2-s
 import { queryKeys } from '@fmby/v2-shared/query';
 import { usePan115QrLogin } from '@fmby/v2-shared/hooks/usePan115QrLogin';
 import { isApiError } from '@fmby/v2-shared/types';
-import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { getErrorMessage, isPan115CredentialError } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../../../ManagePages.module.css';
 import { useInvalidateCredentialState } from '../../../hooks/useInvalidateCredentialState';
@@ -44,7 +44,8 @@ function isNotFound(err: unknown): boolean {
 
 /** 凭据缺失/失效（后端 credential_invalid）→ 引导重新绑定，而非泛化报错。 */
 function isCredentialError(err: unknown): boolean {
-  return isApiError(err) && err.code === 'credential_invalid';
+  // FE-ERROR-UX-ALIGN：新 Coded(Pan115*) SCREAMING 码一并归类（后端词表见 error_code/slug.rs）。
+  return isApiError(err) && (err.code === 'credential_invalid' || isPan115CredentialError(err));
 }
 
 export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSectionProps) {
