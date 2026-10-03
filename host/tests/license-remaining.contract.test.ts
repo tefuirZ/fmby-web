@@ -98,3 +98,12 @@ test('Emby 导入契约：preview 端点 wire（用户面 0 消费 → 本卡补
   }).previewEmbyUserImport({ upstreamId: 'up-1' });
   assert.ok(lastUrl.includes('/manage/users/emby-import/preview'), `wire 不符: ${lastUrl}`);
 });
+
+
+test('users 页 Emby 导入门决策：isPaidFeatureEnabled 驱动入口渲染条件', async () => {
+  // V1 ManageUsersPage:205 语义 = canUseUpstreamEmby 决定入口渲染；
+  // V2 落法 = isPaidFeatureEnabled(licenseStatus, 'upstream-emby')（组件接线经 code review 把关）。
+  const vis = VIS({ upstreamEmby: true });
+  assert.equal(isPaidFeatureEnabled(STATUS(vis) as never, ['upstream-emby']), true);
+  assert.equal(isPaidFeatureEnabled(STATUS(VIS()) as never, ['upstream-emby']), false);
+});
