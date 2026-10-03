@@ -27,6 +27,7 @@ import {
   parseRuntimeLogPageSize,
 } from './runtime-logs/components';
 import { RuntimeLogDetailDialog } from './runtime-logs/RuntimeLogDetailDialog';
+import { RuntimeLogArchivesSection } from './runtime-logs/RuntimeLogArchivesSection';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildRuntimeLogView,
@@ -384,6 +385,8 @@ export function ManageRuntimeLogsPage() {
           )}
         </div>
       </ManageSectionCard>
+
+      <RuntimeLogArchivesSection />
 
       <RuntimeLogDetailDialog view={selectedLogView ?? null} onClose={() => setSelectedLog(null)} />
     </div>
