@@ -1,7 +1,6 @@
 import type { ApiError } from '@fmby/v2-shared/types';
 import { isApiError } from '@fmby/v2-shared/types';
 import { isSessionInvalidationError, notifyAuthFailure } from '@fmby/v2-shared/errors/authFailure';
-import { isBackendErrorBody, retryableForCode } from '@fmby/v2-shared/errors/error';
 import { mapResponseToApiError } from './errorMapping';
 import type {
   HttpInterceptors,

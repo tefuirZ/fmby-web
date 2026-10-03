@@ -909,6 +909,17 @@ export interface CreateManageMountRequest {
   status?: string;
   capabilities?: ManageStorageCapabilitiesState;
   pathPolicies?: ManageSourcePathPolicyInput[];
+  // ★FE-TSC-BASELINE-FIX：后端 `ManagedMountCreateRequest` 实际收这些字段
+  // （`crates/fmby-v2-http/src/dto/manage/mount.rs`：R2.4 note / R2.3 rate_config /
+  //  R2.6 sidecar_nfo|subtitle|poster / R2.5 visibility_rule，均 `#[serde(default)]`）。
+  //  前端 `buildCreateMountPayload` 已发送它们（对齐 PATCH 口径，见 FE-MOUNT-CONFIG-UI），
+  //  而本类型此前缺声明 ⇒ host tsc TS2353。补为可选，不新增行为。
+  note?: string;
+  rateConfig?: Record<string, unknown>;
+  visibilityRule?: Record<string, unknown>;
+  sidecarNfo?: boolean;
+  sidecarSubtitle?: boolean;
+  sidecarPoster?: boolean;
 }
 
 export interface UpdateManageMountRequest {

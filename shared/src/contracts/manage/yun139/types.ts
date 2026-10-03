@@ -64,3 +64,67 @@ export interface Yun139CredentialProfileInput {
 export interface Yun139OkResult {
   ok: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// 139 自有挂载（owned mount）三端点类型 —— FE-YUN139-OWNED-BROWSE-UI
+//
+// 真源：
+//   · `Yun139CredentialsInfo` @ crates/fmby-v2-bridges/src/bridges/yun139_owned_mount.rs
+//   · `Yun139OwnedBrowseRequest` / `Yun139ActivateRequest` @
+//     crates/fmby-v2-contracts/src/repository/yun139_accounts.rs
+// 端点：`crates/fmby-v2-http/src/routes/yun139_accounts.rs`
+//   GET  /manage/yun139/accounts/{mount_id}/credentials
+//   POST /manage/yun139/accounts/{mount_id}/browse
+//   POST /manage/yun139/activate
+//
+// ★安全红线：凭据面**只有 meta 五位**（有无/可刷新/过期时间/更新时间），
+//   后端 `Yun139CredentialsInfo` 本身即零明文 ⇒ 前端不得新增任何明文字段。
+// ---------------------------------------------------------------------------
+
+/** `GET .../accounts/{mount_id}/credentials` 响应（后端 `Yun139CredentialsInfo`）。 */
+export interface Yun139CredentialsInfo {
+  mountId: string;
+  /** 是否已有 authorization 段。 */
+  hasAuthorization: boolean;
+  /** 是否已有 cookie 段。 */
+  hasCookie: boolean;
+  /** 是否可刷新（二段齐全程度）。 */
+  canRefresh: boolean;
+  authorizationExpiresAt: string | null;
+  updatedAt: string | null;
+}
+
+/** `POST .../accounts/{mount_id}/browse` 请求（后端 `Yun139OwnedBrowseRequest`）。 */
+export interface Yun139OwnedBrowseRequest {
+  path?: string;
+  offset?: number;
+  limit?: number;
+  /** wire `spaceKind`（后端别名 space_kind）。 */
+  spaceKind?: string;
+  /** wire `cloudId`（后端别名 cloud_id/cloudID/family_id）。 */
+  cloudId?: string;
+  /** wire `fileId`（后端别名 file_id/root_file_id）。 */
+  fileId?: string;
+}
+
+/**
+ * `POST .../accounts/{mount_id}/browse` 响应。
+ *
+ * ★后端当前返回 `Json<serde_json::Value>`，**未定义结构化条目 DTO**
+ *   （全仓无 `Yun139OwnedBrowseResponse`）。按「不自造字段」红线，前端
+ *   只做不透明透传，由调用方在条目 DTO 落地后再细化；此处不臆造条文字段。
+ */
+export type Yun139OwnedBrowseResult = unknown;
+
+/** `POST /manage/yun139/activate` 请求（后端 `Yun139ActivateRequest`）。 */
+export interface Yun139ActivateRequest {
+  /** wire `mountId`（后端别名 mount_id）；**必填**，后端空串 → Validation。 */
+  mountId: string;
+  authorization?: string;
+  cookie?: string;
+  spaceKind?: string;
+  cloudId?: string;
+}
+
+/** `POST /manage/yun139/activate` 响应：成功只回 meta，绝不透 payload/明文。 */
+export type Yun139ActivateResult = unknown;
