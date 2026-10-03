@@ -37,16 +37,17 @@ test('② inspect / export 打到后端真实路径（且不含 import 占位端
 });
 
 test('③ 字段对拍：entry 四字段 + inspect 三字段（wire 已 camelCase，不做 snake 转换）', () => {
-  const src = read(API);
+  // 字段定义在 **types.ts**（单一事实源），api.ts 只透传响应，不重复声明字段。
+  const types = read('../../shared/src/contracts/manage/migration/types.ts');
   for (const f of ['version', 'name', 'checksum', 'appliedAtMs']) {
-    assert.ok(src.includes(f), `entry 字段 ${f} 须对拍`);
+    assert.ok(types.includes(f), `entry 字段 ${f} 须在 types.ts 对拍`);
   }
   for (const f of ['count', 'currentVersion', 'entries']) {
-    assert.ok(src.includes(f), `inspect 字段 ${f} 须对拍`);
+    assert.ok(types.includes(f), `inspect 字段 ${f} 须在 types.ts 对拍`);
   }
-  // wire 已是 camelCase ⇒ 不应出现 snake_case 的 applied_at_ms 映射逻辑
+  // wire 已是 camelCase ⇒ 不得出现 snake_case 的 applied_at_ms 映射
   assert.ok(
-    !src.includes('applied_at_ms'),
+    !types.includes('applied_at_ms') && !read(API).includes('applied_at_ms'),
     '后端 wire 为 appliedAtMs，前端不得再写 snake 映射',
   );
 });
