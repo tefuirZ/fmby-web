@@ -88,6 +88,26 @@ npm run build:themes      # 生成 themes/{_template,darkroom}/dist/index.js
 缺则闸报 `[FAIL] 主题独立产物缺失: themes/…/dist/index.js`（**不是体积超限**）。
 另外 pnpm workspace 下各包需各自 `node_modules`（worktree 里用 symlink 指向主 clone 即可）。
 
+## 4b. ★★合并产物验证（**不是补丁模拟**）：三支实 merge 后跑全闸
+
+§2 是用「临时补丁 + 复制文件」模拟三卡齐备；下为**真实合并三条分支**后的输出
+（临时 worktree 基于 `origin/main`，依次 `git merge origin/w/w2/fe-login-dedup` →
+`origin/w/w2/fe-tsc-mfa-export` → `origin/w/w2/fe-collections-vm`，**三次各 EXIT=0、无冲突**）：
+
+```
+git status --porcelain                         ⇒ 无冲突/干净
+node scripts/check-frontend-dupes.mjs          ⇒ [PASS] 0 violations（main 那条红消失）
+cd shared && tsc -p . --noEmit                 ⇒ EXIT=0
+cd host   && tsc -p tsconfig.app.json --noEmit ⇒ EXIT=2，**5 错**（与 §3 逐条一致）
+cd host   && vite build                        ⇒ **EXIT=0**
+npm run build:themes && check-frontend-size    ⇒ **EXIT=0 / All frontend size & chunking gates PASSED**
+cd host   && node --test tests/*.test.ts       ⇒ tests 397 / pass 397 / fail 0（EXIT=0）
+check-frontend-component-size.mjs              ⇒ EXIT=0
+check-contract-mappers.mjs                     ⇒ EXIT=0
+```
+⇒ **三条分支合并后：前端「可构建 + 体积闸/dupes 闸全绿」属实**（在真实合并树上复核）。
+（临时 worktree 已 `git worktree remove --force` 清理。）
+
 ## 5. 取证方法学（含我前次误判的教训）
 
 - **祖先/方向核对**（本次逐分支做）：`rev-list --count origin/main..<B>` / `<B>..origin/main` + `log -1 --date=iso`。
