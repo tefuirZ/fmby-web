@@ -31,6 +31,7 @@ import {
   UserActionDialogs,
   UserSelectionBar,
   UsersHeaderAndTable,
+  DirectRegistrationSection,
   getPendingActionImpact,
   getPendingActionKey,
   getPendingActionLabel,
@@ -311,6 +312,8 @@ export function ManageUsersPage() {
         onSubmit={() => setBatchEditConfirmOpen(true)}
       />
 
+
+      <DirectRegistrationSection />
 
       <UserActionDialogs
         batchEditOpen={batchEditConfirmOpen}

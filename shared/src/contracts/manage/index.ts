@@ -12,6 +12,7 @@ export type {
   CreateRegistrationCodeRequest,
   CreateRoleTemplateRequest,
   DangerousActionRequest,
+  DirectRegistrationSettings,
   ManageActivityItem,
   ManageActionResult,
   ManageAdvancedResponse,

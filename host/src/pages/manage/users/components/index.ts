@@ -13,3 +13,4 @@ export {
   getPendingActionLabel,
   getPendingActionTitle,
 } from './pendingAction';
+export { DirectRegistrationSection } from './DirectRegistrationSection';

@@ -168,6 +168,8 @@ export const queryKeys = {
         id
           ? (['manage', 'users', 'detail', id] as const)
           : (['manage', 'users', 'detail'] as const),
+      directRegistrationSettings: () =>
+        ['manage', 'users', 'direct-registration', 'settings'] as const,
     },
 
     probeTasks: {

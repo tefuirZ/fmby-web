@@ -1,4 +1,5 @@
 import { httpClient } from "@fmby/v2-shared/api/client";
+import type { DirectRegistrationSettings } from "./types";
 import type {
   BatchDeleteManageUsersRequest,
   BatchDeleteRegistrationCodeBatchesRequest,
@@ -1002,4 +1003,99 @@ export const manageApi = {
     );
     return mapManageActionResult(raw);
   },
+
+  // -------------------------------------------------------------------------
+  // 直接注册窗口设置（FE-REGISTRATION-WINDOW-UI）
+  // 真源：crates/fmby-v2-http/src/routes/manage_registration_window.rs
+  // -------------------------------------------------------------------------
+
+  /** 未持久化时的诚实缺省：关闭（对齐后端 `unset_default()`）。 */
+  unsetDirectRegistrationSettings(): DirectRegistrationSettings {
+    return {
+      enabled: false,
+      startAt: null,
+      endAt: null,
+      maxUsers: null,
+      defaultRoleTemplate: null,
+    };
+  },
+
+  /** GET /api/manage/users/direct-registration/settings */
+  async getDirectRegistrationSettings(): Promise<DirectRegistrationSettings> {
+    const raw = await httpClient.get<RawDirectRegistrationSettings>(
+      "/api/manage/users/direct-registration/settings",
+    );
+    return fromDirectRegistrationSettings(raw);
+  },
+
+  /**
+   * PUT /api/manage/users/direct-registration/settings —— **全量替换**，回落库后真值。
+   * 校验在后端（`validate_direct_registration_settings`）：start_at 须早于 end_at、
+   * 名额非负、启用时模板非空 ⇒ 违规给 Validation 诚实错误，前端不吞不自动纠正。
+   */
+  async putDirectRegistrationSettings(
+    settings: DirectRegistrationSettings,
+  ): Promise<DirectRegistrationSettings> {
+    const raw = await httpClient.put<RawDirectRegistrationSettings>(
+      "/api/manage/users/direct-registration/settings",
+      { body: toRawDirectRegistrationSettings(settings) },
+    );
+    return fromDirectRegistrationSettings(raw);
+  },
+
+  /**
+   * epoch **毫秒** → `datetime-local` 输入串（秒级，本地时区）。
+   * null ⇒ ''（清空而非臆造 0）。
+   */
+  toDateTimeLocal(ms: number | null): string {
+    if (ms === null) return "";
+    const d = new Date(ms);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  },
+
+  /**
+   * `datetime-local` 输入串 → epoch **毫秒**；空串 ⇒ null（后端 `Option<i64>`）。
+   * ★后端以毫秒比较（`availability_of(cfg, now_ms)`），故此处必须 ×1（Date.parse 已是 ms）。
+   */
+  fromDateTimeLocal(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const ms = Date.parse(trimmed);
+    return Number.isFinite(ms) ? ms : null;
+  },
+
 };
+
+
+interface RawDirectRegistrationSettings {
+  enabled: boolean;
+  start_at: number | null;
+  end_at: number | null;
+  max_users: number | null;
+  default_role_template: string | null;
+}
+
+function fromDirectRegistrationSettings(
+  r: RawDirectRegistrationSettings,
+): DirectRegistrationSettings {
+  return {
+    enabled: r.enabled,
+    startAt: r.start_at ?? null,
+    endAt: r.end_at ?? null,
+    maxUsers: r.max_users ?? null,
+    defaultRoleTemplate: r.default_role_template ?? null,
+  };
+}
+
+function toRawDirectRegistrationSettings(
+  s: DirectRegistrationSettings,
+): RawDirectRegistrationSettings {
+  return {
+    enabled: s.enabled,
+    start_at: s.startAt ?? null,
+    end_at: s.endAt ?? null,
+    max_users: s.maxUsers ?? null,
+    default_role_template: s.defaultRoleTemplate ?? null,
+  };
+}

@@ -949,3 +949,31 @@ export interface ManageActionResult {
   result: string;
   message: string;
 }
+
+// ---------------------------------------------------------------------------
+// 直接注册窗口设置（FE-REGISTRATION-WINDOW-UI）
+//
+// 真源：`DirectRegistrationSettingsDto` @
+//   `crates/fmby-v2-contracts/src/dto_registration.rs:17`
+// 端点：`crates/fmby-v2-http/src/routes/manage_registration_window.rs`
+//   GET /api/manage/users/direct-registration/settings
+//   PUT /api/manage/users/direct-registration/settings（全量替换，回落库后真值）
+//
+// ★时间单位：**epoch 毫秒**（后端 `availability_of(cfg, now_ms)` 以 now_ms 与
+//   start_at/end_at 直接比较）⇒ UI 的 datetime-local（秒级）必须显式换算，不可猜。
+// ★DTO `#[serde(default, deny_unknown_fields)]` ⇒ 前端只能发这 5 个字段，多传即 400。
+// ★未持久化 ⇒ `unset_default()` = 关闭（与注册侧「未配置 = 关闭」同语义）。
+// ---------------------------------------------------------------------------
+
+/** 直接注册窗口设置（camelCase 视图；wire 为 snake_case）。 */
+export interface DirectRegistrationSettings {
+  enabled: boolean;
+  /** epoch **毫秒**；null = 不限开始时间。 */
+  startAt: number | null;
+  /** epoch **毫秒**；null = 不限结束时间。 */
+  endAt: number | null;
+  /** 名额上限；null = 不限。 */
+  maxUsers: number | null;
+  /** 默认权限模板名；启用时后端要求非空。 */
+  defaultRoleTemplate: string | null;
+}
