@@ -54,6 +54,7 @@ import type {
   UpdateUserStatusRequest,
   ManageMountsHealthQuery,
   ManageMountsHealthResponse,
+  TelegramPasswordResetReceipt,
 } from "./types";
 import type {
   RawAuditLogRecord,
@@ -1002,4 +1003,68 @@ export const manageApi = {
     );
     return mapManageActionResult(raw);
   },
+
+  // -------------------------------------------------------------------------
+  // 用户安全 / 凭据投递（FE-GAP-NEXT-2）
+  // 端点真源：crates/fmby-v2-http/src/routes/router_core.rs
+  // -------------------------------------------------------------------------
+
+  /**
+   * POST /api/manage/users/{id}/mfa/totp/reset — 管理员重置他人 TOTP。
+   * ★危险操作 ⇒ 必须 `?confirmed=true`（后端 MANAGE_ACCESS + DANGEROUS_ACTION + require_confirmed）。
+   */
+  async resetUserTotp(userId: string): Promise<boolean> {
+    const raw = await httpClient.post<RawMfaOkResponse>(
+      `/api/manage/users/${userId}/mfa/totp/reset`,
+      { params: { confirmed: true } },
+    );
+    return raw.ok;
+  },
+
+  /**
+   * POST /api/manage/users/{id}/telegram-password-reset — 经 Telegram 私聊投递新密码。
+   *
+   * ★危险操作 ⇒ `?confirmed=true`；★幂等键走**请求头** `x-idempotency-key`
+   *   （后端缺省按日派生）⇒ 不传时**不发明该头**，也不塞进 body。
+   * ★安全：回执只含回执字段，**不含明文密码**。
+   */
+  async scheduleTelegramPasswordReset(
+    userId: string,
+    idempotencyKey?: string,
+  ): Promise<TelegramPasswordResetReceipt> {
+    const trimmed = idempotencyKey?.trim();
+    const raw = await httpClient.post<RawTelegramPasswordResetReceipt>(
+      `/api/manage/users/${userId}/telegram-password-reset`,
+      {
+        params: { confirmed: true },
+        ...(trimmed ? { headers: { 'x-idempotency-key': trimmed } } : {}),
+      },
+    );
+    return {
+      operationId: raw.operation_id,
+      userId: raw.user_id,
+      username: raw.username,
+      replayed: raw.replayed,
+      deliveryStatus: raw.delivery_status,
+      payloadExpiresAt: raw.payload_expires_at,
+    };
+  },
+
 };
+
+/** `MfaOkResponse` 原始响应（后端 `MfaOkResponse{ ok }`；仅本文件使用）。 */
+interface RawMfaOkResponse {
+  ok: boolean;
+}
+
+interface RawTelegramPasswordResetReceipt {
+  operation_id: string;
+  user_id: string;
+  username: string;
+  /** true = 幂等复用既有操作。 */
+  replayed: boolean;
+  /** pending/delivering/retry_waiting/delivered/failed/expired。 */
+  delivery_status: string;
+  /** 载荷有效期（epoch 毫秒）。 */
+  payload_expires_at: number;
+}
