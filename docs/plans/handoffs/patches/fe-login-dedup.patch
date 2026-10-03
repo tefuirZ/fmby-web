@@ -1,0 +1,69 @@
+diff --git a/host/src/pages/login/LoginPage.tsx b/host/src/pages/login/LoginPage.tsx
+index 439dfab..c4b6125 100644
+--- a/host/src/pages/login/LoginPage.tsx
++++ b/host/src/pages/login/LoginPage.tsx
+@@ -27,14 +27,12 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
+ import { queryKeys } from '@fmby/v2-shared/query';
+ import type { User } from '@fmby/v2-shared/types';
+ import type { AuthResponse } from '@fmby/v2-shared/contracts/auth';
+-import type { AuthResponse } from '@fmby/v2-shared/contracts/auth';
+ 
+ import styles from './LoginPage.module.css';
+ type EntryMode = 'login' | 'register' | 'forgot';
+ 
+ import { LoginForm } from './forms/LoginForm';
+ import { MfaVerifyPanel } from './forms/MfaVerifyPanel';
+-import { MfaVerifyPanel } from './forms/MfaVerifyPanel';
+ import { RegisterForm } from './forms/RegisterForm';
+ import { SetupForm } from './forms/SetupForm';
+ import { ForgotPasswordForm } from './forms/ForgotPasswordForm';
+@@ -66,7 +64,6 @@ export function LoginPage() {
+   const location = useLocation();
+   const { login } = useSession();
+   const [mode, setMode] = useState<EntryMode>('login');
+-  const [mfaChallenge, setMfaChallenge] = useState<{ challengeId: string; expiresAt: number | null } | null>(null);
+   // FE-MFA-TOTP-UI：密码正确但需二因子（后端不建会话，只回 challenge）。
+   const [mfaChallenge, setMfaChallenge] = useState<{ challengeId: string; expiresAt: number | null } | null>(null);
+   const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
+@@ -154,15 +151,6 @@ export function LoginPage() {
+     handleAuthenticated(response.user);
+   }
+ 
+-  function handleAuthResponse(response: AuthResponse) {
+-    // FE-MFA-TOTP-UI：二因子挂起态——不导航、不建会话，转验证面板。
+-    if (response.status === 'mfa_required' && response.challengeId) {
+-      setMfaChallenge({ challengeId: response.challengeId, expiresAt: response.expiresAt ?? null });
+-      return;
+-    }
+-    handleAuthenticated(response.user);
+-  }
+-
+   function handleAuthenticated(user: User) {
+     clearPendingIdentity();
+     login(user);
+@@ -297,12 +285,6 @@ export function LoginPage() {
+           onAuthenticated={handleAuthenticated}
+           onCancel={() => setMfaChallenge(null)}
+         />
+-      ) : mfaChallenge ? (
+-        <MfaVerifyPanel
+-          challenge={mfaChallenge}
+-          onAuthenticated={handleAuthenticated}
+-          onCancel={() => setMfaChallenge(null)}
+-        />
+       ) : (
+         <>
+           <LoginForm onAuthenticated={handleAuthResponse} />
+diff --git a/host/src/pages/manage/mounts/components/MountDrawer/sections/Pan115DirectoryBrowserSection.tsx b/host/src/pages/manage/mounts/components/MountDrawer/sections/Pan115DirectoryBrowserSection.tsx
+index 45d1dfb..daa5d9b 100644
+--- a/host/src/pages/manage/mounts/components/MountDrawer/sections/Pan115DirectoryBrowserSection.tsx
++++ b/host/src/pages/manage/mounts/components/MountDrawer/sections/Pan115DirectoryBrowserSection.tsx
+@@ -7,7 +7,7 @@ import type {
+ import type { Pan115BrowseResponse } from '@fmby/v2-shared/contracts/manage/pan115';
+ import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
+ import { isApiError } from '@fmby/v2-shared/types';
+-import { getErrorMessage, isPan115CredentialError } from '@fmby/v2-shared/errors';
++import { getErrorMessage } from '@fmby/v2-shared/errors';
+ import { MountDirectoryBrowserCard } from '../../MountDirectoryBrowserCard';
+ import { PAN115_CREDENTIAL_HINT } from '../../../formUtils';
+ 
