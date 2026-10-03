@@ -37,6 +37,11 @@ export interface CollectionsListPageRecord {
 export interface CollectionsListParams {
   page?: number;
   pageSize?: number;
+  /**
+   * 检索（FE-COLLECTIONS-SEARCH-INPUT）：后端主名 `search`（alias q/searchTerm），
+   * 语义 = trim+lowercase 标题子串，在 Active 可见性闸之后应用；空白/缺省 = 全量。
+   */
+  search?: string;
 }
 
 export const collectionsBrowseApi = {
@@ -52,10 +57,13 @@ export const collectionsBrowseApi = {
    * 可见性闸由后端保证（Hidden 不出现）；检索参数暂无（COLLECTIONS-LIST-SEARCH 在途）。
    */
   async listCollections(params: CollectionsListParams = {}): Promise<CollectionsListPageRecord> {
+    const trimmedSearch = params.search?.trim() ?? '';
     const raw = await httpClient.get<RawCollectionsListResponse>('/api/collections', {
       params: {
         page: params.page,
         pageSize: params.pageSize,
+        // 空白不传（后端 trim 空白 = 全量，等价缺省）；特殊字符交 URLSearchParams 转义。
+        search: trimmedSearch === '' ? undefined : trimmedSearch,
       },
     });
     return {
