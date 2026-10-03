@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { authApi, loginSchema, type LoginFormData } from '@fmby/v2-shared/contracts/auth';
+import {
+  authApi,
+  loginSchema,
+  type AuthResponse,
+  type LoginFormData,
+} from '@fmby/v2-shared/contracts/auth';
 import { useZodForm } from '@fmby/v2-shared/forms';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
-import type { User } from '@fmby/v2-shared/types';
 
 import clsx from 'clsx';
 
@@ -14,7 +18,10 @@ import styles from '../LoginPage.module.css';
 import { Field, PasswordToggle, SubmitButton } from './fields';
 
 interface LoginFormProps {
-  onAuthenticated: (user: User) => void;
+  // AuthResponse 为可辨识联合（ok | mfa_required）⇒ 本组件只**转发整份响应**，
+  // 由 LoginPage.handleAuthResponse 统一分流（ok→建会话；mfa_required→二因子面板）。
+  // 旧签名 (user: User) => void 会在 mfa_required 时把 undefined 传上去（二因子登录走不通）。
+  onAuthenticated: (response: AuthResponse) => void;
 }
 
 export function LoginForm({ onAuthenticated }: LoginFormProps) {
@@ -28,7 +35,7 @@ export function LoginForm({ onAuthenticated }: LoginFormProps) {
   const mutation = useMutation({
     mutationFn: (data: LoginFormData) => authApi.login(data),
     onSuccess: (response) => {
-      onAuthenticated(response.user);
+      onAuthenticated(response);
     },
   });
 

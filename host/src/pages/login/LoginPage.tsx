@@ -144,7 +144,9 @@ export function LoginPage() {
 
   function handleAuthResponse(response: AuthResponse) {
     // FE-MFA-TOTP-UI：二因子挂起态——不导航、不建会话，转验证面板。
-    if (response.status === 'mfa_required' && response.challengeId) {
+    // 守卫只按判别式字段收窄（`challengeId: string` 非空 ⇒ 原来的 `&& response.challengeId`
+    // 既冗余、又会让 `challengeId === ''` 时掉进下面的 `response.user`（该变体无 user 字段））。
+    if (response.status === 'mfa_required') {
       setMfaChallenge({ challengeId: response.challengeId, expiresAt: response.expiresAt ?? null });
       return;
     }
