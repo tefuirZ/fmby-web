@@ -13,7 +13,7 @@ import {
   SiteSettingsSecuritySection,
   SiteSettingsSessionSection,
   SiteSettingsBrandSection,
-} from './site-settings/components';
+  MfaTotpSection,} from './site-settings/components';
 
 export function ManageSiteSettingsPage() {
   const settingsQuery = useSiteSettingsQuery();
@@ -153,6 +153,8 @@ export function ManageSiteSettingsPage() {
         setDraft={setDraft}
         setSuccess={setSuccess}
       />
+
+      <MfaTotpSection />
 
       <SiteSettingsSessionSection
         draft={draft}
