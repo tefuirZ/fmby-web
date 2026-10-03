@@ -145,6 +145,12 @@ export const queryKeys = {
 
     yun139: {
       profiles: () => ['manage', 'yun139', 'profiles'] as const,
+      // FE-YUN139-POOLS-UI：账号池与池成员（供池管理面查询/失效）
+      pools: () => ['manage', 'yun139', 'pools'] as const,
+      poolMembers: (poolId?: string) =>
+        poolId
+          ? (['manage', 'yun139', 'pools', poolId, 'members'] as const)
+          : (['manage', 'yun139', 'pools', 'members'] as const),
     },
 
     microsoft: {
