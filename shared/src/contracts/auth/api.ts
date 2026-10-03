@@ -39,6 +39,10 @@ export interface SetupRequest {
 
 export interface AuthResponse {
   user: User;
+  /** MFA-TOTP（FE-MFA-TOTP-UI）：`"mfa_required"` 表示密码正确但需二因子（未建会话）。 */
+  status?: 'ok' | 'mfa_required';
+  challengeId?: string;
+  expiresAt?: number | null;
 }
 
 export type SessionResponse = User;
@@ -121,7 +125,7 @@ export function mapMeResponse(raw: unknown): MeResponse {
  * 页面刷新后通过 Cookie 恢复会话时，用户名只能来自登录时本地缓存；
  * 拿不到时宁可为空，也不得回退到 'admin'/'系统管理员' 之类的硬编码默认身份。
  */
-const SESSION_USERNAME_STORAGE_KEY = 'fmby:v2:session-username';
+export const SESSION_USERNAME_STORAGE_KEY = 'fmby:v2:session-username';
 
 let cachedSessionUsername: string | null = null;
 
@@ -157,7 +161,28 @@ function clearSessionUsername(): void {
 export const authApi = {
   /** 用户登录 */
   async login(data: LoginRequest): Promise<AuthResponse> {
-    const raw = await httpClient.post<{ user_id?: number; token?: string; user?: User }>('/api/auth/login', { body: data });
+    const raw = await httpClient.post<{
+      user_id?: number;
+      token?: string;
+      user?: User;
+      status?: string;
+      challenge_id?: string;
+      expires_at?: number;
+      must_change_password?: boolean;
+      password_change_endpoint?: string;
+    }>('/api/auth/login', { body: data });
+    // MFA-TOTP：`status="mfa_required"` ⇒ **未建会话**（无 user/token/cookie），
+    // 直接返回 challenge 给登录页转二因子验证流；绝不伪造 user/拉 capabilities。
+    if (raw.status === 'mfa_required') {
+      if (!raw.challenge_id) {
+        throw new Error('mfa_required 响应缺少 challenge_id（契约漂移，fail-closed）');
+      }
+      return {
+        status: 'mfa_required',
+        challengeId: raw.challenge_id,
+        expiresAt: raw.expires_at ?? null,
+      };
+    }
     // 登录成功后缓存用户名，供后续会话恢复（getSession）使用
     persistSessionUsername(data.username);
     let capabilities: string[] = [];

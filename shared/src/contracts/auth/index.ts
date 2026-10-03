@@ -67,3 +67,10 @@ export type {
 
 export type { User, UserRole, Capability } from './user';
 export type { SessionState, SessionStatus } from './session';
+export { mfaApi } from './mfa';
+export type {
+  MfaStatusRecord,
+  MfaEnrollmentRecord,
+  MfaRecoveryCodesRecord,
+  MfaVerifyRecord,
+} from './mfa';
