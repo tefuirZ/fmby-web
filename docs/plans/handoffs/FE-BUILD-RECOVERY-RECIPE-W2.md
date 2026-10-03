@@ -123,3 +123,19 @@ check-contract-mappers.mjs                     ⇒ EXIT=0
    建议**只取该文件**而非整支合并；并在其上补 `search` 入参以消 `TS2353`）。
 3. 上述落地后：`vite build` 与体积闸恢复可判定；剩 6 条 `tsc` 按 §3 归属派卡。
 4. 复跑顺序建议：`npm run build:themes` → host `vite build` → `check-frontend-size` → `tsc`。
+## 4c. ★★终态复核（`fe-login-dedup` 追加「收窄修复」后重跑合并树）
+
+`w/w2/fe-login-dedup` 后续追加了一提交（完成 `AuthResponse` 收窄余项，并修好「经登录表单的二因子登录
+走不通」这一真实功能缺陷 —— 详见 `FE-LOGIN-DEDUP-AE-W2.md` 附录）。
+⇒ 三支重新真实合并（各 EXIT=0、无冲突）后的**终态**：
+
+```
+cd host && tsc -p tsconfig.app.json --noEmit   ⇒ **2 错**（此前 5 错）
+    仅剩 MfaVerifyPanel.tsx(46,9)/(47,9) 的 'string | null' 可空性（该面板自身处理，归其作者）
+cd host && vite build                          ⇒ EXIT=0
+npm run build:themes && check-frontend-size    ⇒ EXIT=0 / All frontend size & chunking gates PASSED
+cd host && node --test tests/*.test.ts         ⇒ tests 397 / pass 397 / fail 0
+check-frontend-dupes.mjs                       ⇒ EXIT=0（PASSED）
+check-contract-mappers.mjs                     ⇒ EXIT=0
+```
+⇒ **三支合并后：总错数 22 → 2，构建与体积/dupes/mapper 闸全绿。** 剩下唯一 2 条属 MFA 面板可空性。
