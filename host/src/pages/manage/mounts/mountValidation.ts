@@ -75,6 +75,23 @@ export function validateMountForm(form: MountFormState): MountFormErrors {
     errors.configJsonText = 'config_json 必须是合法 JSON。';
   }
 
+  // ★FE-MOUNT-CONFIG-UI：速率/可见性同为 JSON 文本面，非法必须在校验层拦截
+  //（诚实错误），不得等保存时 JSON.parse 崩掉。
+  if (form.rateConfigText.trim() !== '') {
+    try {
+      JSON.parse(form.rateConfigText);
+    } catch {
+      errors.rateConfigText = '速率配置必须是合法 JSON（如 {"limit_mb_s": 20}）。';
+    }
+  }
+  if (form.visibilityRuleText.trim() !== '') {
+    try {
+      JSON.parse(form.visibilityRuleText);
+    } catch {
+      errors.visibilityRuleText = '可见性规则必须是合法 JSON（如 {"hidden_paths": []}）。';
+    }
+  }
+
   return errors;
 }
 
