@@ -10,9 +10,14 @@
 
 import { httpClient } from '@fmby/v2-shared/api/client';
 import type {
+  Yun139ActivateRequest,
+  Yun139ActivateResult,
   Yun139CredentialProfile,
   Yun139CredentialProfileInput,
+  Yun139CredentialsInfo,
   Yun139OkResult,
+  Yun139OwnedBrowseRequest,
+  Yun139OwnedBrowseResult,
   Yun139QrLoginResult,
   Yun139QrStatusResult,
 } from './types';
@@ -53,6 +58,16 @@ interface RawCredentialProfileResponse {
 
 interface RawOkResponse {
   ok: boolean;
+}
+
+/** `GET .../accounts/{mount_id}/credentials` 原始响应（snake_case，仅 meta）。 */
+interface RawCredentialsInfoResponse {
+  mount_id: string;
+  has_authorization: boolean;
+  has_cookie: boolean;
+  can_refresh: boolean;
+  authorization_expires_at: string | null;
+  updated_at: string | null;
 }
 
 function fromProfile(r: RawCredentialProfile): Yun139CredentialProfile {
@@ -146,5 +161,56 @@ export const yun139Api = {
       `${BASE}/credential-profiles/${encodeURIComponent(profileId)}`,
     );
     return { ok: raw.ok };
+  },
+
+  // -------------------------------------------------------------------------
+  // 139 自有挂载（owned mount）三端点 —— FE-YUN139-OWNED-BROWSE-UI
+  //
+  // ★安全红线：credentials 只回 meta 五位，后端 `Yun139CredentialsInfo` 本身
+  //   零明文；前端映射**不得**新增/透出 authorization / cookie 明文字段。
+  // -------------------------------------------------------------------------
+
+  /**
+   * GET accounts/{mount_id}/credentials — 自有挂载凭据状态（**仅 meta，零明文**）。
+   * 真源：`Yun139CredentialsInfo` @ bridges/yun139_owned_mount.rs
+   */
+  async getOwnedCredentials(mountId: string): Promise<Yun139CredentialsInfo> {
+    const raw = await httpClient.get<RawCredentialsInfoResponse>(
+      `${BASE}/accounts/${encodeURIComponent(mountId)}/credentials`,
+    );
+    return {
+      mountId: raw.mount_id,
+      hasAuthorization: raw.has_authorization,
+      hasCookie: raw.has_cookie,
+      canRefresh: raw.can_refresh,
+      authorizationExpiresAt: raw.authorization_expires_at ?? null,
+      updatedAt: raw.updated_at ?? null,
+    };
+  },
+
+  /**
+   * POST accounts/{mount_id}/browse — 转发桥的 owned 浏览（ensure_session + list）。
+   *
+   * ★后端当前返回 `Json<serde_json::Value>`，无结构化条目 DTO ⇒ 前端只做不透明
+   *   透传，不臆造条文字段；数据面未装配时桥内 503 fail-closed（UI 须有错误态）。
+   */
+  async browseOwnedMount(
+    mountId: string,
+    body: Yun139OwnedBrowseRequest,
+  ): Promise<Yun139OwnedBrowseResult> {
+    return httpClient.post<Yun139OwnedBrowseResult>(
+      `${BASE}/accounts/${encodeURIComponent(mountId)}/browse`,
+      { body },
+    );
+  },
+
+  /**
+   * POST activate — 写回（SecretBox）→ runtime 校验 → 失败回滚；成功只回 meta。
+   * `mountId` 必填（后端空串 → Validation），前端不吞该错误。
+   */
+  async activateOwnedMount(
+    body: Yun139ActivateRequest,
+  ): Promise<Yun139ActivateResult> {
+    return httpClient.post<Yun139ActivateResult>(`${BASE}/activate`, { body });
   },
 };
