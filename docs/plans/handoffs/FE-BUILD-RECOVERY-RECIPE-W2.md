@@ -46,6 +46,39 @@ src/pages/browse/CollectionsListPage.tsx(24,62) TS2353 对象字面量含未知�
 - 4 条（`LoginPage`×2、`LoginForm`×1、`MfaVerifyPanel`×2 中的可空性）→ **MFA/AuthResponse 收窄**（`1cc66f3` 余项）
 - 1 条（`CollectionsListPage` `search`）→ **collections 席**（其 `COLLECTIONS-LIST-SEARCH` 在途）
 
+## 3b. ★剩 5 条里 3 条的**精确诊断**（升级版：不只是「语义错」，而是**潜在崩溃 + 冗余守卫**）
+
+已核 `AuthResponse` 定义（`shared/src/contracts/auth/api.ts`）：
+```ts
+export type AuthResponse = AuthLoginSuccess | AuthLoginMfaRequired;
+export interface AuthLoginSuccess      { status: 'ok';            user: User; }
+export interface AuthLoginMfaRequired  { status: 'mfa_required';  challengeId: string;  expiresAt: number | null; }
+```
+⇒ `challengeId` 是**非空 `string``**（不是 `string | null`）。而现码（`LoginPage.tsx:150`）写：
+
+```ts
+if (response.status === 'mfa_required' && response.challengeId) {   // ← 「&& challengeId」冗余
+  setMfaChallenge({ challengeId: response.challengeId, expiresAt: response.expiresAt ?? null });
+  return;
+}
+handleAuthenticated(response.user);   // ← TS2339：此处 response 仍可能是 mfa_required 变体
+```
+
+**两个后果**：
+1. **类型收窄被破坏**（TS2339 `response.user` / TS2322 回调签名）—— 因为 `challengeId` 可为空串（falsy），
+   else 分支在类型上仍保留 `AuthLoginMfaRequired` 变体；
+2. **潜在运行时崩溃**：若后端真回了 `challengeId: ''`，控制流会**掉进 `handleAuthenticated(response.user)`**，
+   而 mfa 变体**没有 `user` 字段** ⇒ `user` 为 `undefined`。
+
+**最小修法（供 MFA/登录作者裁定，我未改）**：去掉冗余的 `&& response.challengeId`，即
+`if (response.status === 'mfa_required') { … }`。这样真分支 100% 是 mfa 变体、else 分支被收窄为
+`AuthLoginSuccess` ⇒ 3 条错误（`LoginPage:151`/`LoginPage:290`/`LoginForm:31`）同时消失。
+**唯一的边界行为变化**：`challengeId === ''` 时由「掉进 handleAuthenticated(undefined)」改为「进 MFA 面板」——
+按 `challengeId: string` 的契约后者才是正确语义；但**是否还要对空串 fail-closed 报错，属作者决定**，
+故我**不在本席擅自改**（且该文件与我的 `w/w2/fe-login-dedup` 重叠，改了会造成双分支冲突）。
+
+剩余 2 条（`MfaVerifyPanel.tsx:46/47` `string | null` 未收窄）确属面板自身的可空性处理，同归该作者。
+
 ## 4. 环境前置（非代码缺陷，别误判成代码问题）
 
 `check-frontend-size` 除 host `vite build` 外**还需主题产物**：
