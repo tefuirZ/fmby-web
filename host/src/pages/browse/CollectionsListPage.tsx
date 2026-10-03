@@ -77,8 +77,10 @@ export function CollectionsListPage() {
 
       <div className={styles.toolbar}>
         <div className={styles.filterGroup}>
+          {/* FE-A11Y-KEYBOARD-AUDIT：placeholder 不足以作为可访问名 ⇒ 补 aria-label */}
           <input
             className={styles.input}
+            aria-label="按合集名检索"
             placeholder="按合集名检索"
             value={searchInput}
             onChange={(event) => {

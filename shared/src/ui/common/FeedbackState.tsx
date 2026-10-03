@@ -27,6 +27,18 @@ function getIcon(variant: FeedbackVariant) {
   }
 }
 
+/**
+ * 读屏播报口径（FE-A11Y-KEYBOARD-AUDIT）：
+ * - `error` ⇒ `role="alert"` + `aria-live="assertive"`（错误须立即播报）；
+ * - 其余态 ⇒ `role="status"` + `aria-live="polite"`（加载/空/成功/警告不打断用户）。
+ * ★纯属性补齐，不改视觉与交互语义。
+ */
+function a11yFor(variant: FeedbackVariant) {
+  return variant === 'error'
+    ? { role: 'alert', 'aria-live': 'assertive' as const }
+    : { role: 'status', 'aria-live': 'polite' as const };
+}
+
 export function FeedbackState({
   variant,
   title,
@@ -34,7 +46,7 @@ export function FeedbackState({
   action,
 }: FeedbackStateProps) {
   return (
-    <section className={styles.panel} data-variant={variant}>
+    <section className={styles.panel} data-variant={variant} {...a11yFor(variant)}>
       <div className={styles.icon}>{getIcon(variant)}</div>
       <h2 className={styles.title}>{title}</h2>
       <p className={styles.description}>{description}</p>
