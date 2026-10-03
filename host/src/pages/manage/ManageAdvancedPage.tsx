@@ -12,6 +12,7 @@ import {
 } from './longtail-shared/components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
+import { AdminApiTokensSection } from './AdminApiTokensSection';
 
 export function ManageAdvancedPage() {
   const advancedQuery = useQuery({
@@ -139,6 +140,8 @@ export function ManageAdvancedPage() {
           )}
         </ManageSectionCard>
       </div>
+
+      <AdminApiTokensSection />
     </div>
   );
 }
