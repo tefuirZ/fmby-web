@@ -99,3 +99,5 @@ export type {
   MOUNT_FAULT_KIND_CREDENTIAL_EXPIRED,
   ManageMountCredentialStatus,
 } from "./types";
+export { adminApiTokensApi, mapAdminApiToken } from "./adminApiTokens";
+export type { AdminApiToken, AdminApiTokenCreateInput } from "./adminApiTokens";
