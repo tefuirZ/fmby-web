@@ -13,7 +13,6 @@ import {
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import { AdminApiTokensSection } from './AdminApiTokensSection';
-import { MigrationLedgerSection } from './MigrationLedgerSection';
 
 export function ManageAdvancedPage() {
   const advancedQuery = useQuery({
@@ -143,7 +142,6 @@ export function ManageAdvancedPage() {
       </div>
 
       <AdminApiTokensSection />
-      <MigrationLedgerSection />
     </div>
   );
 }
