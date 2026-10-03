@@ -108,3 +108,27 @@ cd /tmp/w2-fe-main2/host && ./node_modules/.bin/tsc -p tsconfig.app.json --noEmi
 #   本卡（FE-LOG-ARCHIVE）文件命中数 = 0
 ```
 另 `check-frontend-dupes` 在干净 `origin/main` 上同样报 1 例（`useCollectionsList.ts:14`）。
+
+## 7. 构建阻断链（实测：把 A 组消除后，下一个阻断者是谁）
+
+体积闸 `check-frontend-size` 需要 `host/dist/.vite/manifest.json`，即必须先 `vite build` 成功。
+为判「光去重够不够」，我在**本地临时**打上 A 组（`LoginPage.tsx` 5 处重复块去重）+ E 组（删未用 import）的机械补丁，
+跑 `vite build`，测完**已全部回滚**（`git diff HEAD` 为空，未提交）：
+
+```
+① 原始（未打补丁）：vite build ⇒ 51 modules 后挂
+   [vite:esbuild] The symbol "mfaChallenge" has already been declared   ← A 组
+
+② 打上 A+E 机械补丁：vite build ⇒ 2477 modules 编译通过（A 组确被消），但改挂：
+   src/pages/login/forms/MfaVerifyPanel.tsx (14:17):
+   "SESSION_USERNAME_STORAGE_KEY" is not exported by "../shared/src/contracts/auth/index.ts"
+   ⇒ 即 §3 B 组那条 TS2305
+
+③ 推知再往下：C 组（useCollectionsList 全仓无定义）仍会阻断 rollup 绑定
+```
+
+**结论（对派卡的直接含义）**：main 前端**不是"lint 债"，而是"构建链断在功能缺口上"** ——
+B 组（`contracts/auth` 缺 `SESSION_USERNAME_STORAGE_KEY` 等导出）與 C 组（合集列表 hook 缺失）
+都是**要真写代码**的缺口，去重只是清除第一层。
+⇒ 派卡时**不能只派"去重让 tsc 变绿"**（那只把 22 错降到 9 错、build 仍挂）；
+须把 B/C 当**实现卡**（谁交付的谁补），否则 `check-frontend-size` 在前端仓**永远跑不出结论**。
