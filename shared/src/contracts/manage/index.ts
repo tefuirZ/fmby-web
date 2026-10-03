@@ -99,9 +99,3 @@ export type {
   MOUNT_FAULT_KIND_CREDENTIAL_EXPIRED,
   ManageMountCredentialStatus,
 } from "./types";
-export { expiryNotificationsApi, mapExpiryNotificationSettings } from "./expiryNotifications";
-export type {
-  UserExpiryNotificationSettings,
-  UserExpiryNotificationSettingsInput,
-} from "./expiryNotifications";
-export { DEFAULT_EXPIRY_THRESHOLD_DAYS } from "./expiryNotifications";
