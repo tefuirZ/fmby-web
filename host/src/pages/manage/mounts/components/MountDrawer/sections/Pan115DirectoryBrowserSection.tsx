@@ -7,7 +7,7 @@ import type {
 import type { Pan115BrowseResponse } from '@fmby/v2-shared/contracts/manage/pan115';
 import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
 import { isApiError } from '@fmby/v2-shared/types';
-import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { getErrorMessage, isPan115CredentialError } from '@fmby/v2-shared/errors';
 import { MountDirectoryBrowserCard } from '../../MountDirectoryBrowserCard';
 import { PAN115_CREDENTIAL_HINT } from '../../../formUtils';
 

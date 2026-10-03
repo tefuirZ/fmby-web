@@ -9,3 +9,4 @@
 export * from './error';
 export * from './messages';
 export * from './authFailure';
+export { isPan115CredentialError } from './pan115Codes';
