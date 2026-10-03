@@ -15,6 +15,8 @@ import type {
   OperationsOverview,
   OperationsPlaybackTrendPoint,
   OperationsSummary,
+  MediaReprocessTask,
+  MediaReprocessCreateInput,
 } from "./types";
 
 interface RawOperationsSummary {
@@ -453,4 +455,133 @@ export const operationsApi = {
       };
     },
 
+};
+
+
+// ---------------------------------------------------------------------------
+// 媒体重处理作业面（FE-MEDIA-REPROCESS-SURFACE）
+//
+// 端点真源（origin/main）：`crates/fmby-v2-http/src/routes/manage_media_reprocess.rs`
+//
+// ★危险确认：后端对「非两个 DryRun」的 mode 要求 `DANGEROUS_ACTION` 能力 +
+//   `?confirmed=true`（V1 `mode_requires_dangerous_confirmation` 逐字对位）⇒
+//   前端建作业时按同一判据决定是否带 `confirmed=true`，**不在前端降级静默提交**。
+// ★不造错误文案：错误由调用方经 `getErrorMessage` 展示后端原文。
+// ---------------------------------------------------------------------------
+
+const REPROCESS_BASE = "/api/manage/operations/media-reprocess";
+
+/** 免危险确认的两个 DryRun（后端 `mode_requires_dangerous_confirmation`）。 */
+const DRY_RUN_MODES: ReadonlySet<string> = new Set(["DryRun", "StructureReplayDryRun"]);
+
+interface RawMediaReprocessTask {
+  id: string;
+  scope_library_id: string | null;
+  mode: string;
+  status: string;
+  cursor_media_item_id: string | null;
+  cursor_source_id: string | null;
+  batch_size: number;
+  stats: Record<string, number>;
+  requested_by_user_id: string | null;
+  lease_owner: string | null;
+  lease_token: string | null;
+  lease_expires_at: string | null;
+  last_error_code: string | null;
+  last_error_message: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  updated_at: string;
+}
+
+function fromTask(r: RawMediaReprocessTask): MediaReprocessTask {
+  return {
+    id: r.id,
+    scopeLibraryId: r.scope_library_id ?? null,
+    // 枚举 wire 为 PascalCase ⇒ 原样透传，不自造映射（避免与后端漂移）
+    mode: r.mode as MediaReprocessTask["mode"],
+    status: r.status as MediaReprocessTask["status"],
+    cursorMediaItemId: r.cursor_media_item_id ?? null,
+    cursorSourceId: r.cursor_source_id ?? null,
+    batchSize: r.batch_size,
+    stats: r.stats ?? {},
+    requestedByUserId: r.requested_by_user_id ?? null,
+    leaseOwner: r.lease_owner ?? null,
+    leaseToken: r.lease_token ?? null,
+    leaseExpiresAt: r.lease_expires_at ?? null,
+    lastErrorCode: r.last_error_code ?? null,
+    lastErrorMessage: r.last_error_message ?? null,
+    createdAt: r.created_at,
+    startedAt: r.started_at ?? null,
+    finishedAt: r.finished_at ?? null,
+    updatedAt: r.updated_at,
+  };
+}
+
+function toRawCreate(input: MediaReprocessCreateInput) {
+  const body: Record<string, unknown> = { mode: input.mode };
+  if (input.libraryId !== undefined) body.library_id = input.libraryId;
+  if (input.batchSize !== undefined) body.batch_size = input.batchSize;
+  if (input.confirmAction !== undefined) body.confirm_action = input.confirmAction;
+  if (input.sessionConfirmation !== undefined) {
+    body.session_confirmation = input.sessionConfirmation;
+  }
+  if (input.currentPassword !== undefined) {
+    body.current_password = input.currentPassword;
+  }
+  return body;
+}
+
+/** 列表 limit 夹取（后端 clamp 1..=100，缺省 20）⇒ 前端同口径，避免发无效值。 */
+function clampLimit(limit?: number) {
+  if (limit === undefined) return 20;
+  return Math.min(100, Math.max(1, Math.trunc(limit)));
+}
+
+export const mediaReprocessApi = {
+  /** GET 最近作业列表。 */
+  async listTasks(limit?: number): Promise<MediaReprocessTask[]> {
+    const raw = await httpClient.get<RawMediaReprocessTask[]>(REPROCESS_BASE, {
+      params: { limit: clampLimit(limit) },
+    });
+    return (raw ?? []).map(fromTask);
+  },
+
+  /** GET 作业详情。 */
+  async getTask(taskId: string): Promise<MediaReprocessTask> {
+    const raw = await httpClient.get<RawMediaReprocessTask>(
+      `${REPROCESS_BASE}/${encodeURIComponent(taskId)}`,
+    );
+    return fromTask(raw);
+  },
+
+  /**
+   * POST 建作业。★危险 mode（非两个 DryRun）必须带 `?confirmed=true`
+   * —— 否则后端 403/400；前端不在本地降级静默提交。
+   */
+  async createTask(input: MediaReprocessCreateInput): Promise<MediaReprocessTask> {
+    const needsConfirm = !DRY_RUN_MODES.has(input.mode);
+    const raw = await httpClient.post<RawMediaReprocessTask>(REPROCESS_BASE, {
+      body: toRawCreate(input),
+      ...(needsConfirm ? { params: { confirmed: true } } : {}),
+    });
+    return fromTask(raw);
+  },
+
+  /** POST 取消作业（不需危险确认）。 */
+  async cancelTask(taskId: string): Promise<MediaReprocessTask> {
+    const raw = await httpClient.post<RawMediaReprocessTask>(
+      `${REPROCESS_BASE}/${encodeURIComponent(taskId)}/cancel`,
+    );
+    return fromTask(raw);
+  },
+
+  /** POST 失败作业恢复（不需危险确认）。 */
+  async resumeTask(taskId: string): Promise<MediaReprocessTask> {
+    const raw = await httpClient.post<RawMediaReprocessTask>(
+      `${REPROCESS_BASE}/${encodeURIComponent(taskId)}/resume`,
+    );
+    return fromTask(raw);
+  },
 };
