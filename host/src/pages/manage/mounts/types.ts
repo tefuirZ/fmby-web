@@ -44,6 +44,9 @@ export interface MountFormErrors {
   name?: string;
   rootPath?: string;
   configJsonText?: string;
+  /** FE-MOUNT-CONFIG-UI：速率/可见性 JSON 文本校验（非法拦截，不崩保存）。 */
+  rateConfigText?: string;
+  visibilityRuleText?: string;
   endpoint?: string;
   username?: string;
   password?: string;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -17,7 +17,6 @@ const PAGE_SIZE = 20;
 export function CollectionsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, Number(searchParams.get('page') ?? '1') || 1);
-  const [refreshTick, setRefreshTick] = useState(0);
 
   const vm = useCollectionsList({ page, pageSize: PAGE_SIZE });
   const { items, total, pageSize, hasMore } = vm.data;
@@ -25,7 +24,6 @@ export function CollectionsListPage() {
     () => (total === 0 ? 1 : Math.ceil(total / pageSize)),
     [total, pageSize],
   );
-  void refreshTick;
 
   if (vm.state === 'loading') {
     return (

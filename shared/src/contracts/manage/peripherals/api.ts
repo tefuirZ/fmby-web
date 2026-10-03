@@ -42,7 +42,7 @@ import type {
 } from "./types";
 import { isApiError } from "@fmby/v2-shared/errors";
 
-interface RawManagedCollection {
+export interface RawManagedCollection {
   id: string;
   title: string;
   overview: string | null;
