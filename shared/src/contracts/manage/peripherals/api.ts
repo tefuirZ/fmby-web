@@ -382,7 +382,8 @@ function fromSecretEntry(r: RawSecretStatusEntry): SecretStatusEntryRecord {
   };
 }
 
-function fromCollection(r: RawManagedCollection): ManagedCollectionRecord {
+// FE-USER-COLLECTIONS-LIST-PAGE-2：用户面列表复用同一 collection mapper。
+export function fromCollection(r: RawManagedCollection): ManagedCollectionRecord {
   return {
     id: r.id,
     title: r.title,
