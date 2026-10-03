@@ -109,6 +109,10 @@ cd /tmp/w2-fe-main2/host && ./node_modules/.bin/tsc -p tsconfig.app.json --noEmi
 ```
 另 `check-frontend-dupes` 在干净 `origin/main` 上同样报 1 例（`useCollectionsList.ts:14`）。
 
+**复核（main 前进后）**：`origin/main` 由 `b092741` → `10c5298`（+9 提交，含 continue-watching /
+notification-prefs / points-checkin）后重跑同命令 ⇒ **仍 22 错、逐文件计数完全不变**（13/5/2/1/1）
+⇒ P1 未因这 9 个提交改变；本卡分支 merge 后 `shared` tsc 仍 EXIT=0、host 测试 **401/401 全绿**。
+
 ## 7. 构建阻断链（实测：把 A 组消除后，下一个阻断者是谁）
 
 体积闸 `check-frontend-size` 需要 `host/dist/.vite/manifest.json`，即必须先 `vite build` 成功。
