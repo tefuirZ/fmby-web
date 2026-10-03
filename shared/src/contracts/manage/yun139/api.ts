@@ -20,6 +20,9 @@ import type {
   Yun139OwnedBrowseResult,
   Yun139QrLoginResult,
   Yun139QrStatusResult,
+  Yun139LeaseInput,
+  Yun139LeaseResult,
+  Yun139ReportLeaseInput,
 } from './types';
 
 interface RawQrLoginResponse {
@@ -213,4 +216,67 @@ export const yun139Api = {
   ): Promise<Yun139ActivateResult> {
     return httpClient.post<Yun139ActivateResult>(`${BASE}/activate`, { body });
   },
+
+  // -------------------------------------------------------------------------
+  // 账号池「段 B 调度运维」（FE-YUN139-ACCOUNT-POOLS）
+  // 端点真源：crates/fmby-v2-http/src/routes/yun139_accounts.rs（MANAGE_MOUNT）
+  // DTO：crates/fmby-v2-http/src/state/yun139_accounts.rs
+  // -------------------------------------------------------------------------
+
+  /**
+   * POST .../account-pools/{poolId}/lease — 从账号池试租借一个账号。
+   * ★`sticky_key` 可省 ⇒ 省略时**不发送**，不臆造缺省。
+   */
+  async leaseFromPool(
+    poolId: string,
+    input: Yun139LeaseInput = {},
+  ): Promise<Yun139LeaseResult> {
+    const body: Record<string, unknown> = {};
+    if (input.stickyKey !== undefined) body.sticky_key = input.stickyKey;
+    const raw = await httpClient.post<RawYun139LeaseResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}/lease`,
+      { body },
+    );
+    return {
+      poolId: raw.pool_id ?? null,
+      leaseId: raw.lease_id,
+      profileId: raw.profile_id,
+      displayName: raw.display_name,
+      // epoch 毫秒（租借 TTL）⇒ 原样透传，不转字符串
+      expiresAt: raw.expires_at,
+    };
+  },
+
+  /**
+   * POST .../account-pools/{poolId}/report — 租借结果回写（成功/失败 + 可选冷却）。
+   * ★可选字段（lease_id / cooldown_seconds）省略时**不发送**；缺省由池配置决定。
+   */
+  async reportLease(
+    poolId: string,
+    input: Yun139ReportLeaseInput,
+  ): Promise<boolean> {
+    const body: Record<string, unknown> = {
+      profile_id: input.profileId,
+      success: input.success,
+    };
+    if (input.leaseId !== undefined) body.lease_id = input.leaseId;
+    if (input.cooldownSeconds !== undefined) {
+      body.cooldown_seconds = input.cooldownSeconds;
+    }
+    const raw = await httpClient.post<RawOkResponse>(
+      `${BASE}/account-pools/${encodeURIComponent(poolId)}/report`,
+      { body },
+    );
+    return raw.ok;
+  },
+
 };
+
+interface RawYun139LeaseResponse {
+  pool_id: string | null;
+  lease_id: string;
+  profile_id: string;
+  display_name: string;
+  /** epoch 毫秒（租借 TTL，过期自动归还）。 */
+  expires_at: number;
+}

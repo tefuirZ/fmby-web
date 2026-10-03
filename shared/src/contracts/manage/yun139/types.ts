@@ -128,3 +128,40 @@ export interface Yun139ActivateRequest {
 
 /** `POST /manage/yun139/activate` 响应：成功只回 meta，绝不透 payload/明文。 */
 export type Yun139ActivateResult = unknown;
+
+// ---------------------------------------------------------------------------
+// 账号池「段 B 调度运维」（FE-YUN139-ACCOUNT-POOLS，挑内聚 2 端点）
+//
+// 端点真源（origin/main）：`crates/fmby-v2-http/src/routes/yun139_accounts.rs`
+//   POST /api/manage/yun139/account-pools/{poolId}/lease
+//   POST /api/manage/yun139/account-pools/{poolId}/report
+// DTO：`crates/fmby-v2-http/src/state/yun139_accounts.rs`
+// 能力门：`MANAGE_MOUNT`。
+//
+// ★`expiresAt` 是 **epoch 毫秒**（租借 TTL，过期视为自动归还）⇒ 原样透传，不转字符串。
+// ★可选字段省略时**不发送**，不在前端臆造缺省（冷却秒数缺省由池配置决定）。
+// ---------------------------------------------------------------------------
+
+/** 租借试运行入参：`sticky_key` 可省（粘性策略下同键恒选同一账号）。 */
+export interface Yun139LeaseInput {
+  stickyKey?: string;
+}
+
+/** 租借试运行结果。 */
+export interface Yun139LeaseResult {
+  poolId: string | null;
+  leaseId: string;
+  profileId: string;
+  displayName: string;
+  /** epoch 毫秒；过期自动归还。 */
+  expiresAt: number;
+}
+
+/** 租借结果回写入参。 */
+export interface Yun139ReportLeaseInput {
+  profileId: string;
+  leaseId?: string;
+  success: boolean;
+  /** 失败冷却秒数；省略 ⇒ 由池配置决定。 */
+  cooldownSeconds?: number;
+}
