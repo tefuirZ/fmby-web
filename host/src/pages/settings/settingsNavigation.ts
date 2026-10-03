@@ -36,6 +36,11 @@ export const settingsNavGroups: SettingsNavGroup[] = [
         description: '字幕、音轨与继续播放策略',
       },
       {
+        to: '/settings/rewards',
+        label: '积分与签到',
+        description: '我的积分、每日签到与积分兑换',
+      },
+      {
         to: '/settings/appearance',
         label: '外观',
         description: '主题、海报密度与动效偏好',

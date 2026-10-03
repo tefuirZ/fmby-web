@@ -186,7 +186,14 @@ export const router = createBrowserRouter([
                   return { Component: ProfileSettingsPage };
                 },
               },
-              {
+                            {
+                path: 'rewards',
+                lazy: async () => {
+                  const { RewardsSettingsPage } = await import('@/pages/settings/RewardsSettingsPage');
+                  return { Component: RewardsSettingsPage };
+                },
+              },
+{
                 path: 'playback',
                 lazy: async () => {
                   const { PlaybackSettingsPage } = await import('@/pages/settings/PlaybackSettingsPage');
