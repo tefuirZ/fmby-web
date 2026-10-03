@@ -10,11 +10,10 @@
  */
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { mfaApi, SESSION_USERNAME_STORAGE_KEY } from '@fmby/v2-shared/contracts/auth';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type { User } from '@fmby/v2-shared/types';
-import { useSession } from '@/session';
 import { Field, SubmitButton } from './fields';
 import styles from '../LoginPage.module.css';
 

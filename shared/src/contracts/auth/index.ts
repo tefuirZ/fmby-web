@@ -7,7 +7,9 @@
  * - 认证相关类型
  */
 
-export { authApi, mapMeResponse } from './api';
+// SESSION_USERNAME_STORAGE_KEY 是 MfaVerifyPanel 登录二因子流的会话键（api.ts:139 已导出），
+// 此前漏在 barrel 外 ⇒ 消费方 TS2305。补 re-export（零语义：仅把既有导出接到门面上）。
+export { authApi, mapMeResponse, SESSION_USERNAME_STORAGE_KEY } from './api';
 export type {
   LoginRequest,
   RegisterRequest,
