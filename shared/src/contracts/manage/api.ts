@@ -119,6 +119,22 @@ import {
   mapUserStatusToApi,
 } from "./mapping";
 
+// ── 挂载↔媒体库绑定（FE-GAP-ROUND4；wire = state/governance.rs）──
+
+export interface MountLibrarySetRecord {
+  mountId: number;
+  libraryIds: number[];
+}
+
+interface RawMountLibrarySet {
+  mount_id: number;
+  library_ids: number[];
+}
+
+interface RawGovernanceOk {
+  ok: boolean;
+}
+
 export const manageApi = {
   async getOverview(): Promise<ManageOverviewResponse> {
     const raw = await httpClient.get<RawManageOverviewResponse>(
@@ -431,6 +447,34 @@ export const manageApi = {
       },
     );
     return mapManageActionResult(raw);
+  },
+
+  // ── FE-GAP-ROUND4：挂载↔媒体库绑定管理三端点（G7-B；wire = state/governance.rs）──
+  // GET list → {mount_id, library_ids[]}；POST bind body {library_id}；DELETE unbind。
+
+  async listMountLibraries(mountId: string): Promise<MountLibrarySetRecord> {
+    const raw = await httpClient.get<RawMountLibrarySet>(
+      `/api/manage/mounts/${encodeURIComponent(mountId)}/libraries`,
+    );
+    return {
+      mountId: raw.mount_id,
+      libraryIds: raw.library_ids,
+    };
+  },
+
+  async bindMountLibrary(mountId: string, libraryId: string): Promise<{ ok: boolean }> {
+    const raw = await httpClient.post<RawGovernanceOk>(
+      `/api/manage/mounts/${encodeURIComponent(mountId)}/libraries`,
+      { body: { library_id: libraryId } },
+    );
+    return { ok: raw.ok };
+  },
+
+  async unbindMountLibrary(mountId: string, libraryId: string): Promise<{ ok: boolean }> {
+    const raw = await httpClient.delete<RawGovernanceOk>(
+      `/api/manage/mounts/${encodeURIComponent(mountId)}/libraries/${encodeURIComponent(libraryId)}`,
+    );
+    return { ok: raw.ok };
   },
 
   async getRegistrationCodes(): Promise<ManageRegistrationCodesResponse> {
