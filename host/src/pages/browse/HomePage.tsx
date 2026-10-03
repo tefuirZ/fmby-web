@@ -185,7 +185,12 @@ export function HomePage() {
       <BrowseSection
         title={`${user?.display_name ?? user?.name ?? '你'}的继续观看`}
         description="只保留没看完的内容，顺着进度条直接续上。"
-        action={<Link to="/history">查看全部</Link>}
+        action={
+          <>
+            <Link to="/continue-watching">浏览全部</Link>
+            <Link to="/history">查看全部</Link>
+          </>
+        }
         variant="shelf"
       >
         {hasPrimaryError ? (
@@ -221,7 +226,12 @@ export function HomePage() {
       <BrowseSection
         title="最近入库"
         description="先扫一眼最近刚进库的片子，挑到就直接进。"
-        action={<Link to="/libraries">浏览媒体库</Link>}
+        action={
+          <>
+            <Link to="/recently-added">浏览全部</Link>
+            <Link to="/libraries">浏览媒体库</Link>
+          </>
+        }
       >
         {hasPrimaryError ? (
           <InlineBanner
