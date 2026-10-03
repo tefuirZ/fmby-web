@@ -15,9 +15,11 @@ import { Field, PasswordToggle, SubmitButton } from './fields';
 
 interface LoginFormProps {
   onAuthenticated: (user: User) => void;
+  /** FE-MFA-TOTP-UI：密码正确但需二因子（未建会话）→ 转验证面板。 */
+  onMfaRequired: (challenge: { challengeId: string; expiresAt: number | null }) => void;
 }
 
-export function LoginForm({ onAuthenticated }: LoginFormProps) {
+export function LoginForm({ onAuthenticated, onMfaRequired }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const {
     register,
@@ -28,6 +30,10 @@ export function LoginForm({ onAuthenticated }: LoginFormProps) {
   const mutation = useMutation({
     mutationFn: (data: LoginFormData) => authApi.login(data),
     onSuccess: (response) => {
+      if (response.status === 'mfa_required') {
+        onMfaRequired({ challengeId: response.challengeId, expiresAt: response.expiresAt ?? null });
+        return;
+      }
       onAuthenticated(response.user);
     },
   });

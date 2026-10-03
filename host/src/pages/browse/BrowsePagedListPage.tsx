@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { BROWSE_PAGE_SIZE, useBrowsePagedList } from '@fmby/v2-shared/viewmodels';

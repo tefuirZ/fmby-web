@@ -7,9 +7,8 @@ export type {
   ManagedCollectionDetailRecord,
 } from './collections';
 export type { PersonDetail, PersonItemsPage } from './person';
+export type { BrowsePagedPage, BrowsePagedParams } from './api';
 export type {
-  BrowsePagedPage,
-  BrowsePagedParams,
   BrowseFilterOption,
   BrowseHero,
   LibraryDetailResponse,

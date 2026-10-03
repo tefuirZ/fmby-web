@@ -162,7 +162,7 @@ export const browseApi = {
   },
 
   /** GET /api/browse/recently-added —— 最近添加（keyset 分页，可 libraryId 作用域）。 */
-  async getRecentlyAdded(
+  async getRecentlyAddedPaged(
     params: { cursor?: string; pageSize?: number; libraryId?: string } = {},
   ): Promise<BrowsePagedPage> {
     return browsePaged('/api/browse/recently-added', params);

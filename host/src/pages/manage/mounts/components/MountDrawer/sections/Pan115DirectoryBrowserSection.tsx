@@ -41,9 +41,9 @@ function toBrowserResponse(res: Pan115BrowseResponse): ManageMountDirectoryBrows
   };
 }
 
-/** 凭据缺失/失效（后端 credential_invalid）→ 引导扫码绑定，而非泛化报错。 */
+/** 凭据缺失/失效（旧 credential_invalid / 新 PAN115_* SCREAMING 码）→ 引导扫码绑定。 */
 function isCredentialError(error: unknown): boolean {
-  return isApiError(error) && error.code === 'credential_invalid';
+  return isApiError(error) && (error.code === 'credential_invalid' || isPan115CredentialError(error));
 }
 
 /**

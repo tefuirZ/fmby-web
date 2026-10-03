@@ -10,7 +10,6 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { browseApi } from '@fmby/v2-shared/contracts/browse';
 import type { BrowsePagedPage, MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
-import { queryKeys } from '@fmby/v2-shared/query';
 
 import { useLayoutHint } from './useLayoutHint';
 import { deriveViewState, type LayoutHint, type ViewModel, type ViewState } from './types';
@@ -34,7 +33,7 @@ export interface BrowsePagedListActions {
 }
 
 export type BrowsePagedListViewModel = ViewModel<
-  BrowsePagedListListViewData,
+  BrowsePagedListViewData,
   BrowsePagedListActions
 > & {
   /** 哨兵 ref（页面绑定到列表末尾）。 */
@@ -64,7 +63,7 @@ export function useBrowsePagedList(
     queryFn: ({ pageParam }) =>
       kind === 'resume'
         ? browseApi.getContinueWatching({ cursor: pageParam, pageSize: BROWSE_PAGE_SIZE })
-        : browseApi.getRecentlyAdded({
+        : browseApi.getRecentlyAddedPaged({
             cursor: pageParam,
             pageSize: BROWSE_PAGE_SIZE,
             libraryId,
@@ -94,7 +93,6 @@ export function useBrowsePagedList(
 
   const pages = query.data?.pages ?? [];
   const items = useMemo(() => pages.flatMap((page) => page.items), [pages]);
-  const firstPage = pages[0];
 
   const state: ViewState = deriveViewState(
     {

@@ -79,7 +79,7 @@ test('② resume 翻页：cursor + pageSize 走 query（keyset）', async () => 
 
 test('③ recently-added：GET /api/browse/recently-added + libraryId 作用域', async () => {
   reset({ status: 200, json: RAW_PAGE([RAW_ITEM]) });
-  const page = await browseApi.getRecentlyAdded({ libraryId: 'lib-1' });
+  const page = await browseApi.getRecentlyAddedPaged({ libraryId: 'lib-1' });
   assert.equal(pathOf(lastUrl()), '/api/browse/recently-added');
   const q = new URL(lastUrl()).searchParams;
   assert.equal(q.get('libraryId'), 'lib-1');
@@ -90,7 +90,7 @@ test('④ 错误透传：非法游标 400 / 未装配 500（fail-closed，不吞
   reset({ status: 400, json: { error_code: 'validation', message: 'invalid cursor' } });
   await assert.rejects(() => browseApi.getContinueWatching({ cursor: 'bad' }));
   reset({ status: 500, json: { error_code: 'dependency_unavailable', message: 'not wired' } });
-  await assert.rejects(() => browseApi.getRecentlyAdded());
+  await assert.rejects(() => browseApi.getRecentlyAddedPaged());
 });
 
 function pathOf(u: string): string {

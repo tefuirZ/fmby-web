@@ -10,11 +10,10 @@
  */
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { mfaApi, SESSION_USERNAME_STORAGE_KEY } from '@fmby/v2-shared/contracts/auth';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type { User } from '@fmby/v2-shared/types';
-import { useSession } from '@/session';
 import { Field, SubmitButton } from './fields';
 import styles from '../LoginPage.module.css';
 
@@ -44,8 +43,8 @@ export function MfaVerifyPanel({ challenge, onAuthenticated, onCancel }: MfaVeri
       // /auth/me fail-closed 补齐——与 authApi.login 同口径，不从用户名推断。
       onAuthenticated({
         id: String(result.userId),
-        name: cachedUsername,
-        display_name: cachedUsername,
+        name: cachedUsername ?? '',
+        display_name: cachedUsername ?? '',
         roles: [],
         capabilities: [],
       });
