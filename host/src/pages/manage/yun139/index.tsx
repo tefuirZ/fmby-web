@@ -15,6 +15,7 @@
 import { ManagePageHeader } from '@/pages/manage/longtail-shared/components';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { Yun139ProfilesSection } from './Yun139ProfilesSection';
+import { Yun139AccountPoolsSection } from './Yun139AccountPoolsSection';
 import { Yun139QrLoginSection } from './Yun139QrLoginSection';
 
 export function ManageYun139Page() {
@@ -28,6 +29,7 @@ export function ManageYun139Page() {
 
       <Yun139QrLoginSection />
       <Yun139ProfilesSection />
+      <Yun139AccountPoolsSection />
     </div>
   );
 }
