@@ -23,10 +23,6 @@ export const queryKeys = {
     library: (id: string) => ['browse', 'library', id] as const,
     // FE-USER-COLLECTIONS-BROWSE：用户面合集详情。
     collection: (id: string) => ['browse', 'collection', id] as const,
-    // FE-CONTINUE-WATCHING：继续观看 / 最近添加（keyset 分页）。
-    resumePaged: () => ['browse', 'resume', 'paged'] as const,
-    recentlyAddedPaged: (libraryId?: string) =>
-      ['browse', 'recently-added', 'paged', libraryId ?? ''] as const,
     // FE-USER-COLLECTIONS-LIST-PAGE-2：用户面合集列表（分页 + 检索）。
     collections: (page: number, pageSize: number, search?: string) =>
       ['browse', 'collections', page, pageSize, search ?? ''] as const,

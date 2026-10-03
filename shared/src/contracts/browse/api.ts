@@ -26,21 +26,6 @@ interface RawListResponse<T> {
   total?: number;
 }
 
-/** 继续观看/最近添加 keyset 分页参数（BrowsePagedQuery camel 主名）。 */
-export interface BrowsePagedParams {
-  /** keyset 游标（不透明 base64url；缺省 = 首屏）。 */
-  cursor?: string;
-  pageSize?: number;
-  /** 仅 recently-added：库作用域。 */
-  libraryId?: string;
-}
-
-export interface BrowsePagedPage {
-  items: MediaCardSummary[];
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
 interface LibraryDetailParams {
   page?: number;
   pageSize?: number;
@@ -49,33 +34,6 @@ interface LibraryDetailParams {
   watched?: string;
   sort?: string;
   cursor?: string;
-}
-
-/**
- * 共用：keyset 分页 browse 端点取数（resume / recently-added 同形 wire）。
- * wire 字段与 library detail items 同源 ⇒ 复用 mapMediaCard mapper（含进度/剧集映射）。
- */
-async function browsePaged(
-  path: string,
-  params: { cursor?: string; pageSize?: number; libraryId?: string },
-): Promise<BrowsePagedPage> {
-  const raw = await httpClient.get<{
-    items?: unknown[];
-    next_cursor?: string | null;
-    has_more?: boolean;
-  }>(path, {
-    params: {
-      cursor: params.cursor,
-      pageSize: params.pageSize,
-      libraryId: params.libraryId,
-    },
-  });
-  const items = readArray(raw.items, mapMediaCard);
-  return {
-    items,
-    nextCursor: raw.next_cursor ?? null,
-    hasMore: raw.has_more ?? false,
-  };
 }
 
 export const browseApi = {
@@ -152,20 +110,6 @@ export const browseApi = {
   async getLibraries(): Promise<LibrarySummary[]> {
     const raw = await httpClient.get<RawListResponse<unknown>>('/api/browse/libraries');
     return readArray(raw.items, mapLibrary);
-  },
-
-  /** GET /api/browse/resume —— 继续观看（keyset 分页，FE-CONTINUE-WATCHING）。 */
-  async getContinueWatching(
-    params: { cursor?: string; pageSize?: number } = {},
-  ): Promise<BrowsePagedPage> {
-    return browsePaged('/api/browse/resume', params);
-  },
-
-  /** GET /api/browse/recently-added —— 最近添加（keyset 分页，可 libraryId 作用域）。 */
-  async getRecentlyAdded(
-    params: { cursor?: string; pageSize?: number; libraryId?: string } = {},
-  ): Promise<BrowsePagedPage> {
-    return browsePaged('/api/browse/recently-added', params);
   },
 
   async getLibraryDetail(
