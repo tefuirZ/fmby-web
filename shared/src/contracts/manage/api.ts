@@ -118,6 +118,185 @@ import {
   mapUserStatusToApi,
 } from "./mapping";
 
+// ── FE-LICENSE-REMAINING：Emby 用户导入类型（wire = 后端 manage_emby_user_import.rs）──
+
+/** 导入源（tagged `kind`：`saved` | `temporary`）。 */
+export type EmbyUserImportSourceInput =
+  | { kind: 'saved'; sourceId: string }
+  | {
+      kind: 'temporary';
+      baseUrl: string;
+      authMethod: string;
+      username?: string | null;
+      password?: string | null;
+      apiToken?: string | null;
+    };
+
+export interface EmbyUserImportCandidateRecord {
+  embyUserId: string;
+  username: string;
+  displayName: string | null;
+  isAdministrator: boolean;
+  isDisabled: boolean;
+  isHidden: boolean;
+  selectedByDefault: boolean;
+  existingUserId: string | null;
+  existingStatus: string | null;
+}
+
+export interface EmbyUserImportSummaryRecord {
+  totalCount: number;
+  selectedCount: number;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  failedCount: number;
+}
+
+export interface EmbyUserImportPreviewRecord {
+  users: EmbyUserImportCandidateRecord[];
+  summary: EmbyUserImportSummaryRecord;
+}
+
+export interface EmbyUserImportExecuteInput {
+  source: EmbyUserImportSourceInput;
+  includeDisabled?: boolean;
+  selectedEmbyUserIds: string[];
+  /** 后端词表透传（`skip` | `update` | ...）。 */
+  collisionStrategy: string;
+  roleTemplateId?: string | null;
+  initialPassword?: string | null;
+  forcePasswordChange?: boolean;
+}
+
+export interface EmbyUserImportResultRecord {
+  summary: EmbyUserImportSummaryRecord;
+  auditId: string;
+  results: Array<{
+    embyUserId: string;
+    username: string;
+    fmbyUserId: string | null;
+    /** `created` | `updated` | `skipped` | `failed`（V1 词表透传）。 */
+    result: string;
+    /** `create` | `update_profile` | `apply_template_only` | `update_and_reset_password` | `existing_skipped` | `missing` | `failed`。 */
+    action: string;
+    message: string;
+  }>;
+}
+
+export interface EmbyUserImportJobRecord {
+  id: string;
+  /** `running` | `succeeded` | `failed`（V1 词表透传）。 */
+  status: string;
+  /** `saved` | `temporary`。 */
+  sourceKind: string;
+  sourceId: string | null;
+  summary: EmbyUserImportSummaryRecord;
+  errorMessage: string | null;
+  auditId: string | null;
+}
+
+interface RawEmbyUserImportSummary {
+  total_count: number;
+  selected_count: number;
+  created_count: number;
+  updated_count: number;
+  skipped_count: number;
+  failed_count: number;
+}
+
+interface RawEmbyUserImportPreviewResponse {
+  users: Array<{
+    emby_user_id: string;
+    username: string;
+    display_name: string | null;
+    is_administrator: boolean;
+    is_disabled: boolean;
+    is_hidden: boolean;
+    selected_by_default: boolean;
+    existing_user_id: string | null;
+    existing_status: string | null;
+  }>;
+  summary: RawEmbyUserImportSummary;
+}
+
+interface RawEmbyUserImportExecuteResponse {
+  summary: RawEmbyUserImportSummary;
+  results: Array<{
+    emby_user_id: string;
+    username: string;
+    fmby_user_id: string | null;
+    result: string;
+    action: string;
+    message: string;
+  }>;
+  audit_id: string;
+}
+
+interface RawEmbyUserImportJobList {
+  jobs: Array<{
+    id: string;
+    status: string;
+    source_kind: string;
+    source_id: string | null;
+    summary: RawEmbyUserImportSummary;
+    error_message: string | null;
+    audit_id: string | null;
+  }>;
+}
+
+function fromEmbyUserImportSummary(r: RawEmbyUserImportSummary): EmbyUserImportSummaryRecord {
+  return {
+    totalCount: r.total_count,
+    selectedCount: r.selected_count,
+    createdCount: r.created_count,
+    updatedCount: r.updated_count,
+    skippedCount: r.skipped_count,
+    failedCount: r.failed_count,
+  };
+}
+
+function fromEmbyUserImportCandidate(
+  r: RawEmbyUserImportPreviewResponse['users'][number],
+): EmbyUserImportCandidateRecord {
+  return {
+    embyUserId: r.emby_user_id,
+    username: r.username,
+    displayName: r.display_name,
+    isAdministrator: r.is_administrator,
+    isDisabled: r.is_disabled,
+    isHidden: r.is_hidden,
+    selectedByDefault: r.selected_by_default,
+    existingUserId: r.existing_user_id,
+    existingStatus: r.existing_status,
+  };
+}
+
+function fromEmbyUserImportResult(
+  r: RawEmbyUserImportExecuteResponse['results'][number],
+): EmbyUserImportResultRecord['results'][number] {
+  return {
+    embyUserId: r.emby_user_id,
+    username: r.username,
+    fmbyUserId: r.fmby_user_id,
+    result: r.result,
+    action: r.action,
+    message: r.message,
+  };
+}
+
+function fromEmbyUserImportJob(r: RawEmbyUserImportJobList['jobs'][number]): EmbyUserImportJobRecord {
+  return {
+    id: r.id,
+    status: r.status,
+    sourceKind: r.source_kind,
+    sourceId: r.source_id,
+    summary: fromEmbyUserImportSummary(r.summary),
+    errorMessage: r.error_message,
+    auditId: r.audit_id,
+  };
+}
+
 export const manageApi = {
   async getOverview(): Promise<ManageOverviewResponse> {
     const raw = await httpClient.get<RawManageOverviewResponse>(
@@ -430,6 +609,58 @@ export const manageApi = {
       },
     );
     return mapManageActionResult(raw);
+  },
+
+  // ── FE-LICENSE-REMAINING：Emby 用户导入（upstream-emby 付费面；后端
+  //    manage_emby_user_import.rs；V1 ManageUsersPage「从 Emby 导入」对位）──
+
+  async previewEmbyUserImport(
+    payload: EmbyUserImportSourceInput & { includeDisabled?: boolean },
+  ): Promise<EmbyUserImportPreviewRecord> {
+    const raw = await httpClient.post<RawEmbyUserImportPreviewResponse>(
+      `/api/manage/users/emby-import/preview`,
+      {
+        body: {
+          source: payload.source,
+          include_disabled: payload.includeDisabled ?? false,
+        },
+      },
+    );
+    return {
+      users: raw.users.map(fromEmbyUserImportCandidate),
+      summary: fromEmbyUserImportSummary(raw.summary),
+    };
+  },
+
+  async importEmbyUsers(
+    payload: EmbyUserImportExecuteInput,
+  ): Promise<EmbyUserImportResultRecord> {
+    const raw = await httpClient.post<RawEmbyUserImportExecuteResponse>(
+      `/api/manage/users/emby-import`,
+      {
+        body: {
+          source: payload.source,
+          include_disabled: payload.includeDisabled ?? false,
+          selected_emby_user_ids: payload.selectedEmbyUserIds,
+          collision_strategy: payload.collisionStrategy,
+          role_template_id: payload.roleTemplateId ?? null,
+          initial_password: payload.initialPassword ?? null,
+          force_password_change: payload.forcePasswordChange ?? false,
+        },
+      },
+    );
+    return {
+      summary: fromEmbyUserImportSummary(raw.summary),
+      auditId: raw.audit_id,
+      results: raw.results.map(fromEmbyUserImportResult),
+    };
+  },
+
+  async listEmbyUserImportJobs(): Promise<EmbyUserImportJobRecord[]> {
+    const raw = await httpClient.get<RawEmbyUserImportJobList>(
+      `/api/manage/users/emby-import/jobs`,
+    );
+    return raw.jobs.map(fromEmbyUserImportJob);
   },
 
   async getRegistrationCodes(): Promise<ManageRegistrationCodesResponse> {
