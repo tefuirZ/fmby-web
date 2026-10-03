@@ -79,6 +79,7 @@ export function CollectionsListPage() {
         <div className={styles.filterGroup}>
           <input
             className={styles.input}
+            aria-label="按合集名检索"
             placeholder="按合集名检索"
             value={searchInput}
             onChange={(event) => {

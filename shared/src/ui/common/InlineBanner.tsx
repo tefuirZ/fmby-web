@@ -32,7 +32,12 @@ export function InlineBanner({
   actions,
 }: InlineBannerProps) {
   return (
-    <div className={styles.banner} data-variant={variant} role="status">
+    // A11Y：错误/警告需立即播报（assertive）；成功/提示 polite。
+    <div
+      className={styles.banner}
+      data-variant={variant}
+      role={variant === 'error' || variant === 'warning' ? 'alert' : 'status'}
+    >
       <div className={styles.icon}>{getIcon(variant)}</div>
       <div className={styles.content}>
         <div className={styles.title}>{title}</div>

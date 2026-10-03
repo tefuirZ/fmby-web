@@ -102,7 +102,13 @@ export function Yun139QrLoginSection() {
             </label>
             <label className={styles.label}>
               扫码状态
-              <input className={styles.input} readOnly value={status ?? '等待首次轮询…'} />
+              {/* A11Y：轮询自动变化需可播报（polite，不打断）。 */}
+              <input
+                className={styles.input}
+                readOnly
+                aria-live="polite"
+                value={status ?? '等待首次轮询…'}
+              />
             </label>
             {qrImage ? (
               <img src={qrImage} alt="139 登录二维码" className={styles.readonlyField} />
