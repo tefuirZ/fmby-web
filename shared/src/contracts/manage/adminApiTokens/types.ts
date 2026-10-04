@@ -33,3 +33,23 @@ export interface RawAdminApiToken {
   created_at_ms: number;
   expires_at_ms?: number | null;
 }
+
+/// wire 形态 · 签发响应（后端 `CreateApiTokenResponse`）。
+///
+/// ★与列表项**形状不同**：无 `created_at_ms`，有一次性明文 `token`
+/// （`dto/api_token.rs`：明文 token 仅此路径下发一次）。
+/// 曾因复用 `RawAdminApiToken` 接此响应 ⇒ token 被静默丢弃、createdAtMs 被伪造成 0。
+export interface RawCreatedApiToken {
+  id: number;
+  name: string;
+  token: string;
+  scopes: string[];
+}
+
+/// 前端域形态 · 签发结果（含一次性明文 token，调用方须提示用户立即保存）。
+export interface CreatedApiToken {
+  id: number;
+  name: string;
+  token: string;
+  scopes: string[];
+}

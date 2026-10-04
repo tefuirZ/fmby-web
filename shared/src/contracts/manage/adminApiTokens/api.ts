@@ -3,7 +3,9 @@ import { isApiError, getErrorMessage } from "@fmby/v2-shared/errors";
 import type {
   AdminApiToken,
   AdminApiTokenCreateInput,
+  CreatedApiToken,
   RawAdminApiToken,
+  RawCreatedApiToken,
 } from "./types";
 
 // 与 `router_manage.rs:625-629` 逐字一致（单一事实源，不另起常量）。
@@ -22,6 +24,16 @@ export function mapAdminApiToken(
   };
 }
 
+/// 签发响应 → 域形态（★保留一次性明文 token，绝不丢弃）。
+function mapCreatedApiToken(raw: RawCreatedApiToken): CreatedApiToken {
+  return {
+    id: raw.id,
+    name: raw.name,
+    token: raw.token,
+    scopes: raw.scopes ?? [],
+  };
+}
+
 function toRaw(input: AdminApiTokenCreateInput) {
   return {
     name: input.name,
@@ -37,12 +49,16 @@ export const adminApiTokensApi = {
     return (raw ?? []).map(mapAdminApiToken);
   },
 
-  /// `POST` —— 创建令牌（返回落库后真值）。
-  async create(input: AdminApiTokenCreateInput): Promise<AdminApiToken> {
-    const raw = await httpClient.post<RawAdminApiToken>(TOKENS_PATH, {
+  /// `POST` —— 创建令牌。
+  ///
+  /// ★返回签发结果（含一次性明文 `token`）：后端 `CreateApiTokenResponse` 与列表项
+  /// **形状不同**（无 `created_at_ms`，有 `token`）——不得复用列表映射器，否则
+  /// token 被丢弃、createdAtMs 被伪造成 0。调用方应提示用户立即保存。
+  async create(input: AdminApiTokenCreateInput): Promise<CreatedApiToken> {
+    const raw = await httpClient.post<RawCreatedApiToken>(TOKENS_PATH, {
       body: toRaw(input),
     });
-    return mapAdminApiToken(raw);
+    return mapCreatedApiToken(raw);
   },
 
   /// `DELETE` —— 吊销令牌（按 id）。
