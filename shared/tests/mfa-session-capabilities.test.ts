@@ -146,3 +146,33 @@ test('MFA 三段流（login→verify→me）结束后用户名仍来自登录阶
   );
   assert.deepEqual(result.user.capabilities, ['ManageAccess']);
 });
+
+test('★刷新后 restore 路径（getSession）capabilities 非空且用户名在 —— 卡面「不自愈」的落点', async () => {
+  routeHandler = (url) => {
+    if (url.includes('/api/auth/login')) {
+      return jsonResponse({ status: 'mfa_required', challenge_id: 'c-1', expires_at: null });
+    }
+    if (url.includes(PATH_VERIFY)) {
+      return jsonResponse({ user_id: 7, verified: true });
+    }
+    if (url.includes(PATH_ME)) {
+      return jsonResponse({ user_id: 7, capabilities: ['ManageAccess', 'Browse'] });
+    }
+    return undefined;
+  };
+
+  const { authApi } = await import('@fmby/v2-shared/contracts/auth/api');
+
+  await authApi.login({ username: 'alice', password: 'pw' });
+  await mfaApi.verifyForSession({ challengeId: 'c-1', code: '123456' });
+
+  // 页面刷新后 SessionProvider 的 restore 走的就是 getSession()。
+  const restored = await authApi.getSession();
+
+  assert.deepEqual(
+    restored.capabilities,
+    ['ManageAccess', 'Browse'],
+    '刷新后 capabilities 必须非空（缺陷形态：恒空且不自愈）',
+  );
+  assert.equal(restored.name, 'alice');
+});
