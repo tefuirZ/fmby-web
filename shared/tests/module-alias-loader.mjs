@@ -26,7 +26,14 @@ export async function resolve(specifier, context, nextResolve) {
       return await nextResolve(specifier, context);
     } catch (error) {
       // TS 源内 './error' 这类无扩展名导入，node ESM 解析失败时补 .ts 重试
-      return nextResolve(`${specifier}.ts`, context);
+      try {
+        return await nextResolve(`${specifier}.ts`, context);
+      } catch {
+        // 目录导入（`./adminApiTokens`）→ 回退 `./adminApiTokens/index.ts`。
+        // 与 host-alias-loader（V1F-10 已修同型缺口）对齐：此前只回退 `.ts`，
+        // 目录形态会 ERR_MODULE_NOT_FOUND，整包 shared 单测连带失败。
+        return nextResolve(`${specifier}/index.ts`, context);
+      }
     }
   }
   return nextResolve(specifier, context);
