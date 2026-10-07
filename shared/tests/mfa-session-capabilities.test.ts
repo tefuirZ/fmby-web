@@ -107,3 +107,42 @@ test('/auth/me 失败：fail-closed 不返回伪造权限（user=null）', async
   assert.equal(result.verified, true, 'verify 确实成功了');
   assert.equal(result.user, null, '权限面拉不到时不得伪造 User 置登录态');
 });
+
+// ── #289 附带发现 ────────────────────────────────────────────────────────────
+// `login()` 在 `status="mfa_required"` 分支**提前 return**，而 `persistSessionUsername`
+// 在它之后 ⇒ MFA 用户名从未入缓存；而 `/auth/me` 不返回用户名（MeResponse 只有
+// user_id + capabilities）⇒ MFA 后的会话用户名恒为空串（顶栏空白）。
+// 本用例锁住「MFA 三段流结束后用户名仍在」。
+test('MFA 三段流（login→verify→me）结束后用户名仍来自登录阶段缓存', async () => {
+  calls.length = 0;
+  routeHandler = (url) => {
+    if (url.includes('/api/auth/login')) {
+      return jsonResponse({ status: 'mfa_required', challenge_id: 'c-1', expires_at: null });
+    }
+    if (url.includes(PATH_VERIFY)) {
+      return jsonResponse({ user_id: 7, verified: true });
+    }
+    if (url.includes(PATH_ME)) {
+      return jsonResponse({ user_id: 7, capabilities: ['ManageAccess'] });
+    }
+    return undefined;
+  };
+
+  const { authApi } = await import('@fmby/v2-shared/contracts/auth/api');
+
+  // ① 密码登录 → 拿到 challenge（未建会话）
+  const loginResult = await authApi.login({ username: 'alice', password: 'pw' });
+  assert.equal(loginResult.status, 'mfa_required');
+
+  // ② MFA 验证 + 补拉 me
+  const result = await mfaApi.verifyForSession({ challengeId: 'c-1', code: '123456' });
+
+  assert.equal(result.verified, true);
+  assert.ok(result.user, 'verify 成功必须回 User');
+  assert.equal(
+    result.user.name,
+    'alice',
+    'MFA 后用户名必须来自登录阶段缓存（/auth/me 不返回用户名）',
+  );
+  assert.deepEqual(result.user.capabilities, ['ManageAccess']);
+});
