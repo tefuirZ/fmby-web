@@ -14,6 +14,7 @@ import {
   type SessionState,
   type SessionStatus,
 } from '@fmby/v2-shared/types';
+import { hasCapabilityIn } from '@fmby/v2-shared/contracts/auth';
 import {
   isSessionInvalidationError,
   subscribeAuthFailure,
@@ -84,21 +85,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setStatus('unauthenticated');
   }, [clearScheduledRetry]);
 
+  // #289：能力判定走 shared 唯一事实源（角色**全等枚举**，废除 `includes('admin')`
+  // 子串放行 —— 后者会让 admin_readonly / super-admin 等相似名角色误命中越权视图）。
   const hasCapability = useCallback(
-    (cap: Capability): boolean => {
-      if (!user) return false;
-      const normalizedTarget = cap.toLowerCase().replace(/[:_-]/g, '');
-      const hasRoleAdmin =
-        Array.isArray(user.roles) &&
-        user.roles.some((r) => r.toLowerCase().includes('admin'));
-      if (hasRoleAdmin) return true;
-      return (
-        Array.isArray(user.capabilities) &&
-        user.capabilities.some(
-          (c) => c.toLowerCase().replace(/[:_-]/g, '') === normalizedTarget,
-        )
-      );
-    },
+    (cap: Capability): boolean => hasCapabilityIn(user, cap),
     [user],
   );
 

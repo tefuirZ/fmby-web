@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { mfaApi, SESSION_USERNAME_STORAGE_KEY } from '@fmby/v2-shared/contracts/auth';
+import { mfaApi } from '@fmby/v2-shared/contracts/auth';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type { User } from '@fmby/v2-shared/types';
 import { Field, SubmitButton } from './fields';
@@ -25,29 +25,23 @@ interface MfaVerifyPanelProps {
 
 export function MfaVerifyPanel({ challenge, onAuthenticated, onCancel }: MfaVerifyPanelProps) {
   const [code, setCode] = useState('');
-  // 登录时已缓存用户名（authApi.login persistSessionUsername 同源语义）。
-  const cachedUsername =
-    typeof sessionStorage !== 'undefined'
-      ? sessionStorage.getItem(SESSION_USERNAME_STORAGE_KEY)
-      : null;
-
   const mutation = useMutation({
-    mutationFn: () => mfaApi.verify({ challengeId: challenge.challengeId, code }),
+    // #289：verify 成功（后端已建会话）后**按契约补拉 /auth/me** 取真实 capabilities，
+    // 不再由本面板自行拼 `capabilities: []`（那会让 MFA 后权限视图恒空且不自愈）。
+    mutationFn: () => mfaApi.verifyForSession({ challengeId: challenge.challengeId, code }),
     onSuccess: (result) => {
       if (!result.verified) {
         // 后端 verified=false（码错）不抛错；诚实提示，不伪造成功。
         setLocalError('验证码不正确，请重试。');
         return;
       }
-      // 会话已由后端建立（cookie 已下发）。capabilities 由既有 restore 流经
-      // /auth/me fail-closed 补齐——与 authApi.login 同口径，不从用户名推断。
-      onAuthenticated({
-        id: String(result.userId),
-        name: cachedUsername ?? '',
-        display_name: cachedUsername ?? '',
-        roles: [],
-        capabilities: [],
-      });
+      if (!result.user) {
+        // 会话已建但权限面拉不到（/auth/me 失败或主体不一致）：fail-closed，
+        // 绝不带着空/伪造权限进入认证态。
+        setLocalError('登录已通过，但权限信息获取失败，请重新登录。');
+        return;
+      }
+      onAuthenticated(result.user);
     },
   });
 

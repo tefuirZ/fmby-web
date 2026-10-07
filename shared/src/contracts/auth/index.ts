@@ -73,4 +73,7 @@ export type {
   MfaEnrollmentRecord,
   MfaRecoveryCodesRecord,
   MfaVerifyRecord,
+  MfaVerifySessionRecord,
 } from './mfa';
+// #289：能力判定唯一事实源（角色全等枚举 + 能力字面量归一；替代各处子串匹配）。
+export { ADMIN_ROLE, hasCapabilityIn, isAdminRole } from './capabilityCheck';
