@@ -24,14 +24,19 @@ export const ADMIN_ROLE = 'admin';
 /**
  * 管理员角色字面量的**全等集合**（非子串）。
  *
- * 取值来自本仓既有角色枚举，不凭记忆：
- * - `shared/src/contracts/manage/types.ts:4-8` `ManageUserRole = "user" |
- *   "restricted_user" | "admin" | "super_admin"` ← **真值来源**；
- * - `ManageUserRole` 是管理面写侧/列表侧实际使用的角色类型（users/registration-codes 全线）。
+ * ★真值分层（2026-10-08 核到后端源码，别再凭前端类型猜）：
+ * - **后端内置角色只有 3 个**：`admin` / `user` / `restricted_user`
+ *   （`fmby-v2 crates/fmby-v2-domain/src/access/policies.rs:38-52` `BUILTIN_ROLES`，
+ *   内含 `BUILTIN_ADMIN_ROLE = "admin"`；`bridges/database.rs:519` 种子只 ensure 这三个）。
+ *   V1 曾有 `SuperAdmin`，已被迁移 `20260601090000_single_admin_role.sql` **删除**。
+ * - 前端 `ManageUserRole`（`shared/src/contracts/manage/types.ts:4-8`）多出一个
+ *   `"super_admin"` —— 它是**前端类型/UI 选项**（注册码 `role_template` 下拉），
+ *   后端**没有同名角色行**；若真下发会让 `find_role_id_by_name` 找不到而 400。
  *
- * 同时吃掉两种拼写变体（`super_admin` / `superadmin`）与大小写变体，
- * 因为历史数据与 `auth/user.ts:6` 的 `UserRole`（'SuperAdmin' | 'Admin' | …）
- * 用的是 PascalCase —— 归一后全等即可，不做子串。
+ * 故：`admin` 是唯一真实生效项；`super_admin`/`superadmin` 是**防御性冗余**——
+ * 保留只为兼容前端类型面与历史/大小写变体，**命中与否都不改变安全语义**
+ * （真实权限由 capabilities 决定；见 `hasCapabilityIn` 的能力侧判定）。
+ * 若将来确认前端不再产出该字面量，可直接删这两项（单点）。
  */
 const ADMIN_ROLE_ALIASES: ReadonlySet<string> = new Set([
   'admin',
