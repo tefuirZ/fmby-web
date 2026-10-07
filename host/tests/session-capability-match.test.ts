@@ -80,6 +80,28 @@ test('能力面同样不做子串匹配：ManageAccessXxx 不得放行 manage:ac
   assert.equal(hasCapabilityIn(user([], ['ManageAccessXxx']), 'manage:access'), false);
 });
 
+// ── 自审补充：枚举必须覆盖本仓**真实**角色字面量 ──────────────────────────────
+// 值来自 shared/src/contracts/manage/types.ts:4-8 的 `ManageUserRole`
+// （"user" | "restricted_user" | "admin" | "super_admin"），不凭记忆。
+// 上一版漏了 `super_admin`（规范名下划连写）⇒ 超级管理员被误判为非管理员（fail-closed 过头）。
+test('★枚举覆盖规范角色字面量：super_admin 是管理员', () => {
+  assert.equal(hasCapabilityIn(user(['super_admin'], []), 'manage:access'), true);
+});
+
+test('★枚举覆盖大小写变体：SuperAdmin / Super_Admin 是管理员', () => {
+  for (const role of ['SuperAdmin', 'Super_Admin', 'SUPER_ADMIN']) {
+    assert.equal(hasCapabilityIn(user([role], []), 'manage:access'), true, role);
+  }
+});
+
+test('★角色侧不剥分隔符：super-admin 不是管理员（剥了就会形似放行）', () => {
+  assert.equal(
+    hasCapabilityIn(user(['super-admin'], []), 'manage:access'),
+    false,
+    '角色侧剥分隔符会让 super-admin 归一成 superadmin 而越权放行',
+  );
+});
+
 test('导出 ADMIN_ROLE 常量与后端内置管理员角色名一致', () => {
   assert.equal(ADMIN_ROLE, 'admin');
   assert.equal(hasCapabilityIn(user(['admin'], []), 'manage:access'), true);

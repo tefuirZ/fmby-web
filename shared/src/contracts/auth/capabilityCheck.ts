@@ -21,15 +21,38 @@ import type { User } from './user';
 /** 后端内置管理员角色名（小写规范名）。角色匹配与它全等（大小写不敏感）。 */
 export const ADMIN_ROLE = 'admin';
 
-/** 历史/V2 变体：与 `ADMIN_ROLE` 同义的角色字面量（全等集合，非子串）。 */
-const ADMIN_ROLE_ALIASES: ReadonlySet<string> = new Set(['admin', 'superadmin']);
+/**
+ * 管理员角色字面量的**全等集合**（非子串）。
+ *
+ * 取值来自本仓既有角色枚举，不凭记忆：
+ * - `shared/src/contracts/manage/types.ts:4-8` `ManageUserRole = "user" |
+ *   "restricted_user" | "admin" | "super_admin"` ← **真值来源**；
+ * - `ManageUserRole` 是管理面写侧/列表侧实际使用的角色类型（users/registration-codes 全线）。
+ *
+ * 同时吃掉两种拼写变体（`super_admin` / `superadmin`）与大小写变体，
+ * 因为历史数据与 `auth/user.ts:6` 的 `UserRole`（'SuperAdmin' | 'Admin' | …）
+ * 用的是 PascalCase —— 归一后全等即可，不做子串。
+ */
+const ADMIN_ROLE_ALIASES: ReadonlySet<string> = new Set([
+  'admin',
+  'superadmin',
+  'super_admin',
+]);
 
 /** 归一：小写 + 去掉 `: _ -`（仅用于**能力字面量**，角色侧禁用）。 */
 function normalizeCapability(value: string): string {
   return value.toLowerCase().replace(/[:_-]/g, '');
 }
 
-/** 角色名归一：仅小写（**不**剥分隔符，`admin_readonly` 必须仍是 `admin_readonly`）。 */
+/**
+ * 角色名归一：**仅 trim + 小写**，绝不剥分隔符。
+ *
+ * 剥分隔符在角色侧是危险的：`super-admin` 会归一成 `superadmin` 而命中管理员枚举，
+ * 但 `super-admin` **不是**本仓角色字面量 —— 这正是本卡要废掉的「靠形似放行」同类缺陷。
+ * （实测：上一版我剥了分隔符，既有用例「super-admin 不命中」立刻转红，已回退。）
+ *
+ * 故下划线连写的 `super_admin` 靠**枚举里显式列出**来命中，而非靠归一。
+ */
 function normalizeRole(value: string): string {
   return value.trim().toLowerCase();
 }
