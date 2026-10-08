@@ -18,10 +18,11 @@ import {
   buildPlayerPoster,
   buildPortablePlaybackUrl,
   parseMimeContainer,
-  resolveAdjacentEpisodes,
   scheduleDeferredQuery,
   sortEpisodeCards,
 } from './play/playbackPresentation';
+// F-28：相邻集解析已下沉契约层（卡面要求），host 只消费，不再自建。
+import { resolveAdjacentEpisodes } from '@fmby/v2-shared/contracts/browse';
 import { usePlaybackProgress } from './play/usePlaybackProgress';
 import { PlaybackStage } from './play/PlaybackStage';
 import { PlayPageHeader } from './play/PlayPageHeader';

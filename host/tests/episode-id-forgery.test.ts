@@ -17,10 +17,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  resolveAdjacentEpisodes,
-  sortEpisodeCards,
-} from '../src/pages/browse/play/playbackPresentation.ts';
+// F-28 已把相邻集解析下沉契约层（卡面要求）⇒ 生产函数改从 shared 取；
+// sortEpisodeCards 仍是 host 侧的展示层排序，纯测试用途，仍走相对路径。
+import { resolveAdjacentEpisodes } from '@fmby/v2-shared/contracts/browse';
+import { sortEpisodeCards } from '../src/pages/browse/play/playbackPresentation.ts';
 
 type Card = Parameters<typeof sortEpisodeCards>[0][number];
 
