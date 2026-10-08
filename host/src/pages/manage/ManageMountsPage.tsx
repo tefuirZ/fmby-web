@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type ManageMountDirectoryBrowserResponse,
   type ManageMountProviderType,
@@ -48,6 +48,10 @@ export function ManageMountsPage() {
   const [refreshAbnormalOpen, setRefreshAbnormalOpen] = useState(false);
   const deferredKeyword = useDeferredValue(keyword.trim());
 
+  // F-47：已预填的 mountId（见下方预填 effect）——同一 mount 的详情轮询不再重置表单。
+  const prefilledMountIdRef = useRef<string | null>(null);
+  const mountKey = drawerState?.mode === 'edit' ? drawerState.mountId ?? null : null;
+
   const mountsQuery = useMountsQuery();
   const mountDetailQuery = useMountDetailQuery(drawerState);
   const { createMountMutation, updateMountMutation, deleteMountMutation, refreshAbnormalMutation } = useMountMutations({
@@ -63,11 +67,21 @@ export function ManageMountsPage() {
 
   useEffect(() => {
     if (drawerState?.mode === 'edit' && mountDetailQuery.data) {
+      // F-47：预填只认「换了一条 mount / 首次拿到详情」——原先 deps 含
+      // mountDetailQuery.data（对象引用），而详情 query 在有 pending/running
+      // 扫描任务时 1.5s 轮询 ⇒ 扫描运行期间打开抽屉，输入每 1.5s 被服务端旧值覆盖。
+      // 故用 ref 记录已预填的 mountId：同一 mount 的后续刷新不再重置表单，
+      // 换 mount（mountId 变）仍正常预填。
+      if (prefilledMountIdRef.current === mountKey) {
+        return;
+      }
+      prefilledMountIdRef.current = mountKey;
       setFormState(buildMountFormState(mountDetailQuery.data));
       setFormErrors({});
       setDirectoryBrowser(null);
     }
-  }, [drawerState?.mode, mountDetailQuery.data]);
+    // mountKey 而非 mountDetailQuery.data：后者每次轮询都是新对象引用。
+  }, [drawerState?.mode, mountDetailQuery.data, mountKey]);
 
   const mounts = mountsQuery.data?.items ?? [];
   const currentDetail = mountDetailQuery.data;
@@ -193,6 +207,9 @@ export function ManageMountsPage() {
     setDirectoryBrowser(null);
     setPendingAuthModeChange(null);
     setFormState(createEmptyMountForm());
+    // F-47：关抽屉时清掉已预填标记，否则重开**同一个** mount 会被当成「已预填」
+    // 而跳过预填，抽屉显示空白。
+    prefilledMountIdRef.current = null;
     setDrawerState(null);
   };
 
