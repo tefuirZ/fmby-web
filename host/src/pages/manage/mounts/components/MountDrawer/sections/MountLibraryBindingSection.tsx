@@ -14,9 +14,11 @@ import { manageApi } from '@fmby/v2-shared/contracts/manage';
 import type { ManageLibraryRecord } from '@fmby/v2-shared/contracts/manage';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { ConfirmDialog } from '@fmby/v2-shared/ui';
+import { queryKeys } from '@fmby/v2-shared/query';
 import { ManageSectionCard } from '../../../../components';
-import sharedStyles from '../../../longtail-shared/ManageShared.module.css';
-import styles from '../../../longtail-shared/ManageShared.module.css';
+import styles from '../../../../longtail-shared/ManageShared.module.css';
+
+const sharedStyles = styles;
 
 interface MountLibraryBindingSectionProps {
   /** 挂载 id（detail 的 mount.id）。 */
@@ -26,7 +28,7 @@ interface MountLibraryBindingSectionProps {
 export function MountLibraryBindingSection({ mountId }: MountLibraryBindingSectionProps) {
   // 候选库列表自取（manage 面 /api/manage/libraries，MANAGE_LIBRARY 已由页面门控）。
   const librariesQuery = useQuery({
-    queryKey: ['manage', 'libraries', 'for-binding'],
+    queryKey: queryKeys.manage.mounts.librariesForBinding(),
     queryFn: () => manageApi.getLibraries(),
   });
   const libraries: ManageLibraryRecord[] = librariesQuery.data?.items ?? [];
@@ -35,13 +37,13 @@ export function MountLibraryBindingSection({ mountId }: MountLibraryBindingSecti
   const [unbindTarget, setUnbindTarget] = useState<{ id: string; name: string } | null>(null);
 
   const listQuery = useQuery({
-    queryKey: ['manage', 'mount', mountId, 'libraries'],
+    queryKey: queryKeys.manage.mounts.libraries(mountId),
     queryFn: () => manageApi.listMountLibraries(mountId),
   });
 
   const invalidate = () => {
     void queryClient.invalidateQueries({
-      queryKey: ['manage', 'mount', mountId, 'libraries'],
+      queryKey: queryKeys.manage.mounts.libraries(mountId),
     });
   };
 
