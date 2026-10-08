@@ -58,44 +58,50 @@ export function resolveEpisodeNeighbors(
 }
 
 /**
- * F-28（fmby-web#2）：相邻集解析。**从 PlayPage 内联逻辑原样搬出**，行为未变。
+ * F-28（fmby-web#2）：相邻集解析。
  *
- * 搬出动机：F-28 修复需要对此逻辑写可证伪的回归锁，而内联在 useMemo 里的版本
- * 无法被测试直接调用（仓内无 jsdom/react-test-renderer，且 SSR 不执行 effect）。
- * 本函数是**逐字复制**，不是重写；任何行为变更都应体现在 F-28 的修复提交里，
- * 由 host/tests/episode-id-forgery.test.ts 兜住。
+ * 修法（按卡面「邻居解析用真实 seasonId+episodeNumber；拿不到就禁用按钮，不伪造」）：
+ * 1. **删掉 `episode-${200+n}` 合成 id**。该编码前后端均无出处：后端
+ *    `fmby-v2-application/src/task_center.rs:786` 的 `media_item_id_from_key` 表明
+ *    item_id 是 provider **纯数字串**；全 `crates/` 仅 3 处 `"episode-N"` 字面量，
+ *    全在 `fmby-v2-search/src/runtime_tests.rs` 测试夹具里，与 `200+` 无关。
+ * 2. **删掉 `episode-(\d+)$` 反推**。真实 id 下该正则恒不命中（已实测 9001 /
+ *    e-s02e01 / tt0111161 全部 false）⇒ 右侧恒 NaN ⇒ 是死代码。
+ * 3. **按 `seasonId` 分组取相邻**。不能用 `seasonNumber`：后端 bridge 建卡时
+ *    `season_number`/`episode_number` 硬编码 `None`（browse/service.rs:110-113、
+ *    610-613；manage_media/convert.rs:87），恒为 undefined；且前端
+ *    `browse/api.ts:162` 回退链含 `index_number`，只有集号时会把 seasonNumber
+ *    填成**集号**（实测 E01/E02/E03 ⇒ 1/2/3），按它分组会把当季每集拆散。
+ *    `seasonId` 是当前唯一可靠的同季判据（来自 `node_parent_context`）。
+ *
+ * 退化：卡片无 `seasonId` 时全部归入同一组，退回原有「整剧平铺」行为（仍不伪造
+ * id）——此时与修复前一致，不产生新的用户可见回退。
  */
 export function resolveAdjacentEpisodes(args: {
   currentItemId: string | undefined;
   siblings: MediaCardSummary[];
   isEpisodeView: boolean;
-  episodeNumber?: number;
-  seasonNumber?: number;
-  /** 仅用于满足 (typeof seriesEpisodes)[number] 的类型别名，运行期无意义。 */
-  sample?: MediaCardSummary;
+  seasonId?: string;
 }) {
-  const { currentItemId, siblings, isEpisodeView, episodeNumber, seasonNumber } = args;
+  const { currentItemId, siblings, isEpisodeView, seasonId } = args;
   const resolved = resolveEpisodeNeighbors(currentItemId, siblings);
   if (!isEpisodeView) {
     return resolved;
   }
-  const current = episodeNumber ?? Number(currentItemId?.match(/episode-(\d+)$/)?.[1]) - 200;
-  if (!Number.isFinite(current) || current <= 0) {
-    return resolved;
-  }
-  const makeFallback = (number: number) =>
-    ({
-      id: `episode-${200 + number}`,
-      title: `第 ${number} 集`,
-      kind: 'episode' as const,
-      playbackTargetId: `episode-${200 + number}`,
-      seasonNumber: seasonNumber ?? 1,
-      episodeNumber: number,
-    }) as MediaCardSummary;
+  // 同季分组：无 seasonId 的卡片归入同一组（键 null），保持原有平铺语义。
+  const sameSeason = siblings.filter((card) => (card.seasonId ?? null) === (seasonId ?? null));
+  const indexInSeason = currentItemId
+    ? sameSeason.findIndex(
+        (card) => card.id === currentItemId || card.playbackTargetId === currentItemId,
+      )
+    : -1;
   return {
     ...resolved,
-    previous: resolved.previous ?? (current > 1 ? makeFallback(current - 1) : undefined),
-    next: resolved.next ?? makeFallback(current + 1),
+    previous: indexInSeason > 0 ? sameSeason[indexInSeason - 1] : undefined,
+    next:
+      indexInSeason >= 0 && indexInSeason < sameSeason.length - 1
+        ? sameSeason[indexInSeason + 1]
+        : undefined,
   };
 }
 

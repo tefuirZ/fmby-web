@@ -85,16 +85,22 @@ export function PlayPage() {
     () => sortEpisodeCards(seriesEpisodes.filter((entry) => entry.kind === 'episode')),
     [seriesEpisodes],
   );
+  // F-28：当前集的季 id。detail 面的季号恒为 None（后端 bridge 硬编码），但
+  // detail.season.id 是真实 season 节点 id；detail 未到时用列表里当前集卡片自己的
+  // seasonId 兜底。两者都拿不到时为 undefined，退回整剧平铺行为（仍不伪造 id）。
+  const currentSeasonId =
+    detail?.season?.id ??
+    episodeList.find((entry) => entry.id === itemId || entry.playbackTargetId === itemId)
+      ?.seasonId;
   const episodeNeighbors = useMemo(
     () =>
       resolveAdjacentEpisodes({
         currentItemId: itemId,
         siblings: episodeList,
         isEpisodeView,
-        episodeNumber: detail?.episodeNumber,
-        seasonNumber: detail?.seasonNumber,
+        seasonId: currentSeasonId,
       }),
-    [detail, isEpisodeView, itemId, episodeList],
+    [detail, isEpisodeView, itemId, episodeList, currentSeasonId],
   );
   const episodeNavigation = useMemo<EpisodeNavigationControls | undefined>(() => {
     if (!isEpisodeView) {
