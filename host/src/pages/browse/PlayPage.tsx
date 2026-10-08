@@ -18,7 +18,7 @@ import {
   buildPlayerPoster,
   buildPortablePlaybackUrl,
   parseMimeContainer,
-  resolveEpisodeNeighbors,
+  resolveAdjacentEpisodes,
   scheduleDeferredQuery,
   sortEpisodeCards,
 } from './play/playbackPresentation';
@@ -85,29 +85,17 @@ export function PlayPage() {
     () => sortEpisodeCards(seriesEpisodes.filter((entry) => entry.kind === 'episode')),
     [seriesEpisodes],
   );
-  const episodeNeighbors = useMemo(() => {
-    const resolved = resolveEpisodeNeighbors(itemId, episodeList);
-    if (!isEpisodeView) {
-      return resolved;
-    }
-    const current = detail?.episodeNumber ?? Number(itemId?.match(/episode-(\d+)$/)?.[1]) - 200;
-    if (!Number.isFinite(current) || current <= 0) {
-      return resolved;
-    }
-    const makeFallback = (number: number) => ({
-      id: `episode-${200 + number}`,
-      title: `第 ${number} 集`,
-      kind: 'episode' as const,
-      playbackTargetId: `episode-${200 + number}`,
-      seasonNumber: detail?.seasonNumber ?? 1,
-      episodeNumber: number,
-    }) as (typeof seriesEpisodes)[number];
-    return {
-      ...resolved,
-      previous: resolved.previous ?? (current > 1 ? makeFallback(current - 1) : undefined),
-      next: resolved.next ?? makeFallback(current + 1),
-    };
-  }, [detail, isEpisodeView, itemId, seriesEpisodes]);
+  const episodeNeighbors = useMemo(
+    () =>
+      resolveAdjacentEpisodes({
+        currentItemId: itemId,
+        siblings: episodeList,
+        isEpisodeView,
+        episodeNumber: detail?.episodeNumber,
+        seasonNumber: detail?.seasonNumber,
+      }),
+    [detail, isEpisodeView, itemId, episodeList],
+  );
   const episodeNavigation = useMemo<EpisodeNavigationControls | undefined>(() => {
     if (!isEpisodeView) {
       return undefined;

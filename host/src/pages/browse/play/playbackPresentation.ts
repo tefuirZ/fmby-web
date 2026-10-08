@@ -57,6 +57,48 @@ export function resolveEpisodeNeighbors(
   };
 }
 
+/**
+ * F-28（fmby-web#2）：相邻集解析。**从 PlayPage 内联逻辑原样搬出**，行为未变。
+ *
+ * 搬出动机：F-28 修复需要对此逻辑写可证伪的回归锁，而内联在 useMemo 里的版本
+ * 无法被测试直接调用（仓内无 jsdom/react-test-renderer，且 SSR 不执行 effect）。
+ * 本函数是**逐字复制**，不是重写；任何行为变更都应体现在 F-28 的修复提交里，
+ * 由 host/tests/episode-id-forgery.test.ts 兜住。
+ */
+export function resolveAdjacentEpisodes(args: {
+  currentItemId: string | undefined;
+  siblings: MediaCardSummary[];
+  isEpisodeView: boolean;
+  episodeNumber?: number;
+  seasonNumber?: number;
+  /** 仅用于满足 (typeof seriesEpisodes)[number] 的类型别名，运行期无意义。 */
+  sample?: MediaCardSummary;
+}) {
+  const { currentItemId, siblings, isEpisodeView, episodeNumber, seasonNumber } = args;
+  const resolved = resolveEpisodeNeighbors(currentItemId, siblings);
+  if (!isEpisodeView) {
+    return resolved;
+  }
+  const current = episodeNumber ?? Number(currentItemId?.match(/episode-(\d+)$/)?.[1]) - 200;
+  if (!Number.isFinite(current) || current <= 0) {
+    return resolved;
+  }
+  const makeFallback = (number: number) =>
+    ({
+      id: `episode-${200 + number}`,
+      title: `第 ${number} 集`,
+      kind: 'episode' as const,
+      playbackTargetId: `episode-${200 + number}`,
+      seasonNumber: seasonNumber ?? 1,
+      episodeNumber: number,
+    }) as MediaCardSummary;
+  return {
+    ...resolved,
+    previous: resolved.previous ?? (current > 1 ? makeFallback(current - 1) : undefined),
+    next: resolved.next ?? makeFallback(current + 1),
+  };
+}
+
 export function buildOverviewMeta(item: ItemDetailResponse) {
   return [
     item.year ? String(item.year) : undefined,
