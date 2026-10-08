@@ -43,9 +43,12 @@ ArtPlayerEngineAdapter.prototype.create = function () {
 
 function Probe() {
   const [tick, setTick] = useState(0);
+  const [url, setUrl] = useState('https://example.test/a.mkv');
   globalThis.__bump = () => setTick((t) => t + 1);
+  // 切集：与 PlayPage 同形（同一组件实例换 url），而非重挂整个树。
+  globalThis.__switchUrl = () => setUrl('https://example.test/b.mkv');
   return createElement(VideoPlayer, {
-    url: 'https://example.test/a.mkv',
+    url,
     poster: tick > 0 ? 'https://example.test/poster-late.jpg' : undefined,
     resumePosition: tick,
     onTimeUpdate: () => {},
@@ -110,6 +113,17 @@ test('F-48：poster / resumePosition 抖动不得导致播放器引擎反复销�
       assert.ok(
         rebuilds <= 1,
         `10 次进度/海报抖动后引擎重建 ${rebuilds} 次、销毁 ${teardowns} 次（应 ≤1：同一条目播放不该 destroy+recreate，video 会从头重启）`,
+      );
+
+      // 反向守卫：换 url（真换一条媒体）必须**仍然**重建引擎，否则修复过头、
+      // 切集会播上一集的媒体。故先把 url 切走，再断言 create 次数增长。
+      const beforeSwitch = (await page.evaluate(() => ({ ...(globalThis as any).__c }))).creates;
+      await page.evaluate(() => (globalThis as any).__switchUrl());
+      await page.waitForTimeout(150);
+      const afterSwitch = (await page.evaluate(() => ({ ...(globalThis as any).__c }))).creates;
+      assert.ok(
+        afterSwitch > beforeSwitch,
+        `换 url 必须重建引擎（修复不得过头：切集要播新媒体）；${beforeSwitch} → ${afterSwitch}`,
       );
     } finally {
       await browser.close();
