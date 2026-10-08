@@ -24,7 +24,7 @@ import {
 
 type Card = Parameters<typeof sortEpisodeCards>[0][number];
 
-const card = (id: string, seasonNumber: number, episodeNumber: number): Card =>
+const card = (id: string, seasonNumber: number, episodeNumber: number, seasonId?: string): Card =>
   ({
     id,
     title: `S${seasonNumber}E${episodeNumber}`,
@@ -32,6 +32,7 @@ const card = (id: string, seasonNumber: number, episodeNumber: number): Card =>
     playbackTargetId: id,
     seasonNumber,
     episodeNumber,
+    seasonId,
     tags: [],
     artwork: {},
     hasPlayableSource: true,
@@ -48,14 +49,13 @@ const card = (id: string, seasonNumber: number, episodeNumber: number): Card =>
 function currentNeighbors(
   itemId: string | undefined,
   list: Card[],
-  detail?: { episodeNumber?: number; seasonNumber?: number },
+  opts?: { seasonId?: string },
 ) {
   return resolveAdjacentEpisodes({
     currentItemId: itemId,
     siblings: list,
     isEpisodeView: true,
-    episodeNumber: detail?.episodeNumber,
-    seasonNumber: detail?.seasonNumber,
+    seasonId: opts?.seasonId,
   });
 }
 
@@ -69,16 +69,22 @@ function assertNoForgedId(neighbor: Card | undefined, list: Card[], label: strin
 }
 
 test('F-28：邻居不得合成 id —— 当季无相邻集时不得凭空造 episode-2xx', () => {
-  const list = sortEpisodeCards([card('e-s01e01', 1, 1), card('e-s02e01', 2, 1)]);
-  const { previous, next } = currentNeighbors('e-s02e01', list, { episodeNumber: 1, seasonNumber: 2 });
+  const list = sortEpisodeCards([
+    card('e-s01e01', 1, 1, 'season-a'),
+    card('e-s02e01', 2, 1, 'season-b'),
+  ]);
+  const { previous, next } = currentNeighbors('e-s02e01', list, { seasonId: 'season-b' });
 
   assertNoForgedId(previous, list, 'previous');
   assertNoForgedId(next, list, 'next');
 });
 
 test('F-28：邻居不得合成 id —— 首集也必须给出真实或禁用，不得造 id', () => {
-  const list = sortEpisodeCards([card('e-s01e01', 1, 1), card('e-s01e02', 1, 2)]);
-  const { previous, next } = currentNeighbors('e-s01e01', list, { episodeNumber: 1, seasonNumber: 1 });
+  const list = sortEpisodeCards([
+    card('e-s01e01', 1, 1, 'season-a'),
+    card('e-s01e02', 1, 2, 'season-a'),
+  ]);
+  const { previous, next } = currentNeighbors('e-s01e01', list, { seasonId: 'season-a' });
 
   // 首集本就没有上一集 ⇒ previous 只能是 undefined（禁用），不能是合成的 episode-200。
   assertNoForgedId(previous, list, 'previous');
@@ -88,12 +94,12 @@ test('F-28：邻居不得合成 id —— 首集也必须给出真实或禁用�
 test('F-28：跨季时不得把下一季首集误判为相邻集', () => {
   // S01E03 之后紧接 S02E01。只按 episodeNumber 比较会误判「下一集 = 第 1 集」。
   const list = sortEpisodeCards([
-    card('e-s01e01', 1, 1),
-    card('e-s01e02', 1, 2),
-    card('e-s01e03', 1, 3),
-    card('e-s02e01', 2, 1),
+    card('e-s01e01', 1, 1, 'season-a'),
+    card('e-s01e02', 1, 2, 'season-a'),
+    card('e-s01e03', 1, 3, 'season-a'),
+    card('e-s02e01', 2, 1, 'season-b'),
   ]);
-  const { next } = currentNeighbors('e-s01e03', list, { episodeNumber: 3, seasonNumber: 1 });
+  const { next } = currentNeighbors('e-s01e03', list, { seasonId: 'season-a' });
 
   if (next) {
     // 若给出 next，它必须是本季真实存在的相邻集，且不得是另一季的第 1 集。
@@ -112,10 +118,10 @@ test('F-28：「真实 id 但错季」也必须被抓（死链判据盖不住这
   // 实测该错误实现产出：S2E3，id 真实存在 = true。
   // 故只有 seasonNumber 判据能拦住它，本条专门锁这一点。
   const list = sortEpisodeCards([
-    card('e-s01e01', 1, 1),
-    card('e-s01e02', 1, 2),
-    card('e-s02e02', 2, 2),
-    card('e-s02e03', 2, 3),
+    card('e-s01e01', 1, 1, 'season-a'),
+    card('e-s01e02', 1, 2, 'season-a'),
+    card('e-s02e02', 2, 2, 'season-b'),
+    card('e-s02e03', 2, 3, 'season-b'),
   ]);
   const current = { seasonNumber: 1, episodeNumber: 2 };
   const onlyByEpisodeNumber = list.find((c) => c.episodeNumber === current.episodeNumber + 1);
@@ -133,10 +139,7 @@ test('F-28：「真实 id 但错季」也必须被抓（死链判据盖不住这
   );
 
   // 任何合法实现都不得把错季条目当作邻居。
-  const { previous, next } = currentNeighbors('e-s01e02', list, {
-    episodeNumber: 2,
-    seasonNumber: 1,
-  });
+  const { previous, next } = currentNeighbors('e-s01e02', list, { seasonId: 'season-a' });
   for (const [label, neighbor] of [['previous', previous], ['next', next]] as const) {
     if (!neighbor) continue; // 禁用是合法结果
     assert.equal(
@@ -146,4 +149,20 @@ test('F-28：「真实 id 但错季」也必须被抓（死链判据盖不住这
     );
     assertNoForgedId(neighbor, list, label);
   }
+});
+
+test('F-28：无 seasonId 时退回整剧平铺，且仍不伪造 id', () => {
+  // 后端 detail/卡片都可能拿不到 seasonId（browse bridge 季号硬编码 None）。
+  // 此时必须退回原有「整剧平铺」邻接语义，而不是禁用，也不是伪造。
+  const list = sortEpisodeCards([
+    card('e-s01e01', 1, 1),
+    card('e-s01e02', 1, 2),
+    card('e-s01e03', 1, 3),
+  ]);
+  const { previous, next } = currentNeighbors('e-s01e02', list, { seasonId: undefined });
+
+  assert.equal(previous?.id, 'e-s01e01', '无季号时 previous 应仍可用（保持既有行为）');
+  assert.equal(next?.id, 'e-s01e03', '无季号时 next 应仍可用（保持既有行为）');
+  assertNoForgedId(previous, list, 'previous');
+  assertNoForgedId(next, list, 'next');
 });
