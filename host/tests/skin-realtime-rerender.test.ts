@@ -1,0 +1,114 @@
+// WEB-C1 ④ / #290：皮肤实时句柄的重渲回归锁。
+//
+// 跑法：node --import ./tests/register-aliases.mjs --test tests/skin-realtime-rerender.test.ts
+//
+// 为什么必须上真实浏览器：被测行为是 React **effect 依赖 + 订阅身份**语义，
+// `renderToStaticMarkup`（SSR）不执行 effect ⇒ 恒测不到（卡面点名的盲区）；
+// 仓内亦无 jsdom / react-test-renderer（pnpm-lock 无，且本卡不新增依赖）。
+// 故复用仓内已有 devDep：vite（打包）+ @playwright/test（真实 Chromium）。
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const HOST_ROOT = join(import.meta.dirname, '..');
+
+/** 探针 = 三个皮肤的真实形态：useSkinRealtime + useEffect(…, [realtime])。 */
+const PROBE_ENTRY = `
+import { createElement, useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { useSkinRealtime } from '${pathToFileURL(join(HOST_ROOT, 'src/theme/skins/useSkinRealtime.ts')).href}';
+
+const c = { renders: 0, effects: 0, listenerCalls: 0 };
+
+function Probe() {
+  c.renders += 1;
+  const realtime = useSkinRealtime(50);
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    c.effects += 1;
+    const unsub = realtime.subscribe(() => {
+      c.listenerCalls += 1;
+      forceTick((t) => t + 1);
+    });
+    return unsub;
+  }, [realtime]);
+  return createElement('div', null, 'probe');
+}
+
+createRoot(document.getElementById('root')).render(createElement(Probe));
+globalThis.__c = c;
+`;
+
+test('#290：轮询推送真的到达订阅者，且连续推送不重建皮肤 effect', async (t) => {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return;
+  }
+
+  const { build } = await import('vite');
+  const { chromium } = await import('@playwright/test');
+
+  const work = await mkdtemp(join(tmpdir(), 'probe290-'));
+  // entry 必须落在 host/tests/ 下：pnpm 的 node_modules 是按包的，
+  // 从 /tmp 解析不到 react/react-dom。产物仍输出到 work（临时目录）。
+  const entryFile = join(HOST_ROOT, 'tests', '__probe290-entry.ts');
+  await writeFile(entryFile, PROBE_ENTRY, 'utf8');
+
+  try {
+    await build({
+      // configFile:false —— 宿主 vite.config 的 manualChunks 与 inlineDynamicImports
+      // 互斥（rollup 报错）；探针只要一个自足产物，不继承宿主打包策略。
+      configFile: false,
+      root: HOST_ROOT,
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'P290', fileName: () => 'probe.js' },
+      },
+    });
+
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      const pageErrors: string[] = [];
+      page.on('pageerror', (error) => pageErrors.push(String(error)));
+      await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+      await page.addScriptTag({ path: join(work, 'probe.js') });
+      await page.waitForFunction(() => Boolean((globalThis as any).__c));
+
+      // 静置：等首次订阅 + 轮询节拍起来（修复前此段内 listenerCalls 恒 0）。
+      await page.waitForTimeout(200);
+      const before = await page.evaluate(() => ({ ...(globalThis as any).__c }));
+
+      // 收集「连续 10 次推送」窗口：50ms 轮询 ⇒ 600ms ≈ 12 拍，取前 10 拍。
+      await page.waitForTimeout(500);
+      const after = await page.evaluate(() => ({ ...(globalThis as any).__c }));
+
+      assert.deepEqual(pageErrors, [], '探针不得抛错');
+
+      const pushes = after.listenerCalls - before.listenerCalls;
+      assert.ok(
+        pushes >= 10,
+        `轮询必须真的推到订阅者（#290 前：依赖 ref.size 致 timer 恒不启动 ⇒ 实时刷新整体失效）；实测 ${pushes} 次推送`,
+      );
+
+      const rebuilds = after.effects - before.effects;
+      assert.ok(
+        rebuilds <= 1,
+        `连续 ${pushes} 次推送，皮肤 effect 重建 ${rebuilds} 次（应 ≤1：subscribe 身份稳定 ⇒ 依赖不失效）`,
+      );
+    } finally {
+      await browser.close();
+    }
+  } finally {
+    await rm(entryFile, { force: true });
+    await rm(work, { recursive: true, force: true });
+  }
+});
