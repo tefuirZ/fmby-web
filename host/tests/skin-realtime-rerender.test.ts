@@ -85,6 +85,41 @@ globalThis.__c = c;
 globalThis.__dropSecond = () => c.unsubDropped();
 `;
 
+/**
+ * 探针：订阅者**全部**退订后 timer 必须停（#290 修复把订阅计数从
+ * `listenersRef.current.size` 改为 state `subscriberCount` 后的新风险面）。
+ *
+ * 覆盖的是前两条测试都没碰的路径：
+ * - 前者只验「退订一个后另一个仍被调」；
+ * - 后者只验「推送到达 + effect 不重建」。
+ * 若 `subscriberCount` 因任何路径不归零，interval 会永久空转（无订阅者也在刷时间戳）。
+ * 这里用 `lastRefreshedAt` 观察：全部退订后它必须**停止变化**。
+ */
+const DRAIN_ENTRY = `
+import { createElement, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+import { useSkinRealtime } from '${pathToFileURL(join(HOST_ROOT, 'src/theme/skins/useSkinRealtime.ts')).href}';
+
+const c = { lastRefreshedAt: null };
+const root = createRoot(document.getElementById('root'));
+
+function Probe() {
+  const realtime = useSkinRealtime(50);
+  const { subscribe, lastRefreshedAt } = realtime;
+  c.lastRefreshedAt = lastRefreshedAt;
+  useEffect(() => {
+    const unsub = subscribe(() => {});
+    c.unsub = unsub;
+    return unsub;
+  }, [subscribe]);
+  return createElement('div', null, 'probe');
+}
+
+root.render(createElement(Probe));
+globalThis.__c = c;
+globalThis.__dropAll = () => c.unsub();
+`;
+
 test('#290：单个订阅者退订后不再被调用（存活订阅者不受影响）', async (t) => {
   if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
     t.skip('未安装 host 依赖（pnpm install 后重跑）');
@@ -209,6 +244,65 @@ test('#290：轮询推送真的到达订阅者，且连续推送不重建皮肤 
       assert.ok(
         rebuilds <= 1,
         `连续 ${pushes} 次推送，皮肤 effect 重建 ${rebuilds} 次（应 ≤1：subscribe 身份稳定 ⇒ 依赖不失效）`,
+      );
+    } finally {
+      await browser.close();
+    }
+  } finally {
+    await rm(entryFile, { force: true });
+    await rm(work, { recursive: true, force: true });
+  }
+});
+test('#290：订阅者全部退订后 timer 必须停止（否则空转）', async (t) => {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return;
+  }
+
+  const { build } = await import('vite');
+  const { chromium } = await import('@playwright/test');
+
+  const work = await mkdtemp(join(tmpdir(), 'probe290d-'));
+  const entryFile = join(HOST_ROOT, 'tests', '__probe290-drain-entry.ts');
+  await writeFile(entryFile, DRAIN_ENTRY, 'utf8');
+
+  try {
+    await build({
+      configFile: false,
+      root: HOST_ROOT,
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'P290D', fileName: () => 'probe.js' },
+      },
+    });
+
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      const pageErrors: string[] = [];
+      page.on('pageerror', (e) => pageErrors.push(String(e)));
+      await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+      await page.addScriptTag({ path: join(work, 'probe.js') });
+      await page.waitForFunction(() => Boolean((globalThis as any).__c));
+      await page.waitForTimeout(200);
+
+      // 退订全部后，等足够多个轮询窗口（50ms × 6 = 300ms）。
+      await page.evaluate(() => (globalThis as any).__dropAll());
+      await page.waitForTimeout(300);
+      const drained = await page.evaluate(() => (globalThis as any).__c.lastRefreshedAt);
+
+      await page.waitForTimeout(400);
+      const stillDrained = await page.evaluate(() => (globalThis as any).__c.lastRefreshedAt);
+
+      assert.deepEqual(pageErrors, [], '全部退订不得抛错');
+      assert.equal(
+        stillDrained,
+        drained,
+        `全部退订后 lastRefreshedAt 仍在变化 ⇒ timer 未停（subscriberCount 未归零，空转）: ${drained} → ${stillDrained}`,
       );
     } finally {
       await browser.close();
