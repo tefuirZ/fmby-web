@@ -102,8 +102,10 @@ function SkinFeedback(props: { state: string; title: string; description: string
 export function LibrarySkin(props: SkinProps) {
   const { data, state, actions, realtime } = props;
   // 实时显示必须有（WEB-C1 ④）：订阅 host 实时源（当前轮询兜底）。
+  // 依赖收窄到 `subscribe`（#290）：realtime 句柄每次推送换引用会重建本 effect。
+  const { subscribe } = realtime;
   const [, forceTick] = useState(0);
-  useEffect(() => realtime.subscribe(() => forceTick((tick: number) => tick + 1)), [realtime]);
+  useEffect(() => subscribe(() => forceTick((tick: number) => tick + 1)), [subscribe]);
 
   // —— loading：骨架（非转圈占位；暗房形态 = 细线面板呼吸）——
   if (state === 'loading') {

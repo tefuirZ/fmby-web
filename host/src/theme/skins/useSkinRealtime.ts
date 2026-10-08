@@ -7,7 +7,7 @@
  * `SkinRealtime` 不变，主题永远不自建定时器/连接。
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SkinRealtime } from '@fmby/v2-shared/theme';
 
 /** 轮询兜底默认间隔（ms）。实时面接入后此值仅作断线重连兜底节奏。 */
@@ -20,10 +20,11 @@ export const SKIN_REALTIME_POLL_INTERVAL_MS = 15_000;
  */
 export function useSkinRealtime(intervalMs = SKIN_REALTIME_POLL_INTERVAL_MS): SkinRealtime {
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
+  const [subscriberCount, setSubscriberCount] = useState(0);
   const listenersRef = useRef(new Set<() => void>());
 
   useEffect(() => {
-    if (listenersRef.current.size === 0) {
+    if (subscriberCount === 0) {
       return;
     }
     const timer = window.setInterval(() => {
@@ -35,22 +36,29 @@ export function useSkinRealtime(intervalMs = SKIN_REALTIME_POLL_INTERVAL_MS): Sk
     return () => {
       window.clearInterval(timer);
     };
-  }, [intervalMs, listenersRef.current.size]);
+  }, [intervalMs, subscriberCount]);
+
+  // ponytail: 订阅身份恒定（空依赖）——主题的 useEffect 依赖它，故每次推送
+  // 不得换引用，否则皮肤 effect 全量重建（#290）。升级路径：真有需要换订阅
+  // 句柄时（如按域隔离通道）再引入显式 channel key。
+  const subscribe = useCallback((listener: () => void) => {
+    listenersRef.current.add(listener);
+    // 首个订阅者进入 → 立即触发一次（不等下一拍）。
+    setLastRefreshedAt(Date.now());
+    setSubscriberCount(listenersRef.current.size);
+    return () => {
+      listenersRef.current.delete(listener);
+      setSubscriberCount(listenersRef.current.size);
+    };
+  }, []);
 
   return useMemo<SkinRealtime>(
     () => ({
       lastRefreshedAt,
       // TODO(realtime)：推送通道接入前恒 false（轮询兜底形态，诚实标注）。
       isLive: false,
-      subscribe: (listener) => {
-        listenersRef.current.add(listener);
-        // 首个订阅者进入 → 立即触发一次（不等下一拍）。
-        setLastRefreshedAt(Date.now());
-        return () => {
-          listenersRef.current.delete(listener);
-        };
-      },
+      subscribe,
     }),
-    [lastRefreshedAt],
+    [lastRefreshedAt, subscribe],
   );
 }

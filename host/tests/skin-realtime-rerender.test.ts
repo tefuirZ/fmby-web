@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 
 const HOST_ROOT = join(import.meta.dirname, '..');
 
-/** 探针 = 三个皮肤的真实形态：useSkinRealtime + useEffect(…, [realtime])。 */
+/** 探针 = 三个皮肤修复后的真实形态：effect 依赖 `subscribe`（而非 realtime 句柄）。 */
 const PROBE_ENTRY = `
 import { createElement, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -27,15 +27,16 @@ const c = { renders: 0, effects: 0, listenerCalls: 0 };
 function Probe() {
   c.renders += 1;
   const realtime = useSkinRealtime(50);
+  const { subscribe } = realtime;
   const [, forceTick] = useState(0);
   useEffect(() => {
     c.effects += 1;
-    const unsub = realtime.subscribe(() => {
+    const unsub = subscribe(() => {
       c.listenerCalls += 1;
       forceTick((t) => t + 1);
     });
     return unsub;
-  }, [realtime]);
+  }, [subscribe]);
   return createElement('div', null, 'probe');
 }
 
