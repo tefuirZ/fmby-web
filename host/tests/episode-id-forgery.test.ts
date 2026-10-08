@@ -17,7 +17,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sortEpisodeCards } from '../src/pages/browse/play/playbackPresentation.ts';
+import {
+  resolveAdjacentEpisodes,
+  sortEpisodeCards,
+} from '../src/pages/browse/play/playbackPresentation.ts';
 
 type Card = Parameters<typeof sortEpisodeCards>[0][number];
 
@@ -34,30 +37,26 @@ const card = (id: string, seasonNumber: number, episodeNumber: number): Card =>
     hasPlayableSource: true,
   }) as unknown as Card;
 
-/** 复刻 PlayPage.tsx:88-109 的当前邻居解析（原样，不做任何修补）。 */
-function currentNeighbors(itemId: string | undefined, list: Card[], detail?: {
-  episodeNumber?: number;
-  seasonNumber?: number;
-}) {
-  const resolved = { currentIndex: -1, previous: undefined as Card | undefined, next: undefined as Card | undefined };
-  const makeFallback = (number: number) =>
-    ({
-      id: `episode-${200 + number}`,
-      title: `第 ${number} 集`,
-      kind: 'episode' as const,
-      playbackTargetId: `episode-${200 + number}`,
-      seasonNumber: detail?.seasonNumber ?? 1,
-      episodeNumber: number,
-    }) as unknown as Card;
-  const current = detail?.episodeNumber ?? Number(itemId?.match(/episode-(\d+)$/)?.[1]) - 200;
-  if (!Number.isFinite(current) || current <= 0) {
-    return resolved;
-  }
-  return {
-    ...resolved,
-    previous: current > 1 ? makeFallback(current - 1) : undefined,
-    next: makeFallback(current + 1),
-  };
+/**
+ * 直接调用**生产代码** `resolveAdjacentEpisodes`（F-28 从 PlayPage 内联原样搬出的
+ * 纯函数），不再在测试里复刻一份。
+ *
+ * 为什么要这样：先前版本在测试内重写了一遍逻辑，那样即便生产代码修好了，
+ * 测试也不会转绿——它锁的是测试自己的副本，不是真实缺陷。改为直调生产函数后，
+ * 「修法落地 ⇒ 4 条 RED 转绿」才是可信的。
+ */
+function currentNeighbors(
+  itemId: string | undefined,
+  list: Card[],
+  detail?: { episodeNumber?: number; seasonNumber?: number },
+) {
+  return resolveAdjacentEpisodes({
+    currentItemId: itemId,
+    siblings: list,
+    isEpisodeView: true,
+    episodeNumber: detail?.episodeNumber,
+    seasonNumber: detail?.seasonNumber,
+  });
 }
 
 /** 邻居 id 必须真实存在于列表（死链判据）。 */
