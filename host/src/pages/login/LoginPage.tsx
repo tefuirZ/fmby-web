@@ -76,7 +76,7 @@ export function LoginPage() {
 
   // 公开 provider 可用性（免会话）。失败时**不渲染入口**（不伪造可用）。
   const providersQuery = useQuery({
-    queryKey: ['identity', 'login-providers'],
+    queryKey: queryKeys.identity.loginProviders(),
     queryFn: () => identityLoginApi.loginReadyProviders(),
     retry: false,
   });
@@ -102,7 +102,7 @@ export function LoginPage() {
     (searchParams.get('identity_provider') as IdentityProviderType | null) ??
     (callbackChallengeId ? resolvePendingProvider(callbackChallengeId) : undefined);
   const callbackCaptureQuery = useQuery({
-    queryKey: ['identity', 'callback', callbackProvider, callbackChallengeId, callbackCode],
+    queryKey: queryKeys.identity.callback(callbackProvider, callbackChallengeId, callbackCode),
     enabled: Boolean(callbackProvider && callbackChallengeId),
     retry: false,
     queryFn: () =>

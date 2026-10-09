@@ -228,6 +228,30 @@ function checkSingleImplementations() {
           });
         }
       }
+
+      // 3.5 （fmby-web#1 F-27）host/src 内不得出现内联 queryKey 字面量数组。
+      // 动机：F-27 实测 9 处 useQuery/invalidateQueries 直接内联键，与
+      // shared/src/query/keys.ts 的工厂「不同族」——一旦某侧改名即静默失联，
+      // 且这类键无法被统一失效前缀覆盖。要求一律走 queryKeys.* 工厂。
+      // 例外：工厂自身（shared/src/query/**）与契约 .ts。
+      // 跳过注释行：本规则按行文本匹配、不剥离注释 ⇒「// 旧写法: queryKey: ['a']」
+      // 这类说明性注释会被误判（已实测）。注释不是可执行代码，无强制价值。
+      const isCommentLine = /^\s*(\/\/|\/\*|\*)/.test(line);
+      if (
+        relPath.startsWith('host/src/') &&
+        !relPath.startsWith('host/src/api/') &&
+        !isCommentLine &&
+        /queryKey\s*:\s*\[[^\]]/.test(line)
+      ) {
+        violations.push({
+          rule: 'Inline Query Key Violation',
+          file: relPath,
+          line: lineNum,
+          content: line.trim(),
+          reason:
+            `inline queryKey literal in '${relPath}'; use queryKeys.* factory from shared/src/query/keys.ts instead`,
+        });
+      }
     });
   }
 }
