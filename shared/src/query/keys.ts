@@ -99,6 +99,13 @@ export const queryKeys = {
     auditLogs: () => ['manage', 'audit-logs'] as const,
     sessions: () => ['manage', 'sessions'] as const,
     scans: () => ['manage', 'scans'] as const,
+    // fmby-web#8：CAS 编排面（后端 #42-N5 = /api/admin/cas/*）。
+    cas: {
+      drives: () => ['manage', 'cas', 'drives'] as const,
+      // 扇出状态按 contentId 分键：不同内容的扇出互不覆盖。
+      fanout: (contentId: number) => ['manage', 'cas', 'fanout', contentId] as const,
+      reconcile: () => ['manage', 'cas', 'reconcile'] as const,
+    },
     taskCenter: {
       all: () => ['manage', 'task-center'] as const,
       overview: () => ['manage', 'task-center', 'overview'] as const,

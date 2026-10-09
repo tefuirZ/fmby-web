@@ -65,6 +65,7 @@ function RouteHydrateFallback() {
  * - /manage/site/security/sessions        会话管理
  * - /manage/site/security/audit-logs      操作日志
  * - /manage/site/security/runtime-logs    运行日志
+ * - /manage/site/cas                    CAS 编排（多盘扇出配置/状态，fmby-web#8）
  * - /manage/site/settings                 站点设置
  * - /manage/site/advanced                 高级设置
  * - /manage/site/telegram                 Telegram Bot 配置（P6-04）
@@ -507,6 +508,14 @@ export const router = createBrowserRouter([
                 lazy: async () => {
                   const { ManageEmailChannelPage } = await import('@/pages/manage/ManageEmailChannelPage');
                   return { Component: ManageEmailChannelPage };
+                },
+              },
+              {
+                // fmby-web#8：CAS 编排（多盘扇出配置/状态）。后端 #42-N5。
+                path: 'cas',
+                lazy: async () => {
+                  const { ManageCasPage } = await import('@/pages/manage/ManageCasPage');
+                  return { Component: ManageCasPage };
                 },
               },
               {
