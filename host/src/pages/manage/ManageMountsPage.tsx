@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import {
   type ManageMountDirectoryBrowserResponse,
   type ManageMountProviderType,
@@ -29,7 +29,7 @@ import {
   buildMountFormState,
   createEmptyMountForm,
 } from './mounts/formUtils';
-import { useMountsQuery, useMountDetailQuery, useMountMutations, useMountValidation } from './mounts/hooks';
+import { useMountsQuery, useMountDetailQuery, useMountMutations, useMountValidation, useMountDrawerPrefill } from './mounts/hooks';
 import { MountTable, MountDrawer } from './mounts/components';
 import { useMountHealthFaultMap } from './mounts/hooks/useMountHealthFaultMap';
 
@@ -61,13 +61,12 @@ export function ManageMountsPage() {
     setBanner, setFormErrors, setDirectoryBrowser,
   });
 
-  useEffect(() => {
-    if (drawerState?.mode === 'edit' && mountDetailQuery.data) {
-      setFormState(buildMountFormState(mountDetailQuery.data));
-      setFormErrors({});
-      setDirectoryBrowser(null);
-    }
-  }, [drawerState?.mode, mountDetailQuery.data]);
+  // F-47：预填下沉到 useMountDrawerPrefill（判据是 mountId 而非 detail 引用，否则
+  // 详情轮询每1.5s回新对象 ⇒ 抽屉里用户输入被旧值覆盖）。
+  const { resetPrefill } = useMountDrawerPrefill({
+    drawerState, detail: mountDetailQuery.data, setFormState, setFormErrors,
+    clearDirectoryBrowser: () => setDirectoryBrowser(null),
+  });
 
   const mounts = mountsQuery.data?.items ?? [];
   const currentDetail = mountDetailQuery.data;
@@ -193,6 +192,7 @@ export function ManageMountsPage() {
     setDirectoryBrowser(null);
     setPendingAuthModeChange(null);
     setFormState(createEmptyMountForm());
+    resetPrefill(); // F-47：清已预填标记，否则重开同一 mount 会显示空白
     setDrawerState(null);
   };
 
