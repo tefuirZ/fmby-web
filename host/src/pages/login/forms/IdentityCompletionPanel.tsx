@@ -19,6 +19,7 @@ import type {
   IdentityProviderType,
 } from '@fmby/v2-shared/contracts/auth';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { queryKeys } from '@fmby/v2-shared/query';
 import type { User } from '@fmby/v2-shared/types';
 
 import styles from '../LoginPage.module.css';
@@ -78,7 +79,7 @@ export function IdentityCompletionPanel({
   });
 
   const telegramStatusQuery = useQuery({
-    queryKey: ['identity', 'telegram-login-status', pending.challengeId],
+    queryKey: queryKeys.identity.telegramLoginStatus(pending.challengeId),
     queryFn: () =>
       identityLoginApi.telegramStatus({
         challengeId: pending.challengeId,

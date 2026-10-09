@@ -18,10 +18,11 @@ import {
   buildPlayerPoster,
   buildPortablePlaybackUrl,
   parseMimeContainer,
-  resolveEpisodeNeighbors,
   scheduleDeferredQuery,
   sortEpisodeCards,
 } from './play/playbackPresentation';
+// F-28：相邻集解析已下沉契约层（卡面要求），host 只消费，不再自建。
+import { resolveAdjacentEpisodes } from '@fmby/v2-shared/contracts/browse';
 import { usePlaybackProgress } from './play/usePlaybackProgress';
 import { PlaybackStage } from './play/PlaybackStage';
 import { PlayPageHeader } from './play/PlayPageHeader';
@@ -85,29 +86,23 @@ export function PlayPage() {
     () => sortEpisodeCards(seriesEpisodes.filter((entry) => entry.kind === 'episode')),
     [seriesEpisodes],
   );
-  const episodeNeighbors = useMemo(() => {
-    const resolved = resolveEpisodeNeighbors(itemId, episodeList);
-    if (!isEpisodeView) {
-      return resolved;
-    }
-    const current = detail?.episodeNumber ?? Number(itemId?.match(/episode-(\d+)$/)?.[1]) - 200;
-    if (!Number.isFinite(current) || current <= 0) {
-      return resolved;
-    }
-    const makeFallback = (number: number) => ({
-      id: `episode-${200 + number}`,
-      title: `第 ${number} 集`,
-      kind: 'episode' as const,
-      playbackTargetId: `episode-${200 + number}`,
-      seasonNumber: detail?.seasonNumber ?? 1,
-      episodeNumber: number,
-    }) as (typeof seriesEpisodes)[number];
-    return {
-      ...resolved,
-      previous: resolved.previous ?? (current > 1 ? makeFallback(current - 1) : undefined),
-      next: resolved.next ?? makeFallback(current + 1),
-    };
-  }, [detail, isEpisodeView, itemId, seriesEpisodes]);
+  // F-28：当前集的季 id。detail 面的季号恒为 None（后端 bridge 硬编码），但
+  // detail.season.id 是真实 season 节点 id；detail 未到时用列表里当前集卡片自己的
+  // seasonId 兜底。两者都拿不到时为 undefined，退回整剧平铺行为（仍不伪造 id）。
+  const currentSeasonId =
+    detail?.season?.id ??
+    episodeList.find((entry) => entry.id === itemId || entry.playbackTargetId === itemId)
+      ?.seasonId;
+  const episodeNeighbors = useMemo(
+    () =>
+      resolveAdjacentEpisodes({
+        currentItemId: itemId,
+        siblings: episodeList,
+        isEpisodeView,
+        seasonId: currentSeasonId,
+      }),
+    [detail, isEpisodeView, itemId, episodeList, currentSeasonId],
+  );
   const episodeNavigation = useMemo<EpisodeNavigationControls | undefined>(() => {
     if (!isEpisodeView) {
       return undefined;
