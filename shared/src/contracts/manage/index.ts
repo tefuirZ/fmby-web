@@ -102,6 +102,14 @@ export type {
 } from "./types";
 export { adminApiTokensApi, mapAdminApiToken } from "./adminApiTokens";
 export type { AdminApiToken, AdminApiTokenCreateInput } from "./adminApiTokens";
+// fmby-web#8：CAS 编排面（后端 #42-N5 = /api/admin/cas/*）。
+export { casAdminApi, mapCasFanoutStatus, mapCasDriveStatus } from "./casAdmin";
+export type {
+  CasDriveConfig,
+  CasDriveStatus,
+  CasFanoutStatus,
+  CasReconcileReport,
+} from "./casAdmin";
 export { migrationApi } from "./migration";
 export type {
   MigrationEntry,
