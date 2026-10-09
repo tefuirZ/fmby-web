@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { authApi, type InstallDatabaseKind, type DatabaseProbeRequest } from '@fmby/v2-shared/contracts/auth';
+import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../login/LoginPage.module.css';
 
 export function InstallPage() {
   const [kind, setKind] = useState<InstallDatabaseKind>('sqlite');
   const [values, setValues] = useState<DatabaseProbeRequest>({ kind: 'sqlite', path: '' });
-  const status = useQuery({ queryKey: ['install', 'status'], queryFn: () => authApi.getInstallStatus() });
+  const status = useQuery({ queryKey: queryKeys.install.status(), queryFn: () => authApi.getInstallStatus() });
   const probe = useMutation({ mutationFn: (data: DatabaseProbeRequest) => authApi.probeDatabase(data) });
 
   function update(kind: InstallDatabaseKind) {
