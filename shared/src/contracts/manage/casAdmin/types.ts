@@ -14,9 +14,13 @@
 //!   PUT 入参 `UpsertCasDriveConfigRequest` 与 `CasDriveConfigDto` 同形。
 //! - 能力门 `MANAGE_LIBRARY`；端口未装配 ⇒ **fail-closed 500**（不回落空值/假状态）。
 //!
-//! ★`copy_state` 是**后端定义的开放字符串**（后端注释示例 `present`），不是布尔。
-//!   本层**原样透出**，不折叠成「是否已复制」—— 后端新增第三态（如 `copying`/`missing`）时，
-//!   折叠会静默丢信息。是否「已完成」由 UI 层按后端契约解释，不在映射层猜。
+//! ★`copy_state` 是**后端枚举的字符串投影**，不是布尔。
+//!   后端权威 `fmby-v2-domain/src/cas.rs:64`
+//!     `enum CopyState { Pending, Present, Failed, Tombstoned }`，
+//!   wire 由 `fmby-v2-bridges/src/bridges/cas_admin.rs:95` `d.copy_state.as_str()` 产生，
+//!   故取值集合**封闭**为 `pending` / `present` / `failed` / `tombstoned`。
+//!   本层仍**原样透出**、不折叠成「是否已复制」—— 折叠会丢掉 `failed`（实体丢失）
+//!   与 `tombstoned`（上游已删）这两个对账关键态的区分。
 
 /// 前端域形态 · 盘配置（CAS 矩阵的一行：开关 + 优先级）。
 export interface CasDriveConfig {

@@ -13,19 +13,42 @@
 
 export type CasCopyStateTone = 'success' | 'info' | 'warning' | 'danger' | 'neutral';
 
-/** 已知 copy_state → 中文 + 色调。新增后端状态时**未命中分支走「未知」**，不猜。 */
+/**
+ * 已知的 `copy_state` → 中文 + 色调。
+ *
+ * ★取值集合**与后端枚举逐一对齐**，不得凭空发明：
+ *   后端 `crates/fmby-v2-domain/src/cas.rs:64`
+ *     `enum CopyState { Pending, Present, Failed, Tombstoned }`
+ *   wire 由 `crates/fmby-v2-bridges/src/bridges/cas_admin.rs:95`
+ *     `d.copy_state.as_str()` 产生 ⇒ wire 取值**封闭**为四个：
+ *     `pending` / `present` / `failed` / `tombstoned`
+ *   语义取自同文件 :40-41 的口径注释：
+ *     pending    = 尚未得出落位结论
+ *     present    = 盘上确认存在（reconciled）
+ *     failed     = 实体丢失（三类差异之一）
+ *     tombstoned = 上游已删 / 墓碑化（非 reconciled）
+ *
+ * ★未命中时仍显示「状态未知」+ neutral（fail-closed）—— 后端若新增第五个取值，
+ *   在前端补映射前不应拄成任何已有语义（但那条 `④b` 测试会第一时间变红提醒）。
+ */
 const COPY_STATE_LABELS: Record<string, { label: string; tone: CasCopyStateTone }> = {
+  pending: { label: '待落位', tone: 'warning' },
   present: { label: '已复制', tone: 'success' },
-  copying: { label: '复制中', tone: 'info' },
-  pending: { label: '待复制', tone: 'warning' },
-  missing: { label: '缺失', tone: 'danger' },
-  failed: { label: '失败', tone: 'danger' },
+  failed: { label: '实体丢失', tone: 'danger' },
+  tombstoned: { label: '上游已删', tone: 'danger' },
 };
 
 const UNKNOWN_STATE: { label: string; tone: CasCopyStateTone } = {
   label: '状态未知',
   tone: 'neutral',
 };
+
+/**
+ * 已知的 `copy_state` 键集合（与后端枚举精确相等，不多不少）。
+ * 导出供测试做**集合级**断言 —— 否则「凭空发明幽灵状态」这种变异会存活
+ * （只断言真实值都认识的话，多出来的键不会让任何用例变红）。
+ */
+export const KNOWN_COPY_STATES = Object.keys(COPY_STATE_LABELS);
 
 /** 徽章文案。★未知 ⇒ 「状态未知」（不得谎称已复制）。 */
 export function resolveCopyStateLabel(copyState: string): string {
