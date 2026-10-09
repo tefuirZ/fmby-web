@@ -94,6 +94,11 @@ globalThis.__dropSecond = () => c.unsubDropped();
  * - 后者只验「推送到达 + effect 不重建」。
  * 若 `subscriberCount` 因任何路径不归零，interval 会永久空转（无订阅者也在刷时间戳）。
  * 这里用 `lastRefreshedAt` 观察：全部退订后它必须**停止变化**。
+ *
+ * ★必须先证明 timer「活着」再验它停（w03 轮复核发现）：
+ *   #290 前 timer 恒不启动 ⇒ 退订后它本来就不动 ⇒ 本断言空过。
+ *   只断言「停」对死 timer 恒真，是**验不出 bug 的假绿**。
+ *   故先取两拍证明在推进，再退订验停 —— 两个方向都绿才算数。
  */
 const DRAIN_ENTRY = `
 import { createElement, useEffect } from 'react';
@@ -289,6 +294,16 @@ test('#290：订阅者全部退订后 timer 必须停止（否则空转）', asy
       await page.addScriptTag({ path: join(work, 'probe.js') });
       await page.waitForFunction(() => Boolean((globalThis as any).__c));
       await page.waitForTimeout(200);
+
+      // 先证 timer 活着：连续两拍 lastRefreshedAt 必须推进（否则下面「停」是空断言）。
+      await page.waitForTimeout(200);
+      const liveA = await page.evaluate(() => (globalThis as any).__c.lastRefreshedAt);
+      await page.waitForTimeout(200);
+      const liveB = await page.evaluate(() => (globalThis as any).__c.lastRefreshedAt);
+      assert.ok(
+        liveB !== null && liveB !== liveA,
+        `退订前 timer 必须已在推进（否则「退订后停止」是空断言，测不出空转）: ${liveA} → ${liveB}`,
+      );
 
       // 退订全部后，等足够多个轮询窗口（50ms × 6 = 300ms）。
       await page.evaluate(() => (globalThis as any).__dropAll());
