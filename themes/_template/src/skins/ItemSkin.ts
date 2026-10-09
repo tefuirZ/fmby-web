@@ -91,10 +91,12 @@ export function ItemSkin(props: SkinProps) {
   const { data, state, actions, realtime } = props;
 
   // 硬约束 5：挂载即订阅实时源（host 轮询兜底；推送面接入后主题零改动）。
+  // 依赖收窄到 `subscribe`（#290）：realtime 句柄每次推送换引用会重建本 effect。
+  const { subscribe } = realtime;
   const [, forceTick] = useState(0);
   useEffect(
-    () => realtime.subscribe(() => forceTick((tick: number) => tick + 1)),
-    [realtime],
+    () => subscribe(() => forceTick((tick: number) => tick + 1)),
+    [subscribe],
   );
 
   // ── 状态 1/5：loading（骨架占位；不伪造数据）──────────────────────────

@@ -19,11 +19,12 @@ import { mfaApi } from '@fmby/v2-shared/contracts/auth';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { ManageSectionCard } from '../../longtail-shared/components';
 import styles from '../../longtail-shared/ManageShared.module.css';
+import { queryKeys } from '@fmby/v2-shared/query';
 
 export function MfaTotpSection() {
   const queryClient = useQueryClient();
   const statusQuery = useQuery({
-    queryKey: ['auth', 'mfa', 'status'],
+    queryKey: queryKeys.auth.mfaStatus(),
     queryFn: () => mfaApi.status(),
   });
 
@@ -39,7 +40,7 @@ export function MfaTotpSection() {
   const [disableOpen, setDisableOpen] = useState(false);
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['auth', 'mfa'] });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.auth.mfa() });
   };
 
   const enrollMutation = useMutation({

@@ -14,6 +14,26 @@
 export const queryKeys = {
   auth: {
     setupStatus: () => ['auth', 'setup-status'] as const,
+    // F-27（fmby-web#1）：MFA 状态 + 其失效前缀。此前内联 ['auth','mfa','status']
+    // 与 invalidate ['auth','mfa']，与工厂脱队。
+    mfa: () => ['auth', 'mfa'] as const,
+    mfaStatus: () => ['auth', 'mfa', 'status'] as const,
+  },
+
+  // F-27（fmby-web#1）：安装向导状态。此前内联 ['install','status']。
+  install: {
+    status: () => ['install', 'status'] as const,
+  },
+
+  // F-27（fmby-web#1）：身份登录面。此前内联 ['identity', ...] 三处。
+  identity: {
+    loginProviders: () => ['identity', 'login-providers'] as const,
+    // 形参可空：调用点 callbackProvider / callbackChallengeId 可能是 null
+    // （URL 未带 identity_provider 且反查不出）。
+    callback: (provider?: string | null, challengeId?: string | null, code?: string | null) =>
+      ['identity', 'callback', provider, challengeId, code] as const,
+    telegramLoginStatus: (challengeId: string) =>
+      ['identity', 'telegram-login-status', challengeId] as const,
   },
 
   browse: {
@@ -121,6 +141,12 @@ export const queryKeys = {
           : (['manage', 'mounts', 'detail'] as const),
       picker: () => ['manage', 'mounts', 'picker'] as const,
       health: () => ['manage', 'mounts', 'health'] as const,
+      // F-27（fmby-web#1）：挂载↔媒体库绑定列表。此前内联
+      // ['manage','mount',id,'libraries']（**mount 单数**）——与本工厂的
+      // 'mounts' 复数不同族，键值原样保留以免已有缓存失联。
+      libraries: (mountId: string) => ['manage', 'mount', mountId, 'libraries'] as const,
+      // 绑定面板的候选库列表（与 manage.libraries.list 是两把不同的键）。
+      librariesForBinding: () => ['manage', 'libraries', 'for-binding'] as const,
     },
 
     pan115: {
