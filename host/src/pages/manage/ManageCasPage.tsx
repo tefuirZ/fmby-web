@@ -25,11 +25,14 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { CasCopyStateBadge } from './cas/CasCopyStateBadge';
+import { casDriveKey, isDriveDirty, parsePriorityInput } from './cas/driveConfigEditing';
 
 export function ManageCasPage() {
   const queryClient = useQueryClient();
   const [contentIdInput, setContentIdInput] = useState('');
   const [banner, setBanner] = useState<string | null>(null);
+  // 最近一次保存成功的盘；用于清掉该行的脏草稿（否则刷新后仍显示「可保存」）。
+  const [savedKey, setSavedKey] = useState<string | null>(null);
 
   const drivesQuery = useQuery({
     queryKey: queryKeys.manage.cas.drives(),
@@ -46,8 +49,9 @@ export function ManageCasPage() {
 
   const upsertMutation = useMutation({
     mutationFn: (config: CasDriveConfig) => casAdminApi.upsertDriveConfig(config),
-    onSuccess: async () => {
+    onSuccess: async (_data, saved) => {
       setBanner('盘配置已保存');
+      setSavedKey(`${saved.providerType}:${saved.driveRef}`);
       await queryClient.invalidateQueries({ queryKey: queryKeys.manage.cas.drives() });
     },
     onError: (err) => setBanner(getErrorMessage(err)),
@@ -82,6 +86,7 @@ export function ManageCasPage() {
               configs={drivesQuery.data ?? []}
               onSave={(config) => upsertMutation.mutate(config)}
               saving={upsertMutation.isPending}
+              savedKey={savedKey}
             />
           )}
           {banner ? <InlineBanner variant="info" title={banner} /> : null}
@@ -103,11 +108,28 @@ function DriveConfigTable({
   configs,
   onSave,
   saving,
+  savedKey,
 }: {
   configs: CasDriveConfig[];
   onSave: (config: CasDriveConfig) => void;
   saving: boolean;
+  savedKey: string | null;
 }) {
+  // 编辑草稿：以 providerType:driveRef 为键。★没有草稿 ⇒ 没有「改了的东西」，
+  // 「保存」就是无操作；此时不提示「已保存」（⑧ 的 dirty 判据来源）。
+  const [drafts, setDrafts] = useState<Record<string, CasDriveConfig>>({});
+
+  const patch = (config: CasDriveConfig, next: Partial<CasDriveConfig>) => {
+    const key = casDriveKey(config);
+    setDrafts((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] ?? config), ...next },
+    }));
+  };
+
+  const isDirty = (config: CasDriveConfig) =>
+    isDriveDirty(config, drafts[casDriveKey(config)], savedKey);
+
   if (configs.length === 0) {
     // 空列表是**真状态**（端口装配了但一个盘都没配），与「未启用」区分开。
     return <p>尚未配置任何盘。CAS 扇出不会发生。</p>;
@@ -123,20 +145,48 @@ function DriveConfigTable({
         </tr>
       </thead>
       <tbody>
-        {configs.map((config) => (
-          <tr key={`${config.providerType}:${config.driveRef}`}>
-            <td>
-              {config.providerType} · {config.driveRef}
-            </td>
-            <td>{config.enabled ? '是' : '否'}</td>
-            <td>{config.priority}</td>
-            <td>
-              <button type="button" disabled={saving} onClick={() => onSave(config)}>
-                保存
-              </button>
-            </td>
-          </tr>
-        ))}
+        {configs.map((config) => {
+          const key = casDriveKey(config);
+          const draft = drafts[key] ?? config;
+          const dirty = isDirty(config);
+          return (
+            <tr key={key}>
+              <td>
+                {config.providerType} · {config.driveRef}
+              </td>
+              <td>
+                <input
+                  type="checkbox"
+                  aria-label={`${config.driveRef} 纳入扇出`}
+                  checked={draft.enabled}
+                  onChange={(e) => patch(config, { enabled: e.target.checked })}
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  aria-label={`${config.driveRef} 优先级`}
+                  value={draft.priority}
+                  onChange={(e) =>
+                    patch(config, {
+                      // 后端 priority 是 i32 ⇒ 非法输入回退原值，不发 NaN。
+                      priority: parsePriorityInput(e.target.value, config.priority),
+                    })
+                  }
+                />
+              </td>
+              <td>
+                <button
+                  type="button"
+                  disabled={saving || !dirty}
+                  onClick={() => onSave({ ...draft })}
+                >
+                  保存
+                </button>
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

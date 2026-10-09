@@ -23,6 +23,11 @@ import {
   resolveCopyStateTone,
   KNOWN_COPY_STATES,
 } from '../src/pages/manage/cas/formatCasDrive';
+import {
+  isDriveDirty,
+  parsePriorityInput,
+} from '../src/pages/manage/cas/driveConfigEditing';
+import type { CasDriveConfig } from '../../shared/src/contracts/manage/casAdmin/types';
 
 const read = (rel: string): string =>
   readFileSync(new URL(rel, import.meta.url), 'utf-8');
@@ -165,4 +170,95 @@ test('⑥ 保存走 PUT（与契约层一致，不在前端另发明方法）', 
     !/httpClient\.(post|patch)/.test(page),
     '页面层不得直接发 http 请求（须经契约层）',
   );
+});
+test('⑦ 盘配置必须**真可编辑**（不得有「保存原对象」的假保存按钮）', () => {
+  const page = read(PAGE);
+  // 卡面目标 1 是「多盘扇出**配置**」。若表内无可编辑控件，
+  // 「保存」按钮传的仍是原 config ⇒ PUT 回去一模一样 ⇒ 却是无操作，
+  // 却给用户回「盘配置已保存」—— 那是在**撒谎**。
+  assert.ok(
+    /<input[\s\S]*?type=["']checkbox["'][\s\S]*?checked=\{/.test(page),
+    'enabled 列须有受控 checkbox（纳入扇出开关）',
+  );
+  assert.ok(
+    /<input[\s\S]*?type=["']number["'][\s\S]*?value=\{/.test(page),
+    'priority 列须有受控 number 输入（可改优先级）',
+  );
+  // 保存时必须回传**编辑后**的值，而不是原对象
+  // 保存须回传**草稿副本**（展开运算符），而不是把原 config 对象原样 PUT 回去。
+  assert.ok(
+    /onSave\(\{\s*\.\.\.draft\s*\}\)/.test(page),
+    '保存须回传编辑后的草稿副本（不是把原 config 原样 PUT 回去）',
+  );
+  assert.ok(
+    !/onSave\(config\)/.test(page),
+    '不得把原始 config 直接 PUT 回去（那是无操作）',
+  );
+  // 「保存」按钮必须受 dirty 门控：无改动时禁用，不允许发出无意义的 PUT。
+  assert.ok(
+    /disabled=\{saving\s*\|\|\s*!dirty\}/.test(page),
+    '保存按钮须受 dirty 门控（无改动时禁用，避免发出无意义 PUT）',
+  );
+});
+
+test('⑧ 真实改动才提示成功（no-op 不得显示「已保存」）', () => {
+  const page = read(PAGE);
+  assert.ok(
+    /setBanner\(['"]盘配置已保存['"]\)/.test(page),
+    '成功文案须存在',
+  );
+  // 无操作时不得提示成功：须有 dirty 判定
+  assert.ok(
+    /dirty|isDirty|changed/.test(page),
+    '须有 dirty 判定，无改动时不得提示「已保存」',
+  );
+});
+
+test('⑨ 编辑态逻辑（行为断言：dirty / 优先级解析）', () => {
+  const base: CasDriveConfig = {
+    providerType: 'yun139',
+    driveRef: 'drive-a',
+    enabled: true,
+    priority: 10,
+  };
+
+  // dirty：无草稿 ⇒ 无改动（M15 变异：恒 false 会在「有真实改动」这条被抓）
+  assert.equal(isDriveDirty(base, undefined, null), false, '无草稿 ⇒ 不脏');
+
+  // 有真实改动 ⇒ 脏
+  assert.equal(
+    isDriveDirty(base, { ...base, enabled: false }, null),
+    true,
+    '改了 enabled 必须判脏（否则保存按钮永远禁用，功能不可用）',
+  );
+  assert.equal(
+    isDriveDirty(base, { ...base, priority: 20 }, null),
+    true,
+    '改了 priority 必须判脏',
+  );
+  // 草稿与原值相同 ⇒ 不脏（M13 变异：dirty 恒 true 会在此被抓）
+  assert.equal(
+    isDriveDirty(base, { ...base }, null),
+    false,
+    '草稿与原值相同 ⇒ 不脏（否则会发无意义的 PUT）',
+  );
+  // M14 变异：刚保存过的行，草稿须作废
+  assert.equal(
+    isDriveDirty(base, { ...base, enabled: false }, 'yun139:drive-a'),
+    false,
+    '该行刚保存成功 ⇒ 草稿作废，不得仍判脏',
+  );
+
+  // 优先级解析：非法输入回退原值，**绝不发 NaN**（M16 变异）
+  assert.equal(parsePriorityInput('', 10), 10, '空串 ⇒ 原值');
+  assert.equal(parsePriorityInput('abc', 10), 10, '非数字 ⇒ 原值');
+  assert.equal(parsePriorityInput('3', 10), 3, '合法数字照常解析');
+  for (const bad of ['', 'abc', 'x1', '  ']) {
+    const r = parsePriorityInput(bad, 7);
+    assert.ok(!Number.isNaN(r), `非法输入 ${JSON.stringify(bad)} 不得产出 NaN`);
+    assert.equal(r, 7, `非法输入 ${JSON.stringify(bad)} 须回退原值`);
+  }
+  // i32 边界（后端 dto/cas_admin.rs:27 priority: i32）
+  assert.equal(parsePriorityInput('99999999999', 0), 2147483647, '超 i32 上限须夹取');
+  assert.equal(parsePriorityInput('-99999999999', 0), -2147483648, '低于 i32 下限须夹取');
 });
