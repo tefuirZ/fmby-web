@@ -36,27 +36,6 @@ export function sortEpisodeCards(items: MediaCardSummary[]) {
   });
 }
 
-export function resolveEpisodeNeighbors(
-  currentItemId: string | undefined,
-  siblings: MediaCardSummary[],
-) {
-  const currentIndex = currentItemId
-    ? siblings.findIndex(
-        (candidate) =>
-          candidate.id === currentItemId || candidate.playbackTargetId === currentItemId,
-      )
-    : -1;
-
-  return {
-    currentIndex,
-    previous: currentIndex > 0 ? siblings[currentIndex - 1] : undefined,
-    next:
-      currentIndex >= 0 && currentIndex < siblings.length - 1
-        ? siblings[currentIndex + 1]
-        : undefined,
-  };
-}
-
 export function buildOverviewMeta(item: ItemDetailResponse) {
   return [
     item.year ? String(item.year) : undefined,

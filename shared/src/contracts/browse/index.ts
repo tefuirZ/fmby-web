@@ -1,6 +1,10 @@
 export { browseApi } from './api';
 export { personApi } from './person';
 export { collectionsBrowseApi } from './collections';
+export {
+  resolveAdjacentEpisodes,
+  resolveEpisodeNeighbors,
+} from './episodeNeighbors';
 export type {
   CollectionsListPageRecord,
   CollectionsListParams,

@@ -16,9 +16,8 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { ConfirmDialog } from '@fmby/v2-shared/ui';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { ManageSectionCard } from '../../../../components';
+import sharedStyles from '../../../../longtail-shared/ManageShared.module.css';
 import styles from '../../../../longtail-shared/ManageShared.module.css';
-
-const sharedStyles = styles;
 
 interface MountLibraryBindingSectionProps {
   /** 挂载 id（detail 的 mount.id）。 */
