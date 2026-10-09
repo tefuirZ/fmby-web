@@ -27,12 +27,14 @@ import {
   isDriveDirty,
   parsePriorityInput,
 } from '../src/pages/manage/cas/driveConfigEditing';
+import { isCasAdminUnwired } from '../../shared/src/contracts/manage/casAdmin/api';
 import type { CasDriveConfig } from '../../shared/src/contracts/manage/casAdmin/types';
 
 const read = (rel: string): string =>
   readFileSync(new URL(rel, import.meta.url), 'utf-8');
 
 const PAGE = '../../host/src/pages/manage/ManageCasPage.tsx';
+const API = '../../shared/src/contracts/manage/casAdmin/api.ts';
 const BADGE = '../../host/src/pages/manage/cas/CasCopyStateBadge.tsx';
 
 test('① 编排页存在且注册进 manage 路由', () => {
@@ -58,9 +60,16 @@ test('② 页面走 queryKeys.cas.*（不得内联字符串键 —— F-27 同�
 
 test('③ 端口未装配走 fail-closed，不渲染成正常空态', () => {
   const page = read(PAGE);
+  // ★必须用 **CAS 专用**判定（能认 503），而非通用 isServiceUnwiredError（只认 500/501）。
+  //   后端 admin_cas.rs 明确未装配返 503 dependency_unavailable，
+  //   用通用判定会让本卡最核心的 fail-closed 在真实后端下失效。
   assert.ok(
-    page.includes('isServiceUnwiredError'),
-    '须用 isServiceUnwiredError 识别端口未装配',
+    page.includes('isCasAdminUnwired'),
+    '须用 isCasAdminUnwired 识别端口未装配（isServiceUnwiredError 不认 503，是错的）',
+  );
+  assert.ok(
+    !page.includes('isServiceUnwiredError'),
+    '不得用只认 500/501 的 isServiceUnwiredError（后端未装配返 503，会漏判）',
   );
   assert.ok(/未启用|服务未装配|不可用/.test(page), '须有明确的「未启用」文案');
   // ★结构判据：fail-closed 分支必须真的「捕获并返回 null」，
@@ -68,7 +77,7 @@ test('③ 端口未装配走 fail-closed，不渲染成正常空态', () => {
   //    （变异：把 isServiceUnwiredError(err) 判断换成 false ⇒ query 变成真错误态，
   //    但仍显示 loading/error，而不会显示「未启用」）。
   assert.ok(
-    /catch\s*\(\s*\w+\s*\)\s*{[^}]*isServiceUnwiredError\(\s*\w+\s*\)\s*\)?\s*\n?\s*return\s+null/.test(page),
+    /catch\s*\(\s*\w+\s*\)\s*{[^}]*isCasAdminUnwired\(\s*\w+\s*\)\s*\)?\s*\n?\s*return\s+null/.test(page),
     '须在 catch 里把端口未装配错误转成 return null（驱动「未启用」分支）',
   );
   // 「未启用」分支必须真的渲染提示，而不是只定义一个永不使用的变量。
@@ -261,4 +270,48 @@ test('⑨ 编辑态逻辑（行为断言：dirty / 优先级解析）', () => {
   // i32 边界（后端 dto/cas_admin.rs:27 priority: i32）
   assert.equal(parsePriorityInput('99999999999', 0), 2147483647, '超 i32 上限须夹取');
   assert.equal(parsePriorityInput('-99999999999', 0), -2147483648, '低于 i32 下限须夹取');
+});
+
+test('⑩ 未装配识别必须覆盖后端真实的 503 dependency_unavailable', () => {
+  // 后端权威：fmby-v2-http/src/routes/admin_cas.rs:4,29-32,285-288
+  //   「端口未装配 ⇒ fail-closed **503**（DependencyUnavailable）」，
+  //   且显式说明 `http_status` 对 DependencyUnavailable 返 503（**非 500**）。
+  // 前端 code 字面量：shared/src/errors/error.ts:23 'dependency_unavailable'。
+  //
+  // ★而本席此前用的 isServiceUnwiredError **只认 500/501**（peripherals/api.ts:345-359），
+  //   对 503 一律返回 false ⇒ 页面会走「载入失败」分支而**不是**「服务未启用」
+  //   ⇒ 卡面最核心的 fail-closed 语义在真实后端下**根本不生效**。
+  const src = read(API);
+  assert.ok(
+    /dependency_unavailable/.test(src) || /503/.test(src),
+    'CAS 契约层必须识别 503 / dependency_unavailable（端口未装配的真实返回）',
+  );
+  assert.ok(
+    /isCasAdminUnwired/.test(src),
+    '须提供 CAS 专用的未装配判定（复用会漏 503 的 isServiceUnwiredError 是错的）',
+  );
+});
+
+test('⑪ fail-closed 判定对 500/501/503 三态都成立，且不误吃 404', () => {
+  const mk = (code: string, status: number) => ({
+    code,
+    message: 'x',
+    retryable: false,
+    status,
+  });
+  // 后端真实三态：500 internal / 501 not_implemented / 503 dependency_unavailable
+  // ★只给 code、**不带 status** 的形态也要覆盖：wire 客户端可能在映射层丢掉 status，
+  //   只靠 status 分支兜底会让这些形态漏判（变异 M19 即由此存活）。
+  assert.equal(
+    isCasAdminUnwired({ code: 'dependency_unavailable', message: 'x', retryable: true }),
+    true,
+    '只凭 code（无 status）也须认出 503 dependency_unavailable',
+  );
+  assert.equal(isCasAdminUnwired(mk('dependency_unavailable', 503)), true, '503 端口未装配');
+  assert.equal(isCasAdminUnwired(mk('internal', 500)), true, '500 internal');
+  assert.equal(isCasAdminUnwired(mk('not_implemented', 501)), true, '501 未实现');
+  // 绝不能把业务 404 当成「未装配」⇒ 否则路由写错会被伪装成「服务未启用」
+  assert.equal(isCasAdminUnwired(mk('not_found', 404)), false, '404 是路由错误，不得算未装配');
+  assert.equal(isCasAdminUnwired(new Error('boom')), false, '普通异常不得算未装配');
+  assert.equal(isCasAdminUnwired(null), false, 'null 不得算未装配');
 });

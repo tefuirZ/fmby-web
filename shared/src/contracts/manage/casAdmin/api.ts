@@ -106,6 +106,44 @@ export const casAdminApi = {
   },
 };
 
-// 错误面复用 `shared/src/errors` 既有口径（端口未装配 ⇒ 后端 500，由调用方对拍，
+// 错误面复用 `shared/src/errors` 既有口径（端口未装配 ⇒ 后端 503，由调用方对拍，
 // **不得**在映射层兜成空数组/假状态）。
 export { isApiError, getErrorMessage };
+
+/**
+ * CAS 管理端口「未装配」判定。
+ *
+ * ★为何不能用通用的 `isServiceUnwiredError`：
+ *   后端权威 `fmby-v2-http/src/routes/admin_cas.rs:4,29-32,285-288` 写明
+ *     「端口未装配 ⇒ fail-closed **503**（DependencyUnavailable）」，
+ *     并显式说明 `http_status` 对 `DependencyUnavailable` 返 **503（非 500）**。
+ *   而 `isServiceUnwiredError`（`peripherals/api.ts:345-359`）**只认 500/501**，
+ *   对 503 一律返 false ⇒ 页面会误走「载入失败」而非「服务未启用」，
+ *   恰好把卡面最核心的 fail-closed 语义弄丢。故本函数按后端真实返回实现。
+ *
+ * 三个后端可能出现的未装配形态：
+ *   · 503 `dependency_unavailable` —— handler 的 `service()` 端口未装配（**主路径**）
+ *   · 500 `internal`                 —— 已装配但沿用 trait 默认体（fail-closed）
+ *   · 501 `not_implemented`          —— 能力未实现
+ *
+ * ★绝不能把业务 **404** 算成未装配 —— 404 意味着路由没接对，
+ *   把它伪装成「服务未启用」会让接线错误长期隐身。
+ */
+export function isCasAdminUnwired(error: unknown): boolean {
+  if (!isApiError(error)) return false;
+  const code = error.code;
+  if (
+    code === "dependency_unavailable" ||
+    code === "DEPENDENCY_UNAVAILABLE" ||
+    code === "not_implemented" ||
+    code === "NOT_IMPLEMENTED" ||
+    code === "internal" ||
+    code === "HTTP_500" ||
+    code === "HTTP_501" ||
+    code === "HTTP_503"
+  ) {
+    return true;
+  }
+  const status = (error as { status?: unknown }).status;
+  return status === 500 || status === 501 || status === 503;
+}

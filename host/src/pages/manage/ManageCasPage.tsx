@@ -17,9 +17,9 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   casAdminApi,
+  isCasAdminUnwired,
   type CasDriveConfig,
 } from '@fmby/v2-shared/contracts/manage/casAdmin';
-import { isServiceUnwiredError } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -41,7 +41,7 @@ export function ManageCasPage() {
         return await casAdminApi.listDriveConfigs();
       } catch (err) {
         // 端口未装配 ⇒ 归一为 null，让下面显式渲染「未启用」而非空态。
-        if (isServiceUnwiredError(err)) return null;
+        if (isCasAdminUnwired(err)) return null;
         throw err;
       }
     },

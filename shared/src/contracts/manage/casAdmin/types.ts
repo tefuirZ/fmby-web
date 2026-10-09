@@ -35,7 +35,14 @@ export interface CasDriveStatus {
   driveId: number;
   providerType: string;
   driveRef: string;
-  /** 后端开放字符串，原样透出（不折叠成布尔）。 */
+  /**
+   * 后端 `CopyState` 枚举的字符串投影（**封闭**取值），原样透出。
+   * 权威：`fmby-v2-domain/src/cas.rs:64` `enum CopyState { Pending, Present, Failed, Tombstoned }`，
+   * wire 由 `fmby-v2-bridges/src/bridges/cas_admin.rs:95` `as_str()` 产生
+   * ⇒ 取值为 `pending` / `present` / `failed` / `tombstoned`。
+   * 不折叠成布尔：折叠会丢掉 `failed`（实体丢失）与 `tombstoned`（上游已删）
+   * 这两个对账关键态的区分。
+   */
   copyState: string;
   /** 未知大小为 `null`（**不是 0**）。 */
   sizeBytes: number | null;
