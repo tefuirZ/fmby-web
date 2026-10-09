@@ -188,6 +188,10 @@ export const authApi = {
       if (!raw.challenge_id) {
         throw new Error('mfa_required 响应缺少 challenge_id（契约漂移，fail-closed）');
       }
+      // #289：用户名**必须先缓存**再返回 challenge。MFA 走的是「login(mfa_required)
+      // → verify → /auth/me」三段流，而 /auth/me 不返回用户名（MeResponse 只有
+      // user_id + capabilities）——若此处不缓存，MFA 后的会话用户名恒为空串。
+      persistSessionUsername(data.username);
       return {
         status: 'mfa_required',
         challengeId: raw.challenge_id,
