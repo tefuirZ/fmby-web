@@ -317,6 +317,73 @@ async function mountLibTable(t: any) {
   };
 }
 
+test('契约①：↑↓/Home/End 后 activeElement 必须是行本身（<tr>）', async (t) => {
+  const h = await mount(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    for (const key of ['ArrowDown', 'ArrowDown', 'End', 'Home']) {
+      await page.keyboard.press(key);
+      const tag = await page.evaluate(() => document.activeElement?.tagName);
+      const isRow = await page.evaluate(
+        () => document.activeElement?.matches('[data-row-index]') ?? false,
+      );
+      assert.ok(
+        isRow,
+        `按 ${key} 后 activeElement 应为行本身（<tr>），实际 <${tag}> —— ` +
+          '若落到行内首控件，UserTable 的行首 checkbox 会让 Enter 变成「切换选中」',
+      );
+    }
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('契约②：Enter 在行焦点上触发 onActivate（死分支守卫）', async (t) => {
+  const h = await mount(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    assert.equal(
+      await page.evaluate(() => (globalThis as any).__opened?.()),
+      1,
+      '↑↓ 落到行后按 Enter 必须触发 onActivate（否则 37 表铺开时该分支是死代码）',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('契约③：行本身 tabindex=-1 ⇒ 不进 Tab 序，行内控件仍可 Tab 达', async (t) => {
+  const h = await mount(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    await page.keyboard.press('ArrowDown');
+    const rowTabindex = await page.evaluate(
+      () => document.querySelector('[data-row-index="1"]')?.getAttribute('tabindex'),
+    );
+    assert.equal(rowTabindex, '-1', '行本身须 tabindex=-1（程序化可聚焦、不进 Tab 序）');
+    const controlsNegative = await page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll('[data-row-index] button')).filter(
+          (b) => b.getAttribute('tabindex') === '-1',
+        ).length,
+    );
+    assert.equal(controlsNegative, 0, '行内控件不得被设 tabindex=-1（Tab 可达性零回归）');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
 test('接线实证（真实 LibraryTable）：↑↓ 在行间移动 + Enter 开详情', async (t) => {
   const h = await mountLibTable(t);
   if (!h) return;

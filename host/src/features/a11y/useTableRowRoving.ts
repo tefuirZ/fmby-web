@@ -14,13 +14,14 @@
  * - **roving 到行、把行内按钮设 tabindex=-1**：标准 grid 做法，但会让「删除」
  *   这类操作**键盘不可达**，属回归 ⇒ 不采用。
  * - **（本卡采用）行是漫游单位、行内按钮 tabIndex 一律不动**：↑↓/Home/End
- *   把焦点送到目标行的**首个可聚焦控件**（该行无控件时聚焦 `<tr>` 本身）。
- *   Tab 顺序零变化 ⇒ 无回归；方向键只负责「在行间移动焦点」。
+ *   把焦点送到**目标行本身**（`<tr>` 设 `tabindex="-1"` ⇒ 程序化可聚焦、
+ *   **不进 Tab 序**）。Tab 顺序零变化 ⇒ 无回归，且 Enter 语义可预期。
  *
  * ## Enter 打开
  *
- * 仅当焦点落在 `<tr>` 本身时才触发 `onActivate(index)`；焦点在按钮上时
- * Enter 由浏览器原生触发该按钮 —— 两者不冲突，也不抢行内按钮的语义。
+ * 方向键把焦点落在 `<tr>` 本身 ⇒ Enter 触发 `onActivate(index)`。
+ * 焦点在行内控件上时 Enter/Space 由该控件原生处理（checkbox 仍切换选中、
+ * 按钮仍触发点击）—— 不抢行内控件语义。
  */
 
 import { useEffect, type RefObject } from 'react';
@@ -40,9 +41,6 @@ const ROW_ATTR = 'data-row-index';
 const ROW_SELECTOR = `[${ROW_ATTR}]`;
 /** 第 index 行的选择器（属性选择器须写成 [attr="v"]，不能拼 [attr][attr="v"]）。 */
 const rowSelector = (index: number) => `[${ROW_ATTR}="${index}"]`;
-
-/** 行内可聚焦控件的取法：沿用网格 hook 的既有口径。 */
-const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function rowAt(container: HTMLElement, index: number): HTMLElement | null {
   return container.querySelector<HTMLElement>(rowSelector(index));
@@ -97,13 +95,13 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
 
       const row = rowAt(tbody, target);
       if (!row) return;
-      const control = row.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (control) {
-        control.focus();
-        return;
-      }
-      // 该行没有可聚焦控件（如「当前设备不可移除」行）：聚焦行本身，
-      // 保证焦点不丢（否则 ↑↓ 经过这种行时焦点会掉到 <body>）。
+      // 主代理裁定（FE-LIST-KEYNAV-3）：↑↓/Home/End 一律把焦点落到**行本身**，
+      // 而不是行内首个控件。
+      // 原因：若落到行内首控件，Enter 的语义就由该控件决定 —— LibraryTable 首控件
+      // 恰好是「详情」所以看着对，但 UserTable 行首是 **checkbox**，Enter 会变成
+      // 「切换选中」；37 表铺开后 `onActivate` 会整体退化成死分支。
+      // 行本身设 tabindex=-1 ⇒ **程序化可聚焦、不进 Tab 序**（Tab 仍逐一可达行内
+      // 控件，零回归原则不变），Enter 在行焦点上才可预期地触发 onActivate。
       row.tabIndex = -1;
       row.focus();
     };
