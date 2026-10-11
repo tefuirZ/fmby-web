@@ -89,6 +89,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
         <div className={styles.searchInputWrap}>
           <Search size={20} className={styles.searchIcon} />
           <input
+            aria-label="搜索电影、剧集"
             ref={inputRef}
             className={styles.searchInput}
             placeholder="搜索电影、剧集，支持拼音首字母…"
