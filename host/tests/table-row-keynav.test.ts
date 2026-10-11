@@ -219,3 +219,149 @@ test('表格行漫游：Enter 在行本身上触发打开；焦点在按钮上�
     await h.close();
   }
 });
+
+/**
+ * 集成探针：渲染**真实的 LibraryTable 组件**（不是复刻），验证接线真的生效
+ * —— hook 单测再绿，也不代表页面接对了（data-row-index / tbodyRef / rowCount）。
+ */
+const LIB_TABLE_ENTRY = `
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
+import { LibraryTable } from '${'${LIB_TABLE_PATH}'}';
+
+const libs = [0, 1, 2].map((i) => ({
+  id: 'lib-' + i,
+  name: '库 ' + i,
+  libraryType: 'movie',
+  typeLabel: '电影',
+  itemCount: i,
+  status: 'healthy',
+  sourceNames: [],
+  actualSourceNames: [],
+}));
+
+globalThis.__opened = [];
+function App() {
+  return createElement(MemoryRouter, null,
+    createElement(LibraryTable, {
+      libraries: libs,
+      filteredLibraries: libs,
+      keyword: '',
+      statusFilter: 'all',
+      typeFilter: 'all',
+      onKeywordChange: () => {},
+      onStatusFilterChange: () => {},
+      onTypeFilterChange: () => {},
+      onOpenView: (id) => { globalThis.__opened.push(id); },
+      onOpenEdit: () => {},
+      onRequestDelete: () => {},
+      onCreateClick: () => {},
+      onMoveLibrary: () => {},
+      reorderPending: false,
+    }),
+  );
+}
+
+createRoot(document.getElementById('root')).render(createElement(App));
+`;
+
+async function mountLibTable(t: any) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), 'fe02-libtable-'));
+  const entryFile = join(HOST_ROOT, 'tests', '__probeLibTable-entry.tsx');
+  const libPath = `file://${join(HOST_ROOT, 'src/pages/manage/libraries/components/LibraryTable.tsx')}`;
+  await writeFile(entryFile, LIB_TABLE_ENTRY.replace('${LIB_TABLE_PATH}', libPath), 'utf8');
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'LibTable', fileName: () => 'probe.js' },
+      },
+    });
+  } finally {
+    await rm(entryFile, { force: true });
+  }
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  await page.waitForSelector('[data-row-index="0"]');
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
+test('接线实证（真实 LibraryTable）：↑↓ 在行间移动 + Enter 开详情', async (t) => {
+  const h = await mountLibTable(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '真实表格：↓ 应到下一行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, '真实表格：End → 末项');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, '真实表格：Home → 首项');
+
+    // Enter 在行本身上 → 开「详情」（接线传入的 onOpenView）
+    await page.evaluate(() => {
+      const row = document.querySelector('[data-row-index="2"]');
+      row.setAttribute('tabindex', '-1');
+      row.focus();
+    });
+    await page.keyboard.press('Enter');
+    const opened = await page.evaluate(() => (globalThis as any).__opened ?? []);
+    assert.deepEqual(opened, ['lib-2'], 'Enter 应打开当前行的详情');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('接线实证（真实 LibraryTable）：行内按钮 Tab 可达性未被破坏（无回归）', async (t) => {
+  const h = await mountLibTable(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 行内按钮不得被设成 tabindex=-1（本卡裁定：不夺行内按钮可达性）
+    const negative = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('[data-row-index] button')).filter(
+        (b) => b.getAttribute('tabindex') === '-1',
+      ).length,
+    );
+    assert.equal(negative, 0, '行内按钮不得被 roving 设为 tabindex=-1（会让删除/编辑键盘不可达）');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
