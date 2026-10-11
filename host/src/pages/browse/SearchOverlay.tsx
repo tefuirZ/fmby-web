@@ -27,13 +27,26 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
   // WEB-B1：搜索取数上移至 viewmodel。
   const search = useSearchOverlay({ keyword: debouncedQuery });
 
+  // fe02：浮层打开前记录触发元素，关闭时把焦点还回去（键盘用户不丢位置）。
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+
   // 打开时聚焦输入框
   useEffect(() => {
     if (open) {
+      // ponytail: 只记一个“打开前的 activeElement”，不实现完整 focus trap
+      // （本仓 40+ 抽屉已由 Radix Dialog 提供；此浮层是唯一自绘面）。
+      restoreFocusRef.current = document.activeElement as HTMLElement | null;
       setQuery('');
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
+      return;
+    }
+    // open 由 true → false 的这一次才归还（初次挂载 open=false 不动焦点）。
+    const target = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+    if (target?.isConnected) {
+      target.focus();
     }
   }, [open]);
 
