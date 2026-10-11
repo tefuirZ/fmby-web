@@ -79,7 +79,12 @@ export function HistoryPage() {
       <section className={styles.sectionCard}>
         <div className={styles.toolbar}>
           <div className={styles.filterGroup}>
-            <select className={styles.select} value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <select
+              className={styles.select}
+              aria-label="观看类型筛选"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+            >
               <option value="all">全部类型</option>
               {typeOptions.filter((value) => value !== 'all').map((value) => (
                 <option key={value} value={value}>
@@ -95,13 +100,23 @@ export function HistoryPage() {
                 </option>
               ))}
             </select>
-            <select className={styles.select} value={timeRange} onChange={(event) => setTimeRange(event.target.value as HistoryTimeRange)}>
+            <select
+              className={styles.select}
+              aria-label="观看时间筛选"
+              value={timeRange}
+              onChange={(event) => setTimeRange(event.target.value as HistoryTimeRange)}
+            >
               <option value="all">全部时间</option>
               <option value="7d">最近 7 天</option>
               <option value="30d">最近 30 天</option>
               <option value="365d">最近一年</option>
             </select>
-            <select className={styles.select} value={stateFilter} onChange={(event) => setStateFilter(event.target.value as 'all' | 'unfinished' | 'completed')}>
+            <select
+              className={styles.select}
+              aria-label="观看状态筛选"
+              value={stateFilter}
+              onChange={(event) => setStateFilter(event.target.value as 'all' | 'unfinished' | 'completed')}
+            >
               <option value="all">全部观看状态</option>
               <option value="unfinished">未看完</option>
               <option value="completed">已看完</option>
