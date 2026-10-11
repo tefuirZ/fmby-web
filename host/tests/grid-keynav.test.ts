@@ -81,6 +81,24 @@ test('nextGridIndex：单列（一维列表/横滚轨道）时 ←→↑↓ 均�
   assert.equal(nextGridIndex({ ...single, activeIndex: 4 }, 'right'), 4);
 });
 
+test('nextGridIndex：单列（表格行列表）时 Home/End 为**跨行**语义（跳首/末项）', () => {
+  // FE-LIST-KEYNAV-2：一维表格里每行就是一行（cols=1），此时「行内 Home/End」
+  // 恒等于当前项 ⇒ Home/End 成为死键（原报告 §六 登记的未做项）。
+  // 表格没有「行内左右」的概念，Home/End 应跳到整个列表的首/末项。
+  const table: GridKeyNavRequest = { activeIndex: 2, itemCount: 5, columns: 1, hasMore: false };
+  assert.equal(nextGridIndex(table, 'home'), 0, '单列 Home → 首项');
+  assert.equal(nextGridIndex(table, 'end'), 4, '单列 End → 末项');
+  assert.equal(nextGridIndex({ ...table, activeIndex: 0 }, 'home'), 0, '首项 Home 停住');
+  assert.equal(nextGridIndex({ ...table, activeIndex: 4 }, 'end'), 4, '末项 End 停住');
+});
+
+test('nextGridIndex：多列时 Home/End 仍是**行内**语义（不放宽既有断言）', () => {
+  // 反向守卫：上面只改单列语义，二维网格的既有行内语义必须保持不变。
+  const grid: GridKeyNavRequest = { activeIndex: 4, itemCount: 7, columns: 3, hasMore: false };
+  assert.equal(nextGridIndex(grid, 'home'), 3, '第二行行首');
+  assert.equal(nextGridIndex(grid, 'end'), 5, '第二行行尾');
+});
+
 test('nextGridIndex：columns<=0 时按 1 列处理（防御，不崩）', () => {
   assert.equal(nextGridIndex({ activeIndex: 1, itemCount: 3, columns: 0, hasMore: false }, 'up'), 0);
 });

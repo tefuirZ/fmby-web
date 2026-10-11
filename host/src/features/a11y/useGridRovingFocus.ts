@@ -83,8 +83,13 @@ export function nextGridIndex(
       return current;
     }
     case 'home':
+      // FE-LIST-KEYNAV-2：单列（表格行列表 / 一维轨道）没有「行内左右」的概念，
+      // 此时 row*cols === current，Home/End 会退化成死键。一维下按整个列表的
+      // 首/末项理解（即跨行语义，原报告 §六 的登记项）。多列维持行内语义。
+      if (cols === 1) return 0;
       return row * cols;
     case 'end': {
+      if (cols === 1) return last;
       const rowEnd = Math.min(last, row * cols + cols - 1);
       return rowEnd;
     }
