@@ -444,6 +444,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* P0-1（fe01）：flex 子项默认 min-width:auto，遇到无空格长串（运行日志的
+     `GET /assets/items/<id>/images/banner`）会拒绝收缩并把父行撑宽 ⇒ 375 视口
+     文档溢出。照 FE-OPT-02 N-1 既有范式加 min-width:0 参与收缩。 */
+  min-width: 0;
 }
 
 .logOverviewCell {
@@ -764,12 +768,18 @@
   justify-content: space-between;
   gap: var(--space-3);
   align-items: flex-start;
+  /* P0-1（fe01）：右侧状态徽章 nowrap + 左侧长标题 ⇒ 行整体被撑宽。允许换行
+     收缩（徽章自身 nowrap 不变，只是不再逼迫行变宽）。 */
+  flex-wrap: wrap;
 }
 
 .mobileRecordTitle {
   color: var(--text-primary);
   font-size: var(--text-body);
   line-height: 1.45;
+  /* P0-1（fe01）：标题可能是无空格长串（日志 headline / 资源路径）。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mobileRecordMeta,
@@ -780,6 +790,10 @@
 
 .mobileRecordBody {
   margin: 0;
+  /* P0-1（fe01）：同 ManageDetailSurfaces.mobileRecordBody —— 无空格长串
+     （任务摘要 / 错误码）须可断行，否则 375 视口撑宽文档。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mobileRecordGrid {

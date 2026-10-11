@@ -59,7 +59,16 @@ export function RuntimeLogArchivesSection() {
           </button>
         </div>
       ) : (
-        <div className={styles.tableScroll}>
+        <div
+          // P0-1（fe01）：可横向滚动区域须可被键盘访问（axe
+          // `scrollable-region-focusable`，serious）——照 FE-OPT-03 A-2 范式
+          // （ProbeTaskTable / ManageSecretsPage）：tabIndex=0 可聚焦 +
+          // role=region + aria-label 供读屏器宣告。
+          className={styles.tableScroll}
+          tabIndex={0}
+          role="region"
+          aria-label="日志归档列表（可横向滚动）"
+        >
           <table className={styles.table}>
             <thead>
               <tr>
