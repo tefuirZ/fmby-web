@@ -387,6 +387,16 @@
   border-radius: var(--radius-md);
 }
 
+/* P0-1（fe01）：`.tableScroll` 此前**只在 RuntimeLogArchivesSection 被消费、本表未定义**
+   → 容器没有 overflow-x，而 `.table` 硬写 min-width:760px ⇒ 375 视口下文档被撑宽
+   418px（mobile-audit 实测）。与 `.tableWrap` 同形态补齐（可横向滚动的表格区，
+   不算文档溢出）。 */
+.tableScroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
