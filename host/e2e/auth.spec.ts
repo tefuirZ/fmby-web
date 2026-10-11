@@ -24,12 +24,30 @@ test.describe('Auth Flow E2E', () => {
   });
 
   test('renders server error for invalid credentials', async ({ page }) => {
+    // fe01：后端早已把错误码换成中文文案（实测 401
+    // `{"error_code":"AUTH_INVALID_CREDENTIALS","message":"用户名或密码错误，请重新输入。"}`），
+    // 前端经 getErrorMessage 原样渲染 message。原断言钉的是**旧英文字面量**
+    // `unauthorized`，与现状不符 ⇒ 恒红。改为断言真契约：
+    //   ① 服务端错误经 role=alert 可见（不吞错）；② 未置登录态（仍停在 /login）。
+    const loginResponse = page.waitForResponse(
+      (r) => r.url().includes('/api/auth/login') && r.status() === 401,
+    );
     await page.goto('/login');
     await page.getByRole('textbox', { name: '用户名' }).fill('wronguser');
     await page.getByRole('textbox', { name: '密码' }).fill('wrongpass');
     await page.getByRole('button', { name: '登录', exact: true }).click();
-    await expect(page.getByText('unauthorized', { exact: true })).toBeVisible();
+    await loginResponse;
+    // ① 错误横幅可见且非空（文案由后端给，不本地钉死字面量）
+    const banner = page.getByRole('alert').first();
+    await expect(banner).toBeVisible();
+    await expect(banner).not.toHaveText('');
+    // ② 未置登录态：仍在登录页，且 /auth/me 仍是 401
     await expect(page).toHaveURL(/\/login/);
+    const meStatus = await page.evaluate(async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      return res.status;
+    });
+    expect(meStatus, '错误凭据后不得建立会话').toBe(401);
   });
 
   test('logs in, restores session after reload, and logs out', async ({ page }) => {
