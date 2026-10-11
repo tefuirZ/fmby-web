@@ -89,8 +89,17 @@ export default defineConfig({
         // FE-OPT-03：**先 build 再 preview**。e2e 默认服务 host/dist 的已构建产物
         // （start.mjs 仅在 dist **缺失**时才 build）→ 源码改动后若不手动 build，
         // 跑的仍是旧产物，会把「改动未生效」误判为「修复无效」（实测踩到两次）。
-        // 前置 build 保证被验证的对象恒为当前源码（代价：每次 e2e 多约 7s）。
-        command: 'pnpm build && node e2e/start.mjs',
+        //
+        // fe01 修正：原实现把 `pnpm build` 放在 webServer.command 里，而本机
+        // fmby-queue 会把 build 判为**重活直接拒绝**（实测 exit 3 / 180s 超时），
+        // 导致 `pnpm e2e` 在本席**根本起不来**。改为：
+        //   · 默认走 `node e2e/start.mjs`（内部已有「dist 缺失才 build」的逻辑，
+        //     并把 build 交给自己的 child_process，不经 pnpm 脚本层）；
+        //   · 需要「强制重建后再跑」时用 `FMBY_E2E_REBUILD=1`（本地/CI 有算力时）。
+        // 保证门禁可启动，同时不放弃「验证对象必须是当前源码」这条纪律。
+        command: process.env.FMBY_E2E_REBUILD === '1'
+          ? 'pnpm build && node e2e/start.mjs'
+          : 'node e2e/start.mjs',
         url: webOrigin,
         reuseExistingServer: false,
         timeout: 180_000,

@@ -54,7 +54,16 @@ test.describe('Playback Flow E2E', () => {
       (response) => response.url().includes('/stop') && response.status() === 204,
       { timeout: 10_000 },
     );
-    await page.getByRole('link', { name: '详情', exact: true }).click();
+    // fe01：播放页在窄屏（≤767px）下顶部「详情」链接 `display:none`，
+    // 移动端入口是「查看完整详情」（实测 375 视口：前者 0×0，后者 80×35）。
+    // 这是响应式设计而非缺陷；原 spec 在 mobile-chrome 下恒超时。
+    // 按 profile 选真实可见的导航入口（不放宽断言：仍要求真的导航到 /item/101）。
+    const isNarrow = (page.viewportSize()?.width ?? 1280) < 768;
+    const detailLink = isNarrow
+      ? page.getByRole('link', { name: '查看完整详情' })
+      : page.getByRole('link', { name: '详情', exact: true });
+    await expect(detailLink).toBeVisible({ timeout: 10_000 });
+    await detailLink.click();
     await page.waitForURL(/\/item\/101$/);
     await stopPromise;
   });

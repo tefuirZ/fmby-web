@@ -73,14 +73,25 @@ test.describe('FE-OPT-04 批量操作体感', () => {
     await expect(page.getByText('E2E 批量-甲').first()).toBeVisible();
 
     // 3) 全选 → 批量动作条出现。
+    //    fe01：原实现钉死「已选择 3 项」，但完整跑（全 spec 串行）时前面的 spec
+    //    可能已留下额外合集 ⇒ 全选计数不等于 3。改为**按服务端真实条数**断言
+    //    （语义未放宽：仍要求「全选 = 列表全部」，只是不再钉死被污染的绝对值）。
+    const list = await (
+      await page.request.get('/api/manage/collections', {
+        headers: { 'x-requested-with': 'FMBY-Web' },
+      })
+    ).json();
+    const total = Array.isArray(list) ? list.length : 0;
+    expect(total, '前置：列表应至少有本 case 预置的 3 个合集').toBeGreaterThanOrEqual(3);
+
     await page.getByRole('button', { name: '全选' }).click();
     const bar = page.getByRole('region', { name: '批量操作' });
     await expect(bar).toBeVisible();
-    await expect(bar).toContainText('已选择 3 项');
+    await expect(bar).toContainText(`已选择 ${total} 项`);
 
     // 4) 触发批量删除 → 确认。
     await page.getByRole('button', { name: '批量删除' }).click();
-    await expect(page.getByText(/批量删除 3 个合集/)).toBeVisible();
+    await expect(page.getByText(new RegExp(`批量删除 ${total} 个合集`))).toBeVisible();
     // 危险操作为会话级二次确认：必须完整输入操作标识才放行。
     await page.getByRole('textbox', { name: /操作标识/ }).fill('delete-managed-collection');
     await page.getByRole('button', { name: '确认批量删除' }).click();
@@ -103,7 +114,7 @@ test.describe('FE-OPT-04 批量操作体感', () => {
         { timeout: 15_000 },
       )
       .toBe(0);
-    await expect(panel).toContainText(/成功 3/);
+    await expect(panel).toContainText(new RegExp(`成功 ${total}`));
   });
 
   test('合集列表：范围选（shift）与反选/清空交互', async ({ page }) => {

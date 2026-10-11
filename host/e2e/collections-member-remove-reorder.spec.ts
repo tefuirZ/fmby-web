@@ -27,12 +27,15 @@ test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
  *     （实测 `星际`→仅 101），第二次加入即 409。改为**按关键词序列取不同条目**
  *     （实测：`星际`→101 `苍穹`→201 `e2e`→367…）。
  */
-const MEMBER_ROW = 'tbody tr:has(button[aria-label^="移除成员「"])';
+// 成员行必须是**成员面板内真正的成员 tr**。注意：展开容器 `<tr><td colSpan=7>`
+// 也 `has()` 后代的成员按钮 ⇒ 用 tr 计数会虚高 1（实测：1 个成员时数出 2）。
+// 改用「成员数 = 移除按钮数」——每个成员行恰好一个「移除成员「X」」按钮。
+const MEMBER_REMOVE = 'button[aria-label^="移除成员「"]';
 const KEYWORDS = ['星际', '苍穹', 'e2e'];
 
-/** 成员明细表的当前行数（只数成员行，不受合集列表干扰）。 */
+/** 当前成员数（= 移除按钮数，不受合集列表与展开容器干扰）。 */
 async function memberRowCount(page: import('@playwright/test').Page): Promise<number> {
-  return page.locator(MEMBER_ROW).count();
+  return page.locator(MEMBER_REMOVE).count();
 }
 
 async function ensureCollectionWithMembers(
@@ -43,68 +46,60 @@ async function ensureCollectionWithMembers(
   await page.goto('/manage/collections', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
 
-  if ((await page.locator('tbody tr').count()) === 0) {
-    await page.getByRole('button', { name: '新建合集' }).click();
-    await page.getByPlaceholder('例如：科幻经典补完计划').fill('E2E 移除重排合集');
-    await page.getByRole('button', { name: /^保存|创建/ }).click();
-    await page.locator('tbody tr').first().waitFor({ state: 'visible', timeout: 15_000 });
-    await page.waitForTimeout(600);
-  }
-  if ((await page.getByRole('button', { name: '成员' }).count()) === 0) {
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1500);
-  }
-  const expandButtons = page.getByRole('button', { name: '成员' });
-  if ((await expandButtons.count()) === 0) {
-    throw new Error('没有可展开的合集行');
-  }
-  // 若已展开（上一次调用残留）先收起再展开，保证成员面板处于已知态。
-  if ((await page.getByRole('button', { name: '收起' }).count()) > 0) {
-    await page.getByRole('button', { name: '收起' }).first().click();
-    await page.waitForTimeout(400);
-  }
-  await expandButtons.first().click();
+  // fe01：完整跑（全 spec 串行）时，前面的 spec（batch-operations 删合集 /
+  // collections-member-add 加成员）会留下**脏合集**，复用 first() 会读到
+  // 不可控的成员数（实测：读到只有 1 个成员的合集 ⇒ 「下移」恒 disabled）。
+  // 改为**每次新建一个专属合集**（标题带时间戳），把用例隔离到自己的数据上。
+  const title = `E2E 移除重排 ${Date.now()}`;
+  await page.getByRole('button', { name: '新建合集' }).click();
+  await page.getByPlaceholder('例如：科幻经典补完计划').fill(title);
+  await page.getByRole('button', { name: /^保存|创建/ }).click();
+  // 等创建真实落库（列表 invalidate 重取有往返），再 reload 取干净的服务端状态。
+  await expect(page.getByText('合集已创建。')).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1200);
+
+  const row = page.locator('tbody tr', { hasText: title }).first();
+  await row.waitFor({ state: 'visible', timeout: 15_000 });
+  const expandButton = row.getByRole('button', { name: '成员' }).first();
+  await expandButton.waitFor({ state: 'visible', timeout: 15_000 });
+  await expandButton.click();
   // 成员明细是展开后异步取数（GET /collections/{id}）：等面板真正就绪再计数，
   // 否则会把「正在加载成员明细…」当成 0 行，误判为「成员不足」。
-  await page
-    .locator(MEMBER_ROW)
-    .first()
-    .waitFor({ state: 'attached', timeout: 15_000 })
-    .catch(() => {
-      /* 允许 0 成员：下面的加入循环会补齐 */
-    });
   await page.waitForTimeout(600);
 
   const input = page.getByPlaceholder('至少 2 个字符');
-  const select = page.locator('select').filter({ hasText: '请选择…' });
+  // 候选下拉必须**精确定位**：展开的合集行下方同时存在「预设模板」下拉
+  // （CollectionPresetCreate，首项「请选择模板…」），用 `select.first()` 会随
+  // 渲染时机在两者间跳变（实测：第二次循环选中了模板下拉 ⇒ 加入的是空值）。
+  // 用包裹式 <label> 的可访问名定位「候选条目」下拉。
+  const select = page.getByLabel('候选条目');
   let added = await memberRowCount(page);
   for (const keyword of KEYWORDS) {
     if (added >= 2) break;
     await input.fill(keyword);
     // 等候选下拉真正带上该关键词的结果（debounce + 请求往返）。
-    await expect(select.first()).toBeVisible({ timeout: 10_000 }).catch(() => undefined);
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1800);
     if ((await select.count()) === 0) continue;
-    const options = await select.first().locator('option').count();
+    const options = await select.locator('option').count();
     for (let i = 1; i < options && added < 2; i += 1) {
-      const value = await select.first().locator('option').nth(i).getAttribute('value');
+      const value = await select.locator('option').nth(i).getAttribute('value');
       if (!value) continue;
-      await select.first().selectOption(value);
+      await select.selectOption(value);
       await page.getByRole('button', { name: '加入合集' }).click();
-      // 加入后列表会 invalidate 重取：等行数变化（或超时判定为「该候选重复」）。
-      const changed = await page
-        .waitForFunction(
-          ([selector, before]) =>
-            document.querySelectorAll(selector as string).length !== before,
-          [MEMBER_ROW, added] as const,
-          { timeout: 8_000 },
-        )
-        .then(() => true)
-        .catch(() => false);
-      if (changed) {
-        added = await memberRowCount(page);
+      // 加入后列表 invalidate 重取：按「成员行数不再变化」收敛后重取计数。
+      // 不依赖「行数必须变了」——若该候选已在合集内（后端 409），行数本就不变，
+      // 这时换下一个候选即可，不该把「没变化」当成失败。
+      // 加入后列表 invalidate 重取：轮询到成员数稳定（最多 6s）。
+      let last = -1;
+      let now = added;
+      for (let t = 0; t < 12; t += 1) {
+        await page.waitForTimeout(500);
+        now = await memberRowCount(page);
+        if (now === last) break;
+        last = now;
       }
-      // 未变化 = 该候选已在合集内（后端 409），换下一个候选，不把失败当成功。
+      if (now > added) added = now;
     }
   }
   return added;
@@ -123,21 +118,17 @@ test.describe('FE-COLLECTIONS-CONSUME-B2 — 成员移除 + 重排', () => {
     await expect(firstDown).toBeEnabled({ timeout: 10_000 });
     // 记录首行标题，交换后应不再是首行（真顺序变化，不只是「点到了」）
     const firstTitleBefore = await page
-      .locator(MEMBER_ROW)
+      .locator(MEMBER_REMOVE)
       .first()
-      .locator('td')
-      .first()
-      .innerText();
+      .getAttribute('aria-label');
     await firstDown.click();
     // 重排成功提示出现 = 真实写回
     await expect(page.getByText('成员顺序已更新。')).toBeVisible({ timeout: 12_000 });
     await page.waitForTimeout(800);
     const firstTitleAfter = await page
-      .locator(MEMBER_ROW)
+      .locator(MEMBER_REMOVE)
       .first()
-      .locator('td')
-      .first()
-      .innerText();
+      .getAttribute('aria-label');
     expect(firstTitleAfter, '下移后首行成员必须发生交换').not.toBe(firstTitleBefore);
   });
 
