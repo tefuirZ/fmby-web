@@ -14,8 +14,20 @@
  * - **roving 到行、把行内按钮设 tabindex=-1**：标准 grid 做法，但会让「删除」
  *   这类操作**键盘不可达**，属回归 ⇒ 不采用。
  * - **（本卡采用）行是漫游单位、行内按钮 tabIndex 一律不动**：↑↓/Home/End
- *   把焦点送到**目标行本身**（`<tr>` 设 `tabindex="-1"` ⇒ 程序化可聚焦、
- *   **不进 Tab 序**）。Tab 顺序零变化 ⇒ 无回归，且 Enter 语义可预期。
+ *   把焦点送到**目标行本身**；行内按钮保持原生 Tab 序。
+ *   Tab 顺序零变化 ⇒ 无回归，且 Enter 语义可预期。
+ *
+ * ## roving tabindex 的维护方式（FE-LIST-KEYNAV-6 修 I-1 / I-2）
+ *
+ * - **I-1 键盘入口可达**：活动行 `tabindex="0"`、其余行 `tabindex="-1"`。
+ *   此前所有行一律 `-1` ⇒ 整张表**不进 Tab 序**，只有程序化 `focus()` 才能进去；
+ *   对行内零可聚焦控件的只读表（ManageAuditLogsPage / ManageSecretsPage /
+ *   MicrosoftAccountsSection / RewardsLedgerSection）等于键盘不可用。
+ *   标准 roving 就是给容器留**一个** Tab 停靠点，本 hook 照此实现。
+ * - **I-2 同数替换要重算**：行数不变但内容换了（换页/排序/等长筛选）时，
+ *   仅靠 `rowCount` 一个依赖不会重跑，旧行会留下过期的 `tabindex`。
+ *   因此除 effect 重跑外，另用 `MutationObserver` 监听 `<tbody>` 子树变动，
+ *   每次变动都按当前 DOM 重算活动行 —— 与调用方是否传数据标识无关。
  *
  * ## Enter 打开
  *
@@ -24,7 +36,7 @@
  * 按钮仍触发点击）—— 不抢行内控件语义。
  */
 
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 import { gridDirectionForKey, nextGridIndex } from './useGridRovingFocus';
 
@@ -62,19 +74,58 @@ function isTextEntry(el: HTMLElement): boolean {
  * 调用方只需给每行加 `data-row-index={i}`（唯一 DOM 约定）。
  */
 export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRowRovingOptions) {
+  // 当前活动行索引。放 ref 而非 state：方向键每次移动都要写它，
+  // 用 state 会引发一次额外 render + effect 重绑（纯属自伤）。
+  const activeIndexRef = useRef(0);
+
   useEffect(() => {
     const tbody = tbodyRef.current;
     if (!tbody || rowCount <= 0) return;
 
-    // 挂载时即给**所有**行设 tabindex="-1"（程序化可聚焦、不进 Tab 序）。
-    // FE-LIST-KEYNAV-5 修「只读表漫游是死路」：此前 tabIndex 只在 keydown 路径
-    // 里设置，而方向键要能触发 keydown 又得先有焦点 —— 对**行内无任何可聚焦控件**
-    // 的只读表（如 ManageAuditLogsPage），用户无法 Tab 进任何行 ⇒ 永远触发不了
-    // 方向键 ⇒ hook 形同虚设。此处提前布好，使只读表也能起步。
-    // 注意：tabindex=-1 **不改变 Tab 序**，行内控件的可达性零回归。
-    for (const row of tbody.querySelectorAll<HTMLElement>(ROW_SELECTOR)) {
-      if (!row.hasAttribute('tabindex')) row.tabIndex = -1;
-    }
+    /**
+     * 按**当前 DOM** 重算 roving tabindex：活动行 0、其余 -1。
+     *
+     * 活动行取值：① 焦点当前所在行（点击/程序化聚焦后仍正确 —— 网格 hook 曾踩过
+     * 的 B-2：只信内部 ref 会导致「点第 5 行后按方向键回首行」）；② 否则沿用上次
+     * 活动行（换页/筛选后尽量不丢位置）；③ 越界则回首行。
+     */
+    const enforceRovingTabindex = (forceIndex?: number) => {
+      const rows = tbody.querySelectorAll<HTMLElement>(ROW_SELECTOR);
+      if (rows.length === 0) return;
+
+      const focused = document.activeElement as HTMLElement | null;
+      const focusedIndex =
+        focused && tbody.contains(focused)
+          ? Number(focused.closest(ROW_SELECTOR)?.getAttribute(ROW_ATTR) ?? Number.NaN)
+          : Number.NaN;
+
+      const current =
+        forceIndex ??
+        (Number.isFinite(focusedIndex)
+          ? focusedIndex
+          : Math.min(Math.max(activeIndexRef.current, 0), rows.length - 1));
+      activeIndexRef.current = current;
+
+      for (const row of rows) {
+        const next = Number(row.getAttribute(ROW_ATTR)) === current ? '0' : '-1';
+        // 必须比对**属性**而不是 `row.tabIndex`：未设过 tabindex 的 `<tr>` 读回
+        // 就是 -1（HTMLTableRowElement 默认不可聚焦），比对会误判「已一致」而跳过
+        // 写入 ⇒ 行永远不可聚焦，`focus()` 静默失败（这正是 I-2 的坑）。
+        if (row.getAttribute('tabindex') !== next) row.setAttribute('tabindex', next);
+      }
+    };
+
+    // I-2：`rowCount` 不变但行已换（换页/排序/等长筛选）时 effect 不会重跑，
+    // 旧行的 tabindex 会一直是过期值。监听 tbody 子树变动，行一换就重算。
+    // 只观察 childList：不观察 attributes，避免自己写 tabindex 触发自循环。
+    const observer = new MutationObserver(() => {
+      enforceRovingTabindex();
+    });
+    observer.observe(tbody, { childList: true, subtree: true });
+    enforceRovingTabindex();
+
+    /** 当前 DOM 里的**实际**数据行数（虚拟化下与闭包 rowCount 可能已不同）。 */
+    const liveRowCount = () => tbody.querySelectorAll(ROW_SELECTOR).length;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       // 焦点不在表体内时不劫持 —— 避免影响页面滚动与表头筛选控件
@@ -109,7 +160,7 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
       );
 
       const target = nextGridIndex(
-        { activeIndex: currentIndex, itemCount: rowCount, columns: 1, hasMore: false },
+        { activeIndex: currentIndex, itemCount: liveRowCount(), columns: 1, hasMore: false },
         direction,
       );
       if (target < 0) return;
@@ -123,13 +174,18 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
       // 原因：若落到行内首控件，Enter 的语义就由该控件决定 —— LibraryTable 首控件
       // 恰好是「详情」所以看着对，但 UserTable 行首是 **checkbox**，Enter 会变成
       // 「切换选中」；37 表铺开后 `onActivate` 会整体退化成死分支。
-      // 行本身设 tabindex=-1 ⇒ **程序化可聚焦、不进 Tab 序**（Tab 仍逐一可达行内
-      // 控件，零回归原则不变），Enter 在行焦点上才可预期地触发 onActivate。
-      row.tabIndex = -1;
+      // 行本身是 roving 的活动项 ⇒ tabindex=0，构成真实 Tab 停靠点（I-1）。
+      // 行内控件的 tabIndex 一律不动，Tab 仍逐一可达，零回归原则不变。
+      // 先布 tabindex 再 focus：`<tr>` 没有 tabindex 属性时根本不可聚焦，
+      // `focus()` 会静默失败（表现为「方向键没反应」）。
+      enforceRovingTabindex(target);
       row.focus();
     };
 
     tbody.addEventListener('keydown', handleKeyDown);
-    return () => tbody.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      observer.disconnect();
+      tbody.removeEventListener('keydown', handleKeyDown);
+    };
   }, [tbodyRef, rowCount, onActivate]);
 }

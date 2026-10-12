@@ -143,6 +143,102 @@ async function mount(t: any) {
   };
 }
 
+/**
+ * hook 级探针：**只读表**（行内零可聚焦控件）+ 数据可整批替换。
+ *
+ * 为什么单独探针：I-1 的受害面正是「行里没有按钮、没法聚焦、Tab 又进不来」的表
+ * —— 而上面的通用 PROBE_ENTRY 每行都有按钮，用户能先聚焦按钮再按方向键，
+ * **掩盖**了 I-1。这里三行全是纯文本 <td>，键盘入口只能靠 roving 停靠点。
+ * `__swap` 用来模拟换页/排序/等长替换/虚拟化挂载卸载。
+ */
+const ROVING_HOOK_ENTRY = `
+import { createElement, useRef, useState } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { useTableRowRoving } from 'file:///PLACEHOLDER';
+
+function Table() {
+  const tbodyRef = useRef(null);
+  const [rows, setRows] = useState(['r0', 'r1', 'r2']);
+  const [acts, setActs] = useState([]);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: rows.length,
+    onActivate: (i) => setActs((prev) => [...prev, i]),
+  });
+  globalThis.__swap = (next) => setRows(next);
+  globalThis.__activations = acts;
+  return createElement('table', null,
+    createElement('tbody', { ref: tbodyRef },
+      rows.map((label, i) =>
+        createElement('tr', { key: label + ':' + i, 'data-row-index': String(i), 'data-label': label },
+          createElement('td', null, label),
+        ),
+      ),
+    ),
+  );
+}
+
+createRoot(document.getElementById('root')).render(createElement(Table));
+`;
+
+async function mountRovingHookProbe(t: any, tmpPrefix: string) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), tmpPrefix));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
+  const hookPath = `file://${join(HOST_ROOT, 'src/features/a11y/useTableRowRoving.ts')}`;
+  await writeFile(
+    entryFile,
+    withNmPaths(ROVING_HOOK_ENTRY.replace('file:///PLACEHOLDER', hookPath.replace('file://', ''))),
+    'utf8',
+  );
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'RovingHook', fileName: () => 'probe.js' },
+      },
+    });
+  } catch (err) {
+    await rm(work, { recursive: true, force: true });
+    throw err;
+  }
+
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  await page.waitForSelector('tbody tr[data-row-index="0"]');
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
 /** 当前焦点所在的行索引（-1 = 不在任何行内 / 掉了）。 */
 const focusedRow = (page: any) =>
   page.evaluate(() => {
@@ -398,7 +494,7 @@ test('契约②：Enter 在行焦点上触发 onActivate（死分支守卫）', 
   }
 });
 
-test('契约③：行本身 tabindex=-1 ⇒ 不进 Tab 序，行内控件仍可 Tab 达', async (t) => {
+test('契约③：行本身进 Tab 序（roving 单一停靠点），行内控件仍可 Tab 达', async (t) => {
   const h = await mount(t);
   if (!h) return;
   try {
@@ -408,7 +504,11 @@ test('契约③：行本身 tabindex=-1 ⇒ 不进 Tab 序，行内控件仍可 
     const rowTabindex = await page.evaluate(
       () => document.querySelector('[data-row-index="1"]')?.getAttribute('tabindex'),
     );
-    assert.equal(rowTabindex, '-1', '行本身须 tabindex=-1（程序化可聚焦、不进 Tab 序）');
+    assert.equal(
+      rowTabindex,
+      '0',
+      '焦点行须是唯一的 tabindex=0 停靠点（I-1：键盘入口可达；行内控件不受影响）',
+    );
     const controlsNegative = await page.evaluate(
       () =>
         Array.from(document.querySelectorAll('[data-row-index] button')).filter(
@@ -1303,7 +1403,7 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${YUN139_PATH}', `file://${compFile}`)
         .replace('${LEDGER_PATH}', `file://${compFile}`)
         .replace('${MS_ACCOUNTS_PATH}', `file://${compFile}`)
-        .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`),
+        .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`)
     ),
     'utf8',
   );
@@ -1376,17 +1476,16 @@ test('接线实证（真实 ManageAuditLogsPage）：↑↓/Home/End 移动行�
   if (!h) return;
   try {
     const { page } = h;
-    // 只读表：行内无按钮，用行本身起步（hook 仍应响应方向键）
     // ★只读表行内**没有任何可聚焦控件**（无详情/编辑/删除按钮）。能起步完全
-    // 依赖 hook 在挂载时给所有行设 tabindex="-1"（不进 Tab 序）。
-    // 这里**不手动设 tabindex** —— 那会掩盖 hook 的 bug；只断言它已就位再聚焦。
-    const tabindex0 = await page.evaluate(
-      () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
+    // 依赖 hook 留下的 roving Tab 停靠点（I-1）。
+    // 这里从**真实按键** Tab 起步，不脚本 focus、不手动设 tabindex ——
+    // 否则会掩盖 hook 的 bug。
+    assert.deepEqual(
+      await rovingStops(page),
+      ['0'],
+      'hook 必须在挂载时把首行留成唯一 tabindex=0 停靠点（否则 Tab 进不去、漫游是死路）',
     );
-    assert.equal(tabindex0, '-1', 'hook 必须在挂载时给行设 tabindex=-1（只读表才能起步）');
-    await page.focus('[data-row-index="0"]');
-    assert.equal(await focusedRow(page), 0);
-    assert.equal(await focusedRow(page), 0);
+    assert.equal(await tabIntoRow(page), 0, '连按 Tab 应能走到活动行（真实键盘入口）');
 
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
@@ -1473,16 +1572,13 @@ test('接线实证（真实 ManageSecretsPage）：只读表 ↑↓/Home/End 漫
   if (!h) return;
   try {
     const { page } = h;
-    // 依赖 hook 在挂载时给行设 tabindex=-1（上一提交 b80f508 的修复）
-    assert.equal(
-      await page.evaluate(
-        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
-      ),
-      '-1',
-      'hook 必须在挂载时给只读表行设 tabindex=-1，否则漫游无从起步',
+    // 依赖 hook 留下的 roving 停靠点（I-1）；真实 Tab 起步而非脚本聚焦。
+    assert.deepEqual(
+      await rovingStops(page),
+      ['0'],
+      'hook 必须在挂载时把首行留成唯一 tabindex=0 停靠点，否则漫游无从起步',
     );
-    await page.focus('[data-row-index="0"]');
-    assert.equal(await focusedRow(page), 0);
+    assert.equal(await tabIntoRow(page), 0, '连按 Tab 应能走到活动行（真实键盘入口）');
 
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
@@ -1703,15 +1799,12 @@ test('接线实证（真实 RegistrationCodeDetailTable）：↑↓/Home/End 漫
   if (!h) return;
   try {
     const { page } = h;
-    assert.equal(
-      await page.evaluate(
-        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
-      ),
-      '-1',
-      'hook 必须在挂载时给行设 tabindex=-1',
+    assert.deepEqual(
+      await rovingStops(page),
+      ['0'],
+      'hook 必须在挂载时把首行留成唯一 tabindex=0 停靠点',
     );
-    await page.focus('[data-row-index="0"]');
-    assert.equal(await focusedRow(page), 0);
+    assert.equal(await tabIntoRow(page), 0, '连按 Tab 应能走到活动行（真实键盘入口）');
 
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
@@ -1923,15 +2016,12 @@ test('接线实证（Yun139ProfilesSection）：↑↓/Home/End 漫游（第四�
   if (!h) return;
   try {
     const { page } = h;
-    assert.equal(
-      await page.evaluate(
-        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
-      ),
-      '-1',
-      'hook 必须在挂载时给行设 tabindex=-1',
+    assert.deepEqual(
+      await rovingStops(page),
+      ['0'],
+      'hook 必须在挂载时把首行留成唯一 tabindex=0 停靠点',
     );
-    await page.focus('[data-row-index="0"]');
-    assert.equal(await focusedRow(page), 0);
+    assert.equal(await tabIntoRow(page), 0, '连按 Tab 应能走到活动行（真实键盘入口）');
 
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
@@ -2019,14 +2109,13 @@ test('接线实证（RewardsLedgerSection）：只读账本表 ↑↓/Home/End �
   if (!h) return;
   try {
     const { page } = h;
-    assert.equal(
-      await page.evaluate(
-        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
-      ),
-      '-1',
-      '只读表也得在挂载时给行设 tabindex=-1（否则 Tab 进不去、漫游是死路）',
+    // 只读账本表：行内零可聚焦控件 ⇒ 靠 roving 停靠点起步，真实 Tab 而非脚本聚焦。
+    assert.deepEqual(
+      await rovingStops(page),
+      ['0'],
+      '只读表也得在挂载时把首行留成唯一 tabindex=0 停靠点（否则 Tab 进不去、漫游是死路）',
     );
-    await page.focus('[data-row-index="0"]');
+    assert.equal(await tabIntoRow(page), 0, '连按 Tab 应能走到活动行（真实键盘入口）');
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
     await page.keyboard.press('End');
@@ -2100,6 +2189,47 @@ createRoot(document.getElementById('root')).render(
 `;
 
 /** 一张表（tbody）内的当前焦点行索引；不在该表内则返回 null。 */
+/**
+ * 真实键盘入口：从 body 起连按 Tab，直到焦点落进第 `tableIndex` 个 tbody 的行上。
+ *
+ * 为什么不能一步到位：真实页面上表格前面还有筛选按钮 / 搜索框，
+ * 用户必须连按若干次 Tab 才能走到表格 —— 这正是要验证的真实路径。
+ * 返回命中的 `data-row-index`（超预算未命中返回 -1）。
+ */
+async function tabIntoRow(page: any, tableIndex = 0, maxPresses = 15): Promise<number> {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  for (let i = 0; i < maxPresses; i++) {
+    await page.keyboard.press('Tab');
+    const hit = await page.evaluate((ti: number) => {
+      const tbody = document.querySelectorAll('tbody')[ti];
+      const row = tbody?.querySelector(':focus')?.getAttribute('data-row-index');
+      return row == null ? null : Number(row);
+    }, tableIndex);
+    if (hit != null) return hit;
+  }
+  return -1;
+}
+
+/** 整页所有 tbody 的 roving Tab 停靠点（用于单表表格）。 */
+function rovingStops(page: any): Promise<string[]> {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll('tbody tr'))
+      .filter((r) => r.getAttribute('tabindex') === '0')
+      .map((r) => r.getAttribute('data-row-index')),
+  );
+}
+
+/** 某个 tbody 索引内的 roving Tab 停靠点（tabindex=0 的行索引列表）。 */
+async function rovingStopsIn(page: any, tableIndex: number): Promise<string[]> {
+  return page.evaluate((ti: number) => {
+    const tbody = document.querySelectorAll('tbody')[ti];
+    if (!tbody) return [];
+    return Array.from(tbody.querySelectorAll('tr[data-row-index]'))
+      .filter((r) => r.getAttribute('tabindex') === '0')
+      .map((r) => r.getAttribute('data-row-index'));
+  }, tableIndex);
+}
+
 async function focusedRowIn(page: any, tableIndex: number) {
   return page.evaluate((ti: number) => {
     const tbody = document.querySelectorAll('tbody')[ti];
@@ -2123,11 +2253,16 @@ test('接线实证（MicrosoftAccountsSection）：两张只读表各自独立�
       2,
       '两张表应有各自 tbody（索引域独立）',
     );
-    await page.locator('tbody').nth(0).locator('[data-row-index="0"]').focus();
+    // 真实 Tab 起步（I-1）：两张只读表的行都是零控件的纯文本行，
+    // 键盘入口全靠 roving 停靠点，不靠脚本聚焦。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '表1 首行应是唯一 Tab 停靠点');
+    assert.equal(await tabIntoRow(page, 0), 0, '连按 Tab 应能走到表1 的活动行（真实键盘入口）');
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedRowIn(page, 0), 1, '表1 ↓ 应到第 2 行');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['1'], '表1 停靠点须跟着焦点走');
+    // 表2 有自己的停靠点，Tab 应继续走到表2 而非回到表1 头行。
+    assert.equal(await tabIntoRow(page, 1), 0, '再按 Tab 应进入表2 的活动行');
     // 第二张表索引域必须从 0 起算，不能被表1的焦点带着跑
-    await page.locator('tbody').nth(1).locator('[data-row-index="0"]').focus();
     await page.keyboard.press('End');
     assert.equal(await focusedRowIn(page, 1), 2, '表2 End → 末行');
     assert.deepEqual(h.errors, [], '探针不得抛错');
@@ -2244,6 +2379,120 @@ test('RuntimeLogArchivesSection 裁定：Enter 复用既有「下载」动作（
       String(urls[0]).includes('/sha-1/download'),
       'Enter 应下载**焦点所在行**（索引 1），不是首行：' + String(urls[0]),
     );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/** 换成一批数据并等 React 真正 commit（concurrent 下 setState 不 flush）。 */
+async function swapRows(page: any, next: string[]) {
+  const first = next[0];
+  await page.evaluate((rows) => (window as any).__swap(rows), next);
+  await page.waitForFunction(
+    (label) => document.querySelector('tbody tr[data-row-index="0"]')?.getAttribute('data-label') === label,
+    first,
+    { timeout: 10000 },
+  );
+}
+
+test('I-1 契约：行内零可聚焦控件的只读表也能用 Tab 走进表格（roving 留唯一停靠点）', async (t) => {
+  const h = await mountRovingHookProbe(t, 'fe02-roving-i1-');
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 初始焦点在 body：从**真实按键**起步，不脚本聚焦数据行。
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    assert.deepEqual(await rovingStops(page), ['0'], '挂载后首行应是唯一 Tab 停靠点');
+
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.getAttribute('data-row-index')),
+      '0',
+      'Tab 应直接落到活动行（I-1：键盘入口可达）',
+    );
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.deepEqual(await rovingStops(page), ['1'], '移动后停靠点必须跟着走（旧行不得留在 Tab 序）');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    assert.deepEqual(await rovingStops(page), ['2']);
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(await rovingStops(page), ['0'], '回到首行后停靠点应在首行');
+
+    await page.keyboard.press('Enter');
+    assert.deepEqual(await page.evaluate(() => (window as any).__activations), [0], 'Enter 只触发一次');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('I-2 契约：行数不变的整表替换后 tabindex 必须重算（旧值不得残留）', async (t) => {
+  const h = await mountRovingHookProbe(t, 'fe02-roving-i2-');
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.keyboard.press('Tab');
+    assert.equal(await focusedRow(page), 0);
+    // 停靠点移到第 3 行，再做**等长**替换：rowCount 不变 ⇒ 仅靠 rowCount
+    // 依赖的 effect 不会重跑（这正是 I-2 的根因）。
+    await page.keyboard.press('End');
+    assert.deepEqual(await rovingStops(page), ['2']);
+    await swapRows(page, ['x', 'y', 'z']);
+
+    assert.deepEqual(
+      await rovingStops(page),
+      ['2'],
+      '换数据后仍须恰好 1 个停靠点（旧行的 tabindex 不得整批残留）',
+    );
+    assert.equal(
+      await page.evaluate(
+        () => document.querySelector('tbody tr[tabindex="0"]')?.getAttribute('data-label'),
+      ),
+      'z',
+      '停靠点应落在**新数据**上（旧 DOM 已卸载，停靠点跟随索引位置而非旧节点）',
+    );
+
+    // 新数据仍可漫游（属性确实写进去了，不是只读属性算出来的假象）。
+    await page.keyboard.press('Tab');
+    assert.equal(await focusedRow(page), 2, 'Tab 应落到保留下来的停靠点');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 2, '末行再按 ↓ 应停在末行（不得越界丢焦点）');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home 应回到新数据首行');
+    assert.deepEqual(await rovingStops(page), ['0']);
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('I-2 契约：虚拟化行挂载/卸载后不产生重复停靠点', async (t) => {
+  const h = await mountRovingHookProbe(t, 'fe02-roving-virt-');
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.keyboard.press('Tab');
+    assert.equal(await focusedRow(page), 0, 'Tab 应落到首行');
+    await page.keyboard.press('ArrowDown');
+    assert.deepEqual(await rovingStops(page), ['1']);
+    // 模拟虚拟化：行数减少（滚动出视口被卸载）
+    await swapRows(page, ['a', 'b']);
+    assert.deepEqual(
+      await rovingStops(page),
+      ['1'],
+      '卸载末行后停靠点仍应唯一（不得因索引域缩小而残留重复项）',
+    );
+    // 行数变多（滚回视口重新挂载）
+    await swapRows(page, ['a', 'b', 'c', 'd', 'e']);
+    assert.deepEqual(await rovingStops(page), ['1'], '重新挂载后仍唯一且保留活动行');
+    // 旧行节点被卸载，焦点随之掉到 body（真实行为）；用户需重新 Tab 进停靠点。
+    assert.equal(await tabIntoRow(page), 1, '换批数据后仍能 Tab 回到保留下来的停靠点');
+    await page.keyboard.press('End');
+    assert.deepEqual(await rovingStops(page), ['4'], '新挂载的行也可成为停靠点');
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
