@@ -46,6 +46,16 @@ function rowAt(container: HTMLElement, index: number): HTMLElement | null {
   return container.querySelector<HTMLElement>(rowSelector(index));
 }
 
+/** 文本录入类控件：方向键有原生光标语义，本 hook 不劫持。 */
+function isTextEntry(el: HTMLElement): boolean {
+  if (el.tagName === 'TEXTAREA') return true;
+  if (el.tagName === 'SELECT') return true;
+  if (el.tagName !== 'INPUT') return false;
+  // checkbox / radio / button / file 等：方向键无原生光标语义 ⇒ 归漫游
+  const type = (el as HTMLInputElement).type;
+  return !['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'image'].includes(type);
+}
+
 /**
  * 在 `<tbody>` 上挂 keydown：↑↓ / Home / End 在行间移动焦点，Enter 打开当前行。
  *
@@ -60,9 +70,12 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
       // 焦点不在表体内时不劫持 —— 避免影响页面滚动与表头筛选控件
       const active = document.activeElement as HTMLElement | null;
       if (!active || !tbody.contains(active)) return;
-      // 输入控件内不劫持（方向键用于光标移动）
-      const tag = active.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      // 仅**文本输入类**控件内不劫持（方向键要用于光标移动）。
+      // FE-LIST-KEYNAV-4：不能写成 `tag === 'INPUT'` 一刀切 —— 行首常是
+      // `<input type="checkbox">`（如 UserTable），那样会把整行的方向键漫游
+      // 全部跳过 ⇒ 漫游在该表上完全失效（实测焦点不动/掉 body）。
+      // checkbox / radio / button 上方向键无原生语义，应交由本 hook 漫游。
+      if (isTextEntry(active)) return;
 
       if (event.key === 'Enter') {
         // 只在焦点落在行本身时接管；行内按钮由浏览器原生处理 Enter。

@@ -419,6 +419,36 @@ test('契约③：行本身 tabindex=-1 ⇒ 不进 Tab 序，行内控件仍可 
   }
 });
 
+test('反向守卫：文本输入框内方向键不得被劫持（防修过头）', async (t) => {
+  const h = await mount(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 往第 1 行塞一个文本框并聚焦：方向键须归光标，不得移动行
+    await page.evaluate(() => {
+      const row = document.querySelector('[data-row-index="1"]') as HTMLElement;
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.id = 'probe-text';
+      input.type = 'text';
+      td.appendChild(input);
+      row.appendChild(td);
+      input.focus();
+    });
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'probe-text');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('End');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.id),
+      'probe-text',
+      '文本框内方向键应归光标，不得被漫游劫持（否则无法移动输入光标）',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
 test('接线实证（真实 LibraryTable）：↑↓ 在行间移动 + Enter 开详情', async (t) => {
   const h = await mountLibTable(t);
   if (!h) return;
@@ -462,6 +492,162 @@ test('接线实证（真实 LibraryTable）：行内按钮 Tab 可达性未被�
       ).length,
     );
     assert.equal(negative, 0, '行内按钮不得被 roving 设为 tabindex=-1（会让删除/编辑键盘不可达）');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* UserTable 接线实证（FE-LIST-KEYNAV-4 · 主代理裁定口径）          */
+/* ------------------------------------------------------------------ */
+
+const USER_TABLE_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { MemoryRouter } from '${'${NM_REACT_ROUTER}'}';
+import { UserTable } from '${'${USER_TABLE_PATH}'}';
+
+// 当前页 3 行（服务端分页：漫游域 = 当前页）
+const users = [0, 1, 2].map((i) => ({
+  id: 'u-' + i, username: 'user' + i, accountKind: 'human', roles: [],
+  roleLabel: '普通用户', status: 'active', libraryScopes: [], sourceGrants: [],
+  mustChangePassword: false,
+}));
+
+globalThis.__opened = [];
+globalThis.__toggles = [];
+function App() {
+  return createElement(MemoryRouter, null,
+    createElement(UserTable, {
+      users, total: users.length, page: 1, pageSize: 20, totalPages: 1,
+      isFetching: false, isPageTransitioning: false, currentUserId: 'me-not-in-list',
+      keyword: '', statusFilter: 'all', accountKindFilter: 'all', selectedUserIds: [],
+      onKeywordChange: () => {}, onStatusFilterChange: () => {}, onAccountKindFilterChange: () => {},
+      onPreviousPage: () => {}, onNextPage: () => {},
+      // 行首 checkbox：裁定要求「不动 tabIndex」，且其自身 Enter/Space 行为不变
+      onSelectUser: (id, checked) => { globalThis.__toggles.push([id, checked]); },
+      onSelectAll: () => {},
+      onOpenView: (id) => { globalThis.__opened.push(id); },
+      onOpenEdit: () => {}, onResetPassword: () => {}, onToggleUserStatus: () => {},
+      onResetLoginRisk: () => {}, onReviewRegistration: () => {},
+    }),
+  );
+}
+
+createRoot(document.getElementById('root')).render(createElement(App));
+`;
+
+async function mountUserTable(t: any) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), 'fe02-usertable-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
+  const userPath = `file://${join(HOST_ROOT, 'src/pages/manage/users/components/UserTable.tsx')}`;
+  await writeFile(entryFile, withNmPaths(USER_TABLE_ENTRY.replace('${USER_TABLE_PATH}', userPath)), 'utf8');
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'UserTable', fileName: () => 'probe.js' },
+      },
+    });
+  } finally {
+  }
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  await page.waitForSelector('[data-row-index="0"]');
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
+test('接线实证（真实 UserTable）：↑↓/Home/End 在行间移动，漫游域 = 当前页', async (t) => {
+  const h = await mountUserTable(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] input[type="checkbox"]');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 当前页末行（服务端分页下不跨页）');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 2, '末行 ↓ 停住（不越界、不跨页）');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 当前页首行');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('UserTable：行首 checkbox 的 Enter/Space 语义不变（裁定：不动其 tabIndex）', async (t) => {
+  const h = await mountUserTable(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    // ① ↑↓ 后焦点必须落在行本身（不是 checkbox）—— 否则 Enter 会变成「切换选中」
+    await page.focus('[data-row-index="0"] input[type="checkbox"]');
+    await page.keyboard.press('ArrowDown');
+    const tag = await page.evaluate(() => document.activeElement?.tagName);
+    const isRow = await page.evaluate(
+      () => document.activeElement?.matches('[data-row-index]') ?? false,
+    );
+    assert.ok(isRow, `↑↓ 后焦点应在行本身，实际 <${tag}>（落 checkbox 会让 Enter 变选中）`);
+
+    // ② Enter 在行本身 ⇒ 打开该行（onOpenView），**不**触发 checkbox 切换
+    await page.keyboard.press('Enter');
+    const opened = await page.evaluate(() => (globalThis as any).__opened ?? []);
+    const toggles = await page.evaluate(() => (globalThis as any).__toggles ?? []);
+    assert.deepEqual(opened, ['u-1'], 'Enter 应打开当前行');
+    assert.deepEqual(toggles, [], 'Enter 在行焦点上不得触发 checkbox 切换');
+
+    // ③ 焦点**在** checkbox 上时，Space 仍照旧切换（原生语义未被破坏）
+    await page.focus('[data-row-index="0"] input[type="checkbox"]');
+    await page.keyboard.press('Space');
+    const toggles2 = await page.evaluate(() => (globalThis as any).__toggles ?? []);
+    assert.ok(toggles2.length >= 1, 'checkbox 上的 Space 应照旧切换选中（原生语义不变）');
+
+    // ④ checkbox 未被设 tabindex=-1（Tab 可达性零回归）
+    const negative = await page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll('[data-row-index] input[type="checkbox"]')).filter(
+          (c) => c.getAttribute('tabindex') === '-1',
+        ).length,
+    );
+    assert.equal(negative, 0, '行首 checkbox 不得被设 tabindex=-1（Tab 可达性零回归）');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
