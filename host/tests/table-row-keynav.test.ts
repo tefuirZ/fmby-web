@@ -1436,6 +1436,7 @@ async function mountPageProbe(
         .replace('${MS_ACCOUNTS_PATH}', `file://${compFile}`)
         .replace('${MS_OAUTH_PATH}', `file://${compFile}`)
         .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`)
+        .replace('${NESTED_PATH}', `file://${compFile}`)
         .replace('file:///AI_PATH_PLACEHOLDER', compFile.replace('file://', ''))
     ),
     'utf8',
@@ -2232,12 +2233,19 @@ createRoot(document.getElementById('root')).render(
  * 返回命中的 `data-row-index`（超预算未命中返回 -1）。
  */
 async function tabIntoRow(page: any, tableIndex = 0, maxPresses = 15): Promise<number> {
+  // ⚠ 光 blur() 不够：Chrome 的**顺序焦点导航**会从上一个焦点元素继续往下走，
+  // 于是「从 body 起步」实际是从上次停的地方起步（嵌套表里表现为永远走不到
+  // 在 DOM 上位于子表之前的父表停靠点）。必须点一下不可聚焦区域重置起点。
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.locator('body').click({ position: { x: 2, y: 2 } });
   for (let i = 0; i < maxPresses; i++) {
     await page.keyboard.press('Tab');
     const hit = await page.evaluate((ti: number) => {
       const tbody = document.querySelectorAll('tbody')[ti];
-      const row = tbody?.querySelector(':focus')?.getAttribute('data-row-index');
+      const active = document.activeElement as HTMLElement | null;
+      // 按「最近 tbody 归属」判定：焦点若在子表行上，父表不算命中
+      if (!active || active.closest('tbody') !== tbody) return null;
+      const row = active.getAttribute('data-row-index');
       return row == null ? null : Number(row);
     }, tableIndex);
     if (hit != null) return hit;
@@ -2259,8 +2267,10 @@ async function rovingStopsIn(page: any, tableIndex: number): Promise<string[]> {
   return page.evaluate((ti: number) => {
     const tbody = document.querySelectorAll('tbody')[ti];
     if (!tbody) return [];
-    return Array.from(tbody.querySelectorAll('tr[data-row-index]'))
-      .filter((r) => r.getAttribute('tabindex') === '0')
+    // ⚠ 按「最近 tbody 归属」过滤：嵌套表里子行也是父 tbody 的 DOM 后代，
+    // 直接 tbody.querySelectorAll 会把子表的停靠点算进父表（父子串台）。
+    return Array.from(document.querySelectorAll('tr[data-row-index]'))
+      .filter((r) => r.closest('tbody') === tbody && r.getAttribute('tabindex') === '0')
       .map((r) => r.getAttribute('data-row-index'));
   }, tableIndex);
 }
@@ -2268,7 +2278,9 @@ async function rovingStopsIn(page: any, tableIndex: number): Promise<string[]> {
 async function focusedRowIn(page: any, tableIndex: number) {
   return page.evaluate((ti: number) => {
     const tbody = document.querySelectorAll('tbody')[ti];
-    const idx = tbody?.querySelector(':focus')?.getAttribute('data-row-index');
+    const active = document.activeElement as HTMLElement | null;
+    if (!active || active.closest('tbody') !== tbody) return null;
+    const idx = active.getAttribute('data-row-index');
     return idx == null ? null : Number(idx);
   }, tableIndex);
 }
@@ -2847,3 +2859,172 @@ function Probe() {
 
 createRoot(document.getElementById('root')).render(createElement(Probe, {}));
 `;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 嵌套表（A 方案）：CollectionListTable 是**全仓唯一一处逻辑父子表** ——
+// 展开行的 <td> 里再出一张表（CollectionMemberPanel）。
+// A 方案 = 父子各自独立索引域，data-row-index 各从 0 起。
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NESTED_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageCollectionsPage } from '${'${NESTED_PATH}'}';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// wire 形状：snake_case 直出，由 api 层映射为 camelCase 域模型
+const rawCollection = (i) => ({
+  id: 'c-' + i,
+  title: '合集 ' + i,
+  overview: null,
+  poster_url: null,
+  source_kind: 'manual',
+  collection_kind: 'custom',
+  auto_expand_enabled: false,
+  min_effective_members: null,
+  artwork_mode: 'poster',
+  visibility: 'Active',
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+});
+
+const rawMember = (collectionId, i) => ({
+  id: 'm-' + collectionId + '-' + i,
+  collection_id: collectionId,
+  bound_item_id: null,
+  member_origin: 'manual',
+  title_snapshot: '成员 ' + i,
+  year_snapshot: 2000 + i,
+  media_kind: 'movie',
+  poster_url_snapshot: null,
+  is_enabled: true,
+  release_order: i,
+  watch_order: i,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+});
+
+const collections = [rawCollection(0), rawCollection(1)];
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  // detail：/api/manage/collections/{id}（含斜杠 + id）
+  if (/\\/manage\\/collections\\/.+/.test(u)) {
+    const id = u.split('/manage/collections/')[1].split('?')[0];
+    return json({
+      collection: collections.find((c) => c.id === id) ?? rawCollection(0),
+      members: [rawMember(id, 0), rawMember(id, 1)],
+      rules: [],
+      member_overrides: [],
+    });
+  }
+  if (u.includes('/manage/collections')) return json(collections);
+  return json({});
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ManageCollectionsPage, {})),
+);
+`;
+
+/** 焦点所在行的**归属 tbody** 下标（子表的行在 DOM 上也属于父 tbody ⇒ 不能用 contains 判定）。 */
+function focusOwnerTbody(page: any): Promise<number> {
+  return page.evaluate(() => {
+    const tbodies = Array.from(document.querySelectorAll('tbody'));
+    const owner = (document.activeElement as HTMLElement | null)?.closest('tbody') ?? null;
+    return owner ? tbodies.indexOf(owner) : -1;
+  });
+}
+
+/** 焦点所在行的 data-row-index（按归属 tbody 判定，避免父子串台）。 */
+function focusRowIndex(page: any): Promise<number | null> {
+  return page.evaluate(() => {
+    const idx = (document.activeElement as HTMLElement | null)
+      ?.closest('[data-row-index]')
+      ?.getAttribute('data-row-index');
+    return idx == null ? null : Number(idx);
+  });
+}
+
+test('嵌套表 A 方案：父子各自独立索引域，子表 ↑↓ 不得串到父表', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-nested-',
+    NESTED_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageCollectionsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 展开第一行：点真按钮「成员」（aria-expanded 由它驱动）
+    await page.locator('tbody tr[data-row-index="0"] button', { hasText: '成员' }).first().click();
+    await page.waitForFunction(
+      () =>
+        document.querySelectorAll('tbody').length === 2 &&
+        document.querySelectorAll('tbody')[1]?.querySelectorAll('[data-row-index]').length === 2,
+      undefined,
+      { timeout: 20000 },
+    );
+
+    // A 方案核心断言①：两个域**各自**从 0 起算，互不相加。
+    // ⚠ 不能用 tbody.querySelectorAll：子表的行在 DOM 上**也是**父 tbody 的后代
+    // （实测父域读出 ['0','0','1','1']）。必须按「最近 tbody 归属」划分。
+    const domainOf = (ti: number) =>
+      page.evaluate((i: number) => {
+        const tbody = document.querySelectorAll('tbody')[i];
+        return Array.from(document.querySelectorAll('[data-row-index]'))
+          .filter((r) => r.closest('tbody') === tbody)
+          .map((r) => r.getAttribute('data-row-index'));
+      }, ti);
+    assert.deepEqual(await domainOf(0), ['0', '1'], '父表索引域：0..N-1');
+    assert.deepEqual(
+      await domainOf(1),
+      ['0', '1'],
+      '★子表索引域同样从 0 起（A 方案：不接在父表后面变 2,3）',
+    );
+
+    // A 方案核心断言②：两域各留**一个** Tab 停靠点（共 2 个，但分属不同 tbody）
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '父表唯一停靠点');
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '★子表也有自己的唯一停靠点');
+
+    // ── 子表内漫游：真实 Tab 走进子表，再按 ↓ ──
+    const childStart = await tabIntoRow(page, 1);
+    assert.equal(childStart, 0, 'Tab 应能走进子表的停靠点（子域从 0 起）');
+    assert.equal(await focusOwnerTbody(page), 1, '焦点归属子 tbody');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusRowIndex(page), 1, '子表内 ↓ → 子表第 2 行');
+    assert.equal(
+      await focusOwnerTbody(page),
+      1,
+      '★焦点必须仍在子 tbody：不得被父表 handler 抢走（keydown 会从子 tbody 冒泡到父 tbody）',
+    );
+    assert.deepEqual(await rovingStopsIn(page, 1), ['1'], '子表停靠点跟着走');
+    assert.deepEqual(
+      await rovingStopsIn(page, 0),
+      ['0'],
+      '★父表停靠点不受子表漫游影响（独立索引域）',
+    );
+
+    // ── 父表内漫游仍正常 ──
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    const parentStart = await tabIntoRow(page, 0);
+    assert.equal(parentStart, 0, 'Tab 走进父表停靠点');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusRowIndex(page), 1, '父表内 ↓ → 父表第 2 行');
+    assert.equal(await focusOwnerTbody(page), 0, '焦点归属父 tbody');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
