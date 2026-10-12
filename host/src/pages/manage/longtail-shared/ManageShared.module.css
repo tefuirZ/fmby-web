@@ -469,6 +469,13 @@
 .mono {
   font-family: var(--font-mono);
   font-size: var(--text-mono);
+  /* 与 .metaText 同因：mono 行承载公钥/哈希/ID 等**无空格长串**
+     （实测 `ed25519:HRKD5oD3RMHXiswnotd7KrjlEZ8PD11KOkohV7zB9nc` 在 375px 视口
+     scrollWidth 368px > clientWidth 275px，逐层把 #root 撑到 418px ⇒ 溢出 +43px）。
+     允许任意处断行 + min-width:0 参与 flex/grid 收缩。
+     桌面端串短不触发断行，渲染零变化。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .stackText {
