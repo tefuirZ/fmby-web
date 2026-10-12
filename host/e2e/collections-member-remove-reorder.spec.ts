@@ -55,7 +55,12 @@ async function ensureCollectionWithMembers(
   await page.getByPlaceholder('例如：科幻经典补完计划').fill(title);
   await page.getByRole('button', { name: /^保存|创建/ }).click();
   // 等创建真实落库（列表 invalidate 重取有往返），再 reload 取干净的服务端状态。
-  await expect(page.getByText('合集已创建。')).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
+  // rv01 Minor 1：原写法 `expect(...).catch(() => undefined)` 会把失败吞掉，
+  // 与后面「按标题定位行」的真判据混成同一种形状（后人照抄会变成零断言假绿）。
+  // 改 `expect.soft(...)`：toast 时机抖动只记录不误杀，但仍计入失败。
+  await expect
+    .soft(page.getByText('合集已创建。'), '创建合集应给出成功提示（软断言）')
+    .toBeVisible({ timeout: 15_000 });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
 
@@ -108,10 +113,14 @@ async function ensureCollectionWithMembers(
 test.describe('FE-COLLECTIONS-CONSUME-B2 — 成员移除 + 重排', () => {
   test('重排：首行「下移」后顺序发生交换', async ({ page }) => {
     const added = await ensureCollectionWithMembers(page);
-    // 诚实登记：数据集无足够候选→合集不足 2 成员时跳过（不假绿、不硬踩）
-    if (added < 2) {
-      test.skip(true, `数据集候选不足：合集内仅 ${added} 个成员，无法验证重排`);
-    }
+    // rv01 Minor 2：原写法是「成员数不足 ⇒ skip ⇒ 绿」，等于给了
+    // 「加入成员的功能坏了 ⇒ added=0 ⇒ 绿」一条通道 —— 与本卡「不要静默 skip」
+    // 的主题相悖。改为**显式断言**：不够 2 个成员就是数据布置或功能坏了，置红。
+    expect(
+      added,
+      `数据布置失败：合集内仅 ${added} 个成员（需 ≥2 才能验证重排）——` +
+        '可能是候选端点无数据，也可能是加入成员功能坏了，二者都必须暴露',
+    ).toBeGreaterThanOrEqual(2);
 
     // 重排按钮在成员表内（首行「下移」aria-label 含标题）
     const firstDown = page.getByRole('button', { name: /^将「.*」下移$/ }).first();
@@ -135,10 +144,11 @@ test.describe('FE-COLLECTIONS-CONSUME-B2 — 成员移除 + 重排', () => {
   test('移除：点「移除」→ 确认「确认移除」→ 成员行数 -1', async ({ page }) => {
     await ensureCollectionWithMembers(page);
     const before = await memberRowCount(page);
-    // 诚实登记：合集无成员时跳过移除断言
-    if (before < 1) {
-      test.skip(true, '合集无成员，无法验证移除');
-    }
+    // 同上（rv01 Minor 2）：无成员 ⇒ 置红，不 skip。
+    expect(
+      before,
+      '数据布置失败：合集内没有任何成员，无法验证移除',
+    ).toBeGreaterThanOrEqual(1);
 
     const firstRemove = page.getByRole('button', { name: /^移除成员「.*」$/ }).first();
     await expect(firstRemove).toBeVisible({ timeout: 10_000 });
