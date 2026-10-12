@@ -1,6 +1,6 @@
 /** 媒体审核工单页子组件（V1F-03a/b + provider-search 接线）。 */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   mediaReviewsApi,
@@ -18,6 +18,7 @@ import {
   formatEpochMs,
   parseSnapshot,
 } from './shared';
+import { useTableRowRoving } from '../../../features/a11y/useTableRowRoving';
 
 export function ProviderSearchPanel({
   onPick,
@@ -34,6 +35,11 @@ export function ProviderSearchPanel({
   });
 
   const candidates = searchQuery.data?.candidates ?? [];
+
+  // FE-LIST-KEYNAV-10：候选表行内有「选用」按钮（原生 Tab 可达）
+  // ⇒ 不传 onActivate，不凭空给行加 Enter 语义。
+  const candidatesTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: candidatesTbodyRef, rowCount: candidates.length });
 
   return (
     <div className={styles.stackText}>
@@ -79,9 +85,9 @@ export function ProviderSearchPanel({
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody>
-              {candidates.map((c) => (
-                <tr key={`${c.provider}-${c.providerItemId}`}>
+            <tbody ref={candidatesTbodyRef}>
+              {candidates.map((c, index) => (
+                <tr key={`${c.provider}-${c.providerItemId}`} data-row-index={index}>
                   <td>{c.title}</td>
                   <td className={styles.mutedText}>{c.originalTitle ?? '—'}</td>
                   <td>{c.year ?? '—'}</td>
