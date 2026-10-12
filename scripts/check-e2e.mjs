@@ -29,8 +29,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,6 +40,7 @@ import {
   describeSearchPaths,
   WEB_REPO_ROOT,
 } from '../host/e2e/binaryResolver.mjs';
+import { judgeKnownRed, nonPassingTests } from './lib/e2e-known-red.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -153,32 +154,123 @@ if (existsSync(distIndex)) {
 }
 console.log('');
 
-const result = spawnSync(playwrightBin, ['test', '--reporter=list'], {
+// list reporter 给人类可读输出，json reporter 给机器可判定的失败清单：
+// known-red 匹配必须基于结构化结果，不能靠正则去啃 list 的表格。
+//
+// reporter 只能接名字（playwright 把 `--reporter=json,/path` 的第二段当模块名 require，
+// 直接 MODULE_NOT_FOUND）；输出路径靠 PLAYWRIGHT_JSON_OUTPUT_FILE 传，仓内已有该范式。
+const reportTmpDir = mkdtempSync(path.join(tmpdir(), 'fmby-e2e-report-'));
+const jsonReportPath = path.join(reportTmpDir, 'report.json');
+
+const result = spawnSync(playwrightBin, ['test', '--reporter=list,json'], {
   cwd: HOST_DIR,
   stdio: 'inherit',
   env: {
     ...process.env,
     FMBY_E2E_SERVER_BIN: serverBin,
     FMBY_E2E_SEED_BIN: seedBin,
+    PLAYWRIGHT_JSON_OUTPUT_FILE: jsonReportPath,
   },
 });
+
+let jsonReport = null;
+let jsonReportErr = null;
+try {
+  if (existsSync(jsonReportPath)) jsonReport = JSON.parse(readFileSync(jsonReportPath, 'utf8'));
+  else jsonReportErr = `playwright 未写出 json 报告（${jsonReportPath} 不存在）`;
+} catch (err) {
+  jsonReportErr = err.message;
+}
+rmSync(reportTmpDir, { recursive: true, force: true });
 
 if (result.error) {
   console.error(`[FAIL] playwright 启动失败：${result.error.message} ⇒ 基建缺件`);
   process.exit(EXIT_INFRA);
 }
 
-const code = result.status ?? EXIT_FAILED;
-if (code === 0) {
-  console.log('\n[PASS] e2e 真实栈全绿。');
-  process.exit(EXIT_OK);
+// 报告缺失/损坏不是「零失败」：判红（EXIT_FAILED），绝不能退化成空报告。
+// 早退在此，避免 jsonReport=null 被当成 [] 走 fully-known 分支。
+if (jsonReportErr) {
+  console.error(`[FAIL] 无法解析 playwright json 报告：${jsonReportErr}`);
+  console.error('       known-red 判定需要结构化失败清单；拿不到清单就不能声称「无失败」。');
+  console.error('       这通常是 playwright 启动即崩（如 reporter 名写错），不是「e2e 全绿」。');
+  process.exit(EXIT_FAILED);
 }
 
-console.error(`\n[FAIL] e2e 真实栈存在失败/未跑用例（playwright exit=${code}）。`);
-console.error('       本闸不放宽断言：真失败即置红。');
-console.error(`       若为已知存量失败，请在 ${path.relative(REPO_ROOT, KNOWN_RED_FILE)} 登记（带 issue 号）；`);
-console.error('       台账内条目一旦修绿而条目未删 ⇒ STALE 反噬判红。');
-process.exit(EXIT_FAILED);
+const code = result.status ?? EXIT_FAILED;
+const knownRedRaw = existsSync(KNOWN_RED_FILE) ? readFileSync(KNOWN_RED_FILE, 'utf8') : '';
+const knownRedRel = path.relative(REPO_ROOT, KNOWN_RED_FILE);
+const failing = nonPassingTests(jsonReport);
+
+/** 打印判定结果；返回是否可放行。 */
+function reportVerdict(verdict) {
+  for (const { failure, entry } of verdict.knownRed) {
+    console.log(
+      `[SKIP ] 已知存量失败：${failure.project} › ${failure.file.split('/').pop()} › ${failure.title}`,
+    );
+    console.log(`        issue=${entry.issue}｜原因：${entry.reason}`);
+  }
+  for (const failure of verdict.unknown) {
+    console.error(
+      `[FAIL ] 未登记的失败：${failure.project} › ${failure.file} › ${failure.title}`,
+    );
+    if (failure.error) console.error(`        ${failure.error}`);
+  }
+  for (const line of verdict.malformed) {
+    console.error(`[BAD  ] ${knownRedRel} 格式非法登记：${line}`);
+    console.error('        格式须为 `<spec文件>:<用例名片段> | <issue号> | <登记原因>`');
+  }
+  for (const entry of verdict.stale) {
+    console.error(`[STALE] 台账条目本次未被命中（已修绿却未删）：${entry.raw}`);
+  }
+
+  if (verdict.stale.length > 0) {
+    console.error(
+      `\n[FAIL] 台账有 ${verdict.stale.length} 条 STALE 条目（已修绿却未删登记）⇒ 反噬判红。`,
+    );
+    console.error('       台账不是永久豁免；请删除已修绿的条目后再跑。');
+  }
+  if (verdict.unknown.length > 0) {
+    console.error(
+      `\n[FAIL] e2e 真实栈存在 ${verdict.unknown.length} 条**未登记**的失败用例。`,
+    );
+    console.error('       本闸不放宽断言：真失败即置红。');
+    console.error(`       若确为存量失败，先建 issue 再在 ${knownRedRel} 登记（带 issue 号）。`);
+  }
+  if (verdict.malformed.length > 0) {
+    console.error(`\n[FAIL] ${knownRedRel} 有 ${verdict.malformed.length} 条格式非法登记 ⇒ 判红。`);
+  }
+  return verdict.ok;
+}
+
+const verdict = judgeKnownRed(knownRedRaw, failing);
+const allowed = reportVerdict(verdict);
+
+if (code === 0) {
+  if (allowed) {
+    console.log('\n[PASS] e2e 真实栈全绿，台账无 STALE 条目。');
+    process.exit(EXIT_OK);
+  }
+  console.error('\n[FAIL] e2e 全绿但台账仍有未命中/非法条目 ⇒ 反噬判红。');
+  process.exit(EXIT_FAILED);
+}
+
+if (!allowed) process.exit(EXIT_FAILED);
+
+// exit!=0 但一条失败都没读到：只可能是中止/全局 setup 报错/配置错。
+// 「0 条失败」不能拿来给真红放行。
+if (failing.length === 0) {
+  console.error('\n[FAIL] playwright 非零退出（exit=' + code + '）但 json 报告里 0 条失败。');
+  console.error('       典型的全用例被中止（globalSetup 挂、webServer 起不来、配置报错）。');
+  console.error('       “一条失败都没有”不等于“全绿”，闸不能据此放行。');
+  process.exit(EXIT_FAILED);
+}
+
+console.log(
+  `\n[PASS] e2e 真实栈：${failing.length} 条失败全部命中台账（均已登记 issue），未置红。`,
+);
+console.log(`       台账：${knownRedRel}`);
+process.exit(EXIT_OK);
 
 /** host/src + shared/src 的最新文件 mtime（用于产物新鲜度判定）。 */
 function newestSourceMtime() {
