@@ -1,8 +1,11 @@
 /** 积分流水区（V1F 拆分：ManageRewardsPage → 子组件）。 */
 
+import { useRef } from 'react';
+
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '../longtail-shared/components';
+import { useTableRowRoving } from '../../../features/a11y/useTableRowRoving';
 
 export const LEDGER_LIMIT_OPTIONS = [50, 100, 200] as const;
 
@@ -40,6 +43,12 @@ export function RewardsLedgerSection({
   onLedgerLimitChange,
   isPending,
 }: RewardsLedgerSectionProps) {
+  // FE-LIST-KEYNAV-7：表格行键盘漫游（↑↓/Home/End 移动行）。
+  // ★纯只读对账表（无任何行内控件）⇒ 不传 onActivate：
+  //   仓内 contract 规定破坏性/需确认动作不绑 Enter，此处也无「打开详情」可复用。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef, rowCount: ledger.length });
+
   return (
     <ManageSectionCard
       title={`积分流水（最近 ${ledgerLimit} 条）`}
@@ -77,9 +86,9 @@ export function RewardsLedgerSection({
                 <th>余额后</th>
               </tr>
             </thead>
-            <tbody>
-              {ledger.map((entry) => (
-                <tr key={entry.id}>
+            <tbody ref={tbodyRef}>
+              {ledger.map((entry, rowIndex) => (
+                <tr key={entry.id} data-row-index={rowIndex}>
                   <td className="nowrap">{formatEpochMs(entry.createdAt)}</td>
                   <td>
                     <StatusBadge

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   manageApi,
@@ -19,6 +19,7 @@ import {
 } from './longtail-shared/components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 
 export function ManageSessionsPage() {
   const queryClient = useQueryClient();
@@ -49,12 +50,19 @@ export function ManageSessionsPage() {
   });
 
   const sessions = sessionsQuery.data?.items ?? [];
+  // FE-LIST-KEYNAV-5：表格行键盘漫游（↑↓/Home/End 移动行）。
+  // ★刻意**不传 onActivate**：本页唯一动作「移除会话」是破坏性的（立即踢设备），
+  // 直连回车会让「按一下回车就弹确认框」，与既有「必须点按钮」的手势不一致。
+  // 漫游只负责快速定位行；移除仍须 Tab/点击到行内按钮。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
   const filteredSessions = useMemo(() => {
     return sessions.filter((session) => {
       if (statusFilter === 'all') return true;
       return session.status === statusFilter;
     });
   }, [sessions, statusFilter]);
+
+  useTableRowRoving({ tbodyRef, rowCount: filteredSessions.length });
 
   if (sessionsQuery.isPending) {
     return (
@@ -139,7 +147,7 @@ export function ManageSessionsPage() {
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={tbodyRef}>
               {filteredSessions.length === 0 ? (
                 <EmptyTableRow
                   colSpan={7}
@@ -151,8 +159,8 @@ export function ManageSessionsPage() {
                   }
                 />
               ) : (
-                filteredSessions.map((session) => (
-                  <tr key={session.id}>
+                filteredSessions.map((session, rowIndex) => (
+                  <tr key={session.id} data-row-index={rowIndex}>
                     <td>
                       <div className={styles.stackText}>
                         <span className={styles.primaryText}>{session.userName}</span>

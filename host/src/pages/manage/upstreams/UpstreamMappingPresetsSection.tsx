@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   upstreamsApi,
   type UpstreamMappingPresetRecord,
 } from '@fmby/v2-shared/contracts/manage/upstreams';
 import { queryKeys } from '@fmby/v2-shared/query';
+import { useTableRowRoving } from '../../../features/a11y/useTableRowRoving';
 import {
   Dialog,
   FeedbackState,
@@ -104,6 +105,19 @@ export function UpstreamMappingPresetsSection({ sourceId }: { sourceId: string }
   });
 
   const presets = presetsQuery.data?.items ?? [];
+  // FE-LIST-KEYNAV-7：表格行键盘漫游（↑↓/Home/End 移动行，Enter 编辑该预设）。
+  // Enter 点击行内**既有的**「编辑」按钮（行内首个 button，语义权威），不新造逻辑。
+  // ★不接删除：`setPendingDelete` 是破坏性动作，仍须点行内「删除」按钮。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: presets.length,
+    onActivate: (index) => {
+      const row = tbodyRef.current?.querySelector<HTMLElement>(`[data-row-index="${index}"]`);
+      row?.querySelector<HTMLButtonElement>('button')?.click();
+    },
+  });
+
   const isFormPending = createMutation.isPending || updateMutation.isPending;
 
   if (presetsQuery.isPending) {
@@ -175,9 +189,9 @@ export function UpstreamMappingPresetsSection({ sourceId }: { sourceId: string }
                   <th>操作</th>
                 </tr>
               </thead>
-              <tbody>
-                {presets.map((p) => (
-                  <tr key={p.id}>
+              <tbody ref={tbodyRef}>
+                {presets.map((p, rowIndex) => (
+                  <tr key={p.id} data-row-index={rowIndex}>
                     <td>{p.name}</td>
                     <td className={styles.mutedText}>{p.includeKeywords.join('、') || '—'}</td>
                     <td className={styles.mutedText}>{p.excludeKeywords.join('、') || '—'}</td>

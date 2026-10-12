@@ -9,7 +9,7 @@
  *   严禁写入 localStorage / sessionStorage / URL / console。
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { microsoftApi } from '@fmby/v2-shared/contracts/manage/microsoft';
 import type {
@@ -21,6 +21,7 @@ import { InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '../longtail-shared/components';
+import { useTableRowRoving } from '../../../features/a11y/useTableRowRoving';
 
 export function MicrosoftOAuthSection() {
   const [providerType, setProviderType] = useState('global');
@@ -36,6 +37,15 @@ export function MicrosoftOAuthSection() {
   const [siteQuery, setSiteQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // FE-LIST-KEYNAV-9：drive / site 两张表都是**纯只读清单**（行内无任何控件）
+  // ⇒ 各自独立 tbody + 各自独立行索引域，不传 onActivate：Enter 不凭空造语义。
+  // 两表平级（同一 ManageSectionCard 内相邻），不构成父子嵌套。
+  const drivesTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: drivesTbodyRef, rowCount: drives.length });
+
+  const sitesTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: sitesTbodyRef, rowCount: sites.length });
 
   function resetError() {
     setError(null);
@@ -289,9 +299,9 @@ export function MicrosoftOAuthSection() {
                     <th>ID</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {drives.map((drive) => (
-                    <tr key={drive.id}>
+                <tbody ref={drivesTbodyRef}>
+                  {drives.map((drive, rowIndex) => (
+                    <tr key={drive.id} data-row-index={rowIndex}>
                       <td>{drive.name ?? '—'}</td>
                       <td>{drive.driveType ?? '—'}</td>
                       <td className={styles.mono}>{drive.id}</td>
@@ -311,9 +321,9 @@ export function MicrosoftOAuthSection() {
                     <th>ID</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {sites.map((site) => (
-                    <tr key={site.id}>
+                <tbody ref={sitesTbodyRef}>
+                  {sites.map((site, rowIndex) => (
+                    <tr key={site.id} data-row-index={rowIndex}>
                       <td>{site.displayName ?? site.name ?? '—'}</td>
                       <td className={styles.mono}>{site.id}</td>
                     </tr>
