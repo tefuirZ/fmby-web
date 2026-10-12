@@ -1301,7 +1301,8 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${REG_CODE_PATH}', `file://${compFile}`)
         .replace('${PRESETS_PATH}', `file://${compFile}`)
         .replace('${YUN139_PATH}', `file://${compFile}`)
-        .replace('${LEDGER_PATH}', `file://${compFile}`),
+        .replace('${LEDGER_PATH}', `file://${compFile}`)
+        .replace('${MS_ACCOUNTS_PATH}', `file://${compFile}`),
     ),
     'utf8',
   );
@@ -2057,6 +2058,101 @@ test('RewardsLedgerSection 裁定：只读账本行上 Enter 无副作用（无�
       'Enter 不得凭空造出语义（无动作可绑定）',
     );
     assert.equal(await focusedRow(page), 1, 'Enter 不得把焦点挪走');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* MicrosoftAccountsSection 接线实证（第五批 1/3）                    */
+/* ------------------------------------------------------------------ */
+
+const MS_ACCOUNTS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { MicrosoftAccountsSection } from '${'${MS_ACCOUNTS_PATH}'}';
+
+const configItems = [0, 1, 2].map((i) => ({
+  providerType: 'graph-' + i,
+  clientIdConfigured: true,
+  clientSecretConfigured: i !== 0,
+  redirectUri: 'https://example.com/cb/' + i,
+  clientIdSource: 'manual',
+  tokenKeyStatus: 'ready',
+}));
+
+const profiles = [0, 1, 2].map((i) => ({
+  id: 'acct-' + i,
+  userPrincipalName: 'user' + i + '@example.com',
+  principalId: 'p-' + i,
+  providerType: 'graph',
+  serviceKind: 'drive',
+  status: 'active',
+  displayName: '账号 ' + i,
+  note: null,
+}));
+
+createRoot(document.getElementById('root')).render(
+  createElement(MicrosoftAccountsSection, { configItems, profiles }),
+);
+`;
+
+/** 一张表（tbody）内的当前焦点行索引；不在该表内则返回 null。 */
+async function focusedRowIn(page: any, tableIndex: number) {
+  return page.evaluate((ti: number) => {
+    const tbody = document.querySelectorAll('tbody')[ti];
+    const idx = tbody?.querySelector(':focus')?.getAttribute('data-row-index');
+    return idx == null ? null : Number(idx);
+  }, tableIndex);
+}
+
+test('接线实证（MicrosoftAccountsSection）：两张只读表各自独立漫游（第五批 1/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-msacct-',
+    MS_ACCOUNTS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/microsoft/MicrosoftAccountsSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody').length),
+      2,
+      '两张表应有各自 tbody（索引域独立）',
+    );
+    await page.locator('tbody').nth(0).locator('[data-row-index="0"]').focus();
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, '表1 ↓ 应到第 2 行');
+    // 第二张表索引域必须从 0 起算，不能被表1的焦点带着跑
+    await page.locator('tbody').nth(1).locator('[data-row-index="0"]').focus();
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 1), 2, '表2 End → 末行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('MicrosoftAccountsSection 裁定：只读凭据表行上 Enter 无副作用', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-msacct2-',
+    MS_ACCOUNTS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/microsoft/MicrosoftAccountsSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.locator('tbody').nth(0).locator('[data-row-index="0"]').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    assert.equal(
+      await page.evaluate(() => document.querySelector('[role="dialog"]') !== null),
+      false,
+      '凭据表 Enter 不得凭空造出语义',
+    );
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
