@@ -1404,6 +1404,7 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${LEDGER_PATH}', `file://${compFile}`)
         .replace('${MS_ACCOUNTS_PATH}', `file://${compFile}`)
         .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`)
+        .replace('file:///AI_PATH_PLACEHOLDER', compFile.replace('file://', ''))
     ),
     'utf8',
   );
@@ -2498,3 +2499,115 @@ test('I-2 契约：虚拟化行挂载/卸载后不产生重复停靠点', async 
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* AiInterventionThreadList 接线实证（第六批）                            */
+/* ------------------------------------------------------------------ */
+
+
+test('接线实证（AiInterventionThreadList）：真实 Tab 起步 + ↑↓/Home/End 漫游 + Enter 选中（第六批）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-aithr-',
+    AI_THREAD_LIST_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/naming-rules/ai-intervention/components/AiInterventionThreadList.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 真实键盘入口：从 body 连按 Tab 走进表格（页面上方还有关键词框/筛选控件）。
+    assert.equal(await tabIntoRow(page), 0, '连按 Tab 应能走到活动行（真实键盘入口）');
+    assert.deepEqual(await rovingStops(page), ['0'], '行不得再全部进 Tab 序（只有唯一停靠点）');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.deepEqual(await rovingStops(page), ['1'], '停靠点须跟着焦点走');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 3, 'End → 末行');
+    assert.deepEqual(await rovingStops(page), ['3']);
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+
+    await page.keyboard.press('Enter');
+    const sel = await page.evaluate(() => (window as any).__selections);
+    assert.deepEqual(sel, ['media-0'], 'Enter 应选中**焦点所在行**的媒体项（且只一次）');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('AiInterventionThreadList 裁定：Space 仍能选中（不因移除行内 Enter 而丢失激活途径）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-aithr2-',
+    AI_THREAD_LIST_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/naming-rules/ai-intervention/components/AiInterventionThreadList.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.equal(await tabIntoRow(page), 0, '真实 Tab 应能走进表格');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 2);
+    await page.keyboard.press(' ');
+    const sel = await page.evaluate(() => (window as any).__selections);
+    assert.deepEqual(sel, ['media-2'], 'Space 仍应选中行内媒体项');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+const AI_THREAD_LIST_ENTRY = `
+import { createElement, useState } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
+import { AiInterventionThreadList } from 'file:///AI_PATH_PLACEHOLDER';
+
+function makeThread(i) {
+  return {
+    id: 'thr-' + i,
+    mediaItemId: 'media-' + i,
+    latestRunId: null,
+    latestAutoTaskId: null,
+    latestSummaryJson: '{}',
+    latestEvidenceJson: '{}',
+    latestResultJson: '{}',
+    latestDiffJson: '{}',
+    latestSkillKey: 'naming_cleanup',
+    latestProvider: 'gemini',
+    latestModel: 'gemini-2.5',
+    latestRunStatus: 'Succeeded',
+    latestAppliedRunId: null,
+    latestAppliedResultJson: '{}',
+    sessionState: 'Open',
+    currentSessionId: null,
+    currentSessionSkillKey: null,
+    sessionOpenedByUserId: null,
+    sessionOpenedAt: null,
+    sessionLastActivityAt: null,
+    archivedSessionSummaryJson: '',
+    createdAt: 1767225600000 + i,
+    updatedAt: 1767225600000 + i,
+  };
+}
+
+const threads = [0, 1, 2, 3].map(makeThread);
+
+function Probe() {
+  const [selected, setSelected] = useState(null);
+  return createElement(AiInterventionThreadList, {
+    threads,
+    isPending: false,
+    error: null,
+    selectedMediaItemId: selected,
+    onSelect: (id) => {
+      window.__selections = (window.__selections || []).concat([id]);
+      setSelected(id);
+    },
+  });
+}
+
+createRoot(document.getElementById('root')).render(createElement(Probe, {}));
+`;
