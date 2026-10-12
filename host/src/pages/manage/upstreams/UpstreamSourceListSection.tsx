@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   upstreamsApi,
@@ -19,6 +19,7 @@ import {
   toWriteInput,
   type SourceFormState,
 } from './shared';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 
 /** 上游源本体列表（CRUD + 启停 + 真实探活 + 局域网发现）。 */
 export function UpstreamSourceListSection() {
@@ -102,6 +103,17 @@ export function UpstreamSourceListSection() {
   });
 
   const sources = listQuery.data?.items ?? [];
+
+  // FE-LIST-KEYNAV-10：两张表都是只读清单 —— 发现结果（行内无控件）与源列表
+  // （行内有启停/编辑/删除按钮，原生 Tab 可达）⇒ 都不传 onActivate。
+  const discoveredTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: discoveredTbodyRef,
+    rowCount: discoveryMutation.data?.items.length ?? 0,
+  });
+
+  const sourcesTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: sourcesTbodyRef, rowCount: sources.length });
   const isFormPending = createMutation.isPending || updateMutation.isPending;
 
   function openCreate() {
@@ -144,9 +156,9 @@ export function UpstreamSourceListSection() {
                   <th>Server ID</th>
                 </tr>
               </thead>
-              <tbody>
-                {discoveryMutation.data.items.map((i) => (
-                  <tr key={`${i.baseUrl}-${i.name}`}>
+              <tbody ref={discoveredTbodyRef}>
+                {discoveryMutation.data.items.map((i, index) => (
+                  <tr key={`${i.baseUrl}-${i.name}`} data-row-index={index}>
                     <td>{i.name}</td>
                     <td className={styles.mono}>{i.baseUrl}</td>
                     <td className={styles.mono}>{i.endpointAddress ?? '—'}</td>
@@ -212,11 +224,11 @@ export function UpstreamSourceListSection() {
                   <th>操作</th>
                 </tr>
               </thead>
-              <tbody>
-                {sources.map((s) => {
+              <tbody ref={sourcesTbodyRef}>
+                {sources.map((s, index) => {
                   const disabled = s.status === 'disabled';
                   return (
-                    <tr key={s.id}>
+                    <tr key={s.id} data-row-index={index}>
                       <td>{s.name}</td>
                       <td>{s.sourceTypeLabel || s.sourceType}</td>
                       <td className={styles.mono}>{s.baseUrl}</td>

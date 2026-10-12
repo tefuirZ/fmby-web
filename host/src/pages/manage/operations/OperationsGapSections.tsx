@@ -13,7 +13,7 @@
  * - limit 越界由后端 clamp，前端原值上送并以响应回显的 limit 为准。
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   operationsApi,
@@ -26,6 +26,7 @@ import { InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '../longtail-shared/components';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 
 const LIMIT_OPTIONS = [50, 200, 500] as const;
 const EM_DASH = '—';
@@ -60,6 +61,15 @@ export function OperationsGapSections() {
   const effectiveLoadItems = realtime.mountLoad?.items ?? loadItems;
   const effectiveSessions = realtime.activePlayback?.sessions ?? sessions;
   const isRealtimeLive = realtime.status === 'open';
+
+  // FE-LIST-KEYNAV-10：两张表都是**只读统计清单**（行内无控件）⇒ 不传 onActivate。
+  // ★rowCount 必须用 **effective**（实时快照 > REST 回退）的份，不能用 REST 原始
+  // 数据：WS 推来的行数与 REST 不同 ⇒ 用错会让 roving 索引域和 DOM 对不上。
+  const loadItemsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: loadItemsTbodyRef, rowCount: effectiveLoadItems.length });
+
+  const sessionsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: sessionsTbodyRef, rowCount: effectiveSessions.length });
 
   return (
     <>
@@ -110,9 +120,9 @@ export function OperationsGapSections() {
                   <th>限流</th>
                 </tr>
               </thead>
-              <tbody>
-                {effectiveLoadItems.map((item) => (
-                  <tr key={item.sourceId}>
+              <tbody ref={loadItemsTbodyRef}>
+                {effectiveLoadItems.map((item, index) => (
+                  <tr key={item.sourceId} data-row-index={index}>
                     <td>{item.sourceName}</td>
                     <td>{item.providerType}</td>
                     <td>{item.activeSessionCount}</td>
@@ -199,9 +209,9 @@ export function OperationsGapSections() {
                     <th>开始时间</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {effectiveSessions.map((session) => (
-                    <tr key={session.sessionId}>
+                <tbody ref={sessionsTbodyRef}>
+                  {effectiveSessions.map((session, index) => (
+                    <tr key={session.sessionId} data-row-index={index}>
                       <td>{session.user.username}</td>
                       <td>{session.item.title}</td>
                       <td>{textOrDash(session.source.sourceName)}</td>

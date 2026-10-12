@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   buildActiveSnapshotRows,
@@ -12,6 +12,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { EmptyTableRow, ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { OperationsGapSections } from './operations/OperationsGapSections';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 
 const DAY_OPTIONS = [7, 14, 30];
 
@@ -28,6 +29,36 @@ export function ManageOperationsPage() {
   const overviewQuery = useQuery({
     queryKey: queryKeys.manage.operations.overview(days),
     queryFn: () => operationsApi.overview(days),
+  });
+
+  // FE-LIST-KEYNAV-10：本页四张表全是**只读统计清单**（行内无控件）
+  // ⇒ 都不传 onActivate。★hook 必须早于下面 isPending / isError 两个
+  // early return（Hooks 规则）。rowCount 用可选链，避免依赖 derive 后的变量。
+  const hotItemsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: hotItemsTbodyRef, rowCount: overviewQuery.data?.hotItems.length ?? 0 });
+
+  const activeUsersTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: activeUsersTbodyRef,
+    rowCount: overviewQuery.data?.activeUsers.length ?? 0,
+  });
+
+  const snapshotTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: snapshotTbodyRef,
+    // rowCount 必须与 DOM 里的行数一致：这两张表的行是 builder derive 出来的，
+    // 所以这里也用同一个 builder 取长度（不能偷懒写 0）。
+    rowCount: overviewQuery.data
+      ? buildActiveSnapshotRows(overviewQuery.data.activeSnapshot).rows.length
+      : 0,
+  });
+
+  const loadRowsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: loadRowsTbodyRef,
+    rowCount: overviewQuery.data
+      ? buildDataSourceLoadRows(overviewQuery.data.dataSourceLoad).length
+      : 0,
   });
 
   if (overviewQuery.isPending) {
@@ -142,9 +173,9 @@ export function ManageOperationsPage() {
                   <th>活跃用户</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody ref={hotItemsTbodyRef}>
                 {data.hotItems.map((h, i) => (
-                  <tr key={h.itemId}>
+                  <tr key={h.itemId} data-row-index={i}>
                     <td>{i + 1}</td>
                     <td>{h.title}</td>
                     <td>{h.mediaType}</td>
@@ -171,9 +202,9 @@ export function ManageOperationsPage() {
                   <th>最近播放</th>
                 </tr>
               </thead>
-              <tbody>
-                {data.activeUsers.map((u) => (
-                  <tr key={u.userId}>
+              <tbody ref={activeUsersTbodyRef}>
+                {data.activeUsers.map((u, i) => (
+                  <tr key={u.userId} data-row-index={i}>
                     <td>{u.username}</td>
                     <td>{u.playCount}</td>
                     <td className="nowrap">{formatEpochMs(u.latestPlayedAt)}</td>
@@ -221,9 +252,9 @@ export function ManageOperationsPage() {
                   <th>开始时间</th>
                 </tr>
               </thead>
-              <tbody>
-                {snapshotView.rows.map((r) => (
-                  <tr key={r.key}>
+              <tbody ref={snapshotTbodyRef}>
+                {snapshotView.rows.map((r, i) => (
+                  <tr key={r.key} data-row-index={i}>
                     <td>{r.username}</td>
                     <td>{r.title}</td>
                     <td>{r.state === "paused" ? "暂停" : "播放中"}</td>
@@ -255,9 +286,9 @@ export function ManageOperationsPage() {
                   <th>暂停</th>
                 </tr>
               </thead>
-              <tbody>
-                {loadRows.map((r) => (
-                  <tr key={r.key}>
+              <tbody ref={loadRowsTbodyRef}>
+                {loadRows.map((r, i) => (
+                  <tr key={r.key} data-row-index={i}>
                     <td>{r.mountName}</td>
                     <td>{r.providerType}</td>
                     <td>{r.activeSessionCount}</td>
@@ -285,6 +316,10 @@ function TrendTable({
   rows: { date: string; added?: number; cumulative?: number; playCount?: number; uniqueUserCount?: number }[];
   type: 'count' | 'playback';
 }) {
+  // FE-LIST-KEYNAV-10：趋势表只读，行内无控件 ⇒ 不传 onActivate。
+  const rowsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: rowsTbodyRef, rowCount: rows.length });
+
   return (
     <div className={styles.entityCard}>
       <strong className={styles.sectionTitle}>{title}</strong>
@@ -306,12 +341,12 @@ function TrendTable({
               )}
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={rowsTbodyRef}>
             {rows.length === 0 ? (
               <EmptyTableRow colSpan={3} title="无数据" description="" />
             ) : (
-              rows.map((r) => (
-                <tr key={r.date}>
+              rows.map((r, i) => (
+                <tr key={r.date} data-row-index={i}>
                   <td className="nowrap">{r.date}</td>
                   {type === 'count' ? (
                     <>
