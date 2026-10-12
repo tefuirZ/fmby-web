@@ -14,11 +14,34 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 
 const HOST_ROOT = join(import.meta.dirname, '..');
+
+/**
+ * node_modules 的**绝对路径**。
+ *
+ * rv01 #4（主代理采纳）：探针 work 落 os.tmpdir()（fmby-queue 会把命令降权到 tefuir，
+ * 而仓库树 host/ 是 root:755 ⇒ tefuir 不可写，在仓库树内建临时目录必 EACCES）。
+ * 但 entry 一落到 /tmp，Rollup 就解析不到 bare specifier（实测 "failed to resolve
+ * import react"）⇒ 改用 node_modules 下的绝对路径 import 绕开解析链。
+ * vite 的 root 仍指 HOST_ROOT，故 @fmby/* 别名与 CSS Module 照旧生效。
+ */
+const NM = join(HOST_ROOT, 'node_modules');
+const nmUrl = (rel: string) => pathToFileURL(join(NM, rel)).href;
+const NM_REACT = nmUrl('react/index.js');
+const NM_REACT_DOM_CLIENT = nmUrl('react-dom/client.js');
+const NM_REACT_ROUTER = nmUrl('react-router/dist/development/index.mjs');
+
+/** 把 entry 模板里的 `${NM_*}` 占位符（模板字面量内已转义）替换成真实绝对路径。 */
+function withNmPaths(src: string): string {
+  return src
+    .replace(/\$\{NM_REACT_DOM_CLIENT\}/g, NM_REACT_DOM_CLIENT)
+    .replace(/\$\{NM_REACT_ROUTER\}/g, NM_REACT_ROUTER)
+    .replace(/\$\{NM_REACT\}/g, NM_REACT);
+}
 
 /** 被测页面：真实组件 + 构造最小可用 props（不连后端）。 */
 const PAGES: Array<{ name: string; file: string; entry: string }> = [
@@ -26,9 +49,9 @@ const PAGES: Array<{ name: string; file: string; entry: string }> = [
     name: 'LibraryTable（管理面·媒体库表）',
     file: 'src/pages/manage/libraries/components/LibraryTable.tsx',
     entry: `
-import { createElement } from 'react';
-import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { createElement } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
+import { MemoryRouter } from '\${NM_REACT_ROUTER}';
 import { LibraryTable } from '{PATH}';
 const libs = [0,1,2].map((i) => ({
   id: 'lib-'+i, name: '库 '+i, libraryType: 'movie', typeLabel: '电影',
@@ -49,9 +72,9 @@ createRoot(document.getElementById('root')).render(createElement(App));
     name: 'UserTable（管理面·用户表）',
     file: 'src/pages/manage/users/components/UserTable.tsx',
     entry: `
-import { createElement } from 'react';
-import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { createElement } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
+import { MemoryRouter } from '\${NM_REACT_ROUTER}';
 import { UserTable } from '{PATH}';
 const mkUser = (i) => ({
   id: 'u-'+i, username: 'user'+i, accountKind: 'human', roles: [], roleLabel: '普通用户',
@@ -117,16 +140,24 @@ async function scan(t: any, pageDef: (typeof PAGES)[number]) {
     t.skip('未安装 host 依赖（pnpm install 后重跑）');
     return null;
   }
-  const work = await mkdtemp(join(tmpdir(), 'fe02-scan-'));
-  const entryFile = join(HOST_ROOT, 'tests', `__probeScan-${pageDef.name.slice(0, 6)}-entry.tsx`);
+      // rv01/主代理裁定（FE-LIST-KEYNAV-3）：探针 entry 与 vite cacheDir 一律落
+    // **临时目录**，不得写进受版本控制的 host/tests/（#537 后席位树 root:755，
+    // 并发跑 node:test 时多个测试抢同一固定文件名 ⇒ EACCES/ENOENT）。
+    // 落点必须在 host/ **之内**：出去了就解析不到 @fmby/* 别名与 CSS Module。
+        // rv01 #4（主代理采纳）：work 落 **os.tmpdir()** —— fmby-queue 会把命令降权到
+    // tefuir（/data/fmby-seats/* 于 2026-10-12 扩域），而仓库树 host/ 是 root:755，
+    // tefuir 不可写 ⇒ 在仓库树内建临时目录必 EACCES。/tmp 对 tefuir 可写。
+    const work = await mkdtemp(join(tmpdir(), 'fe02-scan-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
   const compPath = pathToFileURL(join(HOST_ROOT, pageDef.file)).href;
-  await writeFile(entryFile, pageDef.entry.replace('{PATH}', compPath), 'utf8');
+  await writeFile(entryFile, withNmPaths(pageDef.entry.replace('{PATH}', compPath)), 'utf8');
   try {
     await (
       await import('vite')
     ).build({
       configFile: false,
       root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
       logLevel: 'error',
       define: { 'process.env.NODE_ENV': '"development"' },
       resolve: {
@@ -143,7 +174,6 @@ async function scan(t: any, pageDef: (typeof PAGES)[number]) {
       },
     });
   } finally {
-    await rm(entryFile, { force: true });
   }
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch();

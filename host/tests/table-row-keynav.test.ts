@@ -14,10 +14,34 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { tmpdir } from 'node:os';
 
 const HOST_ROOT = join(import.meta.dirname, '..');
+
+/**
+ * node_modules 的**绝对路径**。
+ *
+ * rv01 #4（主代理采纳）：探针 work 落 os.tmpdir()（fmby-queue 会把命令降权到 tefuir，
+ * 而仓库树 host/ 是 root:755 ⇒ tefuir 不可写，在仓库树内建临时目录必 EACCES）。
+ * 但 entry 一落到 /tmp，Rollup 就解析不到 bare specifier（实测 "failed to resolve
+ * import react"）⇒ 改用 node_modules 下的绝对路径 import 绕开解析链。
+ * vite 的 root 仍指 HOST_ROOT，故 @fmby/* 别名与 CSS Module 照旧生效。
+ */
+const NM = join(HOST_ROOT, 'node_modules');
+const nmUrl = (rel: string) => pathToFileURL(join(NM, rel)).href;
+const NM_REACT = nmUrl('react/index.js');
+const NM_REACT_DOM_CLIENT = nmUrl('react-dom/client.js');
+const NM_REACT_ROUTER = nmUrl('react-router/dist/development/index.mjs');
+
+/** 把 entry 模板里的 `${NM_*}` 占位符（模板字面量内已转义）替换成真实绝对路径。 */
+function withNmPaths(src: string): string {
+  return src
+    .replace(/\$\{NM_REACT_DOM_CLIENT\}/g, NM_REACT_DOM_CLIENT)
+    .replace(/\$\{NM_REACT_ROUTER\}/g, NM_REACT_ROUTER)
+    .replace(/\$\{NM_REACT\}/g, NM_REACT);
+}
 
 /**
  * 探针：真实 `<table>` + 真实 `useTableRowRoving`（**不是重写一份逻辑**），
@@ -25,8 +49,8 @@ const HOST_ROOT = join(import.meta.dirname, '..');
  * （对应「当前设备不可移除」这类行，历史上焦点会在这里掉到 <body>）。
  */
 const PROBE_ENTRY = `
-import { createElement, useRef, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createElement, useRef, useState } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
 import { useTableRowRoving } from '${new URL('file:///PLACEHOLDER').href}';
 
 function Table() {
@@ -62,16 +86,24 @@ async function mount(t: any) {
     t.skip('未安装 host 依赖（pnpm install 后重跑）');
     return null;
   }
-  const work = await mkdtemp(join(tmpdir(), 'fe02-table-'));
-  const entryFile = join(HOST_ROOT, 'tests', '__probeTableKeynav-entry.tsx');
+      // rv01/主代理裁定（FE-LIST-KEYNAV-3）：探针 entry 与 vite cacheDir 一律落
+    // **临时目录**，不得写进受版本控制的 host/tests/（#537 后席位树 root:755，
+    // 并发跑 node:test 时多个测试抢同一固定文件名 ⇒ EACCES/ENOENT）。
+    // 落点必须在 host/ **之内**：出去了就解析不到 @fmby/* 别名与 CSS Module。
+        // rv01 #4（主代理采纳）：work 落 **os.tmpdir()** —— fmby-queue 会把命令降权到
+    // tefuir（/data/fmby-seats/* 于 2026-10-12 扩域），而仓库树 host/ 是 root:755，
+    // tefuir 不可写 ⇒ 在仓库树内建临时目录必 EACCES。/tmp 对 tefuir 可写。
+    const work = await mkdtemp(join(tmpdir(), 'fe02-table-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
   const hookPath = `file://${join(HOST_ROOT, 'src/features/a11y/useTableRowRoving.ts')}`;
-  await writeFile(entryFile, PROBE_ENTRY.replace('file:///PLACEHOLDER', hookPath.replace('file://', '')), 'utf8');
+  await writeFile(entryFile, withNmPaths(PROBE_ENTRY.replace('file:///PLACEHOLDER', hookPath.replace('file://', ''))), 'utf8');
   try {
     await (
       await import('vite')
     ).build({
       configFile: false,
       root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
       logLevel: 'error',
       define: { 'process.env.NODE_ENV': '"development"' },
       resolve: {
@@ -88,7 +120,6 @@ async function mount(t: any) {
       },
     });
   } finally {
-    await rm(entryFile, { force: true });
   }
 
   const { chromium } = await import('@playwright/test');
@@ -225,9 +256,9 @@ test('表格行漫游：Enter 在行本身上触发打开；焦点在按钮上�
  * —— hook 单测再绿，也不代表页面接对了（data-row-index / tbodyRef / rowCount）。
  */
 const LIB_TABLE_ENTRY = `
-import { createElement } from 'react';
-import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { createElement } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
+import { MemoryRouter } from '\${NM_REACT_ROUTER}';
 import { LibraryTable } from '${'${LIB_TABLE_PATH}'}';
 
 const libs = [0, 1, 2].map((i) => ({
@@ -271,16 +302,21 @@ async function mountLibTable(t: any) {
     t.skip('未安装 host 依赖（pnpm install 后重跑）');
     return null;
   }
-  const work = await mkdtemp(join(tmpdir(), 'fe02-libtable-'));
-  const entryFile = join(HOST_ROOT, 'tests', '__probeLibTable-entry.tsx');
+      // rv01/主代理裁定（FE-LIST-KEYNAV-3）：探针 entry 与 vite cacheDir 一律落
+    // **临时目录**，不得写进受版本控制的 host/tests/（#537 后席位树 root:755，
+    // 并发跑 node:test 时多个测试抢同一固定文件名 ⇒ EACCES/ENOENT）。
+    // 落点必须在 host/ **之内**：出去了就解析不到 @fmby/* 别名与 CSS Module。
+      const work = await mkdtemp(join(tmpdir(), 'fe02-libtable-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
   const libPath = `file://${join(HOST_ROOT, 'src/pages/manage/libraries/components/LibraryTable.tsx')}`;
-  await writeFile(entryFile, LIB_TABLE_ENTRY.replace('${LIB_TABLE_PATH}', libPath), 'utf8');
+  await writeFile(entryFile, withNmPaths(LIB_TABLE_ENTRY.replace('${LIB_TABLE_PATH}', libPath)), 'utf8');
   try {
     await (
       await import('vite')
     ).build({
       configFile: false,
       root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
       logLevel: 'error',
       define: { 'process.env.NODE_ENV': '"development"' },
       resolve: {
@@ -297,7 +333,6 @@ async function mountLibTable(t: any) {
       },
     });
   } finally {
-    await rm(entryFile, { force: true });
   }
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch();

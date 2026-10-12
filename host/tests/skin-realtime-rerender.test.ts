@@ -10,16 +10,39 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 
 const HOST_ROOT = join(import.meta.dirname, '..');
 
+/**
+ * node_modules 的**绝对路径**。
+ *
+ * rv01 #4（主代理采纳）：探针 work 落 os.tmpdir()（fmby-queue 会把命令降权到 tefuir，
+ * 而仓库树 host/ 是 root:755 ⇒ tefuir 不可写，在仓库树内建临时目录必 EACCES）。
+ * 但 entry 一落到 /tmp，Rollup 就解析不到 bare specifier（实测 "failed to resolve
+ * import react"）⇒ 改用 node_modules 下的绝对路径 import 绕开解析链。
+ * vite 的 root 仍指 HOST_ROOT，故 @fmby/* 别名与 CSS Module 照旧生效。
+ */
+const NM = join(HOST_ROOT, 'node_modules');
+const nmUrl = (rel: string) => pathToFileURL(join(NM, rel)).href;
+const NM_REACT = nmUrl('react/index.js');
+const NM_REACT_DOM_CLIENT = nmUrl('react-dom/client.js');
+const NM_REACT_ROUTER = nmUrl('react-router/dist/development/index.mjs');
+
+/** 把 entry 模板里的 `${NM_*}` 占位符（模板字面量内已转义）替换成真实绝对路径。 */
+function withNmPaths(src: string): string {
+  return src
+    .replace(/\$\{NM_REACT_DOM_CLIENT\}/g, NM_REACT_DOM_CLIENT)
+    .replace(/\$\{NM_REACT_ROUTER\}/g, NM_REACT_ROUTER)
+    .replace(/\$\{NM_REACT\}/g, NM_REACT);
+}
+
 /** 探针 = 三个皮肤修复后的真实形态：effect 依赖 `subscribe`（而非 realtime 句柄）。 */
 const PROBE_ENTRY = `
-import { createElement, useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createElement, useEffect, useState } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
 import { useSkinRealtime } from '${pathToFileURL(join(HOST_ROOT, 'src/theme/skins/useSkinRealtime.ts')).href}';
 
 const c = { renders: 0, effects: 0, listenerCalls: 0 };
@@ -53,8 +76,8 @@ globalThis.__c = c;
  * 共用同一 hook 实例，让 timer 在退订后继续存在，退订才真正可观测。
  */
 const UNMOUNT_ENTRY = `
-import { createElement, useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createElement, useEffect, useState } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
 import { useSkinRealtime } from '${pathToFileURL(join(HOST_ROOT, 'src/theme/skins/useSkinRealtime.ts')).href}';
 
 const c = { keptCalls: 0, droppedCalls: 0 };
@@ -101,8 +124,8 @@ globalThis.__dropSecond = () => c.unsubDropped();
  *   故先取两拍证明在推进，再退订验停 —— 两个方向都绿才算数。
  */
 const DRAIN_ENTRY = `
-import { createElement, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createElement, useEffect } from '\${NM_REACT}';
+import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
 import { useSkinRealtime } from '${pathToFileURL(join(HOST_ROOT, 'src/theme/skins/useSkinRealtime.ts')).href}';
 
 const c = { lastRefreshedAt: null };
@@ -134,14 +157,18 @@ test('#290：单个订阅者退订后不再被调用（存活订阅者不受影�
   const { build } = await import('vite');
   const { chromium } = await import('@playwright/test');
 
-  const work = await mkdtemp(join(tmpdir(), 'probe290u-'));
-  const entryFile = join(HOST_ROOT, 'tests', '__probe290-resub-entry.ts');
-  await writeFile(entryFile, UNMOUNT_ENTRY, 'utf8');
+      // rv01 #4（主代理采纳）：work 落 **os.tmpdir()** —— fmby-queue 会把命令降权到
+    // tefuir（/data/fmby-seats/* 于 2026-10-12 扩域），而仓库树 host/ 是 root:755，
+    // tefuir 不可写 ⇒ 在仓库树内建临时目录必 EACCES。/tmp 对 tefuir 可写。
+    const work = await mkdtemp(join(tmpdir(), 'probe290u-'));
+  const entryFile = join(work, 'entry.tsx');
+  await writeFile(entryFile, withNmPaths(UNMOUNT_ENTRY), 'utf8');
 
   try {
     await build({
       configFile: false,
       root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
       logLevel: 'error',
       define: { 'process.env.NODE_ENV': '"development"' },
       build: {
@@ -194,7 +221,6 @@ test('#290：单个订阅者退订后不再被调用（存活订阅者不受影�
       await browser.close();
     }
   } finally {
-    await rm(entryFile, { force: true });
     await rm(work, { recursive: true, force: true });
   }
 });
@@ -208,11 +234,11 @@ test('#290：轮询推送真的到达订阅者，且连续推送不重建皮肤 
   const { build } = await import('vite');
   const { chromium } = await import('@playwright/test');
 
-  const work = await mkdtemp(join(tmpdir(), 'probe290-'));
+    const work = await mkdtemp(join(tmpdir(), 'probe290-'));
   // entry 必须落在 host/tests/ 下：pnpm 的 node_modules 是按包的，
   // 从 /tmp 解析不到 react/react-dom。产物仍输出到 work（临时目录）。
-  const entryFile = join(HOST_ROOT, 'tests', '__probe290-entry.ts');
-  await writeFile(entryFile, PROBE_ENTRY, 'utf8');
+  const entryFile = join(work, 'entry.tsx');
+  await writeFile(entryFile, withNmPaths(PROBE_ENTRY), 'utf8');
 
   try {
     await build({
@@ -220,6 +246,7 @@ test('#290：轮询推送真的到达订阅者，且连续推送不重建皮肤 
       // 互斥（rollup 报错）；探针只要一个自足产物，不继承宿主打包策略。
       configFile: false,
       root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
       logLevel: 'error',
       define: { 'process.env.NODE_ENV': '"development"' },
       build: {
@@ -274,7 +301,6 @@ test('#290：轮询推送真的到达订阅者，且连续推送不重建皮肤 
       await browser.close();
     }
   } finally {
-    await rm(entryFile, { force: true });
     await rm(work, { recursive: true, force: true });
   }
 });
@@ -287,14 +313,15 @@ test('#290：订阅者全部退订后 timer 必须停止（否则空转）', asy
   const { build } = await import('vite');
   const { chromium } = await import('@playwright/test');
 
-  const work = await mkdtemp(join(tmpdir(), 'probe290d-'));
-  const entryFile = join(HOST_ROOT, 'tests', '__probe290-drain-entry.ts');
-  await writeFile(entryFile, DRAIN_ENTRY, 'utf8');
+    const work = await mkdtemp(join(tmpdir(), 'probe290d-'));
+  const entryFile = join(work, 'entry.tsx');
+  await writeFile(entryFile, withNmPaths(DRAIN_ENTRY), 'utf8');
 
   try {
     await build({
       configFile: false,
       root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
       logLevel: 'error',
       define: { 'process.env.NODE_ENV': '"development"' },
       build: {
@@ -353,7 +380,6 @@ test('#290：订阅者全部退订后 timer 必须停止（否则空转）', asy
       await browser.close();
     }
   } finally {
-    await rm(entryFile, { force: true });
     await rm(work, { recursive: true, force: true });
   }
 });
