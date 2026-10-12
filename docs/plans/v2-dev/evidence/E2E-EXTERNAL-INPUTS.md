@@ -400,10 +400,10 @@ unset FMBY_DATABASE_KIND FMBY_DATABASE_URL   # E2E 走 SQLite 临时库
 |---|---|
 | 用途 | 移动端审计截图与无障碍树快照的落地位置 |
 | 读取位置 | `host/e2e/mobile-audit.spec.ts:26-31`：`EVIDENCE_DIR`（绝对路径直接用，相对路径按仓库根解析），默认 `docs/evidence/fe-opt-02`，截图写 `<root>/full/` |
-| 另一处 | `host/e2e/a11y-report.spec.ts:20-21`：输出目录**硬编码** `docs/evidence/fe-opt-03/`（`aria-snapshot/<device>/*.yml` + `report.md`），**不受 `EVIDENCE_DIR` 控制** |
+| 另一处 | `host/e2e/a11y-report.spec.ts:23-28`：**已修**（#19）为读同一个 `EVIDENCE_DIR`，与 `mobile-audit.spec.ts` 同口径（绝对路径直接用、相对路径按仓库根解析），默认仍 `docs/evidence/fe-opt-03/`（`aria-snapshot/<device>/*.yml` + `report-<device>.md`） |
 | 缺失行为 | 不设置即用默认值，不影响测试判定（截图与快照不参与断言） |
 | 能否 SKIP | 不适用（不是运行前提） |
-| 注意 | `.gitignore` 已忽略 `docs/evidence/**/full/`，但 `aria-snapshot/**` 与 `report-*.md` **未忽略**，运行真实 E2E 会污染工作树（当前工作树中的 `docs/evidence/fe-opt-03/**` 改动即此类产物） |
+| 注意 | `.gitignore` 已忽略 `docs/evidence/**/full/`，但 `aria-snapshot/**` 与 `report-*.md` **未忽略**。**#19 后可用 `EVIDENCE_DIR=<仓外绝对路径>` 让两个 spec 都不落仓内**，从而零污染；不设时仍会污染工作树（产物含实时时间戳与「N 分钟前」相对时间，属瞬态，不应入库） |
 | 安全边界 | 截图不得包含真实凭据；本套 E2E 用的是 seed 测试账号与本地媒体，天然不含敏感数据 |
 
 ---
@@ -465,8 +465,11 @@ FMBY_E2E_REQUIRED=1 pnpm e2e-gate
 1. `themes/*/dist` 是 **gitignored 本地产物**（`.gitignore:2 dist/`）。本机当前两套主题产物齐备，
    但该状态**不可从仓内推断**；干净环境/CI 上的真实缺件清单**需主代理在干净 worktree 上跑一次确认**。
    本席按约束未执行构建与测试。
-2. `EVIDENCE_DIR` 只影响 `mobile-audit.spec.ts`；`a11y-report.spec.ts` 输出目录硬编码，
-   是否应统一为可注入，**未处理**。
+2. ~~`EVIDENCE_DIR` 只影响 `mobile-audit.spec.ts`；`a11y-report.spec.ts` 输出目录硬编码，
+   是否应统一为可注入，**未处理**。~~ **已处理（#19）**：`a11y-report.spec.ts` 现读同一
+   `EVIDENCE_DIR`。**仍未处理**：两个 spec 各写一份解析规则，可抽共享 helper
+   （`host/e2e/fixtures/evidenceDir.ts`）以防再次漂移；另 `docs/evidence/fe-opt-03/**`
+   是否整体 gitignore 属「仓内保留多少证据」的口径决策，需先定口径。
 3. `host/tests/*.test.ts` 中因 Chromium / host 依赖不可用而 `t.skip(...)` 的**单测**用例
    （`episode-navigation.security.test.ts:55,94`；`mount-drawer-prefill.test.ts:86`；
    `player-recreate.test.ts:64`；`skin-realtime-rerender.test.ts` 多处）不在本清单的 E2E 门禁范围内，
