@@ -2281,11 +2281,39 @@ test('接线实证（MicrosoftAccountsSection）：两张只读表各自独立�
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedRowIn(page, 0), 1, '表1 ↓ 应到第 2 行');
     assert.deepEqual(await rovingStopsIn(page, 0), ['1'], '表1 停靠点须跟着焦点走');
-    // 表2 有自己的停靠点，Tab 应继续走到表2 而非回到表1 头行。
-    assert.equal(await tabIntoRow(page, 1), 0, '再按 Tab 应进入表2 的活动行');
+    // 从表1 的活动行**按一次 Tab** 自然走到表2，而不是回表1 头行。
+    // 这里不能用 tabIntoRow —— 它会先 blur 再从 body 重 Tab，那是另一条路径
+    // （证明的是「表2 单独可达」，不是「两张表之间 Tab 顺序正确」）。
+    // 两表行内零控件、外层 .tableWrap 无 tabIndex ⇒ DOM 顺序上表1 停靠点之后
+    // 紧接的就是表2 停靠点，故只需一次 Tab。
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await focusedRowIn(page, 1),
+      0,
+      '从表1 活动行按一次 Tab 应进入表2 的活动行（跨表 Tab 顺序）',
+    );
+    assert.equal(
+      await focusedRowIn(page, 0),
+      null,
+      '焦点须已离开表1，不得回表1 头行',
+    );
     // 第二张表索引域必须从 0 起算，不能被表1的焦点带着跑
     await page.keyboard.press('End');
     assert.equal(await focusedRowIn(page, 1), 2, '表2 End → 末行');
+    assert.deepEqual(await rovingStopsIn(page, 1), ['2'], '表2 停靠点须跟着焦点走');
+    // Shift+Tab 应能原路返回表1 的**活动停靠点**（此时在第 2 行，不是首行）。
+    // 硬编码 0 会把「roving 记住了活动行」误判为失败。
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(
+      await focusedRowIn(page, 0),
+      1,
+      'Shift+Tab 应回到表1 的活动停靠行（第 2 行），而非首行',
+    );
+    assert.equal(
+      await focusedRowIn(page, 1),
+      null,
+      '焦点须已离开表2',
+    );
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
