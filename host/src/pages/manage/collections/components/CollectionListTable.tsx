@@ -1,10 +1,11 @@
-import { Fragment } from 'react';
+import { Fragment, useRef } from 'react';
 import {
   type ManagedCollectionRecord,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { Checkbox, StatusBadge } from '@fmby/v2-shared/ui';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '../../longtail-shared/components';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 import { useCollectionDetailQuery, useCollectionMutations } from '../hooks';
 import { CollectionMemberPanel } from './CollectionMemberPanel';
 import { CollectionMemberAdder } from './CollectionMemberAdder';
@@ -58,6 +59,14 @@ export function CollectionListTable({
     reorderMemberMutation,
     patchMemberMutation,
   } = mutations;
+
+  // FE-LIST-KEYNAV-10：全仓唯一一处**逻辑父子表**（展开行的 td 里再出一张表）。
+  // 主代理裁决 = A 方案：外层 tbody 与子 tbody **各自独立索引域**，`data-row-index` 各从 0 起。
+  // 子表的域在 CollectionMemberPanel 内部自己接（见该文件注释），这里只管外层。
+  // 展开行 <tr>（colSpan=7 那条）**不给** data-row-index：它不是数据行，
+  // 给它索引会让父表行数与「合集条数」不一致 ⇒ ↑↓ 落到一个纯容器行上，语义错。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef, rowCount: collections.length });
 
   function handleReorderCollections(index: number, step: -1 | 1) {
     const next = moveMemberIds(
@@ -121,12 +130,12 @@ export function CollectionListTable({
                 <th className="nowrap">操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={tbodyRef}>
               {collections.map((collection, index) => {
                 const expanded = expandedId === collection.id;
                 return (
                   <Fragment key={collection.id}>
-                    <tr>
+                    <tr data-row-index={index}>
                       <td>
                         <Checkbox
                           checked={selection.selectedSet.has(collection.id)}
