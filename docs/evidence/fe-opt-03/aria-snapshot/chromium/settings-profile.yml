@@ -17,8 +17,12 @@
     - text: 个人
     - link "个人资料 昵称、头像、默认媒体库":
       - /url: /settings/profile
+    - link "账号绑定 三方登录方式绑定与解绑":
+      - /url: /settings/identity
     - link "播放偏好 字幕、音轨与继续播放策略":
       - /url: /settings/playback
+    - link "积分与签到 我的积分、每日签到与积分兑换":
+      - /url: /settings/rewards
     - link "外观 主题、海报密度与动效偏好":
       - /url: /settings/appearance
   - text: 设置中心

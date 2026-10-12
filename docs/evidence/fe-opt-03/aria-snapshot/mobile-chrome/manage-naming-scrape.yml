@@ -79,7 +79,7 @@
     - option "直接隐藏，看不到也点不到" [selected]
     - option "可以看到，但点开后提示无权限"
   - text: 这个策略只影响来源路径没授权的资源；和数据源真实失效不是一回事。
-  - status: 当前阈值：连续失败 3 次 这个保护是按媒体库来源粒度生效，不是一刀切把整个库全删可见性。
+  - alert: 当前阈值：连续失败 3 次 这个保护是按媒体库来源粒度生效，不是一刀切把整个库全删可见性。
   - heading "实时预览" [level=2]
   - paragraph: 这里走的就是后端预览接口，当前草稿会一并送进规则运行时。先看结果，再决定要不要保存。
   - text: 路径样本
@@ -135,10 +135,58 @@
   - strong: 只补缺，不全刷
   - paragraph: 配置变更后允许管理员自己决定要不要补刮，但系统只会命中缺元数据 / 缺海报的媒体。已经完整的媒体不会被你这一刀全砍一遍。
   - status: 当前范围：指定媒体库 当前目标：电影库。
-  - heading "还没跑过补刮" [level=2]
-  - paragraph: 先把策略保存好，再对缺失项打一轮补刮，看看落地效果。
+  - status:
+    - heading "还没跑过补刮" [level=2]
+    - paragraph: 先把策略保存好，再对缺失项打一轮补刮，看看落地效果。
   - group:
     - text: 清洗规则
     - strong: 展开后再编辑默认词、自定义词和保留词
     - paragraph: 清洗规则继续保留，但不再把整页塞满。要改的时候再展开，页面才不至于像杂货铺。
     - text: 已折叠
+  - heading "AI 干预" [level=2]
+  - paragraph: 对识别/刮削结果发起 AI 会话式干预：查看线程、开会话、对话、应用结果。
+  - status: 线程列表为客户端筛选 后端 /ai-interventions/threads 仅支持 limit/offset 与不含标题字段；列表搜索/筛选在本页客户端完成，标题位显示 —（不伪造）。
+  - searchbox "筛选 AI 干预线程"
+  - combobox "会话状态筛选":
+    - option "全部会话" [selected]
+    - option "进行中"
+    - option "已关闭"
+  - text: 后端仅支持 limit/offset，筛选与搜索在此页面客户端完成 暂无 AI 干预线程。
+  - heading "会话详情" [level=2]
+  - paragraph: 发起会话后在此对话；message/close 走后端 session 级端点（session_id）。
+  - text: 请选择左侧线程以查看详情。
+  - heading "AI 辅助设置" [level=2]
+  - paragraph: 配置 provider、模型、密钥与策略；密钥永不明文回显。
+  - text: Provider
+  - combobox "AI provider":
+    - option "未启用" [selected]
+    - option "OpenAI"
+    - option "Claude"
+  - text: 模型
+  - textbox "AI 模型"
+  - text: Base URL
+  - textbox "AI base url":
+    - /placeholder: 留空用官方默认
+  - text: API Key
+  - textbox "AI api key":
+    - /placeholder: 未设置
+  - text: 当前：未设置
+  - checkbox "清除现有 API Key" [disabled]
+  - text: 清除现有 key 超时（秒）
+  - textbox "AI 超时秒数": "20"
+  - text: Max tokens
+  - textbox "AI max tokens": "800"
+  - text: Temperature
+  - textbox "AI temperature": "0"
+  - checkbox "启用候选重排"
+  - text: 启用候选重排
+  - checkbox "启用置信度解释"
+  - text: 启用置信度解释
+  - checkbox "要求非 AI 证据" [checked]
+  - text: 要求非 AI 证据 Max AI 权重
+  - textbox "Max AI 权重": "0.2"
+  - text: 强证据阈值
+  - textbox "强证据阈值": "0.9"
+  - text: 弱证据阈值
+  - textbox "弱证据阈值": "0.65"
+  - button "保存设置"

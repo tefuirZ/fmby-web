@@ -33,6 +33,12 @@
         - /url: /manage/media/libraries
       - link "媒体来源":
         - /url: /manage/media/mounts
+      - link "139 云盘凭据":
+        - /url: /manage/media/yun139
+      - link "微软账号与 OAuth":
+        - /url: /manage/media/microsoft
+      - link "115 分享与同步":
+        - /url: /manage/media/pan115-share
       - link "媒体信息检测":
         - /url: /manage/media/probe-tasks
       - link "命名与刮削":
@@ -64,6 +70,10 @@
         - /url: /manage/site/security/audit-logs
       - link "运行日志":
         - /url: /manage/site/security/runtime-logs
+      - link "开放 API 目录":
+        - /url: /manage/media/developer-api
+      - link "登录提供方":
+        - /url: /manage/media/auth-providers
       - link "站点设置":
         - /url: /manage/site/settings
       - link "授权与订阅":
@@ -117,7 +127,7 @@
         - columnheader "最近设备"
         - columnheader "操作"
     - rowgroup:
-      - row "选择用户 admin admin @admin 管理员 人工账号 正常 媒体库兜底 2026年9月22日 05:41 — — 详情 编辑 重置密码 解除账号风控 当前账号":
+      - row "选择用户 admin admin @admin 管理员 人工账号 正常 媒体库兜底 2026年10月12日 16:22 — — 详情 编辑 重置密码 解除账号风控 当前账号":
         - cell "选择用户 admin":
           - checkbox "选择用户 admin" [disabled]
         - cell "admin @admin":
@@ -127,7 +137,7 @@
         - cell "人工账号"
         - cell "正常"
         - cell "媒体库兜底"
-        - cell "2026年9月22日 05:41"
+        - cell "2026年10月12日 16:22"
         - cell "—"
         - cell "—"
         - cell "详情 编辑 重置密码 解除账号风控 当前账号":

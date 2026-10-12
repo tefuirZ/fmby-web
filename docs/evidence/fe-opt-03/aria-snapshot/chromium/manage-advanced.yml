@@ -33,6 +33,12 @@
         - /url: /manage/media/libraries
       - link "媒体来源":
         - /url: /manage/media/mounts
+      - link "139 云盘凭据":
+        - /url: /manage/media/yun139
+      - link "微软账号与 OAuth":
+        - /url: /manage/media/microsoft
+      - link "115 分享与同步":
+        - /url: /manage/media/pan115-share
       - link "媒体信息检测":
         - /url: /manage/media/probe-tasks
       - link "命名与刮削":
@@ -64,6 +70,10 @@
         - /url: /manage/site/security/audit-logs
       - link "运行日志":
         - /url: /manage/site/security/runtime-logs
+      - link "开放 API 目录":
+        - /url: /manage/media/developer-api
+      - link "登录提供方":
+        - /url: /manage/media/auth-providers
       - link "站点设置":
         - /url: /manage/site/settings
       - link "授权与订阅":
@@ -92,7 +102,7 @@
   - text: 队列积压
   - strong: —
   - text: 最近备份
-  - strong: 2026年9月22日 05:41
+  - strong: 2026年10月12日 16:23
   - heading "风险提醒" [level=2]
   - paragraph: 先把需要人工决策的问题集中出来。
   - text: 提示
@@ -106,3 +116,14 @@
   - strong: 清理过期/吊销会话
   - paragraph: 过期会话可复核；已吊销会话计数后端暂无法统计。
   - paragraph: 影响范围：降低排障噪音并改善会话视图可读性。
+  - heading "API 令牌" [level=2]
+  - paragraph: 为自动化脚本签发管理面调用凭据；吊销不可逆，请谨慎操作。
+  - text: 令牌名称（必填）
+  - textbox "API 令牌名称"
+  - text: 权限范围（逗号分隔，可留空）
+  - textbox "API 令牌权限范围":
+    - /placeholder: 例如：manage:library,manage:mount
+  - button "新建令牌" [disabled]
+  - status:
+    - heading "暂无 API 令牌" [level=2]
+    - paragraph: 创建令牌后可用于脚本化管理调用。

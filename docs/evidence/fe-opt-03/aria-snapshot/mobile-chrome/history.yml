@@ -13,7 +13,79 @@
   - button "全局搜索"
   - button "账号菜单：admin"
 - main:
-  - heading "还没有播放历史" [level=2]
-  - paragraph: 开始播放后，继续观看、最近播放和已看完内容会自动整理到这里。
-  - link "去首页看看":
-    - /url: /
+  - text: 放映厅
+  - heading "历史" [level=1]
+  - paragraph: 优先帮你找到刚看过的、没看完的和值得继续看的内容。
+  - text: 共整理出 5 条记录
+  - button "刷新"
+  - combobox "观看类型筛选":
+    - option "全部类型" [selected]
+    - option "电影"
+  - combobox "观看时间筛选":
+    - option "全部时间"
+    - option "最近 7 天"
+    - option "最近 30 天" [selected]
+    - option "最近一年"
+  - combobox "观看状态筛选":
+    - option "全部观看状态" [selected]
+    - option "未看完"
+    - option "已看完"
+  - text: 当前结果：5 条
+  - heading "继续观看" [level=2]
+  - paragraph: 先处理那些差一点就看完的内容。
+  - text: 当前筛选条件下没有未看完的内容。
+  - heading "最近播放" [level=2]
+  - paragraph: 刚打开过的内容，适合快速回看。
+  - article:
+    - link "星际穿越":
+      - /url: /item/101
+    - text: 电影 此刻
+    - link "星际穿越":
+      - /url: /item/101
+      - heading "星际穿越" [level=3]
+    - text: 2014 · 电影 暂不可播放
+    - link "查看详情":
+      - /url: /item/101
+  - article:
+    - link "星际穿越":
+      - /url: /item/101
+    - text: 电影 1分钟前
+    - link "星际穿越":
+      - /url: /item/101
+      - heading "星际穿越" [level=3]
+    - text: 2014 · 电影 暂不可播放
+    - link "查看详情":
+      - /url: /item/101
+  - article:
+    - link "星际穿越":
+      - /url: /item/101
+    - text: 电影 1分钟前
+    - link "星际穿越":
+      - /url: /item/101
+      - heading "星际穿越" [level=3]
+    - text: 2014 · 电影 暂不可播放
+    - link "查看详情":
+      - /url: /item/101
+  - article:
+    - link "星际穿越":
+      - /url: /item/101
+    - text: 电影 1分钟前
+    - link "星际穿越":
+      - /url: /item/101
+      - heading "星际穿越" [level=3]
+    - text: 2014 · 电影 暂不可播放
+    - link "查看详情":
+      - /url: /item/101
+  - article:
+    - link "星际穿越":
+      - /url: /item/101
+    - text: 电影 5分钟前
+    - link "星际穿越":
+      - /url: /item/101
+      - heading "星际穿越" [level=3]
+    - text: 2014 · 电影 暂不可播放
+    - link "查看详情":
+      - /url: /item/101
+  - heading "已看完" [level=2]
+  - paragraph: 想回味一遍或再次分享时，可以从这里重新开始。
+  - text: 当前筛选条件下没有已看完内容。
