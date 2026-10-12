@@ -1403,7 +1403,18 @@ createRoot(document.getElementById('root')).render(
 `;
 
 /** 页面级组件通用挂载：需真实 http origin（httpClient 依赖 location.origin）。 */
-async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compFile: string) {
+async function mountPageProbe(
+  t: any,
+  tmpPrefix: string,
+  entrySrc: string,
+  compFile: string,
+  /**
+   * 可选的「渲染完成」等待选择器。默认等 `[data-row-index="0"]`（行已就绪的表）。
+   * 有些页面（如 MicrosoftOAuthSection）的表要先走完 mutation 流程才有行，
+   * 初始 DOM 里一个 data-row-index 都没有，必须换成一个立即可见的标志。
+   */
+  readySelector = '[data-row-index="0"]',
+) {
   if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
     t.skip('未安装 host 依赖（pnpm install 后重跑）');
     return null;
@@ -1423,6 +1434,7 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${YUN139_PATH}', `file://${compFile}`)
         .replace('${LEDGER_PATH}', `file://${compFile}`)
         .replace('${MS_ACCOUNTS_PATH}', `file://${compFile}`)
+        .replace('${MS_OAUTH_PATH}', `file://${compFile}`)
         .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`)
         .replace('file:///AI_PATH_PLACEHOLDER', compFile.replace('file://', ''))
     ),
@@ -1472,10 +1484,12 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
   await page.goto('http://probe.local/');
   await page.addScriptTag({ path: join(work, 'probe.js') });
   try {
-    await page.waitForSelector('[data-row-index="0"]', { timeout: 20000 });
+    await page.waitForSelector(readySelector, { timeout: 20000 });
   } catch {
     const body = (await page.textContent('body'))?.slice(0, 300) ?? '';
-    throw new Error(`未渲染出行。页面文本：${body}｜pageerror：${errors.join(' | ')}`);
+    throw new Error(
+      `未渲染出「${readySelector}」。页面文本：${body}｜pageerror：${errors.join(' | ')}`,
+    );
   }
   return {
     page,
@@ -2313,6 +2327,180 @@ test('接线实证（MicrosoftAccountsSection）：两张只读表各自独立�
       await focusedRowIn(page, 1),
       null,
       '焦点须已离开表2',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/**
+ * MicrosoftOAuthSection：两张表都由 mutation 结果驱动，初始没有行。
+ * entry 拦 fetch 把 token/start、token/complete、token/drives、token/sites
+ * 全部打桩，再由测试点真按钮把流程跑通 —— 走的是真 onClick + 真 useMutation。
+ */
+const MS_OAUTH_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { MicrosoftOAuthSection } from '${'${MS_OAUTH_PATH}'}';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// wire 形状：snake_case 直出，由 api 层映射为 camelCase 域模型
+const drives = [0, 1, 2].map((i) => ({
+  id: 'd-' + i,
+  name: 'drive ' + i,
+  drive_type: i === 1 ? null : 'documentLibrary',
+  web_url: 'https://example.com/d/' + i,
+  quota: { total: 100, used: i * 10, remaining: 100 - i * 10 },
+}));
+
+const sites = [0, 1].map((i) => ({
+  id: 's-' + i,
+  name: 'site-' + i,
+  display_name: '站点 ' + i,
+  web_url: 'https://example.com/s/' + i,
+}));
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/token/drives')) return json({ items: drives });
+  if (u.includes('/token/sites')) return json({ items: sites });
+  if (u.includes('/token/complete')) {
+    return json({
+      authorization_id: 'auth-1',
+      provider_type: 'global',
+      tenant_id: 't-1',
+      service_kind: 'onedrive',
+      access_token: 'AT',
+      refresh_token: 'RT',
+      expires_at: '2026-01-02T00:00:00Z',
+      principal_id: 'p-1',
+      user_principal_name: 'a@example.com',
+      display_name: 'A B',
+      oauth_client_kind: 'custom',
+    });
+  }
+  if (u.includes('/token/start')) {
+    return json({
+      authorization_id: 'auth-1',
+      auth_profile_id: 'prof-1',
+      provider_type: 'global',
+      tenant_id: 't-1',
+      drive_id: 'd-0',
+      service_kind: 'onedrive',
+      redirect_uri: 'https://example.com/cb',
+      authorize_url: 'https://login.example.com/x',
+      oauth_client_kind: 'custom',
+    });
+  }
+  return json({});
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(MicrosoftOAuthSection, {})),
+);
+`;
+
+/** 按可见文本点真按钮（走真实 onClick，不走脚本 API）。 */
+async function clickButtonByText(page: any, text: string) {
+  await page.locator('button', { hasText: text }).first().click();
+}
+
+/**
+ * 把 OAuthSection 跑到两张表都有行的状态。
+ * 真实链路：发起 token 流 → 取得令牌（需要 authorizationId + callbackUrl）→ 列举 drive / 搜索站点。
+ * 按钮文案严格照抄组件里的可见文本，改文案这里会先红。
+ */
+async function renderMicrosoftOAuthTables(page: any) {
+  await clickButtonByText(page, '发起 token 流');
+  await page.waitForSelector('input[placeholder]', { timeout: 20000 });
+  // token/complete 要求 authorizationId + callbackUrl 都非空
+  await page.locator('input[placeholder]').fill('https://example.com/cb?code=xyz');
+  await clickButtonByText(page, '换取令牌');
+  // 搜索站点按钮在 siteQuery 为空时是 disabled，必须先按 label 定位真输入框填关键字
+  await page
+    .locator('label', { hasText: '站点搜索关键字' })
+    .locator('input')
+    .fill('站点');
+  await clickButtonByText(page, '列举 drive');
+  await clickButtonByText(page, '搜索站点');
+  // ⚠ 不能只等第一张表的第一行：drives 的 setState 先 commit，sites 表稍后才挂上，
+  // 只等 [data-row-index="0"] 会在两表之间抢跑（实测 TBODY_COUNT=1）。
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll('tbody').length === 2 &&
+      document.querySelectorAll('tbody')[1]?.querySelector('[data-row-index="0"]') != null,
+    undefined,
+    { timeout: 20000 },
+  );
+}
+
+
+test('接线实证（MicrosoftOAuthSection）：两张只读表各自独立漫游（第七批 1/1）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-msoauth-',
+    MS_OAUTH_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/microsoft/MicrosoftOAuthSection.tsx'),
+    // 初始没有行，不能等 [data-row-index="0"]（表要先走完 mutation 才有行）
+    'body',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await renderMicrosoftOAuthTables(page);
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody').length),
+      2,
+      'drives / sites 两张表应有各自 tbody（索引域独立）',
+    );
+    // 真实 Tab 起步（I-1）：两表行都是零控件纯文本行，键盘入口全靠 roving 停靠点。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], 'drive 表首行应是唯一 Tab 停靠点');
+    assert.equal(await tabIntoRow(page, 0), 0, '连按 Tab 应能走到 drive 表的活动行（真实键盘入口）');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'drive 表 ↓ 应到第 2 行');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['1'], 'drive 表停靠点须跟着焦点走');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'drive 表 End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 0), 0, 'drive 表 Home → 首行');
+    // 表2 独立索引域：从 0 起算
+    assert.equal(await tabIntoRow(page, 1), 0, '再按 Tab 应能走到 site 表的活动行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 1), 1, 'site 表 End → 末行（索引域独立于 drive 表）');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('MicrosoftOAuthSection 裁定：只读清单行上 Enter 无副作用', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-msoauth2-',
+    MS_OAUTH_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/microsoft/MicrosoftOAuthSection.tsx'),
+    'body',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await renderMicrosoftOAuthTables(page);
+    await page.locator('tbody').nth(0).locator('[data-row-index="0"]').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    assert.equal(
+      await page.evaluate(() => document.querySelector('[role="dialog"]') !== null),
+      false,
+      '只读清单 Enter 不得凭空造出语义',
     );
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
