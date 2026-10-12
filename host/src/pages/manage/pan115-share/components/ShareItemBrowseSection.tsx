@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
 import type {
@@ -7,6 +8,7 @@ import type {
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 
 function formatSize(size: number | null): string {
@@ -19,6 +21,11 @@ function formatSize(size: number | null): string {
 }
 
 function BrowseResultTable({ data }: { data: Pan115ShareBrowseResponse }) {
+  // FE-LIST-KEYNAV-10：浏览结果是**纯只读清单**（行内无控件）⇒ 不传 onActivate。
+  // ★hook 必须早于下面的空列表 early return（Hooks 规则）。
+  const entriesTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: entriesTbodyRef, rowCount: data.entries.length });
+
   if (data.entries.length === 0) {
     return <p className={styles.mutedText}>该目录/分享下没有可列出的条目。</p>;
   }
@@ -33,9 +40,9 @@ function BrowseResultTable({ data }: { data: Pan115ShareBrowseResponse }) {
             <th scope="col">路径</th>
           </tr>
         </thead>
-        <tbody>
-          {data.entries.map((e) => (
-            <tr key={`${e.cid}:${e.path}`}>
+        <tbody ref={entriesTbodyRef}>
+          {data.entries.map((e, index) => (
+            <tr key={`${e.cid}:${e.path}`} data-row-index={index}>
               <td className={styles.cellText}>{e.name}</td>
               <td className={styles.mutedText}>{e.isDir ? '目录' : '文件'}</td>
               <td className={styles.mutedText}>{e.isDir ? '—' : formatSize(e.size)}</td>
