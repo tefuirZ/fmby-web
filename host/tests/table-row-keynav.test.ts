@@ -1302,7 +1302,8 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${PRESETS_PATH}', `file://${compFile}`)
         .replace('${YUN139_PATH}', `file://${compFile}`)
         .replace('${LEDGER_PATH}', `file://${compFile}`)
-        .replace('${MS_ACCOUNTS_PATH}', `file://${compFile}`),
+        .replace('${MS_ACCOUNTS_PATH}', `file://${compFile}`)
+        .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`),
     ),
     'utf8',
   );
@@ -2152,6 +2153,96 @@ test('MicrosoftAccountsSection 裁定：只读凭据表行上 Enter 无副作用
       await page.evaluate(() => document.querySelector('[role="dialog"]') !== null),
       false,
       '凭据表 Enter 不得凭空造出语义',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* RuntimeLogArchivesSection 接线实证（第五批 2/3）                    */
+/* ------------------------------------------------------------------ */
+
+const RUNTIME_ARCHIVES_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { RuntimeLogArchivesSection } from '${'${RUNTIME_ARCHIVES_PATH}'}';
+
+// wire 形状（snake_case 直出），由 api 层映射
+const items = [0, 1, 2].map((i) => ({
+  id: 'sha-' + i,
+  file_name: 'runtime-' + i + '.zip',
+  log_date: '2026-01-0' + (i + 1),
+  compressed_size_bytes: 1024 * (i + 1),
+  original_size_bytes: 4096 * (i + 1),
+  compression_ratio: 4.0,
+  created_at: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+  expires_at: '2026-02-0' + (i + 1) + 'T00:00:00Z',
+}));
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/download')) {
+    window.__downloads = (window.__downloads || []);
+    window.__downloads.push(u);
+    return new Response(new Blob(['zip']), { status: 200 });
+  }
+  return new Response(
+    JSON.stringify({ items, total: items.length, log_dir: '/var/log/fmby', retention_days: 30 }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(RuntimeLogArchivesSection, {})),
+);
+`;
+
+test('接线实证（RuntimeLogArchivesSection）：↑↓/Home/End 漫游（第五批 2/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-rtarch-',
+    RUNTIME_ARCHIVES_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/runtime-logs/RuntimeLogArchivesSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"]');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('RuntimeLogArchivesSection 裁定：Enter 复用既有「下载」动作（取回类、无破坏）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-rtarch2-',
+    RUNTIME_ARCHIVES_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/runtime-logs/RuntimeLogArchivesSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="1"]');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => (window.__downloads || []).length > 0, null, { timeout: 10000 });
+    const urls = await page.evaluate(() => (window as any).__downloads);
+    assert.equal(urls.length, 1, 'Enter 应恰好触发一次下载');
+    assert.ok(
+      String(urls[0]).includes('/sha-1/download'),
+      'Enter 应下载**焦点所在行**（索引 1），不是首行：' + String(urls[0]),
     );
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
