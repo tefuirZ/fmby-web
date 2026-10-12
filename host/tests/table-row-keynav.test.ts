@@ -1299,7 +1299,8 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${SECRETS_PATH}', `file://${compFile}`)
         .replace('${MEDIA_ITEM_PATH}', `file://${compFile}`)
         .replace('${REG_CODE_PATH}', `file://${compFile}`)
-        .replace('${PRESETS_PATH}', `file://${compFile}`),
+        .replace('${PRESETS_PATH}', `file://${compFile}`)
+        .replace('${YUN139_PATH}', `file://${compFile}`),
     ),
     'utf8',
   );
@@ -1862,6 +1863,117 @@ test('UpstreamMappingPresetsSection：行上 Enter 不触发删除确认框（�
       0,
       'Enter 不得触发删除确认（破坏性动作须点行内「删除」按钮）',
     );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* Yun139ProfilesSection 接线实证（第四批 2/3）                     */
+/* ------------------------------------------------------------------ */
+
+const YUN139_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { Yun139ProfilesSection } from '${'${YUN139_PATH}'}';
+
+// ★fixture 必须是**后端原始 snake_case**，且包在 { items: [...] } 里
+// （shared/src/contracts/manage/yun139/api.ts:133 读 raw.items；
+//   同文件 :81 fromProfile 逐字段读 snake_case）。
+// 曾因喂裸数组 + camelCase 导致列表为空、页面渲染不出行。
+// ★注意：本段注释位于模板字符串内部，不能出现反引号。
+const profiles = [0, 1, 2].map((i) => ({
+  id: 'y-' + i,
+  display_name: '档案 ' + i,
+  account_identity_mask: '138****' + i,
+  status: 'active',
+  can_refresh: true,
+  authorization_expires_at: '2099-01-01T00:00:00Z',
+  last_success_at: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+  last_error_at: null,
+  last_error_kind: null,
+  last_error_message: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}));
+
+globalThis.fetch = async () =>
+  new Response(JSON.stringify({ items: profiles }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(Yun139ProfilesSection, null)),
+);
+`;
+
+test('接线实证（Yun139ProfilesSection）：↑↓/Home/End 漫游（第四批 2/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-yun139-',
+    YUN139_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/yun139/Yun139ProfilesSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.equal(
+      await page.evaluate(
+        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
+      ),
+      '-1',
+      'hook 必须在挂载时给行设 tabindex=-1',
+    );
+    await page.focus('[data-row-index="0"]');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>）',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('Yun139ProfilesSection 裁定：行上 Enter 不触发删除确认（行内唯一动作是删除）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-yun1392-',
+    YUN139_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/yun139/Yun139ProfilesSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"]');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    assert.equal(
+      await page.evaluate(() => document.querySelector('[role="dialog"]') !== null),
+      false,
+      'Enter 不得触发删除确认框（破坏性动作须点行内「删除」按钮）',
+    );
+    // 行内「删除」按钮仍可 Tab 到达
+    const reachable = await page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll('[data-row-index] button')).every(
+          (b) => b.getAttribute('tabindex') !== '-1',
+        ),
+    );
+    assert.equal(reachable, true, '行内删除按钮不得被设 tabindex=-1');
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();

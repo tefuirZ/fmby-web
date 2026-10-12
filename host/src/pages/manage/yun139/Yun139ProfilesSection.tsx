@@ -8,7 +8,7 @@
  * 三态：loading / empty / error 均有显式呈现。
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { yun139Api } from '@fmby/v2-shared/contracts/manage/yun139';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -16,6 +16,7 @@ import { ConfirmDialog, FeedbackState, InlineBanner, StatusBadge } from '@fmby/v
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
+import { useTableRowRoving } from '../../../features/a11y/useTableRowRoving';
 import {
   resolveCredentialExpiry,
   isDisabled,
@@ -56,6 +57,12 @@ export function Yun139ProfilesSection() {
   });
 
   const profiles = profilesQuery.data ?? [];
+
+  // FE-LIST-KEYNAV-7：表格行键盘漫游（↑↓/Home/End 移动行）。
+  // ★刻意**不传 onActivate**：本行唯一可点元素是「删除」凭据档案
+  // （不可逆操作，见文件头注释）⇒ 破坏性动作不绑 Enter，仍须点按钮。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef, rowCount: profiles.length });
 
   if (profilesQuery.isPending) {
     return (
@@ -110,12 +117,12 @@ export function Yun139ProfilesSection() {
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody>
-              {profiles.map((profile) => {
+            <tbody ref={tbodyRef}>
+              {profiles.map((profile, rowIndex) => {
                 const expiry = resolveCredentialExpiry(profile);
                 const expired = expiry.kind === 'expired';
                 return (
-                  <tr key={profile.id}>
+                  <tr key={profile.id} data-row-index={rowIndex}>
                     <td>{profile.displayName}</td>
                     <td className={styles.mono}>{profile.accountIdentityMask ?? '—'}</td>
                     <td>
