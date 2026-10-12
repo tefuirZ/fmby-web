@@ -509,6 +509,21 @@ test('契约③：行本身进 Tab 序（roving 单一停靠点），行内控�
       '0',
       '焦点行须是唯一的 tabindex=0 停靠点（I-1：键盘入口可达；行内控件不受影响）',
     );
+    // I-1 完整语义：整表**恰好一个** tabindex=0，其余数据行一律 -1。
+    // 只断言目标行为 0 会漏掉「旧行残留 0 ⇒ 出现第二个停靠点」这类回归。
+    const tabindexByRow = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('tbody tr[data-row-index]')).map((r) => [
+        r.getAttribute('data-row-index'),
+        r.getAttribute('tabindex'),
+      ]),
+    );
+    const stops = tabindexByRow.filter(([, ti]) => ti === '0').map(([i]) => i);
+    assert.deepEqual(stops, ['1'], 'roving 必须留唯一 Tab 停靠点，且跟随焦点行');
+    assert.equal(
+      tabindexByRow.filter(([, ti]) => ti !== '0' && ti !== '-1').length,
+      0,
+      '非活动行必须显式为 tabindex=-1（不得留空，否则会重新进 Tab 序）',
+    );
     const controlsNegative = await page.evaluate(
       () =>
         Array.from(document.querySelectorAll('[data-row-index] button')).filter(
@@ -516,6 +531,11 @@ test('契约③：行本身进 Tab 序（roving 单一停靠点），行内控�
         ).length,
     );
     assert.equal(controlsNegative, 0, '行内控件不得被设 tabindex=-1（Tab 可达性零回归）');
+    // I-1 只接管**行本身**的 Tab 序；不得顺手把行内按钮也变成不可聚焦。
+    const controlsDisabled = await page.evaluate(
+      () => document.querySelectorAll('[data-row-index] button[disabled]').length,
+    );
+    assert.equal(controlsDisabled, 0, '行内按钮不得被禁用（roving 不改变行内控件语义）');
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
