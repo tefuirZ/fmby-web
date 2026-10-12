@@ -1437,6 +1437,7 @@ async function mountPageProbe(
         .replace('${MS_OAUTH_PATH}', `file://${compFile}`)
         .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`)
         .replace('${NESTED_PATH}', `file://${compFile}`)
+        .replace('${SYNC_JOBS_PATH}', `file://${compFile}`)
         .replace('file:///AI_PATH_PLACEHOLDER', compFile.replace('file://', ''))
     ),
     'utf8',
@@ -3022,6 +3023,109 @@ test('嵌套表 A 方案：父子各自独立索引域，子表 ↑↓ 不得串
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusRowIndex(page), 1, '父表内 ↓ → 父表第 2 行');
     assert.equal(await focusOwnerTbody(page), 0, '焦点归属父 tbody');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 契约改造（主代理裁决「选项 2」）：UpstreamSyncJobsSection 两张作业表。
+// 原本每行写死 tabIndex={0} + 行内 Enter/Space ⇒ 与 roving 契约冲突
+// （N 行全进 Tab 序）。改由 roving 接管：唯一停靠点 + 方向键漫游 +
+// Enter 走 onActivate（仍是「查看详情」，用户感知零变化），Space 仍行内处理。
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SYNC_JOBS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { UpstreamSyncJobsSection } from '${'${SYNC_JOBS_PATH}'}';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// wire 形状：snake_case 直出，由 api 层映射为 camelCase 域模型
+const rawJob = (kind, i, override) => ({
+  id: kind + '-' + i,
+  source_id: 'src-1',
+  sourceId: 'src-1',
+  job_kind: kind,
+  status: 'Succeeded',
+  category_ids: [],
+  page_size: null,
+  worker_count: null,
+  result_summary: {},
+  last_error_message: null,
+  attempt_count: 1,
+  max_attempts: 3,
+  created_by: null,
+  started_at: null,
+  finished_at: null,
+  created_at: 1767225600000 + i,
+  updated_at: 1767225600000 + i,
+  ...(override || {}),
+});
+
+const syncItems = [rawJob('sync', 0), rawJob('sync', 1), rawJob('sync', 2)];
+const importItems = [rawJob('import', 0), rawJob('import', 1)];
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/emby/import/jobs')) return json({ items: importItems, total: importItems.length });
+  if (u.includes('/sync-jobs')) return json({ items: syncItems, total: syncItems.length });
+  return json({});
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(UpstreamSyncJobsSection, { sourceId: 'src-1' })),
+);
+`;
+
+test('契约改造（选项 2）：UpstreamSyncJobsSection 真实 Tab 起步 + Enter 走 onActivate 查看详情', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-syncjobs-',
+    SYNC_JOBS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamSyncJobsSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForFunction(
+      () => document.querySelectorAll('tbody').length === 2,
+      undefined,
+      { timeout: 20000 },
+    );
+
+    // ── ① Tab 步数才是本次要治的病：3 行只应有 1 个停靠点（旧实现是 3 个）──
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], 'sync 表唯一停靠点');
+
+    // ── ② 真实 Tab 起步 ──
+    assert.equal(await tabIntoRow(page, 0), 0, '真实 Tab 应能走进 sync 表');
+
+    // ── ③ ↓/End 漫游 ──
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ → 第 2 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点必须跟着走（旧值不得残留）');
+
+    // ── ④ Enter 走 onActivate ⇒ 打开「作业详情」，且只一次 ──
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('text=作业详情', { timeout: 10000 });
+    assert.match(
+      (await page.textContent('body')) ?? '',
+      /作业详情（sync-2）/,
+      'Enter 应打开**焦点所在行**（末行 sync-2）的详情',
+    );
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {

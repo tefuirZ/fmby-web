@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   upstreamsApi,
@@ -9,26 +9,31 @@ import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { getManageStatusVariant } from '@/pages/manage/longtail-shared/components';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 
 function JobRow({
   job,
+  index,
   onSelect,
   selected,
 }: {
   job: UpstreamSyncJob;
+  index: number;
   onSelect: () => void;
   selected: boolean;
 }) {
   return (
     <tr
-      role="button"
-      tabIndex={0}
-      aria-pressed={selected}
-      aria-label={`查看同步作业 ${job.id} 详情`}
       className={styles.clickableRow}
+      data-selected={selected || undefined}
+      data-row-index={index}
+      role="button"
+      aria-label={`查看同步作业 ${job.id} 详情`}
       onClick={onSelect}
+      // Enter 交给 useTableRowRoving 的 onActivate（避免与此处重复触发一次 select）；
+      // Space 仍是行内自行处理（role=button 的 Space 语义由我们自己实现）。
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === ' ') {
           e.preventDefault();
           onSelect();
         }
@@ -87,6 +92,32 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
   const isError = syncJobsQuery.isError || importJobsQuery.isError;
   const error = syncJobsQuery.error ?? importJobsQuery.error;
 
+  // FE-LIST-KEYNAV-10：这两张表原本**每行写死 tabIndex={0}**（N 行全进 Tab 序，
+  // Tab 要按 N 次），且 Enter/Space 由行内 onKeyDown 自己处理 ⇒ 与 roving 契约冲突。
+  // 主代理裁决「选项 2」：改由 roving 接管 —— 唯一停靠点 + 方向键漫游 +
+  // Enter 走 onActivate（仍是「查看详情」，用户感知零变化）。
+  // ★hook 必须早于下面 isPending / isError 的两个 early return（Hooks 规则）。
+  // ★必须排在 syncJobs / importJobs 之后：rowCount 与 onActivate 都要读它们（TDZ）。
+  const syncJobsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: syncJobsTbodyRef,
+    rowCount: syncJobs.length,
+    onActivate: (index) => {
+      const job = syncJobs[index];
+      if (job) setSelectedJobId(job.id);
+    },
+  });
+
+  const importJobsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: importJobsTbodyRef,
+    rowCount: importJobs.length,
+    onActivate: (index) => {
+      const job = importJobs[index];
+      if (job) setSelectedJobId(job.id);
+    },
+  });
+
   if (syncJobsQuery.isPending || importJobsQuery.isPending) {
     return (
       <FeedbackState
@@ -143,11 +174,12 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
                   <th>最近错误</th>
                 </tr>
               </thead>
-              <tbody>
-                {syncJobs.map((j) => (
+              <tbody ref={syncJobsTbodyRef}>
+                {syncJobs.map((j, index) => (
                   <JobRow
                     key={j.id}
                     job={j}
+                    index={index}
                     selected={selectedJobId === j.id}
                     onSelect={() => setSelectedJobId(j.id)}
                   />
@@ -171,11 +203,12 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
                   <th>最近错误</th>
                 </tr>
               </thead>
-              <tbody>
-                {importJobs.map((j) => (
+              <tbody ref={importJobsTbodyRef}>
+                {importJobs.map((j, index) => (
                   <JobRow
                     key={j.id}
                     job={j}
+                    index={index}
                     selected={selectedJobId === j.id}
                     onSelect={() => setSelectedJobId(j.id)}
                   />
