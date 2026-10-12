@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import { Link } from 'react-router';
 import { Trash2 } from 'lucide-react';
 import type { ManageMediaItemListRecord } from '@fmby/v2-shared/contracts/manage/media-items';
 import type { PendingSourceDeleteState } from '../types';
 import { Checkbox, StatusBadge } from '@fmby/v2-shared/ui';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
 import {
   getSourceStatusLabel,
@@ -46,6 +48,20 @@ export function MediaItemListTable({
   onClearVisible,
 }: MediaItemListTableProps) {
   const selectedSet = new Set(selectedIds ?? []);
+  // FE-LIST-KEYNAV-6：表格行键盘漫游（↑↓/Home/End 移动行，Enter 打开该媒体项详情）。
+  // Enter 复用行内**既有的**「查看详情」Link（点击它），不新造跳转逻辑 ——
+  // 该 Link 是本行唯一的导航入口，语义权威。
+  // ★不接删除：删除是破坏性动作，仍须点行内「删除媒体源」按钮。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: items.length,
+    onActivate: (index) => {
+      const row = tbodyRef.current?.querySelector<HTMLElement>(`[data-row-index="${index}"]`);
+      row?.querySelector<HTMLAnchorElement>('a')?.click();
+    },
+  });
+
   return (
     <div className={`${sharedStyles.tableWrap} ${styles.desktopTable}`}>
       <table className={sharedStyles.table}>
@@ -70,9 +86,9 @@ export function MediaItemListTable({
             <th>操作</th>
           </tr>
         </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id}>
+        <tbody ref={tbodyRef}>
+          {items.map((item, rowIndex) => (
+            <tr key={item.id} data-row-index={rowIndex}>
               {onToggleRow ? (
                 <td>
                   <Checkbox

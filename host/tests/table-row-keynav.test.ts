@@ -1296,7 +1296,8 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
     withNmPaths(
       entrySrc
         .replace('${AUDIT_LOGS_PATH}', `file://${compFile}`)
-        .replace('${SECRETS_PATH}', `file://${compFile}`),
+        .replace('${SECRETS_PATH}', `file://${compFile}`)
+        .replace('${MEDIA_ITEM_PATH}', `file://${compFile}`),
     ),
     'utf8',
   );
@@ -1513,6 +1514,136 @@ test('ManageSecretsPage 裁定：只读来源表按 Enter 无副作用（不伪�
       await page.evaluate(() => document.querySelector('[role="dialog"]') !== null),
       false,
       '只读来源表不得因 Enter 弹出对话框',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* MediaItemListTable 接线实证（第三批 2/3）                        */
+/* ------------------------------------------------------------------ */
+
+const MEDIA_ITEM_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { MemoryRouter, Routes, Route, useLocation } from '${'${NM_REACT_ROUTER}'}';
+import { MediaItemListTable } from '${'${MEDIA_ITEM_PATH}'}';
+
+const mk = (i) => ({
+  id: 'mi-' + i,
+  title: '条目 ' + i,
+  originalTitle: null,
+  typeLabel: 'movie',
+  year: 2020 + i,
+  posterUrl: null,
+  ownership: 'library',
+  libraryName: '库',
+  libraryId: 'lib-1',
+  mountName: '挂载',
+  sourceId: 'src-' + i,
+  sourceCount: 1,
+  metadataStatus: 'ok',
+  sourceStatus: 'ok',
+  sizeBytes: null,
+  updatedAt: '2026-01-01T00:00:00Z',
+  createdAt: '2026-01-01T00:00:00Z',
+});
+
+const items = [0, 1, 2].map(mk);
+const noop = () => {};
+
+// ★location 记录器必须放在 **Router 外层的兄弟节点**：导航后 /manage/media-items
+// 路由失配 ⇒ 表格所在子树整体卸载，若把 useLocation 放在该子树内，它随之卸载、
+// 再也不上报 location，断言就会「路径没变」的假象。
+globalThis.__path = null;
+function LocationProbe() {
+  const loc = useLocation();
+  globalThis.__path = loc.pathname;
+  return null;
+}
+function Probe() {
+  return createElement(MediaItemListTable, {
+    items,
+    pendingSourceDelete: null,
+    resolveDeletePending: false,
+    deletePending: false,
+    onRequestDelete: noop,
+    selectedIds: [], headerState: 'unchecked',
+    onToggleRow: noop, onSelectAll: noop, onClearVisible: noop,
+  });
+}
+function App() {
+  return createElement(MemoryRouter, { initialEntries: ['/manage/media-items'] },
+    createElement(LocationProbe, null),
+    createElement(Routes, null,
+      createElement(Route, { path: '/manage/media-items', element: createElement(Probe) }),
+      createElement(Route, { path: '/manage/media/items/:id', element: createElement('div', null, 'detail') }),
+    ),
+  );
+}
+createRoot(document.getElementById('root')).render(createElement(App));
+`;
+
+test('接线实证（真实 MediaItemListTable）：↑↓/Home/End 移动行 + Enter 打开详情（第三批 2/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-mediaitems-',
+    MEDIA_ITEM_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/media-items/components/MediaItemListTable.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>），不能落到行首 checkbox',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    assert.equal(
+      await page.evaluate(() => (globalThis as any).__path),
+      '/manage/media/items/mi-1',
+      'Enter 应走该行既有的「查看详情」Link（与点击按钮同语义）',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('MediaItemListTable：行首 checkbox 的 Space 仍是切换选中（非打开详情）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-mediaitems2-',
+    MEDIA_ITEM_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/media-items/components/MediaItemListTable.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // Radix Checkbox ⇒ <button role="checkbox">，不是原生 input
+    await page.focus('[data-row-index="0"] [role="checkbox"]');
+    const before = await page.evaluate(() => (globalThis as any).__path);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(200);
+    assert.equal(
+      await page.evaluate(() => (globalThis as any).__path),
+      before,
+      'checkbox 上 Space 不得被劫持成「打开详情」',
     );
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
