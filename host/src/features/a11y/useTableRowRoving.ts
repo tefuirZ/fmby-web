@@ -66,6 +66,16 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
     const tbody = tbodyRef.current;
     if (!tbody || rowCount <= 0) return;
 
+    // 挂载时即给**所有**行设 tabindex="-1"（程序化可聚焦、不进 Tab 序）。
+    // FE-LIST-KEYNAV-5 修「只读表漫游是死路」：此前 tabIndex 只在 keydown 路径
+    // 里设置，而方向键要能触发 keydown 又得先有焦点 —— 对**行内无任何可聚焦控件**
+    // 的只读表（如 ManageAuditLogsPage），用户无法 Tab 进任何行 ⇒ 永远触发不了
+    // 方向键 ⇒ hook 形同虚设。此处提前布好，使只读表也能起步。
+    // 注意：tabindex=-1 **不改变 Tab 序**，行内控件的可达性零回归。
+    for (const row of tbody.querySelectorAll<HTMLElement>(ROW_SELECTOR)) {
+      if (!row.hasAttribute('tabindex')) row.tabIndex = -1;
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       // 焦点不在表体内时不劫持 —— 避免影响页面滚动与表头筛选控件
       const active = document.activeElement as HTMLElement | null;
