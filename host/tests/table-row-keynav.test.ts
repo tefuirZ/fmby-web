@@ -780,3 +780,157 @@ test('接线实证（真实 ProbeTaskTable）：↑↓/Home/End 移动行 + Ente
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* MountTable 接线实证（第一批 3/3）                                 */
+/* ------------------------------------------------------------------ */
+
+const MOUNT_TABLE_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { MountTable } from '${'${MOUNT_TABLE_PATH}'}';
+
+const mk = (i) => ({
+  id: 'm-' + i, name: '挂载 ' + i, mountType: 'webdav', typeLabel: 'WebDAV',
+  path: '/srv/' + i, pathLabel: '/srv/' + i,
+  healthStatus: 'healthy', capabilities: ['scan'],
+  linkedLibraries: [{ id: 'lib-' + i, name: '库 ' + i }],
+  referenceCounts: { libraries: 0, rules: 0, tasks: 0 },
+  unavailableBindingCount: 0,
+  note: '', rateConfig: null, visibilityRule: '{}',
+  sidecarNfo: false, sidecarSubtitle: false, sidecarPoster: false,
+  credentialStatus: 'ok',
+});
+
+const mounts = [0, 1, 2].map(mk);
+const noop = { isPending: false, variables: undefined, mutate: () => {} };
+
+globalThis.__opened = [];
+globalThis.__toggles = [];
+function App() {
+  return createElement(MountTable, {
+    mounts, filteredMounts: mounts,
+    keyword: '', statusFilter: 'all', typeFilter: 'all',
+    onKeywordChange: () => {}, onStatusFilterChange: () => {}, onTypeFilterChange: () => {},
+    onOpenView: (id) => { globalThis.__opened.push(id); },
+    onOpenEdit: () => {}, onRequestDelete: () => {}, onCreateClick: () => {},
+    validateMutation: noop,
+    selectedIds: [], headerState: 'unchecked',
+    onToggleRow: (id, checked) => { globalThis.__toggles.push([id, checked]); },
+    onSelectAll: () => {}, onClearVisible: () => {}, onInvertVisible: () => {},
+  });
+}
+
+createRoot(document.getElementById('root')).render(createElement(App));
+`;
+
+async function mountMountTable(t: any) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), 'fe02-mounttable-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
+  const compPath = `file://${join(HOST_ROOT, 'src/pages/manage/mounts/components/MountTable.tsx')}`;
+  await writeFile(
+    entryFile,
+    withNmPaths(MOUNT_TABLE_ENTRY.replace('${MOUNT_TABLE_PATH}', compPath)),
+    'utf8',
+  );
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'MountTable', fileName: () => 'probe.js' },
+      },
+    });
+  } finally {
+  }
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  await page.waitForSelector('[data-row-index="0"]');
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
+test('接线实证（真实 MountTable）：↑↓/Home/End 移动行 + Enter 开详情', async (t) => {
+  const h = await mountMountTable(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>），不能落到行首 checkbox',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(
+      await page.evaluate(() => (globalThis as any).__opened ?? []),
+      ['m-1'],
+      'Enter 应打开当前行挂载详情（onOpenView）',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('MountTable：行首 checkbox 的 Enter/Space 仍走原生选中语义（不动 tabIndex）', async (t) => {
+  const h = await mountMountTable(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 焦点直接落在行首 checkbox 上：Space 应触发 onToggleRow（而非 onOpenView）
+    // MountTable 的 Checkbox 是 @radix-ui 的 <button role="checkbox">（非原生 input）
+    await page.focus('[data-row-index="0"] [role="checkbox"]');
+    await page.keyboard.press('Space');
+    assert.deepEqual(
+      await page.evaluate(() => (globalThis as any).__toggles ?? []),
+      [['m-0', true]],
+      'checkbox 上 Space 必须仍是「切换选中」，不得被漫游劫持成打开详情',
+    );
+    assert.deepEqual(
+      await page.evaluate(() => (globalThis as any).__opened ?? []),
+      [],
+      'checkbox 上不得触发 onOpenView',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});

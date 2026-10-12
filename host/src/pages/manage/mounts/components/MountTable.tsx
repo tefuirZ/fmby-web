@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { ManageMountProviderType, ManageMountRecord } from '@fmby/v2-shared/contracts/manage';
 import { Checkbox, StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
@@ -10,6 +11,7 @@ import {
   getMountStatusLabel,
   hasHiddenMountReferences,
 } from '../formUtils';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 import { CredentialBadgeCell } from './CredentialBadgeCell';
 
 interface ValidateMutationShape {
@@ -78,6 +80,18 @@ export function MountTable({
   onRebindMount,
 }: MountTableProps) {
   const selectedSet = new Set(selectedIds);
+  // FE-LIST-KEYNAV-4：表格行键盘漫游（↑↓/Home/End 移动行，Enter 打开该挂载详情）。
+  // rowCount 取**已筛选**行数，与 tbody 内实际渲染行一一对应。
+  // 行首 checkbox 的 tabIndex 不动，Enter/Space 仍走原生选中语义。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: filteredMounts.length,
+    onActivate: (index) => {
+      const mount = filteredMounts[index];
+      if (mount) onOpenView(mount.id);
+    },
+  });
   const renderEmptyState = (
     <div className={styles.emptyInlineState}>
       <div className={styles.stackText}>
@@ -178,7 +192,7 @@ export function MountTable({
                     <th>操作</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody ref={tbodyRef}>
                   {filteredMounts.length === 0 ? (
                     <EmptyTableRow
                       colSpan={10}
@@ -186,8 +200,8 @@ export function MountTable({
                       description="试试更换关键词、状态或类型筛选。"
                     />
                   ) : (
-                    filteredMounts.map((mount) => (
-                      <tr key={mount.id} data-selected={selectedSet.has(mount.id) || undefined}>
+                    filteredMounts.map((mount, rowIndex) => (
+                      <tr key={mount.id} data-row-index={rowIndex} data-selected={selectedSet.has(mount.id) || undefined}>
                         <td>
                           <Checkbox
                             checked={selectedSet.has(mount.id)}
