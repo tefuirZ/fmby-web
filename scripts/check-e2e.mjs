@@ -143,9 +143,8 @@ if (existsSync(distIndex)) {
     console.error(
       `\n[FAIL] host/dist 比源码旧 ⇒ e2e 会验证**旧产物**（dist ${distTime} < src ${srcTime}）。`,
     );
-    console.error(`       先跑 \`cd host && vite build\`，或设 FMBY_E2E_REBUILD=1。 ⇒ 基建缺件`);
-    if (required) process.exit(EXIT_INFRA);
-    console.error(`       （FMBY_E2E_REQUIRED 未开 ⇒ 仍继续跑，但结果不可信，请自行判断）`);
+    console.error(`       先跑 \`cd host && vite build\`，或设 FMBY_E2E_REBUILD=1 ⇒ 基建缺件（exit ${EXIT_INFRA}）。`);
+    console.error(`       陈旧产物下的 e2e 结果不可信，故此处一律置 exit ${EXIT_INFRA}、不继续跑。`);
     process.exit(EXIT_INFRA);
   }
   console.log(`[RUN ] 产物新鲜度：dist ${distTime} ≥ 最新源码 ${srcTime} ✅`);
