@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   runtimeLogArchivesApi,
@@ -8,6 +9,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { EmptyTableRow, ManageSectionCard } from '../longtail-shared/components';
 import { formatBytes } from './archives-format';
+import { useTableRowRoving } from '../../../features/a11y/useTableRowRoving';
 
 function formatDateTime(rfc3339: string | null): string {
   if (!rfc3339) return '—';
@@ -35,9 +37,20 @@ function downloadArchive(archive: RuntimeLogArchivesResponse['items'][number]): 
 
 /** B08/B09：运行日志归档清单 + zip 下载入口（后端 /api/manage/runtime-log-archives）。 */
 export function RuntimeLogArchivesSection() {
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
   const archivesQuery = useQuery({
     queryKey: queryKeys.manage.runtimeLogs('archives'),
     queryFn: () => runtimeLogArchivesApi.list(),
+  });
+  // FE-LIST-KEYNAV-8：清单行内唯一动作是「下载归档」。
+  // 下载是**无破坏性的取回动作**，可安全绑到行级 Enter ⇒ 传 onActivate。
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: archivesQuery.data?.items.length ?? 0,
+    onActivate: (index) => {
+      const archive = archivesQuery.data?.items[index];
+      if (archive) downloadArchive(archive);
+    },
   });
 
   return (
@@ -81,12 +94,12 @@ export function RuntimeLogArchivesSection() {
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={tbodyRef}>
               {archivesQuery.data.items.length === 0 ? (
                 <EmptyTableRow colSpan={7} title="暂无归档" description="归档任务尚未产生文件。" />
               ) : (
-                archivesQuery.data.items.map((archive) => (
-                  <tr key={archive.id}>
+                archivesQuery.data.items.map((archive, rowIndex) => (
+                  <tr key={archive.id} data-row-index={rowIndex}>
                     <td>{archive.fileName}</td>
                     <td>{archive.logDate ?? '—'}</td>
                     <td>{formatBytes(archive.compressedSizeBytes)}</td>

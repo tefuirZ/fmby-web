@@ -5,7 +5,7 @@
  *   不回显明文、不回显占位假值；要改动密钥走「重新填写」并标记清空/覆盖。
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authProvidersApi } from '@fmby/v2-shared/contracts/manage/authProviders';
 import type {
@@ -18,6 +18,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
 import { ProviderDiagnosticsCard } from './ProviderDiagnosticsCard';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 
 function toWriteInput(item: AuthProviderConfigViewRecord): AuthProviderConfigWriteInput {
   return {
@@ -58,6 +59,18 @@ export function AuthProvidersSection() {
     onError: (err) => setError(getErrorMessage(err)),
   });
 
+  // FE-LIST-KEYNAV-10：items / rows 原本在 early return **之后**声明，
+  // 上移到此处：hook 既要用 items.length 做 rowCount，又必须早于 early return
+  //（Hooks 规则 —— 否则「本组件是否含 hook」随加载状态变化，React 报
+  // Internal React error: Expected static flag was missing）。
+  const items = configsQuery.data?.items ?? [];
+  const rows = draft ?? items.map(toWriteInput);
+
+  // 本表行内有启用/登录/绑定等 checkbox（原生 Tab 可达）
+  // ⇒ 不传 onActivate，不凭空给行加 Enter 语义。
+  const itemsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: itemsTbodyRef, rowCount: items.length });
+
   if (configsQuery.isPending) {
     return (
       <ManageSectionCard title="提供方配置" description="读取各登录通道配置。">
@@ -87,8 +100,6 @@ export function AuthProvidersSection() {
     );
   }
 
-  const items = configsQuery.data?.items ?? [];
-  const rows = draft ?? items.map(toWriteInput);
 
   function patch(index: number, patcher: Partial<AuthProviderConfigWriteInput>) {
     setDraft((current) =>
@@ -122,11 +133,11 @@ export function AuthProvidersSection() {
                 <th>已配密钥字段</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={itemsTbodyRef}>
               {items.map((item, index) => {
                 const row = rows[index] ?? toWriteInput(item);
                 return (
-                  <tr key={item.provider}>
+                  <tr key={item.provider} data-row-index={index}>
                     <td>{item.displayName || item.provider}</td>
                     <td>
                       <input

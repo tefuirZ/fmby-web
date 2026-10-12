@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Search } from 'lucide-react';
 import type { ManageUserAccountKind, ManageUserRecord, UserStatus } from '@fmby/v2-shared/contracts/manage';
 import { StatusBadge } from '@fmby/v2-shared/ui';
@@ -13,6 +13,7 @@ import {
   getUserStatusLabel,
 } from '../formUtils';
 import type { UserRegistrationReviewAction } from '../types';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 interface UserTableProps {
   users: ManageUserRecord[];
@@ -85,6 +86,20 @@ export function UserTable({
     keyword.trim().length > 0 ||
     statusFilter !== 'all' ||
     accountKindFilter !== 'all';
+
+  // FE-LIST-KEYNAV-4：表格行键盘漫游。
+  // 口径（主代理裁定）：**以当前页行数为漫游域**（服务端分页下不跨页），
+  // Home/End = 当前页首/末行，Enter = 打开该行（onOpenView）。
+  // 行内 checkbox / 按钮的 tabIndex 一律不动（Tab 可达性零回归，同 PR #14 原则）。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: users.length,
+    onActivate: (index) => {
+      const user = users[index];
+      if (user) onOpenView(user.id);
+    },
+  });
 
   return (
     <ManageSectionCard title="账号列表" description="支持搜索、详情抽屉、系统角色调整、来源路径授权和批量编辑。">
@@ -162,7 +177,7 @@ export function UserTable({
               <th>操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={tbodyRef}>
             {users.length === 0 ? (
               <EmptyTableRow
                 colSpan={10}
@@ -182,7 +197,7 @@ export function UserTable({
                 }
               />
             ) : (
-              users.map((user) => {
+              users.map((user, rowIndex) => {
                 const nextAction = getNextUserAction(user);
                 const checked = selectedUserIds.includes(user.id);
                 const isCurrentUser = user.id === currentUserId;
@@ -190,7 +205,7 @@ export function UserTable({
                 const isInteractiveHuman = user.accountKind === 'human';
                 const canBatchSelect = canSelectUserForBatchAction(user, currentUserId);
                 return (
-                  <tr key={user.id}>
+                  <tr key={user.id} data-row-index={rowIndex}>
                     <td>
                       <input
                         className={styles.checkbox}

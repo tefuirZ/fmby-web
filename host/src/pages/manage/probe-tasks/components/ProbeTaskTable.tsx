@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { ManageProbeTaskRecord } from '@fmby/v2-shared/contracts/manage';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
@@ -17,6 +18,7 @@ import {
   formatSourceStatusLabel,
   getProbeTaskRecentAt,
 } from '../utils';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 interface ProbeTaskTableProps {
   tasks: ManageProbeTaskRecord[];
@@ -43,6 +45,18 @@ export function ProbeTaskTable({
   onClearScope,
   onSelectSource,
 }: ProbeTaskTableProps) {
+  // FE-LIST-KEYNAV-4：表格行键盘漫游（↑↓/Home/End 移动行，Enter 选中该来源）。
+  // rowCount 取**已筛选**行数，与 tbody 内实际渲染行一一对应。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: filteredTasks.length,
+    onActivate: (index) => {
+      const task = filteredTasks[index];
+      if (task) onSelectSource(task.sourceId);
+    },
+  });
+
   return (
     <ManageSectionCard
       title="任务列表"
@@ -107,7 +121,7 @@ export function ProbeTaskTable({
               <th>操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={tbodyRef}>
             {filteredTasks.length === 0 ? (
               <EmptyTableRow
                 colSpan={7}
@@ -117,11 +131,11 @@ export function ProbeTaskTable({
                 }
               />
             ) : (
-              filteredTasks.map((task) => {
+              filteredTasks.map((task, rowIndex) => {
                 const summary = buildCompactTechnicalSummary(task.technicalSummary);
                 const blocked = !canTriggerProbe(task);
                 return (
-                  <tr key={task.sourceId}>
+                  <tr key={task.sourceId} data-row-index={rowIndex}>
                     <td>
                       <div className={styles.stackText}>
                         <span className={styles.primaryText}>{buildTitleLine(task)}</span>

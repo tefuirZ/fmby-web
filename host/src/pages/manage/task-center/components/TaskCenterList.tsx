@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useRef, type Dispatch, type SetStateAction } from 'react';
 import type { TaskCenterItemRecord } from '@fmby/v2-shared/contracts/manage/task-center';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
@@ -6,6 +6,7 @@ import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, getManageStatusVariant } from '../../components';
 import { getCategoryLabel, getStatusLabel, mapStatusVariant } from '../utils';
 import type { SelectedTaskRef } from '../types';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 interface TaskCenterListProps {
   items: TaskCenterItemRecord[];
@@ -26,6 +27,18 @@ export function TaskCenterList({
   setSelectedTask,
   setPage,
 }: TaskCenterListProps) {
+  // FE-LIST-KEYNAV-5：表格行键盘漫游（↑↓/Home/End 移动行，Enter 打开该任务详情）。
+  // rowCount = 当前页 items.length（服务端分页 ⇒ 漫游域 = 当前页）。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: items.length,
+    onActivate: (index) => {
+      const item = items[index];
+      if (item) setSelectedTask({ category: item.category, id: item.id });
+    },
+  });
+
   return (
     <>
       <div className={styles.tableHint}>
@@ -47,7 +60,7 @@ export function TaskCenterList({
               <th>操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={tbodyRef}>
             {items.length === 0 ? (
               <EmptyTableRow
                 colSpan={8}
@@ -55,8 +68,8 @@ export function TaskCenterList({
                 description="换个时间窗口或状态试试，别把自己筛成真空了。"
               />
             ) : (
-              items.map((item) => (
-                <tr key={`${item.category}:${item.id}`}>
+              items.map((item, rowIndex) => (
+                <tr key={`${item.category}:${item.id}`} data-row-index={rowIndex}>
                   <td>
                     <div className={styles.stackText}>
                       <span>{formatDateTime(item.updatedAt)}</span>

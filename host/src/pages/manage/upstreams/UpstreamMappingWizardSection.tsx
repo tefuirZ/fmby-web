@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   upstreamsApi,
@@ -15,6 +15,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { EmptyTableRow, ManageSectionCard, getManageStatusVariant } from '../longtail-shared/components';
 import { LIBRARY_TYPE_OPTIONS, MAPPING_ACTION_LABELS, parseListInput } from './shared';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 
 interface WizardState {
   presetId: string;
@@ -268,6 +269,10 @@ export function UpstreamMappingWizardSection({ sourceId }: { sourceId: string })
 }
 
 function PreviewResultCard({ preview }: { preview: UpstreamMappingPreviewResult }) {
+  // FE-LIST-KEYNAV-10：预览结果是**只读结果清单**（行内无控件）⇒ 不传 onActivate。
+  const itemsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: itemsTbodyRef, rowCount: preview.items.length });
+
   return (
     <ManageSectionCard
       title="预览结果"
@@ -286,12 +291,12 @@ function PreviewResultCard({ preview }: { preview: UpstreamMappingPreviewResult 
                 <th>说明</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={itemsTbodyRef}>
               {preview.items.length === 0 ? (
                 <EmptyTableRow colSpan={4} title="无预览项" description="" />
               ) : (
-                preview.items.map((it) => (
-                  <tr key={it.categoryId}>
+                preview.items.map((it, index) => (
+                  <tr key={it.categoryId} data-row-index={index}>
                     <td>{it.categoryName}</td>
                     <td>
                       <StatusBadge

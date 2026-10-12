@@ -8,7 +8,7 @@
  * 产物（authorize_url / callback_url / deep_link_url）按场景按需显示。
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { authProvidersApi } from '@fmby/v2-shared/contracts/manage/authProviders';
 import type { AuthProviderDiagnosticScenario } from '@fmby/v2-shared/contracts/manage/authProviders';
@@ -16,6 +16,7 @@ import { InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 
 const SCENARIOS: Array<{ value: AuthProviderDiagnosticScenario; label: string }> = [
   { value: 'validate_config', label: '校验配置' },
@@ -45,6 +46,11 @@ export function ProviderDiagnosticsCard({ provider, displayName }: ProviderDiagn
   });
 
   const result = diagnosticsMutation.data;
+
+  // FE-LIST-KEYNAV-10：自检步骤表是**纯只读清单**（行内无控件），Enter 无既有
+  // 语义可绑 ⇒ 不传 onActivate。roving 停靠点是它唯一的键盘入口（I-1）。
+  const stepsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: stepsTbodyRef, rowCount: result?.steps.length ?? 0 });
 
   return (
     <ManageSectionCard
@@ -126,9 +132,9 @@ export function ProviderDiagnosticsCard({ provider, displayName }: ProviderDiagn
                   <th>说明</th>
                 </tr>
               </thead>
-              <tbody>
-                {result.steps.map((step) => (
-                  <tr key={step.code}>
+              <tbody ref={stepsTbodyRef}>
+                {result.steps.map((step, index) => (
+                  <tr key={step.code} data-row-index={index}>
                     <td>{step.title}</td>
                     <td>
                       <StatusBadge

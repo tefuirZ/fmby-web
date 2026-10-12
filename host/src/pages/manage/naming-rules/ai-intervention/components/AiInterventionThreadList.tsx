@@ -7,12 +7,13 @@
  * - 后端线程 DTO **无 mediaTitle** ⇒ 标题位显示 `—` + 媒体项 id（可截断），**不伪造标题**。
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
 import type { AiInterventionThreadRecord } from '@fmby/v2-shared/contracts/manage/aiInterventions';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { skillLabel, sessionStateLabel, shortId } from '../aiInterventionSupport';
 import styles from '../../../longtail-shared/ManageShared.module.css';
+import { useTableRowRoving } from '../../../../../features/a11y/useTableRowRoving';
 
 interface AiInterventionThreadListProps {
   threads: AiInterventionThreadRecord[];
@@ -33,6 +34,7 @@ export function AiInterventionThreadList({
 }: AiInterventionThreadListProps) {
   const [keyword, setKeyword] = useState('');
   const [sessionFilter, setSessionFilter] = useState<SessionFilter>('all');
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
 
   const filtered = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
@@ -49,6 +51,19 @@ export function AiInterventionThreadList({
       );
     });
   }, [threads, keyword, sessionFilter]);
+
+  // FE-LIST-KEYNAV：行内唯一动作是「选中该线程对应的媒体项」，是纯导航（无破坏）。
+  // 此前每行写死 tabIndex={0} ⇒ 过滤后 N 行**全部**进 Tab 序，Tab 要按 N 次；
+  // 改由 roving 接管（活动行 tabindex=0、其余 -1）后 Tab 只需 1 次即进入表格。
+  // ★必须排在 `filtered` 之后：rowCount 与 onActivate 都要读它，提前声明会 TDZ 报错。
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: filtered.length,
+    onActivate: (index) => {
+      const thread = filtered[index];
+      if (thread) onSelect(thread.mediaItemId);
+    },
+  });
 
   if (isPending) {
     return (
@@ -113,17 +128,19 @@ export function AiInterventionThreadList({
                 <th>最近运行</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((thread) => (
+            <tbody ref={tbodyRef}>
+              {filtered.map((thread, rowIndex) => (
                 <tr
                   key={thread.id}
                   className={styles.clickableRow}
                   data-selected={thread.mediaItemId === selectedMediaItemId || undefined}
-                  tabIndex={0}
+                  data-row-index={rowIndex}
                   role="button"
                   onClick={() => onSelect(thread.mediaItemId)}
+                  // Enter 交给 useTableRowRoving（避免 onActivate 与此处重复触发）；
+                  // Space 仍需行内自行处理（role=button 的原生语义由我们实现）。
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === ' ') {
                       e.preventDefault();
                       onSelect(thread.mediaItemId);
                     }

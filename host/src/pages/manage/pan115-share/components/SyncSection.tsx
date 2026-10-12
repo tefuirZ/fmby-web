@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
 import type {
@@ -9,11 +9,12 @@ import { ManageSectionCard, getManageStatusVariant } from '@/pages/manage/longta
 import { StatusBadge, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 
-function SyncSourceRow({ source }: { source: Pan115SyncSource }) {
+function SyncSourceRow({ source, index }: { source: Pan115SyncSource; index: number }) {
   return (
-    <tr>
+    <tr data-row-index={index}>
       <td className={styles.cellText}>{source.displayName ?? source.sourceId}</td>
       <td className={styles.mutedText}>{source.sourceKind}</td>
       <td>
@@ -24,9 +25,9 @@ function SyncSourceRow({ source }: { source: Pan115SyncSource }) {
   );
 }
 
-function SyncTaskRow({ task }: { task: Pan115SyncTask }) {
+function SyncTaskRow({ task, index }: { task: Pan115SyncTask; index: number }) {
   return (
-    <tr>
+    <tr data-row-index={index}>
       <td className={styles.cellText}>{task.displayName ?? task.id}</td>
       <td className={styles.mutedText}>{task.taskKind}</td>
       <td>
@@ -51,6 +52,21 @@ export function SyncSection() {
     queryFn: () => pan115Api.syncOverview(mountId),
     enabled: mountId.trim().length > 0,
     staleTime: 15_000,
+  });
+
+  // FE-LIST-KEYNAV-10：同步来源 / 最近任务两张表都是**只读清单**（行内无控件）
+  // ⇒ 都不传 onActivate。两张表平级相邻，各自从 0 起算索引域。
+  // ★hook 必须早于本组件后面的 loading / error early return（Hooks 规则）。
+  const sourcesTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: sourcesTbodyRef,
+    rowCount: overviewQuery.data?.sources.length ?? 0,
+  });
+
+  const recentTasksTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: recentTasksTbodyRef,
+    rowCount: overviewQuery.data?.recentTasks.length ?? 0,
   });
 
   const enqueueMutation = useMutation({
@@ -153,9 +169,9 @@ export function SyncSection() {
                     <th scope="col">最近错误</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {overviewQuery.data.sources.map((s) => (
-                    <SyncSourceRow key={s.sourceId} source={s} />
+                <tbody ref={sourcesTbodyRef}>
+                  {overviewQuery.data.sources.map((s, index) => (
+                    <SyncSourceRow key={s.sourceId} source={s} index={index} />
                   ))}
                 </tbody>
               </table>
@@ -176,9 +192,9 @@ export function SyncSection() {
                     <th scope="col">最近错误</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {overviewQuery.data.recentTasks.map((t) => (
-                    <SyncTaskRow key={t.id} task={t} />
+                <tbody ref={recentTasksTbodyRef}>
+                  {overviewQuery.data.recentTasks.map((t, index) => (
+                    <SyncTaskRow key={t.id} task={t} index={index} />
                   ))}
                 </tbody>
               </table>

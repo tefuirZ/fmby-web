@@ -5,10 +5,13 @@
  * 三态：loading / empty / error 均显式呈现，不白屏、不吐原始错误对象。
  */
 
+import { useRef } from 'react';
+
 import type { MicrosoftAppConfigStatusRecord, MicrosoftAuthAccountRecord } from '@fmby/v2-shared/contracts/manage/microsoft';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '../longtail-shared/components';
+import { useTableRowRoving } from '../../../features/a11y/useTableRowRoving';
 
 interface MicrosoftAccountsSectionProps {
   configItems: MicrosoftAppConfigStatusRecord[];
@@ -19,6 +22,14 @@ export function MicrosoftAccountsSection({
   configItems,
   profiles,
 }: MicrosoftAccountsSectionProps) {
+  // FE-LIST-KEYNAV-8：两张表都是**纯只读凭据状态表**（行内无任何控件）⇒
+  // 各自独立 tbody + 各自独立行索引域，不传 onActivate：Enter 不凭空造语义。
+  const configTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: configTbodyRef, rowCount: configItems.length });
+
+  const accountsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: accountsTbodyRef, rowCount: profiles.length });
+
   return (
     <>
       <ManageSectionCard
@@ -40,9 +51,9 @@ export function MicrosoftAccountsSection({
                   <th>令牌键</th>
                 </tr>
               </thead>
-              <tbody>
-                {configItems.map((item) => (
-                  <tr key={item.providerType}>
+              <tbody ref={configTbodyRef}>
+                {configItems.map((item, rowIndex) => (
+                  <tr key={item.providerType} data-row-index={rowIndex}>
                     <td>{item.providerType}</td>
                     <td>
                       <StatusBadge
@@ -91,9 +102,9 @@ export function MicrosoftAccountsSection({
                   <th>备注</th>
                 </tr>
               </thead>
-              <tbody>
-                {profiles.map((account) => (
-                  <tr key={account.id}>
+              <tbody ref={accountsTbodyRef}>
+                {profiles.map((account, rowIndex) => (
+                  <tr key={account.id} data-row-index={rowIndex}>
                     <td className={styles.mono}>{account.userPrincipalName ?? account.principalId ?? '—'}</td>
                     <td>{account.providerType}</td>
                     <td>{account.serviceKind}</td>
