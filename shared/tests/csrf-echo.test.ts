@@ -93,3 +93,38 @@ test('调用方显式指定的 X-CSRF-Token 不被覆盖', async () => {
   assert.ok(req, '请求应被捕获');
   assert.equal(req.headers['x-csrf-token'], 'explicit-value', '显式头优先于 cookie 回显');
 });
+
+test('MFA/TOTP 写方法同样回显 fmby_csrf（与登录同口径，#554/#553 取证）', async () => {
+  // w06 S6 审计发现后端 `post_totp_verify` 曾漏签 fmby_csrf 工件 ⇒ 启用 TOTP 的用户
+  // 登录后所有写请求 403。后端已修（PR #554）。本条钉住**前端侧**不变量：
+  // MFA 的写方法与普通 login **共用同一个 httpClient**，CSRF 回显在 client 的
+  // `request()` 里按 method 统一施加（非 GET/HEAD/OPTIONS 即回显），
+  // 故 MFA 路径**自动受益**，不存在「MFA 走另一条不回显 csrf 的写路径」。
+  const { mfaApi } = await import('../src/contracts/auth/mfa.ts');
+  const { authApi } = await import('../src/contracts/auth/api.ts');
+
+  cookieValue = 'fmby_session=abc; fmby_csrf=csrf-token-value-123';
+
+  for (const [name, call] of [
+    ['mfaApi.verify（登录二因子）', () => mfaApi.verify({ challengeId: 'c1', code: '123456' })],
+    ['mfaApi.confirm（绑定确认）', () => mfaApi.confirm({ code: '123456' })],
+    ['mfaApi.enroll（发起绑定）', () => mfaApi.enroll()],
+    ['mfaApi.disable（停用）', () => mfaApi.disable({ currentPassword: 'pw' })],
+    ['authApi.login（普通登录，对照）', () =>
+      authApi.login({ username: 'u', password: 'p' } as never)],
+  ] as const) {
+    captured = [];
+    try {
+      await call();
+    } catch {
+      // 响应体是 stub 的 {ok:true}，形状不符会抛；本条只关心**请求头**，忽略解析错。
+    }
+    const req = captured[0];
+    assert.ok(req, `${name} 应发出请求`);
+    assert.equal(
+      req.headers['x-csrf-token'],
+      'csrf-token-value-123',
+      `${name} 必须与普通登录同口径回显 csrf（否则 MFA 用户的写请求会被 403 拦截）`,
+    );
+  }
+});
