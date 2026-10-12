@@ -934,3 +934,129 @@ test('MountTable：行首 checkbox 的 Enter/Space 仍走原生选中语义（�
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* TaskCenterList 接线实证（第二批 1/3）                             */
+/* ------------------------------------------------------------------ */
+
+const TASK_CENTER_ENTRY = `
+import { createElement, useState } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { TaskCenterList } from '${'${TASK_CENTER_PATH}'}';
+
+// 当前页 3 行（服务端分页：漫游域 = 当前页）
+const items = [0, 1, 2].map((i) => ({
+  category: 'probe',
+  id: 't-' + i,
+  status: 'failed',
+  createdAt: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+  updatedAt: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+  mediaItemId: 'item-' + i,
+  mediaTitle: '条目 ' + i,
+  retryCount: i,
+  summary: '摘要 ' + i,
+}));
+
+globalThis.__selected = [];
+function App() {
+  const [, setSelectedTask] = useState(null);
+  return createElement(TaskCenterList, {
+    items, total: items.length, page: 1, totalPages: 1, isFetching: false,
+    setSelectedTask: (v) => {
+      const next = typeof v === 'function' ? v(null) : v;
+      globalThis.__selected.push(next ? next.category + ':' + next.id : null);
+    },
+    setPage: () => {},
+  });
+}
+
+createRoot(document.getElementById('root')).render(createElement(App));
+`;
+
+async function mountTaskCenter(t: any) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), 'fe02-taskcenter-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
+  const compPath = `file://${join(HOST_ROOT, 'src/pages/manage/task-center/components/TaskCenterList.tsx')}`;
+  await writeFile(
+    entryFile,
+    withNmPaths(TASK_CENTER_ENTRY.replace('${TASK_CENTER_PATH}', compPath)),
+    'utf8',
+  );
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'TaskCenter', fileName: () => 'probe.js' },
+      },
+    });
+  } finally {
+  }
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  await page.waitForSelector('[data-row-index="0"]');
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
+test('接线实证（真实 TaskCenterList）：↑↓/Home/End 移动行 + Enter 开详情', async (t) => {
+  const h = await mountTaskCenter(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>）',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(
+      await page.evaluate(() => (globalThis as any).__selected ?? []),
+      ['probe:t-1'],
+      'Enter 应选中当前行任务（setSelectedTask），与行内「详情」按钮同语义',
+    );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
