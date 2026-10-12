@@ -653,3 +653,130 @@ test('UserTable：行首 checkbox 的 Enter/Space 语义不变（裁定：不动
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* ProbeTaskTable 接线实证（第一批 2/3）                             */
+/* ------------------------------------------------------------------ */
+
+const PROBE_TASK_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { ProbeTaskTable } from '${'${PROBE_TASK_PATH}'}';
+
+const mk = (i) => ({
+  sourceId: 'src-' + i,
+  mediaItemId: 'item-' + i,
+  title: '条目 ' + i,
+  libraryId: 'lib-1',
+  libraryName: '库',
+  mountId: 'mount-1',
+  mountName: '挂载',
+  providerType: 'webdav',
+  mountStatus: 'ok',
+  availabilityState: 'available',
+  sourcePath: '/p/' + i,
+  sourceStatus: 'ok',
+  status: 'idle',
+  attemptCount: 0,
+});
+
+const tasks = [0, 1, 2].map(mk);
+
+globalThis.__selected = [];
+function App() {
+  return createElement(ProbeTaskTable, {
+    tasks,
+    filteredTasks: tasks,
+    keyword: '',
+    statusFilter: 'all',
+    onKeywordChange: () => {},
+    onStatusFilterChange: () => {},
+    onClearScope: () => {},
+    onSelectSource: (id) => { globalThis.__selected.push(id); },
+  });
+}
+
+createRoot(document.getElementById('root')).render(createElement(App));
+`;
+
+async function mountProbeTaskTable(t: any) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), 'fe02-probetask-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
+  const compPath = `file://${join(HOST_ROOT, 'src/pages/manage/probe-tasks/components/ProbeTaskTable.tsx')}`;
+  await writeFile(entryFile, withNmPaths(PROBE_TASK_ENTRY.replace('${PROBE_TASK_PATH}', compPath)), 'utf8');
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'ProbeTask', fileName: () => 'probe.js' },
+      },
+    });
+  } finally {
+  }
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  await page.waitForSelector('[data-row-index="0"]');
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
+test('接线实证（真实 ProbeTaskTable）：↑↓/Home/End 移动行 + Enter 选源', async (t) => {
+  const h = await mountProbeTaskTable(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    const tag = await page.evaluate(() => document.activeElement?.tagName);
+    assert.equal(tag, 'TR', '↑↓ 后焦点应在行本身（<tr>）');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(
+      await page.evaluate(() => (globalThis as any).__selected ?? []),
+      ['src-1'],
+      'Enter 应选中当前行来源（onSelectSource）',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
