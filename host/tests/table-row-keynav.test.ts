@@ -1298,7 +1298,8 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${AUDIT_LOGS_PATH}', `file://${compFile}`)
         .replace('${SECRETS_PATH}', `file://${compFile}`)
         .replace('${MEDIA_ITEM_PATH}', `file://${compFile}`)
-        .replace('${REG_CODE_PATH}', `file://${compFile}`),
+        .replace('${REG_CODE_PATH}', `file://${compFile}`)
+        .replace('${PRESETS_PATH}', `file://${compFile}`),
     ),
     'utf8',
   );
@@ -1757,6 +1758,110 @@ test('RegistrationCodeDetailTable 裁定：行上按 Enter 不触发启用/停�
         ),
     );
     assert.equal(reachable, true, '行内按钮不得被设 tabindex=-1');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* UpstreamMappingPresetsSection 接线实证（第四批 1/3）              */
+/* ------------------------------------------------------------------ */
+
+const PRESETS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { UpstreamMappingPresetsSection } from '${'${PRESETS_PATH}'}';
+
+// 形状对齐 shared/src/contracts/manage/upstreams 的预设记录
+const presets = [0, 1, 2].map((i) => ({
+  id: 'p-' + i,
+  sourceId: 'src-1',
+  name: '预设 ' + i,
+  enabled: true,
+  updatedAt: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+  libraryType: 'movie',
+  titleKeywords: ['k' + i],
+  categoryIds: ['c' + i],
+}));
+
+globalThis.fetch = async () =>
+  new Response(JSON.stringify({ items: presets }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(UpstreamMappingPresetsSection, { sourceId: 'src-1' })),
+);
+`;
+
+test('接线实证（UpstreamMappingPresetsSection）：↑↓/Home/End 移动行 + Enter 编辑（第四批 1/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-presets-',
+    PRESETS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamMappingPresetsSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>）',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+
+    // Enter → 点击行内「编辑」⇒ 弹出编辑对话框（标题含该预设名）
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
+    const dialogText = await page.evaluate(
+      () => (document.querySelector('[role="dialog"]') as HTMLElement)?.textContent ?? '',
+    );
+    assert.match(dialogText, /预设 1/, 'Enter 应打开该行的「编辑」对话框（与点按钮同语义）');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('UpstreamMappingPresetsSection：行上 Enter 不触发删除确认框（破坏性动作须点按钮）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-presets2-',
+    PRESETS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamMappingPresetsSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    // 编辑对话框是「编辑预设」，删除确认是「删除预设」；断言标题不是删除
+    const titles = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('[role="dialog"]')).map(
+        (d) => (d as HTMLElement).textContent ?? '',
+      ),
+    );
+    assert.equal(
+      titles.filter((s) => s.includes('删除')).length,
+      0,
+      'Enter 不得触发删除确认（破坏性动作须点行内「删除」按钮）',
+    );
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
