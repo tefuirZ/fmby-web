@@ -71,6 +71,13 @@ export interface InstallStatusResponse {
   needs_install?: boolean;
   database_configured?: boolean;
   can_probe?: boolean;
+  /**
+   * 仅**安装模式进程**形态返回（`install_flow.rs:176-189` 的 status json）。
+   * 主应用形态下 `/install/status` 走 `fmby-v2-http` 的 `InstallStatusDto`
+   * （仅 state / database_configured / can_probe），**不含**本字段
+   * ⇒ 必须可选，前端按下位旗标推导（见 InstallPage.readInstallState）。
+   */
+  completed?: boolean;
 }
 
 export interface DatabaseProbeRequest {

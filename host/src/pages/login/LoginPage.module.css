@@ -272,6 +272,40 @@
   cursor: not-allowed;
 }
 
+/*
+ * fe01（安装向导诚实化）：**能力说明条**。
+ * 与 error/success 横幅同族（左侧一条色标），但用中性色 —— 它是「本页能做什么、
+ * 不能做什么」的常驻说明，不是错误也不是成功。
+ */
+
+.noticeBanner {
+  margin-bottom: var(--space-5);
+  padding: 10px var(--space-3);
+  border: none;
+  border-left: 2px solid var(--text-3);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-3);
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+  line-height: 1.7;
+}
+
+.noticeTitle {
+  display: block;
+  margin: 0 0 2px;
+  color: var(--text-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.noticeList {
+  margin: 6px 0 0;
+  padding-left: 1.2em;
+}
+
+.noticeList li {
+  margin: 2px 0;
+}
+
 /* ---- 横幅：左侧一条色标，不画完整边框 ---- */
 
 .errorBanner {
