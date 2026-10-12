@@ -5,7 +5,7 @@
  * 关闭会话 / 应用最近结果。message/close 是 **session 级路径 + session_id body**。
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type {
@@ -21,6 +21,7 @@ import {
   skillLabel,
 } from '../aiInterventionSupport';
 import styles from '../../../longtail-shared/ManageShared.module.css';
+import { useTableRowRoving } from '../../../../../features/a11y/useTableRowRoving';
 
 interface AiInterventionDetailPanelProps {
   mediaItemId: string;
@@ -57,6 +58,12 @@ export function AiInterventionDetailPanel({
 }: AiInterventionDetailPanelProps) {
   const [skillKey, setSkillKey] = useState<AiInterventionSkillKey>('naming_cleanup');
   const [draft, setDraft] = useState('');
+
+  // FE-LIST-KEYNAV-10：运行记录表是**纯只读清单**（行内唯一的 <pre> 不可聚焦）
+  // ⇒ 不传 onActivate；roving 停靠点是它唯一的键盘入口（I-1）。
+  // ★hook 必须早于下面 isPending / error / !detail 三个 early return（Hooks 规则）。
+  const runsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: runsTbodyRef, rowCount: detail?.runs.length ?? 0 });
 
   useEffect(() => {
     setDraft('');
@@ -212,9 +219,9 @@ export function AiInterventionDetailPanel({
                   <th>摘要</th>
                 </tr>
               </thead>
-              <tbody>
-                {runs.map((run) => (
-                  <tr key={run.id}>
+              <tbody ref={runsTbodyRef}>
+                {runs.map((run, index) => (
+                  <tr key={run.id} data-row-index={index}>
                     <td>{runKindLabel(run.runKind)}</td>
                     <td>{skillLabel(run.skillKey)}</td>
                     <td>{run.runStatus}</td>

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   isSystemAboutUnwiredError,
@@ -9,15 +10,41 @@ import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
+
+/**
+ * 「运行时」表的行描述符。原来四行是硬编码 <tr>，改成数据驱动只是为了给
+ * roving 提供稳定的 `data-row-index`（0..N-1）与 rowCount。
+ */
+const RUNTIME_ROWS: Array<{ label: string; value: (d: SystemAboutResponse) => string }> = [
+  { label: '包版本', value: (d) => d.runtime.rustPackageVersion },
+  { label: '目标系统', value: (d) => d.runtime.targetOs },
+  { label: '目标架构', value: (d) => d.runtime.targetArch },
+  { label: '能力面', value: (d) => d.runtime.features.join('、') },
+];
+
+/** 同上，「链接」表的行描述符。 */
+const LINK_ROWS: Array<{ label: string; value: (d: SystemAboutResponse) => string }> = [
+  { label: '源码仓库', value: (d) => d.links.sourceRepo },
+  { label: '分发仓库', value: (d) => d.links.distributionRepo },
+  { label: '更新日志', value: (d) => d.links.changelog },
+  { label: 'Docker Hub', value: (d) => d.links.dockerhubRepo },
+];
 
 function formatGeneratedAt(rfc3339: string): string {
   const t = new Date(rfc3339);
   return Number.isNaN(t.getTime()) ? rfc3339 : t.toLocaleString('zh-CN', { hour12: false });
 }
 
-function DependencyRow({ dep }: { dep: SystemAboutResponse['dependencies'][number] }) {
+function DependencyRow({
+  dep,
+  index,
+}: {
+  dep: SystemAboutResponse['dependencies'][number];
+  index: number;
+}) {
   return (
-    <tr>
+    <tr data-row-index={index}>
       <td>{dep.name}</td>
       <td>{systemDependencyStatusLabel(dep.status)}</td>
       <td>{dep.required ? '必需' : '可选'}</td>
@@ -32,6 +59,18 @@ export function ManageSystemAboutPage() {
     queryKey: queryKeys.manage.systemAbout.about(),
     queryFn: () => systemAboutApi.about(),
   });
+
+  // FE-LIST-KEYNAV-10：本页三张表都是**只读静态键值/清单表**（行内无控件），
+  // Enter 无既有语义可绑 ⇒ 都不传 onActivate。
+  // ★hook 必须早于下面 isPending / isError 两个 early return（Hooks 规则）。
+  const runtimeTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: runtimeTbodyRef, rowCount: RUNTIME_ROWS.length });
+
+  const depsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: depsTbodyRef, rowCount: aboutQuery.data?.dependencies.length ?? 0 });
+
+  const linksTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: linksTbodyRef, rowCount: LINK_ROWS.length });
 
   if (aboutQuery.isPending) {
     return (
@@ -108,23 +147,13 @@ export function ManageSystemAboutPage() {
       <ManageSectionCard title="运行时" description="编译目标与启用的能力面。">
         <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
           <table className={styles.table}>
-            <tbody>
-              <tr>
-                <td>包版本</td>
-                <td>{data.runtime.rustPackageVersion}</td>
-              </tr>
-              <tr>
-                <td>目标系统</td>
-                <td>{data.runtime.targetOs}</td>
-              </tr>
-              <tr>
-                <td>目标架构</td>
-                <td>{data.runtime.targetArch}</td>
-              </tr>
-              <tr>
-                <td>能力面</td>
-                <td>{data.runtime.features.join('、')}</td>
-              </tr>
+            <tbody ref={runtimeTbodyRef}>
+              {RUNTIME_ROWS.map((row, index) => (
+                <tr key={row.label} data-row-index={index}>
+                  <td>{row.label}</td>
+                  <td>{row.value(data)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -142,9 +171,9 @@ export function ManageSystemAboutPage() {
                 <th>消息</th>
               </tr>
             </thead>
-            <tbody>
-              {data.dependencies.map((dep) => (
-                <DependencyRow key={dep.id} dep={dep} />
+            <tbody ref={depsTbodyRef}>
+              {data.dependencies.map((dep, index) => (
+                <DependencyRow key={dep.id} dep={dep} index={index} />
               ))}
             </tbody>
           </table>
@@ -154,23 +183,13 @@ export function ManageSystemAboutPage() {
       <ManageSectionCard title="链接" description="源码与分发入口。">
         <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
           <table className={styles.table}>
-            <tbody>
-              <tr>
-                <td>源码仓库</td>
-                <td>{data.links.sourceRepo}</td>
-              </tr>
-              <tr>
-                <td>分发仓库</td>
-                <td>{data.links.distributionRepo}</td>
-              </tr>
-              <tr>
-                <td>更新日志</td>
-                <td>{data.links.changelog}</td>
-              </tr>
-              <tr>
-                <td>Docker Hub</td>
-                <td>{data.links.dockerhubRepo}</td>
-              </tr>
+            <tbody ref={linksTbodyRef}>
+              {LINK_ROWS.map((row, index) => (
+                <tr key={row.label} data-row-index={index}>
+                  <td>{row.label}</td>
+                  <td>{row.value(data)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
