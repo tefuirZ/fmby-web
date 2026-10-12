@@ -1,37 +1,21 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Page } from '@playwright/test';
+import { resolveServerBinary, describeSearchPaths } from '../binaryResolver.mjs';
 
 /**
  * 真实 E2E 是否启用（WEB-GOV ③）：依赖 Rust 服务端二进制；无产物时整组测试
- * **跳过而非失败**。解析口径与 `playwright.config.ts` / `e2e/start.mjs` 同源：
- *   1. 环境变量 `FMBY_E2E_SERVER_BIN`；
- *   2. `<repoRoot>/target/<FMBY_E2E_PROFILE|debug>/fmby-v2-server${exeSuffix}`。
+ * **跳过而非失败**。
+ *
+ * ★rv01 PR #15 阻断项 ①：解析口径**不再自己拼路径**，一律走共享 resolver
+ *   `host/e2e/binaryResolver.mjs`（补 `CARGO_TARGET_DIR` / `/data/fmby-build/local-target`
+ *   / `/data/fmby-target/*`）。此前本文件只找 `<repo>/target` ⇒ 在本项目强制
+ *   `CARGO_TARGET_DIR` 的布局下恒 false，18 个 spec 静默 skip。
  */
-// host/e2e/fixtures → host → 前端仓根
-const WEB_REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
-// 主仓（Rust 产物所在；WEB-E2E-FULL：前端仓无 target/ 时回退）
-const MAIN_REPO_ROOT = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
-const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
+export const E2E_ENABLED: boolean = resolveServerBinary() !== null;
 
-function serverBinaryExists() {
-  const candidates = [process.env.FMBY_E2E_SERVER_BIN].filter(
-    (v) => typeof v === 'string' && v.length > 0,
-  );
-  for (const root of [WEB_REPO_ROOT, MAIN_REPO_ROOT]) {
-    for (const profile of ['release', 'debug']) {
-      candidates.push(join(root, 'target', profile, `fmby-v2-server${EXE_SUFFIX}`));
-      candidates.push(join(root, 'target', profile, 'fmby-v2-server'));
-    }
-  }
-  return candidates.some((candidate) => existsSync(candidate));
-}
-
-export const E2E_ENABLED: boolean = serverBinaryExists();
-
-/** 跳过原因（供 test.skip 文案）。 */
+/** 跳过原因（供 test.skip 文案）——带上实际搜索路径，便于一眼看出为什么找不到。 */
 export const E2E_SKIP_REASON =
-  '真实 E2E 需要 fmby-v2-server 二进制（cargo build -p fmby-v2-server 或设置 FMBY_E2E_SERVER_BIN）';
+  `真实 E2E 需要 fmby-v2-server 二进制（cargo build -p fmby-v2-server，或设置 FMBY_E2E_SERVER_BIN）；` +
+  `已搜索：${describeSearchPaths()}`;
 
 // 真实 E2E：无 mock reset/state——server 每次用全新临时 DB，天然隔离。
 // 真实种子由 fmby-v2-server FMBY_E2E_SEED=1 提供（admin/admin + 电影库 + 星际穿越）。

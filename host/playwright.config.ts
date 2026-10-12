@@ -1,6 +1,5 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { resolveServerBinary, describeSearchPaths } from './e2e/binaryResolver.mjs';
 
 /**
  * Playwright E2E Configuration for FMBY-V2 Host
@@ -15,34 +14,26 @@ import { defineConfig, devices } from '@playwright/test';
  *   3. `<主仓>/target/{release,debug}/...`。
  */
 
-// host/ → 前端仓根
-const webRepoRoot = join(import.meta.dirname, '..');
-const mainRepoRoot = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
-const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
 // 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让，
 // 与 e2e/start.mjs 同源口径）。
 const webOrigin = `http://127.0.0.1:${Number(process.env.FMBY_E2E_WEB_PORT ?? 5180)}`;
 
-/** 服务端二进制是否存在（与 e2e/start.mjs 的 resolveBinary 保持一致）。 */
+/**
+ * 服务端二进制是否存在 —— **走共享 resolver**（rv01 PR #15 阻断项 ①）。
+ * 此前本文件自己拼 `<repo>/target`，与 start.mjs / helpers.ts / check-e2e.mjs
+ * 四处各写一份窄口径 ⇒ 本项目强制 `CARGO_TARGET_DIR` 的布局下永远找不到。
+ */
 function hasServerBinary() {
-  const candidates = [process.env.FMBY_E2E_SERVER_BIN].filter(
-    (v) => typeof v === 'string' && v.length > 0,
-  );
-  for (const root of [webRepoRoot, mainRepoRoot]) {
-    for (const profile of ['release', 'debug']) {
-      candidates.push(join(root, 'target', profile, `fmby-v2-server${EXE_SUFFIX}`));
-      candidates.push(join(root, 'target', profile, 'fmby-v2-server'));
-    }
-  }
-  return candidates.some((candidate) => existsSync(candidate));
+  return resolveServerBinary() !== null;
 }
 
 const hasBinary = hasServerBinary();
 
 if (!hasBinary) {
   console.warn(
-    `[playwright] SKIP e2e: fmby-v2-server binary not found (FMBY_E2E_SERVER_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
-      `Build with 'cargo build -p fmby-v2-server' to enable real E2E.`,
+    `[playwright] SKIP e2e: fmby-v2-server binary not found. ` +
+      `已搜索：${describeSearchPaths()}；` +
+      `Build with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SERVER_BIN.`,
   );
 }
 
