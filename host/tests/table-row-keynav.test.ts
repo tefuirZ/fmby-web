@@ -1292,7 +1292,12 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
   const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
   await writeFile(
     entryFile,
-    withNmPaths(entrySrc.replace('${AUDIT_LOGS_PATH}', `file://${compFile}`)),
+    // 通用替换：entry 模板里的组件路径占位符（各探针用不同名字）
+    withNmPaths(
+      entrySrc
+        .replace('${AUDIT_LOGS_PATH}', `file://${compFile}`)
+        .replace('${SECRETS_PATH}', `file://${compFile}`),
+    ),
     'utf8',
   );
   try {
@@ -1413,6 +1418,102 @@ test('只读表裁定：ManageAuditLogsPage 行上按 Enter 不产生任何副�
       () => document.querySelector('[role="dialog"]') !== null,
     );
     assert.equal(dialogShown, false, '只读表不得因 Enter 弹出对话框');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* ManageSecretsPage 接线实证（第三批 1/3）                          */
+/* ------------------------------------------------------------------ */
+
+const SECRETS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageSecretsPage } from '${'${SECRETS_PATH}'}';
+
+// 形状对齐 shared/src/contracts/manage/peripherals/api.ts:380 fromSecretEntry
+// （key / source / configured 原样透传；外层再带 overrides_file、microsoft_editions）
+globalThis.fetch = async () =>
+  new Response(
+    JSON.stringify({
+      entries: [
+        { key: 'JWT_SECRET', source: 'env', configured: true },
+        { key: 'DB_PASSWORD', source: 'secrets_file', configured: true },
+        { key: 'SMTP_PASS', source: 'unset', configured: false },
+      ],
+      overrides_file: '/run/secrets.env',
+      microsoft_editions: ['consumer', 'business'],
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(ManageSecretsPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageSecretsPage）：只读表 ↑↓/Home/End 漫游（第三批 1/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-secrets-',
+    SECRETS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageSecretsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 依赖 hook 在挂载时给行设 tabindex=-1（上一提交 b80f508 的修复）
+    assert.equal(
+      await page.evaluate(
+        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
+      ),
+      '-1',
+      'hook 必须在挂载时给只读表行设 tabindex=-1，否则漫游无从起步',
+    );
+    await page.focus('[data-row-index="0"]');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>）',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('ManageSecretsPage 裁定：只读来源表按 Enter 无副作用（不伪造语义）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-secrets2-',
+    SECRETS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageSecretsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"]');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    assert.equal(await focusedRow(page), 1, 'Enter 后焦点应仍在行上');
+    assert.equal(
+      await page.evaluate(() => document.querySelector('[role="dialog"]') !== null),
+      false,
+      '只读来源表不得因 Enter 弹出对话框',
+    );
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();

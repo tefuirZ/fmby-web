@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   peripheralsApi,
@@ -10,6 +10,7 @@ import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 
 /** 来源层展示标签（三层链 env > secrets 文件 > 内置；零明文）。 */
 const SOURCE_LABELS: Record<SecretSourceKind, string> = {
@@ -55,6 +56,11 @@ export function ManageSecretsPage() {
     queryFn: () => peripheralsApi.getSecretsStatus(),
   });
 
+  // FE-LIST-KEYNAV-6：表格行键盘漫游（↑↓/Home/End 移动行）。
+  // ★刻意**不传 onActivate**：本页是**只读**来源展示表，行内无任何动作
+  // （覆盖写入区在下方独立表单，不在行内），造 Enter 语义只能靠伪造 ⇒ 不造。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+
   const [selectedKey, setSelectedKey] = useState('');
   const [value, setValue] = useState('');
   const [removeMode, setRemoveMode] = useState(false);
@@ -62,13 +68,17 @@ export function ManageSecretsPage() {
   const [result, setResult] = useState<SecretsOverrideResultRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const entries = statusQuery.data?.entries ?? [];
+
   const entryBySource = useMemo(() => {
     const map = new Map<string, SecretSourceKind>();
-    for (const entry of statusQuery.data?.entries ?? []) {
+    for (const entry of entries) {
       map.set(entry.key, entry.source);
     }
     return map;
-  }, [statusQuery.data]);
+  }, [entries]);
+
+  useTableRowRoving({ tbodyRef, rowCount: entries.length });
 
   const selectedSource = selectedKey ? entryBySource.get(selectedKey) : undefined;
 
@@ -168,9 +178,9 @@ export function ManageSecretsPage() {
                 <th>是否已配置</th>
               </tr>
             </thead>
-            <tbody>
-              {status.entries.map((entry) => (
-                <tr key={entry.key}>
+            <tbody ref={tbodyRef}>
+              {status.entries.map((entry, rowIndex) => (
+                <tr key={entry.key} data-row-index={rowIndex}>
                   <td className={styles.mono}>{entry.key}</td>
                   <td>
                     <StatusBadge
