@@ -1300,7 +1300,8 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
         .replace('${MEDIA_ITEM_PATH}', `file://${compFile}`)
         .replace('${REG_CODE_PATH}', `file://${compFile}`)
         .replace('${PRESETS_PATH}', `file://${compFile}`)
-        .replace('${YUN139_PATH}', `file://${compFile}`),
+        .replace('${YUN139_PATH}', `file://${compFile}`)
+        .replace('${LEDGER_PATH}', `file://${compFile}`),
     ),
     'utf8',
   );
@@ -1974,6 +1975,88 @@ test('Yun139ProfilesSection 裁定：行上 Enter 不触发删除确认（行内
         ),
     );
     assert.equal(reachable, true, '行内删除按钮不得被设 tabindex=-1');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* RewardsLedgerSection 接线实证（第四批 3/3）                        */
+/* ------------------------------------------------------------------ */
+
+const LEDGER_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { RewardsLedgerSection } from '${'${LEDGER_PATH}'}';
+
+const ledger = [0, 1, 2].map((i) => ({
+  id: 'r-' + i,
+  createdAt: 1767225600000 + i * 1000,
+  transactionType: 'earn',
+  sourceType: 'invite',
+  sourceId: 'src-' + i,
+  delta: 10 + i,
+  balanceAfter: 100 + i,
+}));
+
+createRoot(document.getElementById('root')).render(
+  createElement(RewardsLedgerSection, {
+    ledger, ledgerLimit: 50, onLedgerLimitChange: () => {}, isPending: false,
+  }),
+);
+`;
+
+test('接线实证（RewardsLedgerSection）：只读账本表 ↑↓/Home/End 漫游（第四批 3/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-ledger-',
+    LEDGER_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/rewards/RewardsLedgerSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.equal(
+      await page.evaluate(
+        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
+      ),
+      '-1',
+      '只读表也得在挂载时给行设 tabindex=-1（否则 Tab 进不去、漫游是死路）',
+    );
+    await page.focus('[data-row-index="0"]');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('RewardsLedgerSection 裁定：只读账本行上 Enter 无副作用（无动作可绑定）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-ledger2-',
+    LEDGER_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/rewards/RewardsLedgerSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"]');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    assert.equal(
+      await page.evaluate(() => document.querySelector('[role="dialog"]') !== null),
+      false,
+      'Enter 不得凭空造出语义（无动作可绑定）',
+    );
+    assert.equal(await focusedRow(page), 1, 'Enter 不得把焦点挪走');
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
