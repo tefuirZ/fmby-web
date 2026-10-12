@@ -107,6 +107,7 @@ export function LibrariesPage() {
         <div className={styles.toolbar}>
           <div className={styles.filterGroup}>
             <input
+              aria-label="搜索媒体库名称、简介"
               className={styles.input}
               placeholder="搜索媒体库名称、简介，支持拼音首字母"
               value={keyword}

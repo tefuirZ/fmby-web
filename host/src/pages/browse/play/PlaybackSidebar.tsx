@@ -1,6 +1,6 @@
 /** 播放页侧栏抽屉：剧集队列 / 相关推荐（V1F 拆分：PlayPage → 子组件）。 */
 
-import type { RefObject } from 'react';
+import { useEffect, type RefObject } from 'react';
 import { HoverScrollArea } from '@fmby/v2-shared/ui';
 import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import styles from '../PlayPage.module.css';
@@ -48,6 +48,22 @@ export function PlaybackSidebar({
   recommendedItems,
   buildPlayPath,
 }: PlaybackSidebarProps) {
+  // fe02：本侧栏是**自绘** dialog（非 Radix），缺少 Radix 原生的 Esc 关闭；
+  // 而它已声明 role="dialog" + aria-modal="true"，键盘用户被模态困住却无法关闭
+  // （焦点陷阱）。补 =( WCAG 2.1.2）。
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) {
     return null;
   }
