@@ -1297,7 +1297,8 @@ async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compF
       entrySrc
         .replace('${AUDIT_LOGS_PATH}', `file://${compFile}`)
         .replace('${SECRETS_PATH}', `file://${compFile}`)
-        .replace('${MEDIA_ITEM_PATH}', `file://${compFile}`),
+        .replace('${MEDIA_ITEM_PATH}', `file://${compFile}`)
+        .replace('${REG_CODE_PATH}', `file://${compFile}`),
     ),
     'utf8',
   );
@@ -1645,6 +1646,117 @@ test('MediaItemListTable：行首 checkbox 的 Space 仍是切换选中（非打
       before,
       'checkbox 上 Space 不得被劫持成「打开详情」',
     );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* RegistrationCodeDetailTable 接线实证（第三批 3/3）                */
+/* ------------------------------------------------------------------ */
+
+const REG_CODE_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { RegistrationCodeDetailTable } from '${'${REG_CODE_PATH}'}';
+
+const mk = (i) => ({
+  id: 'rc-' + i,
+  code: 'CODE-' + i,
+  status: i === 0 ? 'unused' : 'used',
+  createdAt: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+  expiresAt: null,
+  usedAt: null,
+  usedByUserId: null,
+  sessionLimit: 1,
+  sessionUsed: 0,
+  defaultLibraries: ['lib-1'],
+});
+
+const records = [0, 1, 2].map(mk);
+globalThis.__statusActions = [];
+globalThis.__deletes = [];
+function App() {
+  return createElement(RegistrationCodeDetailTable, {
+    records,
+    libraryNameMap: new Map([['lib-1', '主库']]),
+    onStatusAction: (r) => { globalThis.__statusActions.push(r.id); },
+    onDelete: (r) => { globalThis.__deletes.push(r.id); },
+  });
+}
+createRoot(document.getElementById('root')).render(createElement(App));
+`;
+
+test('接线实证（真实 RegistrationCodeDetailTable）：↑↓/Home/End 漫游（第三批 3/3）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-regcode-',
+    REG_CODE_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/registration-codes/components/RegistrationCodeDetailTable.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.equal(
+      await page.evaluate(
+        () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
+      ),
+      '-1',
+      'hook 必须在挂载时给行设 tabindex=-1',
+    );
+    await page.focus('[data-row-index="0"]');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>）',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('RegistrationCodeDetailTable 裁定：行上按 Enter 不触发启用/停用也不删除（写操作留给按钮）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-regcode2-',
+    REG_CODE_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/registration-codes/components/RegistrationCodeDetailTable.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"]');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    assert.deepEqual(
+      await page.evaluate(() => (globalThis as any).__statusActions ?? []),
+      [],
+      'Enter 不得触发启用/停用（改服务端状态的写操作须点行内按钮）',
+    );
+    assert.deepEqual(
+      await page.evaluate(() => (globalThis as any).__deletes ?? []),
+      [],
+      'Enter 不得触发删除（破坏性动作须点行内按钮）',
+    );
+    // 行内按钮仍可 Tab 到达（可达性零回归）
+    const reachable = await page.evaluate(
+      () =>
+        Array.from(document.querySelectorAll('[data-row-index] button')).every(
+          (b) => b.getAttribute('tabindex') !== '-1',
+        ),
+    );
+    assert.equal(reachable, true, '行内按钮不得被设 tabindex=-1');
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();

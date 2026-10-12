@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { RegistrationCodeRecord } from '@fmby/v2-shared/contracts/manage';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
@@ -8,6 +9,7 @@ import {
   getCodeStatusAction,
   getUsageLabel,
 } from '../formUtils';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 export interface RegistrationCodeDetailTableProps {
   records: RegistrationCodeRecord[];
@@ -22,6 +24,13 @@ export function RegistrationCodeDetailTable({
   onStatusAction,
   onDelete,
 }: RegistrationCodeDetailTableProps) {
+  // FE-LIST-KEYNAV-6：表格行键盘漫游（↑↓/Home/End 移动行）。
+  // ★刻意**不传 onActivate**：行内两个动作（onStatusAction 启用/停用、
+  // onDelete 删除）**都是写操作**。删除是破坏性的；启用/停用虽非破坏性，
+  // 但也是改服务端状态，不宜绑到「随手一按回车」上 ⇒ 一律留给行内按钮。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef, rowCount: records.length });
+
   return (
     <div className={styles.desktopOnly}>
       <div className={styles.tableWrap}>
@@ -36,15 +45,15 @@ export function RegistrationCodeDetailTable({
               <th>操作</th>
             </tr>
           </thead>
-          <tbody>
-            {records.map((record) => {
+          <tbody ref={tbodyRef}>
+            {records.map((record, rowIndex) => {
               const statusAction = getCodeStatusAction(record);
               const libraryNames = record.defaultLibraries.map(
                 (libraryId) => libraryNameMap.get(libraryId) ?? libraryId,
               );
 
               return (
-                <tr key={record.id}>
+                <tr key={record.id} data-row-index={rowIndex}>
                   <td>
                     <div className={styles.stackText}>
                       <strong className={styles.mono}>{record.code}</strong>
