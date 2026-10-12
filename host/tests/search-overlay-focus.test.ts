@@ -67,12 +67,19 @@ createRoot(document.getElementById('root')).render(createElement(App));
 type Harness = { page: any; close: () => Promise<void> };
 let harness: Harness | null = null;
 
+/**
+ * 「未装依赖」与「真失败」必须分开（rv01 #2）：
+ * 统一抛 `SKIP` 哨兵表示**显式跳过**；其余异常（Chromium 缺失、vite 打包失败、
+ * 探针抛错）**原样上抛** ⇒ 测试为 fail，绝不被吞成 pass。
+ */
+const SKIP = Symbol('skip');
+
 /** 打包一次 + 起一个浏览器。两个用例共用，避免重复花 30s 构建。 */
 async function getHarness(t: any): Promise<Harness> {
   if (harness) return harness;
   if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
     t.skip('未安装 host 依赖（pnpm install 后重跑）');
-    throw new Error('skip');
+    throw SKIP;
   }
   const work = await mkdtemp(join(tmpdir(), 'fe02-dom-'));
   const entryFile = join(HOST_ROOT, 'tests', '__probeFe02Dom-entry.tsx');
@@ -134,7 +141,9 @@ test('PlaybackSidebar 须支持 Esc 关闭（自绘 role=dialog 的隐含契约�
   let page: any;
   try {
     ({ page } = await getHarness(t));
-  } catch {
+  } catch (err) {
+    // ★只放行显式 skip；其它一律 rethrow ⇒ fail-loud（不把「跑不起来」当成通过）。
+    if (err !== SKIP) throw err;
     return;
   }
   const sidebar = page.locator('#playback-sidebar');
@@ -158,7 +167,9 @@ test('SearchOverlay 关闭后焦点须归还触发按钮（不丢焦点到 body�
   let page: any;
   try {
     ({ page } = await getHarness(t));
-  } catch {
+  } catch (err) {
+    // ★只放行显式 skip；其它一律 rethrow ⇒ fail-loud（不把「跑不起来」当成通过）。
+    if (err !== SKIP) throw err;
     return;
   }
   // 真实用户路径：触发按钮取得焦点 → 打开浮层
