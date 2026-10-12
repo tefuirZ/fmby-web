@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { manageApi, type AuditLogRecord } from '@fmby/v2-shared/contracts/manage';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -14,6 +14,7 @@ import {
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import { matchKeyword } from '@fmby/v2-shared/search/matchKeyword';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 
 export function ManageAuditLogsPage() {
   const [keyword, setKeyword] = useState('');
@@ -25,6 +26,10 @@ export function ManageAuditLogsPage() {
   });
 
   const items = auditQuery.data?.items ?? [];
+  // FE-LIST-KEYNAV-5：表格行键盘漫游（↑↓/Home/End 移动行）。
+  // ★刻意**不传 onActivate**：本页是**只读**审计日志表，行内无任何动作
+  // （无详情/编辑/删除按钮），造一个 Enter 语义只能靠「伪造」行为 ⇒ 不造。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       return matchKeyword(
@@ -36,6 +41,8 @@ export function ManageAuditLogsPage() {
       );
     });
   }, [deferredKeyword, items]);
+
+  useTableRowRoving({ tbodyRef, rowCount: filteredItems.length });
 
   if (auditQuery.isPending) {
     return (
@@ -109,7 +116,7 @@ export function ManageAuditLogsPage() {
                 <th>Trace</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={tbodyRef}>
               {filteredItems.length === 0 ? (
                 <EmptyTableRow
                   colSpan={7}
@@ -121,8 +128,8 @@ export function ManageAuditLogsPage() {
                   }
                 />
               ) : (
-                filteredItems.map((item) => (
-                  <tr key={item.id}>
+                filteredItems.map((item, rowIndex) => (
+                  <tr key={item.id} data-row-index={rowIndex}>
                     <td>{formatDateTime(item.createdAt)}</td>
                     <td>{item.actorName}</td>
                     <td>{item.actionLabel}</td>

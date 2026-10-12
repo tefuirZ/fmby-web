@@ -1240,3 +1240,181 @@ test('SessionsPage 裁定：行焦点上按 Enter **不**触发移除（破坏�
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* ManageAuditLogsPage 接线实证（第二批 3/3）                        */
+/* ------------------------------------------------------------------ */
+
+const AUDIT_LOGS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageAuditLogsPage } from '${'${AUDIT_LOGS_PATH}'}';
+
+// fixture 必须是**后端原始 snake_case**（shared/src/contracts/manage/raw-types.ts:188
+// RawAuditLogRecord）—— httpClient 直接把 JSON 交给 mapAuditLogRecord，喂 camelCase
+// 会让字段全 undefined、页面渲染不出行。
+const items = [0, 1, 2].map((i) => ({
+  id: 'a-' + i,
+  user_id: 'u-' + i,
+  username: 'user' + i,
+  display_name: '操作者 ' + i,
+  action: 'action.' + i,
+  summary: '摘要 ' + i,
+  target_type: 'item',
+  target_id: 'item-' + i,
+  detail_json: null,
+  ip_address: '10.0.0.' + (i + 1),
+  created_at: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+}));
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  const body = u.includes('/api/manage/audit-logs') ? { items } : {};
+  return new Response(JSON.stringify(body), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(ManageAuditLogsPage, null)),
+);
+`;
+
+/** 页面级组件通用挂载：需真实 http origin（httpClient 依赖 location.origin）。 */
+async function mountPageProbe(t: any, tmpPrefix: string, entrySrc: string, compFile: string) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), tmpPrefix));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
+  await writeFile(
+    entryFile,
+    withNmPaths(entrySrc.replace('${AUDIT_LOGS_PATH}', `file://${compFile}`)),
+    'utf8',
+  );
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: { entry: entryFile, formats: ['iife'], name: 'AuditLogs', fileName: () => 'probe.js' },
+      },
+    });
+  } finally {
+  }
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push('console: ' + m.text());
+  });
+  // ★必须 goto 真实 origin：页面级组件走 httpClient，依赖 window.location.origin。
+  // setContent 的 about:blank 无 origin ⇒ 页面停在「加载失败」。
+  await page.route('**/*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><html><body><div id="root"></div></body></html>',
+    }),
+  );
+  await page.goto('http://probe.local/');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  try {
+    await page.waitForSelector('[data-row-index="0"]', { timeout: 20000 });
+  } catch {
+    const body = (await page.textContent('body'))?.slice(0, 300) ?? '';
+    throw new Error(`未渲染出行。页面文本：${body}｜pageerror：${errors.join(' | ')}`);
+  }
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
+test('接线实证（真实 ManageAuditLogsPage）：↑↓/Home/End 移动行（只读表不给 Enter）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-auditlogs-',
+    AUDIT_LOGS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageAuditLogsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 只读表：行内无按钮，用行本身起步（hook 仍应响应方向键）
+    // ★只读表行内**没有任何可聚焦控件**（无详情/编辑/删除按钮）。能起步完全
+    // 依赖 hook 在挂载时给所有行设 tabindex="-1"（不进 Tab 序）。
+    // 这里**不手动设 tabindex** —— 那会掩盖 hook 的 bug；只断言它已就位再聚焦。
+    const tabindex0 = await page.evaluate(
+      () => document.querySelector('[data-row-index="0"]')?.getAttribute('tabindex'),
+    );
+    assert.equal(tabindex0, '-1', 'hook 必须在挂载时给行设 tabindex=-1（只读表才能起步）');
+    await page.focus('[data-row-index="0"]');
+    assert.equal(await focusedRow(page), 0);
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>）',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('只读表裁定：ManageAuditLogsPage 行上按 Enter 不产生任何副作用', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-auditlogs2-',
+    AUDIT_LOGS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageAuditLogsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"]');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    // 未接 onActivate ⇒ 行 tabindex 应为 -1（可聚焦但不在 Tab 序），Enter 不应打开任何东西
+    assert.equal(await focusedRow(page), 1, 'Enter 后焦点应仍在行上');
+    const dialogShown = await page.evaluate(
+      () => document.querySelector('[role="dialog"]') !== null,
+    );
+    assert.equal(dialogShown, false, '只读表不得因 Enter 弹出对话框');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
