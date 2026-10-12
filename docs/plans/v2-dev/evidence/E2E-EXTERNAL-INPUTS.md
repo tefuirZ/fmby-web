@@ -474,3 +474,152 @@ FMBY_E2E_REQUIRED=1 pnpm e2e-gate
 4. README 写 `pnpm frontend:verify`，顶层实际脚本名为 `verify` —— 命名不一致，**未修**。
 5. CAS-only 正腿解锁需要 fmby-v2 侧的 `CasPublish` 触发点改造，前端无法单方面解决。
 6. Pan115 图床页（`VITE_FEATURE_PAN115_IMGHOST=1`）当前无 E2E 覆盖，其外部凭据需求**未验证**。
+---
+
+## 13. E2E Bootstrap Runbook（10/20 完整 E2E 的可执行前提）
+
+本节把 §0 的 5 条真阻塞拆成「准备命令 → 验证判据」，可直接照抄执行。
+
+### 13.1 前置假设
+
+```bash
+cd /data/fmby-seats/fe01        # 前端仓（任意 worktree）
+cd /home/tefuir/rustproject/FMBY-V2   # Rust 主仓（仅当需要现场构建时）
+```
+
+依赖已装：前端仓根 `pnpm install`、`host/node_modules/.bin/playwright` 存在。
+
+### 13.2 阻塞 1 —— server / seed 二进制
+
+```bash
+# 优先：复用已有产物（无需重建，最快路径）
+export FMBY_E2E_TARGET_DIR=/data/fmby-build/local-target
+test -x "$FMBY_E2E_TARGET_DIR/debug/fmby-v2-server" \
+  && test -x "$FMBY_E2E_TARGET_DIR/debug/fmby-e2e-seed" \
+  && echo "✅ 二进制就位" || echo "❌ 缺二进制，走现场构建"
+```
+
+```bash
+# 兜底：现场构建（Rust 主仓内）
+cd /home/tefuir/rustproject/FMBY-V2
+cargo build -p fmby-v2-server --bin fmby-v2-server --bin fmby-e2e-seed
+# 若用 release profile：默认管理员 seed 需额外 FMBY_ALLOW_DEFAULT_ADMIN_SEED=1
+```
+
+**为什么不能只 export 二进制路径而不看 target 目录**：resolver 优先级是
+显式 BIN > `FMBY_E2E_TARGET_DIR` > `CARGO_TARGET_DIR` > …，
+而 `/data/fmby-target/*`（如 `w06`）**默认不扫**，需 `FMBY_E2E_SCAN_BRANCH_TARGETS=1`。
+
+**验证判据**：
+- `node -e "import('./host/e2e/binaryResolver.mjs').then(m=>console.log(m.resolveServerBinary()))"`
+  打出绝对路径 ⇒ 阻塞解除。
+- 仍为 `null` ⇒ `FMBY_E2E_REQUIRED=1` 下门禁会 `exit 3` 并打印
+  `已搜索：<describeSearchPaths()>`——按那行提示核对变量，**不要**改代码绕过。
+
+### 13.3 阻塞 2 —— Playwright 浏览器
+
+```bash
+cd host && npx playwright install chromium && cd ..
+# 自定义位置时：
+# export PLAYWRIGHT_BROWSERS_PATH=/data/pw-browsers
+#   && cd host && PLAYWRIGHT_BROWSERS_PATH=/data/pw-browsers npx playwright install chromium && cd ..
+```
+
+**验证判据**：
+- `node -e "import('./scripts/check-e2e.mjs')"` 不合适（会真跑）。改用存在性检查：
+  `ls "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" | grep chromium`
+  有输出 ⇒ 阻塞解除。
+- 无输出 ⇒ 门禁 `exit 3`，明确「不冒充产品缺陷」。
+
+### 13.4 阻塞 3 —— `host/dist` 新鲜度
+
+```bash
+cd host && pnpm build && cd ..
+# 或让 webServer 强制先建：FMBY_E2E_REBUILD=1（会走 `pnpm build && node e2e/start.mjs`）
+```
+
+**验证判据**（可脱离门禁自查）：
+```bash
+test -f host/dist/index.html && \
+  [ "$(stat -c %Y host/dist/index.html)" -ge \
+    "$(find host/src shared/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' -o -name '*.mjs' -o -name '*.js' -printf '%T@\n' | sort -rn | head -1 | cut -d. -f1)" ] \
+  && echo "✅ dist 比源码新" || echo "❌ 缺失或陈旧，会被门禁 exit 3"
+```
+判定逻辑与 `scripts/check-e2e.mjs:276-299 newestSourceMtime()` 一致
+（只扫 `host/src` 与 `shared/src` 的 `.ts/.tsx/.css/.mjs/.js`）。
+
+⚠️ 本机 `fmby-queue` 会把 `pnpm build` 判为重活（实测 `exit 3` / 180s 超时）。
+若命中，**改用农场产物**（`/data/fmby-build/local-target/...` 同理适用于前端产物，
+或手工 `vite build` 绕过 pnpm 脚本层），**不要**把 build 塞回 `webServer.command`。
+
+### 13.5 阻塞 4 —— `themes/*/dist`
+
+```bash
+pnpm build:themes    # = pnpm -r --filter './themes/*' build
+```
+
+校验（两个主题都必须满足，且 `_template` 以 `id=template` 装配）：
+```bash
+for d in themes/*/; do
+  id=$(python3 -c "import json,sys;print(json.load(open('$d/dist/theme.manifest.json'))['id'])" 2>/dev/null || basename "$d")
+  for f in index.js tokens.css theme.manifest.json skins/item.css; do
+    test -f "$d/dist/$f" && echo "✅ $id/$f" || echo "❌ $id/$f 缺"
+  done
+done
+```
+
+**验证判据**：上表 8 行全 `✅`。
+`start.mjs` 只把 `dist/index.js` 当门槛，`assembled === 0` 时才自动 `build:themes`；
+**单个文件缺失不会被发现**，会在运行期变成 404 ⇒ 表现为产品红（不是基建缺件）。
+`dist/` 被 `.gitignore:2` 覆盖 ⇒ 干净机器/CI 上必然需要这一步。
+
+### 13.6 阻塞 5 —— 环境隔离
+
+```bash
+unset FMBY_SECRETS_FILE FMBY_DATABASE_KIND FMBY_DATABASE_URL
+# 顺手确认没有残留的可信来源覆盖（start.mjs 会自己派生，一般不用管）
+unset FMBY_TRUSTED_ORIGINS
+# 多 worktree 并行时避让端口（默认 18099 / 5180）
+# export FMBY_E2E_BACKEND_PORT=18199 FMBY_E2E_WEB_PORT=5181
+```
+
+**为什么是必做**：`start.mjs` 用 `env: process.env` 启动 server/seed，
+外层变量**会被继承**：
+- `FMBY_SECRETS_FILE` 未设 ⇒ 后端回退读 `config/secrets.local.toml`
+  （存在但解析失败 ⇒ fail-fast；不存在 ⇒ 空配置可接受）。
+  本仓根当前无 `config/`，但**换 cwd 启动就会踩到**。
+- `FMBY_DATABASE_KIND=postgres` ⇒ seed（SQLite 专用装配工具）会失败，
+  `start.mjs:92-104` 报 `explicit E2E seed failed` 并 `exit 1`。
+
+**验证判据**：`env | grep -E '^FMBY_' | grep -v 'FMBY_E2E'` 无输出。
+
+### 13.7 真跑与判据
+
+```bash
+FMBY_E2E_REQUIRED=1 pnpm e2e-gate
+```
+
+| 现象 | 含义 | 下一步 |
+|---|---|---|
+| `exit 3` | **仍有基建缺件**（回看上面 5 节的提示行） | 按提示补输入，**不要**改代码或台账绕过 |
+| `exit 1` | 产品失败 | 看 list/json 报告；若是已知红，登记 `scripts/e2e-known-red.txt`（已修绿必须删登记，否则判 STALE 红） |
+| `exit 0` + 打印「已显式登记 SKIP 数」 | **假绿**，没真跑 | 检查 `FMBY_E2E_REQUIRED=1` 是否真的传到了子进程 |
+| `exit 0` + 跑出 passed/failed 明细 | 真结论 | 失败项按产品缺陷归因 |
+
+**核心判据**：`FMBY_E2E_REQUIRED=1` 下**不再出现 exit 3**，
+即 5 条基础设施阻塞全部解除；此后任何红都是产品问题，不再是环境问题。
+
+### 13.8 谁在什么时候跑（建议）
+
+| 场景 | 谁跑 | 命令 | 备注 |
+|---|---|---|---|
+| 前端日常改动自验 | fe01 写手本人 | `pnpm e2e-gate`（不设 REQUIRED） | 快速反馈；**接受全 skip** |
+| 提交前 / 合并前 | 前端写手 | `FMBY_E2E_REQUIRED=1 pnpm e2e-gate` | 必须真跑，禁止 skip 假绿 |
+| **10/20 全量验收** | **主代理** | 先按 §13.2–13.6 逐条 prepare，再 `FMBY_E2E_REQUIRED=1 pnpm e2e-gate` | 本席按约束不执行编译/测试 |
+| 夜间全量 / CI | CI | 同上，另建议 `FMBY_E2E_SCAN_BRANCH_TARGETS=1` + 缓存 target 目录 | `FMBY_E2E_SKIP=1` 仅用于**验证报数逻辑**，不得当验收 |
+| 换机器 / 干净 worktree |  whoever | §13.5 + §13.6 必做（`dist/` 被 gitignore） | 阻塞 1/2 也要重做 |
+
+**成本提示**：真跑一次 E2E 会刷新 `docs/evidence/fe-opt-03/**`
+（`a11y-report.spec.ts` 输出目录硬编码，每次必脏工作树——见 #19），
+以及写 `docs/evidence/fe-opt-02/full/`（已被 `.gitignore` 忽略）。
+建议真跑后先 `git status` 看脏了哪些，再决定是否随分支提交快照。
