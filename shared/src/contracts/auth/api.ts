@@ -71,6 +71,13 @@ export interface InstallStatusResponse {
   needs_install?: boolean;
   database_configured?: boolean;
   can_probe?: boolean;
+  /**
+   * 仅**安装模式进程**形态返回（`install_flow.rs:176-189` 的 status json）。
+   * 主应用形态下 `/install/status` 走 `fmby-v2-http` 的 `InstallStatusDto`
+   * （仅 state / database_configured / can_probe），**不含**本字段
+   * ⇒ 必须可选，前端按下位旗标推导（见 InstallPage.readInstallState）。
+   */
+  completed?: boolean;
 }
 
 export interface DatabaseProbeRequest {
@@ -90,6 +97,84 @@ export interface DatabaseProbeResponse {
   ok?: boolean;
   message?: string;
 }
+
+/**
+ * 安装流（fe01 裁决 E）——V2 后端 `crates/fmby-v2-server/src/install_flow.rs`。
+ *
+ * ★与 V1 的形态差异（不要照抄 V1）：V1 是 4 步（initialize / config / setup /
+ * complete），V2 收敛为 **apply 一次收全三组选择**（database / cache / admin）
+ * + **complete 落锁**。`install_flow.rs:582-590` 注册的路由：
+ *   GET  /api/install/status
+ *   POST /api/install/probe/database
+ *   POST /api/install/probe/redis
+ *   POST /api/install/apply
+ *   POST /api/install/complete
+ *
+ * ★这些路由**只在安装模式进程形态挂载**（`main.rs:124-149 install_mode_main`）；
+ * 已安装实例下除 status 外一律 404 下线
+ * （`fmby-v2-http/src/routes/install.rs` 头部注释）。
+ */
+
+/** 探测 Redis 连通性（阶段1 只做 TCP 可达；RESP PING 归后端 REDIS-1 卡）。 */
+export interface InstallRedisProbeRequest {
+  url: string;
+  password?: string;
+  db?: number;
+}
+
+export interface InstallDatabaseChoice {
+  /** `sqlite`（默认/推荐，零输入）| `postgres`。 */
+  kind: 'sqlite' | 'postgres' | string;
+  /** sqlite 自定义路径；留空 ⇒ 内置默认且不落盘。 */
+  path?: string;
+  /** postgres 连接串（选 postgres 时必填）。 */
+  url?: string;
+}
+
+export interface InstallCacheChoice {
+  /** `builtin`（默认，零输入）| `redis`。 */
+  kind?: 'builtin' | 'redis' | string;
+  url?: string;
+  password?: string;
+  db?: number;
+}
+
+export interface InstallAdminInput {
+  username: string;
+  password: string;
+  display_name?: string;
+}
+
+export interface InstallApplyRequest {
+  database: InstallDatabaseChoice;
+  cache?: InstallCacheChoice;
+  admin: InstallAdminInput;
+}
+
+export interface InstallApplyResponse {
+  applied?: boolean;
+  /** 后端已建首管理员并自动登录（发 fmby_session + fmby_csrf）。 */
+  auto_login?: boolean;
+  kind?: string;
+  /** 管理员回执（install_flow.rs:531-536 平铺进 apply 响应）。 */
+  id?: string;
+  username?: string;
+  [key: string]: unknown;
+}
+
+export interface InstallCompleteRequest {
+  /** 必须为精确串 `complete-install`（install_flow.rs:36，防误触）。 */
+  confirm_action: string;
+}
+
+export interface InstallCompleteResponse {
+  completed?: boolean;
+  /** 落锁后需重启，由主应用进程接管。 */
+  restart_required?: boolean;
+}
+
+/** POST /api/install/complete 的确认动作常量（后端精确串，防误触）。 */
+export const INSTALL_COMPLETE_CONFIRM_ACTION = 'complete-install';
 
 export interface RegisterResponse {
   status: 'authenticated' | 'pending_approval';
@@ -261,6 +346,29 @@ export const authApi = {
 
   probeDatabase(data: DatabaseProbeRequest) {
     return httpClient.post<DatabaseProbeResponse>('/api/install/probe/database', { body: data });
+  },
+
+  /** POST /api/install/probe/redis —— 只读 TCP 连通性探测。 */
+  probeRedis(data: InstallRedisProbeRequest) {
+    return httpClient.post<DatabaseProbeResponse>('/api/install/probe/redis', { body: data });
+  },
+
+  /**
+   * POST /api/install/apply —— 一次收全三组选择：
+   * 探测（非默认项）→ 只写非默认项（0600 原子）→ 就地 bootstrap → 建首管理员
+   * → **自动登录**（后端发 fmby_session / fmby_csrf）。
+   *
+   * ★后端是 `Result<(HeaderMap, Json<...>)>`：成功时**带 Set-Cookie 头**。
+   * 本仓 httpClient 只回 body（cookie 由浏览器按同源策略自动落地），故前端
+   * 拿到 `auto_login` 后应刷新会话态并跳转，不自己造 cookie。
+   */
+  applyInstall(data: InstallApplyRequest) {
+    return httpClient.post<InstallApplyResponse>('/api/install/apply', { body: data });
+  },
+
+  /** POST /api/install/complete —— 校验 users>0 ⇒ 落锁 ⇒ restart_required。 */
+  completeInstall(data: InstallCompleteRequest) {
+    return httpClient.post<InstallCompleteResponse>('/api/install/complete', { body: data });
   },
 
   /** 登出当前会话（docs/interfaces/webui.md POST /api/auth/logout）。

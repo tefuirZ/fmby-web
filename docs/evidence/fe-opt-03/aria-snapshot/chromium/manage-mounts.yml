@@ -33,6 +33,12 @@
         - /url: /manage/media/libraries
       - link "媒体来源":
         - /url: /manage/media/mounts
+      - link "139 云盘凭据":
+        - /url: /manage/media/yun139
+      - link "微软账号与 OAuth":
+        - /url: /manage/media/microsoft
+      - link "115 分享与同步":
+        - /url: /manage/media/pan115-share
       - link "媒体信息检测":
         - /url: /manage/media/probe-tasks
       - link "命名与刮削":
@@ -64,6 +70,10 @@
         - /url: /manage/site/security/audit-logs
       - link "运行日志":
         - /url: /manage/site/security/runtime-logs
+      - link "开放 API 目录":
+        - /url: /manage/media/developer-api
+      - link "登录提供方":
+        - /url: /manage/media/auth-providers
       - link "站点设置":
         - /url: /manage/site/settings
       - link "授权与订阅":
@@ -84,6 +94,7 @@
   - text: 共 1 个媒体来源
   - button "添加媒体来源"
   - button "刷新"
+  - button "批量刷新异常" [disabled]
   - status: 部分媒体来源建议复核 当前共有 1 个媒体来源不是“正常”状态，建议先检查连接信息和最近校验时间。
   - text: 正常来源 0 需关注 1 异常 0 已绑定到媒体库 0
   - heading "来源列表" [level=2]
@@ -112,12 +123,13 @@
   - text: 当前结果：1 条
   - table:
     - rowgroup:
-      - row "全选当前页数据源 数据源 类型 状态 根路径 / 地址 能力 引用情况 最近校验 操作":
+      - row "全选当前页数据源 数据源 类型 状态 凭据 根路径 / 地址 能力 引用情况 最近校验 操作":
         - columnheader "全选当前页数据源":
           - checkbox "全选当前页数据源"
         - columnheader "数据源"
         - columnheader "类型"
         - columnheader "状态"
+        - columnheader "凭据"
         - columnheader "根路径 / 地址"
         - columnheader "能力"
         - columnheader "引用情况"
@@ -130,6 +142,7 @@
         - cell "E2E 本地 本地磁盘挂载"
         - cell "本地文件系统"
         - cell "需关注"
+        - cell
         - cell "未提供来源地址"
         - cell "列目录 随机读 旁路资源 播放目标"
         - cell "媒体库绑定 0 · 媒体源 0 · 旁路资源 0 当前没有关联媒体库"
