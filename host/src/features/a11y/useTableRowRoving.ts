@@ -55,7 +55,14 @@ const ROW_SELECTOR = `[${ROW_ATTR}]`;
 const rowSelector = (index: number) => `[${ROW_ATTR}="${index}"]`;
 
 function rowAt(container: HTMLElement, index: number): HTMLElement | null {
-  return container.querySelector<HTMLElement>(rowSelector(index));
+  // ⚠ 嵌套表（A 方案）：必须限定「最近 `<tbody>` 就是本容器」。
+  // 否则子表的行（DOM 上也是父 tbody 的后代）会被父 hook 命中 ⇒ 父表 ↑↓
+  // 跳到子表行上（实测：父表第 1 行按 ↓，焦点落到子表第 2 行）。
+  return (
+    Array.from(container.querySelectorAll<HTMLElement>(rowSelector(index))).find(
+      (row) => row.closest('tbody') === container,
+    ) ?? null
+  );
 }
 
 /** 文本录入类控件：方向键有原生光标语义，本 hook 不劫持。 */
@@ -83,6 +90,20 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
     if (!tbody || rowCount <= 0) return;
 
     /**
+     * 本 hook **自己的**行域。
+     *
+     * ⚠ 嵌套表（FE-LIST-KEYNAV-10，A 方案）：子表的 `<table>` 在 DOM 上是父 `<tbody>`
+     * 的后代 ⇒ `tbody.querySelectorAll(ROW_SELECTOR)` 会把**子表的行也算进来**。
+     * 父域因此被污染（实测：父表 2 行 + 子表 2 行 ⇒ 父 hook 认为有 4 行，
+     * 并把 tabindex 写到子行上，父子互相覆盖）。
+     * A 方案要求父子**各自独立索引域**，故一律按「最近 `<tbody>` 归属」过滤。
+     */
+    const ownRows = (): HTMLElement[] =>
+      Array.from(tbody.querySelectorAll<HTMLElement>(ROW_SELECTOR)).filter(
+        (row) => row.closest('tbody') === tbody,
+      );
+
+    /**
      * 按**当前 DOM** 重算 roving tabindex：活动行 0、其余 -1。
      *
      * 活动行取值：① 焦点当前所在行（点击/程序化聚焦后仍正确 —— 网格 hook 曾踩过
@@ -90,12 +111,14 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
      * 活动行（换页/筛选后尽量不丢位置）；③ 越界则回首行。
      */
     const enforceRovingTabindex = (forceIndex?: number) => {
-      const rows = tbody.querySelectorAll<HTMLElement>(ROW_SELECTOR);
+      const rows = ownRows();
       if (rows.length === 0) return;
 
       const focused = document.activeElement as HTMLElement | null;
+      // 嵌套表：焦点在**子表**行上时，父表不得把它当作自己的活动行
+      // （否则父表的停靠点会跟着子表跑，父表首行被写 -1 ⇒ 键盘进不去父表）。
       const focusedIndex =
-        focused && tbody.contains(focused)
+        focused && focused.closest('tbody') === tbody
           ? Number(focused.closest(ROW_SELECTOR)?.getAttribute(ROW_ATTR) ?? Number.NaN)
           : Number.NaN;
 
@@ -124,13 +147,18 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
     observer.observe(tbody, { childList: true, subtree: true });
     enforceRovingTabindex();
 
-    /** 当前 DOM 里的**实际**数据行数（虚拟化下与闭包 rowCount 可能已不同）。 */
-    const liveRowCount = () => tbody.querySelectorAll(ROW_SELECTOR).length;
+    /** 当前 DOM 里的**实际**数据行数（虚拟化下与闭包 rowCount 可能已不同）。嵌套表只数本域。 */
+    const liveRowCount = () => ownRows().length;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       // 焦点不在表体内时不劫持 —— 避免影响页面滚动与表头筛选控件
       const active = document.activeElement as HTMLElement | null;
       if (!active || !tbody.contains(active)) return;
+      // ★嵌套表（A 方案）：子表的 keydown 会**冒泡**到父 `<tbody>` 的监听上。
+      // 若父 hook 不拦，父会拿子行的 data-row-index 当自己的当前行、
+      // 再把焦点 `focus()` 抢回父表某一行 ⇒ 子表方向键完全不可用。
+      // 判据：焦点最近的 `<tbody>` 必须是本 tbody，否则交给子 hook 处理。
+      if (active.closest('tbody') !== tbody) return;
       // 仅**文本输入类**控件内不劫持（方向键要用于光标移动）。
       // FE-LIST-KEYNAV-4：不能写成 `tag === 'INPUT'` 一刀切 —— 行首常是
       // `<input type="checkbox">`（如 UserTable），那样会把整行的方向键漫游
