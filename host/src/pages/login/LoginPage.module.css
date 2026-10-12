@@ -112,6 +112,37 @@
   color: var(--text-1);
 }
 
+/*
+ * fe01（CSS module 用法闸）：`MfaVerifyPanel.tsx:55/56/98` 消费了 pageTitle /
+ * pageDescription / buttonRow，而本文件此前**未定义**这三个类 ⇒
+ * `styles.X` 为 undefined ⇒ 元素裸奔无样式且零报错。按既有 title/subtitle
+ * 语义补齐（不新造视觉语言）：
+ *   pageTitle     = 面板标题（对齐 .brand 的排版权重但小一号）
+ *   pageDescription = 面板说明（同 .subtitle）
+ *   buttonRow     = 按钮行（同 .form 的纵向间距）
+ */
+
+.pageTitle {
+  text-align: center;
+  margin: 0;
+  font-size: var(--text-h2);
+  font-weight: var(--font-weight-bold);
+}
+
+.pageDescription {
+  text-align: center;
+  margin: 0 0 var(--space-5);
+  color: var(--text-3);
+  font-size: var(--text-body-sm);
+  line-height: 1.75;
+}
+
+.buttonRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .subtitle {
   text-align: center;
   margin: 0 0 var(--space-10);
@@ -270,6 +301,29 @@
   background: var(--surface-3);
   color: var(--text-3);
   cursor: not-allowed;
+}
+
+
+/*
+ * fe01（安装向导 E）：分组容器。安装向导是**多组**表单（数据库 / 缓存 / 管理员 /
+ * 完成），需要视觉分组 —— 复用既有 token，不新造边框语言。
+ */
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.legend {
+  padding: 0 var(--space-2);
+  color: var(--text-2);
+  font-size: var(--text-body-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 /*

@@ -427,6 +427,19 @@
 
 /* ── 筛选工具条 ──────────────────────────────────────── */
 
+/*
+ * fe01（CSS module 用法闸）：`MountConfigSection.tsx:79/88` 消费 checkRow，
+ * 本文件此前未定义 ⇒ 三个「NFO / 字幕 / 海报」复选框行没有行内布局（label
+ * 直接挤在一起）。按既有 .filterGroup 的同族形态补齐。
+ */
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .toolbar {
   display: flex;
   align-items: center;

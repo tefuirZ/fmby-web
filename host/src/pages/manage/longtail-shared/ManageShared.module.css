@@ -381,6 +381,37 @@
   align-items: center;
 }
 
+/*
+ * fe01（CSS module 用法闸）：`CollectionRulesPanel.tsx:159` 消费 listPlain，
+ * `MountLibraryBindingSection.tsx:68` 消费 banner —— 本文件此前**均未定义**
+ * ⇒ className=undefined ⇒ 规则列表没有列表样式、提示条没有提示条外观，
+ * 且运行时零报错。按既有同族形态补齐：
+ *   listPlain = 去默认项目符号+缩进的列表（管理面「当前规则」列表）
+ *   banner    = 中性提示条（与 .tableHint 同族，但带边框以区分普通说明）
+ */
+
+.listPlain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+}
+
 .tableWrap {
   overflow-x: auto;
   border: 1px solid var(--border-default);

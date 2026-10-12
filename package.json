@@ -14,7 +14,7 @@
     "dupes": "node scripts/check-frontend-dupes.mjs",
     "contracts": "node scripts/check-contract-mappers.mjs",
     "e2e": "pnpm --filter @fmby/v2-host test:e2e",
-    "verify": "pnpm versions && pnpm typecheck && pnpm build && pnpm build:themes && pnpm test && pnpm size && pnpm repo-size && pnpm dupes && pnpm contracts && pnpm theme-budget && pnpm component-size && pnpm theme-parity && pnpm e2e-gate",
+    "verify": "pnpm versions && pnpm typecheck && pnpm build && pnpm build:themes && pnpm test && pnpm size && pnpm repo-size && pnpm dupes && pnpm contracts && pnpm theme-budget && pnpm component-size && pnpm theme-parity && pnpm css-usage && pnpm e2e-gate",
     "e2e-gate": "node scripts/check-e2e.mjs",
     "versions": "node scripts/check-versions.mjs",
     "theme-budget": "node scripts/check-theme-budget.mjs",
@@ -22,6 +22,7 @@
     "test": "pnpm -r test",
     "perf:batch": "node scripts/perf/fe-opt-04-batch.mjs",
     "component-size": "node scripts/check-frontend-component-size.mjs",
-    "email-smoke": "python3 scripts/e2e/email_channel_smoke.py"
+    "email-smoke": "python3 scripts/e2e/email_channel_smoke.py",
+    "css-usage": "node scripts/check-css-module-usage.mjs"
   }
 }
