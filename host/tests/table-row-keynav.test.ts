@@ -34,13 +34,16 @@ const nmUrl = (rel: string) => pathToFileURL(join(NM, rel)).href;
 const NM_REACT = nmUrl('react/index.js');
 const NM_REACT_DOM_CLIENT = nmUrl('react-dom/client.js');
 const NM_REACT_ROUTER = nmUrl('react-router/dist/development/index.mjs');
+/** @tanstack/react-query（SessionsPage 等页面级组件要 QueryClientProvider）。 */
+const NM_RQ = nmUrl('@tanstack/react-query/build/modern/index.js');
 
 /** 把 entry 模板里的 `${NM_*}` 占位符（模板字面量内已转义）替换成真实绝对路径。 */
 function withNmPaths(src: string): string {
   return src
     .replace(/\$\{NM_REACT_DOM_CLIENT\}/g, NM_REACT_DOM_CLIENT)
     .replace(/\$\{NM_REACT_ROUTER\}/g, NM_REACT_ROUTER)
-    .replace(/\$\{NM_REACT\}/g, NM_REACT);
+    .replace(/\$\{NM_REACT\}/g, NM_REACT)
+    .replace(/\$\{NM_RQ\}/g, NM_RQ);
 }
 
 /**
@@ -1055,6 +1058,183 @@ test('接线实证（真实 TaskCenterList）：↑↓/Home/End 移动行 + Ente
       ['probe:t-1'],
       'Enter 应选中当前行任务（setSelectedTask），与行内「详情」按钮同语义',
     );
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* ManageSessionsPage 接线实证（第二批 2/3）                         */
+/* ------------------------------------------------------------------ */
+
+const SESSIONS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageSessionsPage } from '${'${SESSIONS_PATH}'}';
+
+const sessions = [0, 1, 2].map((i) => ({
+  id: 's-' + i,
+  userId: 1,
+  userName: 'user' + i,
+  deviceName: '设备 ' + i,
+  clientName: '客户端 ' + i,
+  clientHeader: null,
+  ipAddress: '10.0.0.' + (i + 1),
+  status: i === 0 ? 'current' : 'active',
+  current: false,
+  createdAt: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+  lastActiveAt: '2026-01-0' + (i + 1) + 'T01:00:00Z',
+}));
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+globalThis.__enters = [];
+function App() {
+  return createElement(QueryClientProvider, { client: qc },
+    createElement(ManageSessionsPage, null));
+}
+
+// 拦截 fetch，直接返回 sessions（真实 API 形状由页面自行 map）
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  const body = u.includes('/api/manage/sessions')
+    ? { items: sessions }
+    : u.includes('/api/auth/me')
+      ? { id: 1, username: 'admin' }
+      : {};
+  return new Response(JSON.stringify(body), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+createRoot(document.getElementById('root')).render(createElement(App));
+globalThis.__restoreFetch = () => { globalThis.fetch = realFetch; };
+`;
+
+async function mountSessionsPage(t: any) {
+  if (!existsSync(join(HOST_ROOT, 'node_modules', 'react'))) {
+    t.skip('未安装 host 依赖（pnpm install 后重跑）');
+    return null;
+  }
+  const work = await mkdtemp(join(tmpdir(), 'fe02-sessions-'));
+  const entryFile = join(work, `entry-${Date.now()}-${process.pid}.tsx`);
+  const compPath = `file://${join(HOST_ROOT, 'src/pages/manage/ManageSessionsPage.tsx')}`;
+  await writeFile(
+    entryFile,
+    withNmPaths(SESSIONS_ENTRY.replace('${SESSIONS_PATH}', compPath)),
+    'utf8',
+  );
+  try {
+    await (
+      await import('vite')
+    ).build({
+      configFile: false,
+      root: HOST_ROOT,
+      cacheDir: join(work, '.vite'),
+      logLevel: 'error',
+      define: { 'process.env.NODE_ENV': '"development"' },
+      resolve: {
+        alias: {
+          '@fmby/v2-shared': join(HOST_ROOT, '..', 'shared', 'src'),
+          '@': join(HOST_ROOT, 'src'),
+        },
+      },
+      build: {
+        outDir: work,
+        emptyOutDir: true,
+        minify: false,
+        lib: {
+          entry: entryFile,
+          formats: ['iife'],
+          name: 'SessionsPage',
+          fileName: () => 'probe.js',
+        },
+      },
+    });
+  } finally {
+  }
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (e: Error) => errors.push(String(e)));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  // ★必须先 goto 一个真实 http(s) origin：页面级组件会走 httpClient，而它依赖
+  // window.location.origin 解析相对 URL。setContent 的 about:blank 无 origin ⇒
+  // 抛「Failed to construct 'URL': Invalid base URL」，页面停在「加载失败」。
+  await page.route('**/*', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html><body><div id="root"></div></body></html>' }),
+  );
+  await page.goto('http://probe.local/');
+  await page.addScriptTag({ path: join(work, 'probe.js') });
+  try {
+    await page.waitForSelector('[data-row-index="0"]', { timeout: 20000 });
+  } catch {
+    // 页面可能停在 loading/error 态；如实报出，便于判断是接线错还是 fixture 错
+    const body = (await page.textContent('body'))?.slice(0, 300) ?? '';
+    throw new Error(`SessionsPage 未渲染出行。页面文本：${body}｜pageerror：${errors.join(' | ')}`);
+  }
+  return {
+    page,
+    errors,
+    close: async () => {
+      await browser.close();
+      await rm(work, { recursive: true, force: true });
+    },
+  };
+}
+
+test('接线实证（真实 ManageSessionsPage）：↑↓/Home/End 移动行（无破坏性 Enter）', async (t) => {
+  const h = await mountSessionsPage(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.focus('[data-row-index="0"] button');
+    assert.equal(await focusedRow(page), 0);
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1, '↓ 应到下一行');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.tagName),
+      'TR',
+      '↑↓ 后焦点应在行本身（<tr>）',
+    );
+    await page.keyboard.press('End');
+    assert.equal(await focusedRow(page), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+test('SessionsPage 裁定：行焦点上按 Enter **不**触发移除（破坏性动作须点按钮）', async (t) => {
+  const h = await mountSessionsPage(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 先把焦点移到行本身（第 1 行非 current，有「移除会话」按钮）
+    await page.focus('[data-row-index="0"] button');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRow(page), 1);
+
+    // 按 Enter：不得弹出移除确认框（不得出现 dialog）
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    const dialogShown = await page.evaluate(
+      () => document.querySelector('[role="dialog"]') !== null,
+    );
+    assert.equal(dialogShown, false, 'Enter 不得触发「移除会话」确认框（破坏性动作须点按钮）');
+
+    // 行内「移除会话」按钮仍可 Tab 到达（可达性零回归）
+    const reachable = await page.evaluate(() => {
+      const btn = document.querySelector('[data-row-index="1"] button');
+      return btn !== null && btn.getAttribute('tabindex') !== '-1';
+    });
+    assert.equal(reachable, true, '行内「移除会话」按钮不得被设 tabindex=-1');
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
