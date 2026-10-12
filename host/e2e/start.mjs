@@ -34,12 +34,13 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createServer, preview } from 'vite';
+import { resolveBinary, describeSearchPaths } from './binaryResolver.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // host/e2e → host → 前端仓根
 const webRepoRoot = join(here, '..', '..');
-// 主仓（Rust 产物所在）；可用 FMBY_E2E_MAIN_REPO 覆盖
-const mainRepoRoot = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
+// 主仓仅作为 **target 搜索根目录之一**，由共享 resolver 消费
+// （binaryResolver.mjs 的 MAIN_REPO_ROOT，可用 FMBY_E2E_MAIN_REPO 覆盖）。
 
 const backendPort = Number(process.env.FMBY_E2E_BACKEND_PORT ?? 18099);
 // 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让）。
@@ -55,33 +56,18 @@ process.env.FMBY_DATA_DIR = dataDir;
 process.env.FMBY_BIND = `127.0.0.1:${backendPort}`;
 process.env.FMBY_TRUSTED_ORIGINS = webOrigin;
 
-/** 平台可执行后缀：Windows 为 '.exe'，其余为空串。 */
-const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
-
 /**
- * 解析二进制路径（环境变量覆盖 > 前端仓 target/ > 主仓 target/，跨 release+debug）。
- * 优先 release（真实构建产物），其次 debug。仍无 → null（不可用，跳过）。
+ * 解析二进制路径 —— **走共享 resolver**（rv01 PR #15 阻断项 ①）。
+ * 原实现只找前端仓 target/ 与主仓 target/，而本项目强制
+ * `CARGO_TARGET_DIR=/data/fmby-build/local-target` ⇒ 那两处无二进制 ⇒
+ * `start.mjs` 走 SKIP 分支，e2e 永不真跑。
  */
-function resolveBinary(envKey, baseName) {
-  const overridden = process.env[envKey];
-  const profiles = ['release', 'debug'];
-  const candidates = [overridden].filter((v) => typeof v === 'string' && v.length > 0);
-  for (const root of [webRepoRoot, mainRepoRoot]) {
-    for (const profile of profiles) {
-      candidates.push(join(root, 'target', profile, `${baseName}${EXE_SUFFIX}`));
-      candidates.push(join(root, 'target', profile, baseName));
-    }
-  }
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-  return null;
+function resolveStartBinary(envKey, baseName) {
+  return resolveBinary(envKey, baseName);
 }
 
-const serverBin = resolveBinary('FMBY_E2E_SERVER_BIN', 'fmby-v2-server');
-const seedBin = resolveBinary('FMBY_E2E_SEED_BIN', 'fmby-e2e-seed');
+const serverBin = resolveStartBinary('FMBY_E2E_SERVER_BIN', 'fmby-v2-server');
+const seedBin = resolveStartBinary('FMBY_E2E_SEED_BIN', 'fmby-e2e-seed');
 
 function skip(reason) {
   console.warn(`[real-server] SKIP: ${reason}`);
@@ -91,13 +77,13 @@ function skip(reason) {
 
 if (!serverBin) {
   skip(
-    `fmby-v2-server binary not found (FMBY_E2E_SERVER_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
+    `fmby-v2-server binary not found. 已搜索：${describeSearchPaths()}；` +
       `Build it with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SERVER_BIN.`,
   );
 }
 if (!seedBin) {
   skip(
-    `fmby-e2e-seed binary not found (FMBY_E2E_SEED_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
+    `fmby-e2e-seed binary not found. 已搜索：${describeSearchPaths()}；` +
       `Build it with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SEED_BIN.`,
   );
 }

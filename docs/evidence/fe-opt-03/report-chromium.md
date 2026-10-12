@@ -6,19 +6,19 @@
 | --- | --- | --- | --- | --- | --- |
 | login | 5 | 0 | — | 0 | 1 |
 | home | 26 | 0 | header, nav[主导航], main | 0 | 12 |
-| history | 8 | 0 | header, nav[主导航], main | 0 | 3 |
+| history | 8 | 0 | header, nav[主导航], main | 0 | 4 |
 | libraries | 11 | 0 | header, nav[主导航], main | 0 | 4 |
 | item-detail | 7 | 0 | header, nav[主导航], main, aside | 0 | 3 |
-| settings-profile | 16 | 0 | header, nav[主导航], main, aside[设置导航], nav[设置导航（移动端）], header | 0 | 6 |
-| manage-overview | 49 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 12 |
-| manage-media-items | 62 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 13 |
-| manage-mounts | 48 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 9 |
-| manage-probe-tasks | 38 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 7 |
-| manage-naming-scrape | 142 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 10 |
-| manage-users | 49 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 8 |
-| manage-site-settings | 68 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 7 |
-| manage-secrets | 40 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 7 |
-| manage-advanced | 35 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 6 |
+| settings-profile | 18 | 0 | header, nav[主导航], main, aside[设置导航], nav[设置导航（移动端）], header | 0 | 6 |
+| manage-overview | 54 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 12 |
+| manage-media-items | 67 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 13 |
+| manage-mounts | 54 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 9 |
+| manage-probe-tasks | 43 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 7 |
+| manage-naming-scrape | 164 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 22 |
+| manage-users | 54 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 8 |
+| manage-site-settings | 74 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 7 |
+| manage-secrets | 45 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 7 |
+| manage-advanced | 43 | 0 | header, nav[主导航], main, aside[管理中心导航], nav[管理中心导航], header | 0 | 9 |
 
 ## 无名控件明细
 

@@ -41,6 +41,39 @@ const UNLABELED_INPUTS: Array<{ file: string; line: number; want: string }> = [
     line: 81,
     want: '按合集名检索',
   },
+  // fe02（同源缺口）：FE-A11Y-KEYBOARD-AUDIT 只修了 CollectionsListPage 一处，
+  // 但「placeholder 不足以作为可访问名」同源缺口在全仓还有 6 处 ——
+  // 均经人工逐个核验（无 aria-label / 无 <label> 包裹 / 无 id 与 htmlFor 配对）。
+  {
+    file: 'host/src/pages/browse/LibrariesPage.tsx',
+    line: 109,
+    want: '搜索媒体库',
+  },
+  {
+    file: 'host/src/pages/browse/SearchOverlay.tsx',
+    line: 91,
+    want: '搜索',
+  },
+  {
+    file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
+    line: 213,
+    want: '刮削源',
+  },
+  {
+    file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
+    line: 220,
+    want: '搜索关键词',
+  },
+  {
+    file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
+    line: 263,
+    want: '外部编号',
+  },
+  {
+    file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
+    line: 270,
+    want: '匹配原因',
+  },
 ];
 
 /** 取证留存：这些输入框虽无 aria-label，但由 `<label>` 包裹 ⇒ 已具备可访问名，非缺陷。 */

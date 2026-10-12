@@ -20,8 +20,17 @@ export type {
   InstallStatusResponse,
   DatabaseProbeRequest,
   DatabaseProbeResponse,
+  InstallRedisProbeRequest,
+  InstallDatabaseChoice,
+  InstallCacheChoice,
+  InstallAdminInput,
+  InstallApplyRequest,
+  InstallApplyResponse,
+  InstallCompleteRequest,
+  InstallCompleteResponse,
   MeResponse,
 } from './api';
+export { INSTALL_COMPLETE_CONFIRM_ACTION } from './api';
 // 三方身份登录（SSO）：与 auth 同域，经本 barrel 暴露（页面禁直 import ./identity/api）。
 // FE-IDENTITY-BINDINGS：账号绑定面（list/start/complete/unbind）同域同 barrel。
 export { bindingReadyProviders, completeIdentityLogin, identityBindingsApi, identityLoginApi } from './identity';

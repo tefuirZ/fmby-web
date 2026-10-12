@@ -211,12 +211,14 @@ export function MediaItemIdentityGovernancePanel({ detail, mutations }: Identity
         </div>
         <div className={styles.govMatchForm}>
           <input
+            aria-label="刮削源"
             className={sharedStyles.input}
             placeholder="刮削源（如 tmdb / douban）"
             value={matchProvider}
             onChange={(e) => setMatchProvider(e.target.value)}
           />
           <input
+            aria-label="搜索关键词"
             className={sharedStyles.input}
             placeholder="搜索关键词（≥2 字）"
             value={matchKeyword}
@@ -259,12 +261,14 @@ export function MediaItemIdentityGovernancePanel({ detail, mutations }: Identity
 
         <div className={styles.govMatchForm}>
           <input
+            aria-label="外部编号"
             className={sharedStyles.input}
             placeholder="外部编号（从候选中选择或手动填写）"
             value={matchProviderItemId}
             onChange={(e) => setMatchProviderItemId(e.target.value)}
           />
           <input
+            aria-label="匹配原因"
             className={sharedStyles.input}
             placeholder="匹配原因（可选）"
             value={matchReason}

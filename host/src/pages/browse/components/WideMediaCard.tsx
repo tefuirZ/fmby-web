@@ -26,11 +26,18 @@ export function WideMediaCard({
 
   return (
     <article className={cardStyles.wideCard}>
-      <Link className={cardStyles.wideThumbLink} to={`/item/${item.id}`}>
+      {/* P0-3（fe01）：缩略图链接此前**无图时彻底无名**（fallback 是无文本的空 div，
+          <Link> 拿不到可访问名）→ ariaSnapshot 报 5 条无名控件。补 aria-label 具名，
+          并给 fallback 打 aria-hidden（纯装饰，不参与朗读）。 */}
+      <Link
+        className={cardStyles.wideThumbLink}
+        to={`/item/${item.id}`}
+        aria-label={item.title}
+      >
         {image ? (
-          <img alt={item.title} className={cardStyles.wideThumb} src={image} loading="lazy" decoding="async" />
+          <img alt="" className={cardStyles.wideThumb} src={image} loading="lazy" decoding="async" />
         ) : (
-          <div className={cardStyles.imageFallback}>暂无封面</div>
+          <div className={cardStyles.imageFallback} aria-hidden="true">暂无封面</div>
         )}
       </Link>
       <div className={cardStyles.wideBody}>

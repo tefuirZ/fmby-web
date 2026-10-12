@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import { login, resetBackend, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/helpers';
@@ -7,7 +7,8 @@ import { login, resetBackend, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/he
 /**
  * FE-OPT-03：逐页 a11y 报告（**不引 axe**——用 playwright 内建能力）。
  *
- * 产出两类证据（写 `docs/evidence/fe-opt-03/`，纯文本，不占 repo-size 预算）：
+ * 产出两类证据（默认写 `docs/evidence/fe-opt-03/`，纯文本，不占 repo-size 预算；
+ * 用 `EVIDENCE_DIR` 可覆盖输出根，与 `mobile-audit.spec.ts` 同口径）：
  *  1. `aria-snapshot/<device>/<page>.yml`：playwright `page.accessibility.snapshot()`
  *     的无障碍树（读屏器实际能读到的结构）——用于人工核对关键流程可朗读；
  *  2. `report.md`：逐页汇总（可聚焦元素数、无名控件数、landmark 清单、图片
@@ -20,7 +21,11 @@ import { login, resetBackend, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/he
 test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const OUT = join(REPO_ROOT, 'docs', 'evidence', 'fe-opt-03');
+const OUT = process.env.EVIDENCE_DIR
+  ? isAbsolute(process.env.EVIDENCE_DIR)
+    ? process.env.EVIDENCE_DIR
+    : join(REPO_ROOT, process.env.EVIDENCE_DIR)
+  : join(REPO_ROOT, 'docs', 'evidence', 'fe-opt-03');
 
 /** 与 a11y.spec.ts 同源页面清单（登录 + 用户面 + 管理面）。 */
 const PAGES: Array<[string, string]> = [

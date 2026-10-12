@@ -381,7 +381,48 @@
   align-items: center;
 }
 
+/*
+ * fe01（CSS module 用法闸）：`CollectionRulesPanel.tsx:159` 消费 listPlain，
+ * `MountLibraryBindingSection.tsx:68` 消费 banner —— 本文件此前**均未定义**
+ * ⇒ className=undefined ⇒ 规则列表没有列表样式、提示条没有提示条外观，
+ * 且运行时零报错。按既有同族形态补齐：
+ *   listPlain = 去默认项目符号+缩进的列表（管理面「当前规则」列表）
+ *   banner    = 中性提示条（与 .tableHint 同族，但带边框以区分普通说明）
+ */
+
+.listPlain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+}
+
 .tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+/* P0-1（fe01）：`.tableScroll` 此前**只在 RuntimeLogArchivesSection 被消费、本表未定义**
+   → 容器没有 overflow-x，而 `.table` 硬写 min-width:760px ⇒ 375 视口下文档被撑宽
+   418px（mobile-audit 实测）。与 `.tableWrap` 同形态补齐（可横向滚动的表格区，
+   不算文档溢出）。 */
+.tableScroll {
   overflow-x: auto;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -428,12 +469,23 @@
 .mono {
   font-family: var(--font-mono);
   font-size: var(--text-mono);
+  /* 与 .metaText 同因：mono 行承载公钥/哈希/ID 等**无空格长串**
+     （实测 `ed25519:HRKD5oD3RMHXiswnotd7KrjlEZ8PD11KOkohV7zB9nc` 在 375px 视口
+     scrollWidth 368px > clientWidth 275px，逐层把 #root 撑到 418px ⇒ 溢出 +43px）。
+     允许任意处断行 + min-width:0 参与 flex/grid 收缩。
+     桌面端串短不触发断行，渲染零变化。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .stackText {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* P0-1（fe01）：flex 子项默认 min-width:auto，遇到无空格长串（运行日志的
+     `GET /assets/items/<id>/images/banner`）会拒绝收缩并把父行撑宽 ⇒ 375 视口
+     文档溢出。照 FE-OPT-02 N-1 既有范式加 min-width:0 参与收缩。 */
+  min-width: 0;
 }
 
 .logOverviewCell {
@@ -754,12 +806,18 @@
   justify-content: space-between;
   gap: var(--space-3);
   align-items: flex-start;
+  /* P0-1（fe01）：右侧状态徽章 nowrap + 左侧长标题 ⇒ 行整体被撑宽。允许换行
+     收缩（徽章自身 nowrap 不变，只是不再逼迫行变宽）。 */
+  flex-wrap: wrap;
 }
 
 .mobileRecordTitle {
   color: var(--text-primary);
   font-size: var(--text-body);
   line-height: 1.45;
+  /* P0-1（fe01）：标题可能是无空格长串（日志 headline / 资源路径）。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mobileRecordMeta,
@@ -770,6 +828,10 @@
 
 .mobileRecordBody {
   margin: 0;
+  /* P0-1（fe01）：同 ManageDetailSurfaces.mobileRecordBody —— 无空格长串
+     （任务摘要 / 错误码）须可断行，否则 375 视口撑宽文档。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mobileRecordGrid {

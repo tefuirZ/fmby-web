@@ -1,6 +1,5 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { resolveServerBinary, describeSearchPaths } from './e2e/binaryResolver.mjs';
 
 /**
  * Playwright E2E Configuration for FMBY-V2 Host
@@ -15,34 +14,26 @@ import { defineConfig, devices } from '@playwright/test';
  *   3. `<主仓>/target/{release,debug}/...`。
  */
 
-// host/ → 前端仓根
-const webRepoRoot = join(import.meta.dirname, '..');
-const mainRepoRoot = process.env.FMBY_E2E_MAIN_REPO ?? '/home/tefuir/rustproject/FMBY-V2';
-const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
 // 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让，
 // 与 e2e/start.mjs 同源口径）。
 const webOrigin = `http://127.0.0.1:${Number(process.env.FMBY_E2E_WEB_PORT ?? 5180)}`;
 
-/** 服务端二进制是否存在（与 e2e/start.mjs 的 resolveBinary 保持一致）。 */
+/**
+ * 服务端二进制是否存在 —— **走共享 resolver**（rv01 PR #15 阻断项 ①）。
+ * 此前本文件自己拼 `<repo>/target`，与 start.mjs / helpers.ts / check-e2e.mjs
+ * 四处各写一份窄口径 ⇒ 本项目强制 `CARGO_TARGET_DIR` 的布局下永远找不到。
+ */
 function hasServerBinary() {
-  const candidates = [process.env.FMBY_E2E_SERVER_BIN].filter(
-    (v) => typeof v === 'string' && v.length > 0,
-  );
-  for (const root of [webRepoRoot, mainRepoRoot]) {
-    for (const profile of ['release', 'debug']) {
-      candidates.push(join(root, 'target', profile, `fmby-v2-server${EXE_SUFFIX}`));
-      candidates.push(join(root, 'target', profile, 'fmby-v2-server'));
-    }
-  }
-  return candidates.some((candidate) => existsSync(candidate));
+  return resolveServerBinary() !== null;
 }
 
 const hasBinary = hasServerBinary();
 
 if (!hasBinary) {
   console.warn(
-    `[playwright] SKIP e2e: fmby-v2-server binary not found (FMBY_E2E_SERVER_BIN / ${webRepoRoot}/target/{release,debug} / ${mainRepoRoot}/target/{release,debug}). ` +
-      `Build with 'cargo build -p fmby-v2-server' to enable real E2E.`,
+    `[playwright] SKIP e2e: fmby-v2-server binary not found. ` +
+      `已搜索：${describeSearchPaths()}；` +
+      `Build with 'cargo build -p fmby-v2-server' or set FMBY_E2E_SERVER_BIN.`,
   );
 }
 
@@ -89,8 +80,17 @@ export default defineConfig({
         // FE-OPT-03：**先 build 再 preview**。e2e 默认服务 host/dist 的已构建产物
         // （start.mjs 仅在 dist **缺失**时才 build）→ 源码改动后若不手动 build，
         // 跑的仍是旧产物，会把「改动未生效」误判为「修复无效」（实测踩到两次）。
-        // 前置 build 保证被验证的对象恒为当前源码（代价：每次 e2e 多约 7s）。
-        command: 'pnpm build && node e2e/start.mjs',
+        //
+        // fe01 修正：原实现把 `pnpm build` 放在 webServer.command 里，而本机
+        // fmby-queue 会把 build 判为**重活直接拒绝**（实测 exit 3 / 180s 超时），
+        // 导致 `pnpm e2e` 在本席**根本起不来**。改为：
+        //   · 默认走 `node e2e/start.mjs`（内部已有「dist 缺失才 build」的逻辑，
+        //     并把 build 交给自己的 child_process，不经 pnpm 脚本层）；
+        //   · 需要「强制重建后再跑」时用 `FMBY_E2E_REBUILD=1`（本地/CI 有算力时）。
+        // 保证门禁可启动，同时不放弃「验证对象必须是当前源码」这条纪律。
+        command: process.env.FMBY_E2E_REBUILD === '1'
+          ? 'pnpm build && node e2e/start.mjs'
+          : 'node e2e/start.mjs',
         url: webOrigin,
         reuseExistingServer: false,
         timeout: 180_000,
