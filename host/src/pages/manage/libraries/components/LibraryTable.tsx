@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Link } from 'react-router';
 import type { ManageLibraryRecord, ManageLibraryType } from '@fmby/v2-shared/contracts/manage';
 import { StatusBadge } from '@fmby/v2-shared/ui';
@@ -5,6 +6,7 @@ import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, ManageSectionCard, getManageStatusVariant } from '../../components';
 import { LIBRARY_TYPE_OPTIONS, type LibraryHealthStatus } from '../types';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 import {
   buildLibraryBindingHint,
   buildLibraryBindingSummary,
@@ -45,6 +47,18 @@ export function LibraryTable({
   reorderPending,
 }: LibraryTableProps) {
   const fullIndex = new Map(libraries.map((library, index) => [library.id, index]));
+
+  // FE-LIST-KEYNAV-2：表格行键盘漫游（↑↓/Home/End 在行间移动，Enter 开「详情」）。
+  // rowCount 取**已筛选**行数，与 tbody 内实际渲染的行一一对应。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef,
+    rowCount: filteredLibraries.length,
+    onActivate: (index) => {
+      const library = filteredLibraries[index];
+      if (library) onOpenView(library.id);
+    },
+  });
 
   const renderEmptyState = (
     <div className={styles.emptyInlineState}>
@@ -121,16 +135,16 @@ export function LibraryTable({
                     <th>排序</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody ref={tbodyRef}>
                   {filteredLibraries.length === 0 ? (
                     <EmptyTableRow colSpan={9} title="没有匹配的媒体库" description="试试更换关键词、状态或类型筛选。" />
                   ) : (
-                    filteredLibraries.map((library) => {
+                    filteredLibraries.map((library, rowIndex) => {
                       const fIndex = fullIndex.get(library.id) ?? -1;
                       const isFirst = fIndex <= 0;
                       const isLast = fIndex === libraries.length - 1;
                       return (
-                        <tr key={library.id}>
+                        <tr key={library.id} data-row-index={rowIndex}>
                           <td>
                             <div className={styles.stackText}>
                               <span className={styles.primaryText}>{library.name}</span>
