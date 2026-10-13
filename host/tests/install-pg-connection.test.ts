@@ -146,3 +146,26 @@ test('⑪ probeFailureText：请求层报错与业务层 ok:false 都要给出�
   assert.equal(probeFailureText({ ok: false }, undefined), PROBE_FAILURE_LABEL.unknown);
   assert.equal(probeFailureText(undefined, undefined), null, '什么都没发生 ⇒ 无文案');
 });
+
+/* ── rb01 I1 防回归：权限类报错不得一律归 schema-unwritable ────────── */
+
+test('⑫ 「对库无权」不得被归成「schema 不可写」（rb01 I1：会指向错误下一步）', () => {
+  // 泛化的 'permission denied' 曾排在 auth 之前 ⇒ 对**库**无权也被判成
+  // 「schema 无建表权限」，用户被指引去改 schema 权限，实际是连库都没权。
+  assert.notEqual(
+    classifyProbeFailure('permission denied for database "fmby"'),
+    'schema-unwritable',
+    '对库无权 ≠ schema 不可写，不得归错类',
+  );
+  // 认不出就诚实归 unknown（会原样展示后端原文），不编造。
+  assert.equal(classifyProbeFailure('permission denied for database "fmby"'), 'unknown');
+});
+
+test('⑬ 真正的 schema 写权限报错仍要归 schema-unwritable（别误伤）', () => {
+  assert.equal(
+    classifyProbeFailure('permission denied for schema public'),
+    'schema-unwritable',
+  );
+  assert.equal(classifyProbeFailure('must be owner of table users'), 'schema-unwritable');
+  assert.equal(classifyProbeFailure('read-only file system'), 'schema-unwritable');
+});

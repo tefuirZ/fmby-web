@@ -64,13 +64,21 @@ export type ProbeFailureKind =
   | 'unknown';
 
 /**
- * 关键词 → 分类。顺序有意义：DNS 串里常同时出现 host/connect，必须先判 DNS；
- * schema 权限串不含 authentication，故 auth 与它不冲突。
+ * 关键词 → 分类。顺序有意义：DNS 串里常同时出现 host/connect，必须先判 DNS。
+ *
+ * ★`schema-unwritable` 刻意**收窄**为 `permission denied for schema`（rb01 I1）：
+ *   泛化的 `permission denied` 会把「对**库**无权」也判成「schema 无建表权限」，
+ *   指引用户去改 schema 权限 —— 而实际是连库都没权，指向错误的下一步。
+ *   收窄后 `permission denied for database` 落 unknown ⇒ 原样展示后端原文，不编造。
+ *
+ * `ponytail:` 整张表都是**启发式**（后端 `DatabaseProbeResponse` 只有自由文本
+ *   `message`、无结构化 code）。升级路径：后端补出 `code` 字段后直接读 code，
+ *   **删掉整张关键词表**（含本文件的 classifyProbeFailure 匹配逻辑）。
  */
 const FAILURE_PATTERNS: readonly [ProbeFailureKind, readonly string[]][] = [
   ['dns', ['translate host name', 'name or service not known', 'failed to lookup address', 'nodename nor servname', 'dns error']],
   ['database-missing', ['does not exist']],
-  ['schema-unwritable', ['permission denied', 'read-only file system', 'must be owner']],
+  ['schema-unwritable', ['permission denied for schema', 'read-only file system', 'must be owner']],
   ['auth', ['authentication failed', 'password', 'no password supplied', 'invalid authorization']],
   ['tcp', ['connection refused', 'timeout', 'timed out', 'could not connect', 'connection closed', 'network is unreachable', 'no route to host']],
 ];
