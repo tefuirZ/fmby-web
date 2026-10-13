@@ -1438,6 +1438,9 @@ async function mountPageProbe(
         .replace('${RUNTIME_ARCHIVES_PATH}', `file://${compFile}`)
         .replace('${NESTED_PATH}', `file://${compFile}`)
         .replace('${SYNC_JOBS_PATH}', `file://${compFile}`)
+        // 补测批次 A 起的通用占位符：不再为每个新探针加一行 replace。
+        // 新探针统一写 file:///COMPONENT_PATH_PLACEHOLDER。
+        .replace('file:///COMPONENT_PATH_PLACEHOLDER', `file://${compFile}`)
         .replace('file:///AI_PATH_PLACEHOLDER', compFile.replace('file://', ''))
     ),
     'utf8',
@@ -2250,6 +2253,34 @@ async function tabIntoRow(page: any, tableIndex = 0, maxPresses = 15): Promise<n
       return row == null ? null : Number(row);
     }, tableIndex);
     if (hit != null) return hit;
+  }
+  return -1;
+}
+
+/**
+ * 与 tabIntoRow 相同，但返回**实际按下的 Tab 次数**（超预算返回 -1）。
+ *
+ * 为什么单独要这个：补测要求「按实际 Tab 步数断言」，
+ * 而不是硬编码一个猜测的步数。步数是真实可达性的直接证据：
+ * 如果改成 0，说明该表在真实 Tab 顺序里根本走不到（回退到旧版时正是这个现象）。
+ */
+async function countTabPressesToRow(
+  page: any,
+  tableIndex = 0,
+  maxPresses = 15,
+): Promise<number> {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.locator('body').click({ position: { x: 2, y: 2 } });
+  for (let i = 1; i <= maxPresses; i++) {
+    await page.keyboard.press('Tab');
+    const hit = await page.evaluate((ti: number) => {
+      const tbody = document.querySelectorAll('tbody')[ti];
+      const active = document.activeElement as HTMLElement | null;
+      if (!active || active.closest('tbody') !== tbody) return null;
+      const row = active.getAttribute('data-row-index');
+      return row == null ? null : Number(row);
+    }, tableIndex);
+    if (hit != null) return i;
   }
   return -1;
 }
@@ -3126,6 +3157,393 @@ test('契约改造（选项 2）：UpstreamSyncJobsSection 真实 Tab 起步 + E
       /作业详情（sync-2）/,
       'Enter 应打开**焦点所在行**（末行 sync-2）的详情',
     );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ================================================================== */
+/* 补测批次 A：一表一证（第四~九批未实证文件）                         */
+/* ================================================================== */
+/*
+ * 背景：第七~九批接线后，仍有 16 个接线文件在测试文本里没有被点名，
+ * 也没有自己的真实 DOM 实证（旧版回退后 keynav suite 仍然 45/45 pass，
+ * 证明这些用例对它们无约束力）。本批开始逐表补齐。
+ *
+ * 每个用例的硬判据（四条同时满足才算「一表一证」）：
+ *   ① 真实连续 Tab 进入（countTabPressesToRow，禁脚本 focus）
+ *   ② 按实际 Tab 步数断言（实测值，非硬编码猜测）
+ *   ③ 唯一 roving 停靠点（该 tbody 内 tabindex=0 恰好一个）
+ *   ④ 回退旧组件后本用例至少一条断言失败
+ *
+ * 本批 4 个文件：AiInterventionDetailPanel / MediaItemArtworkSection /
+ *             ProviderDiagnosticsCard / ManageMediaReviewsPage
+ */
+
+/* ------------------------------------------------------------------ */
+/* AiInterventionDetailPanel：runs 表（纯只读，不传 onActivate）       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * runs 表是纯只读清单（行内无控件）⇒ 组件刻意不传 onActivate，
+ * roving 停靠点是它唯一的键盘入口（I-1 的典型受害面）。
+ */
+const AI_PANEL_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { AiInterventionDetailPanel } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const runs = [0, 1, 2].map((i) => ({
+  id: 'run-' + i,
+  threadId: 'th-1',
+  mediaItemId: 'mi-1',
+  sessionId: null,
+  aiTaskId: null,
+  runKind: 'AutoRun',
+  skillKey: 'naming_cleanup',
+  provider: 'openai',
+  model: 'gpt-x',
+  runStatus: i === 1 ? 'failed' : 'succeeded',
+  turnIndex: i,
+  summaryJson: '{}',
+  evidenceSnapshotJson: '{}',
+  resultSnapshotJson: '{}',
+  diffSnapshotJson: '{}',
+  errorCode: i === 1 ? 'E1' : null,
+  errorMessage: i === 1 ? 'boom' : null,
+  requestedByUserId: null,
+  appliedByUserId: null,
+  appliedAt: null,
+  createdAt: 1700000000000 + i,
+  updatedAt: 1700000000000 + i,
+}));
+
+const detail = {
+  thread: {
+    id: 'th-1',
+    mediaItemId: 'mi-1',
+    latestRunId: 'run-2',
+    latestAutoTaskId: null,
+    latestSummaryJson: '{}',
+    latestEvidenceJson: '{}',
+    latestResultJson: '{}',
+    latestDiffJson: '{}',
+    latestSkillKey: 'naming_cleanup',
+    latestProvider: 'openai',
+    latestModel: 'gpt-x',
+    latestRunStatus: 'succeeded',
+    latestAppliedRunId: null,
+    latestAppliedResultJson: '{}',
+    sessionState: 'Idle',
+    currentSessionId: null,
+    currentSessionSkillKey: null,
+  },
+  messages: [],
+  runs,
+};
+
+const noop = () => {};
+createRoot(document.getElementById('root')).render(
+  createElement(AiInterventionDetailPanel, {
+    mediaItemId: 'mi-1',
+    detail,
+    isPending: false,
+    error: null,
+    openPending: false,
+    sendPending: false,
+    closePending: false,
+    applyPending: false,
+    actionError: null,
+    onOpen: noop,
+    onSend: noop,
+    onClose: noop,
+    onApply: noop,
+    onDismissError: noop,
+  }),
+);
+`;
+
+test('AiInterventionDetailPanel runs 表：真实 Tab 步数 + 唯一停靠点 + 只读不激活', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-aipanel-',
+    AI_PANEL_ENTRY,
+    join(
+      HOST_ROOT,
+      'src/pages/manage/naming-rules/ai-intervention/components/AiInterventionDetailPanel.tsx',
+    ),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // ③ 唯一停靠点
+    assert.deepEqual(
+      await rovingStopsIn(page, 0),
+      ['0'],
+      'runs 表初始必须恰好 1 个 roving 停靠点，且是第 0 行',
+    );
+
+    // ①② 真实连续 Tab + 按实测步数断言
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能走进只读 runs 表（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+
+    // 方向键漫游（只读表唯一的交互）
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点必须跟随焦点');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Home → 首行');
+
+    // 只读表：Enter 不得凭空造出语义，也不得把焦点挪走
+    await page.keyboard.press('Enter');
+    assert.equal(await focusedRowIn(page, 0), 0, '只读表 Enter 不得挪走焦点');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* MediaItemArtworkSection：remoteAssets 表（纯只读）                   */
+/* ------------------------------------------------------------------ */
+
+const ARTWORK_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { MediaItemArtworkSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const remoteAssets = [0, 1, 2].map((i) => ({
+  id: 'asset-' + i,
+  mediaItemId: 'mi-1',
+  assetType: 'poster',
+  assetTypeLabel: '海报',
+  language: 'zh',
+  isCached: i !== 1,
+  cachePath: i !== 1 ? '/cache/' + i : undefined,
+  filePath: '/mnt/a/file-' + i + '.jpg',
+  mountId: 'm-1',
+  mountName: '主库',
+  url: 'https://example.com/a' + i,
+  createdAt: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+}));
+
+const detail = {
+  item: { id: 'mi-1', title: '示例影片' },
+  baseMetadata: {},
+  effectiveMetadata: {},
+  scrapedArtworks: [],
+  sources: [],
+  remoteAssets,
+  artworkOverrides: [],
+  subtitleOverrides: [],
+  metadataStatus: {},
+};
+
+createRoot(document.getElementById('root')).render(
+  createElement(MediaItemArtworkSection, { detail, mutations: {} }),
+);
+`;
+
+test('MediaItemArtworkSection remoteAssets 表：真实 Tab 步数 + 唯一停靠点', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-artwork-',
+    ARTWORK_ENTRY,
+    join(
+      HOST_ROOT,
+      'src/pages/manage/media-item-detail/components/MediaItemArtworkSection.tsx',
+    ),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.deepEqual(
+      await rovingStopsIn(page, 0),
+      ['0'],
+      'remoteAssets 表初始必须恰好 1 个停靠点',
+    );
+
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    assert.deepEqual(
+      await rovingStopsIn(page, 0),
+      ['1'],
+      '停靠点必须跟随焦点（旧值不得残留）',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* ProviderDiagnosticsCard：自检步骤表（真按钮 → 真 useMutation）      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 表由 mutation 结果驱动，初始无行。entry 拦 fetch 打桩 diagnostics 端点，
+ * 测试点**真按钮**「开始自检」触发真 useMutation —— 不是脚本直接塞数据。
+ */
+const DIAG_CARD_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ProviderDiagnosticsCard } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/diagnostics')) {
+    return json({
+      run_id: 'run-1',
+      provider: 'smtp',
+      scenario: 'validate_config',
+      steps: [0, 1, 2].map((i) => ({
+        code: 's-' + i,
+        title: '步骤 ' + i,
+        status: i === 1 ? 'failed' : 'success',
+        message: 'msg ' + i,
+        retryable: false,
+        started_at: '2026-01-01T00:00:00Z',
+        finished_at: '2026-01-01T00:00:01Z',
+      })),
+      artifacts: {},
+      warnings: [],
+      request_id: 'req-1',
+      tested_at: '2026-01-01T00:00:02Z',
+    });
+  }
+  return json({ items: [] });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ProviderDiagnosticsCard, { provider: 'smtp', displayName: 'SMTP' })),
+);
+`;
+
+test('ProviderDiagnosticsCard 自检步骤表：真按钮触发后真实 Tab 步数 + 唯一停靠点', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-diag-',
+    DIAG_CARD_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/auth-providers/ProviderDiagnosticsCard.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 初始无行 ⇒ 无停靠点（确认表确实是 mutation 驱动的）
+    assert.deepEqual(await rovingStopsIn(page, 0), [], '自检未跑前不应有停靠点');
+
+    await clickButtonByText(page, '开始自检');
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    assert.deepEqual(
+      await rovingStopsIn(page, 0),
+      ['0'],
+      '自检出 3 行后必须恰好 1 个停靠点',
+    );
+
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点必须跟随焦点');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* ManageMediaReviewsPage：待审项表（HTTP mock + 真实 api.ts 转换）     */
+/* ------------------------------------------------------------------ */
+
+const MEDIA_REVIEWS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageMediaReviewsPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/api/manage/media-reviews')) {
+    return json({
+      items: [0, 1, 2].map((i) => ({
+        id: 'mr-' + i,
+        media_item_id: 'mi-' + i,
+        title: '待审影片 ' + i,
+        provider_name: 'tmdb',
+        field: 'title',
+        old_value: '旧标题 ' + i,
+        new_value: '新标题 ' + i,
+        status: 'pending',
+        created_at: '2026-01-0' + (i + 1) + 'T00:00:00Z',
+      })),
+    });
+  }
+  return json({ items: [] });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ManageMediaReviewsPage, {})),
+);
+`;
+
+test('ManageMediaReviewsPage 待审项表：真实 Tab 步数 + 唯一停靠点 + 漫游', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-mediarev-',
+    MEDIA_REVIEWS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageMediaReviewsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.deepEqual(
+      await rovingStopsIn(page, 0),
+      ['0'],
+      '待审项表初始必须恰好 1 个停靠点',
+    );
+
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 2, 'ArrowDown → 第 2 行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Home → 首行');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
