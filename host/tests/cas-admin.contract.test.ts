@@ -60,7 +60,7 @@ test('③ snake_case → camelCase 映射字段齐全', () => {
   }
 });
 
-test('④ 可空字段保持 null，不伪造 0（size_bytes / last_verified_at）', () => {
+test('④ 可空字段保持 null，不伪造 0（size_bytes / last_verified_at / generatedAtMs）', () => {
   const src = read(API);
   assert.ok(src.includes('sizeBytes'), 'sizeBytes 域字段');
   assert.ok(src.includes('lastVerifiedAt'), 'lastVerifiedAt 域字段');
@@ -72,6 +72,21 @@ test('④ 可空字段保持 null，不伪造 0（size_bytes / last_verified_at�
   assert.ok(
     !/sizeBytes[^;\n]*\|\|\s*0/.test(src),
     'sizeBytes 不得用 || 0 伪造（未知大小 ≠ 0 字节）',
+  );
+  // ★rv02 #25 Important-1/M-2 收口：generatedAtMs 同纪律 —— 缺失 ⇒ null（「没值」），
+  //   不用 0 伪装缺失；展示层 formatGeneratedAt 对 null/≤0 一律「未生成」。
+  assert.ok(
+    !/generatedAtMs[^;\n]*(\?\?|\|\|)\s*0/.test(src),
+    'generatedAtMs 不得用 0 伪装缺失（缺失 = null，不是 0）',
+  );
+  assert.ok(
+    /generatedAtMs:\s*raw\?\.generated_at_ms\s*\?\?\s*null/.test(src),
+    'generatedAtMs 缺省必须落 null',
+  );
+  // 契约类型同步：number | null（与测试工厂数字 | null 对齐，消解类型矛盾）。
+  assert.ok(
+    /generatedAtMs:\s*number\s*\|\s*null/.test(read(TYPES)),
+    'types.ts 契约 generatedAtMs 须 number | null（rv02 #25 Important-1）',
   );
 });
 

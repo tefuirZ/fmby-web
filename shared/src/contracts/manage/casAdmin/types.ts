@@ -82,15 +82,6 @@ export interface CasFanoutStatus {
   drives: CasDriveStatus[];
 }
 
-/// 前端域形态 · `.cas` 对账报告条目。
-export interface CasReconcileReport {
-  reportId: string;
-  source: string;
-  identified: boolean;
-  reconciled: boolean;
-  generatedAtMs: number;
-}
-
 /// wire 形态 · 盘配置（后端逐字）。
 export interface RawCasDriveConfig {
   provider_type: string;
@@ -128,4 +119,20 @@ export interface RawCasReconcileReport {
   identified: boolean;
   reconciled: boolean;
   generated_at_ms: number;
+}
+
+/**
+ * 域形态 · 对账报告条目。
+ *
+ * ★rv02 #25 Important-1 收口：`generatedAtMs` 改 `number | null` ——
+ *   后端 u64 毫秒理论恒有值，但缺省面（key 缺失/部分响应）可能无值；
+ *   契约层用 `null` 表达「没值」，**不用 0 伪装缺失**（M-2）。
+ *   展示层 `formatGeneratedAt` 对 null/非有限/≤0 一律「未生成」，不伪造 1970。
+ */
+export interface CasReconcileReport {
+  reportId: string;
+  source: string;
+  identified: boolean;
+  reconciled: boolean;
+  generatedAtMs: number | null;
 }

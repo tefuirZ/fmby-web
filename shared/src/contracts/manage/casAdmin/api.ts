@@ -71,7 +71,9 @@ export function mapCasReconcileReport(
     source: raw?.source ?? "",
     identified: raw?.identified ?? false,
     reconciled: raw?.reconciled ?? false,
-    generatedAtMs: raw?.generated_at_ms ?? 0,
+    // ★rv02 #25 M-2 收口：缺失 ⇒ `null`（「没值」），**不用 0 伪装缺失**；
+    //   展示层 formatGeneratedAt 对 null/≤0 一律「未生成」，不伪造 1970。
+    generatedAtMs: raw?.generated_at_ms ?? null,
   };
 }
 
