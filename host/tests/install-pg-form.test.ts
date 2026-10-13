@@ -84,7 +84,16 @@ test('⑨ 编排页必须把 ① 页组件接进来（不是留一份死代码�
   assert.match(src, /from '\.\/DatabaseCacheFieldset'/, '须按相对路径引入同目录组件');
 });
 
-test('⑩ 明文口令不得落 URL / 日志 / 持久化（沿用 honesty ⑬ 口径）', () => {
+/**
+ * ★用例名按 rb01 I3 修正：原名写「不得落 URL」，但下面只查持久化与日志，
+ *   **URL 那条根本没查** ⇒ 名不符实。
+ *   为何不补「URL」断言：`InstallDatabaseChoice` 的 postgres 分支契约本身就要求
+ *   把整串 `postgres://user:口令@host/db` 作为 apply 载荷提交 —— 那是**契约行为**，
+ *   不是泄漏；能守的是「不进 localStorage / sessionStorage / 日志」。
+ *   （真要防的是口令进地址栏 query/history，但源码压根不碰 location/history，
+ *    加一条永不转红的断言等于自欺，故不写 —— 如实写明。）
+ */
+test('⑩ 明文口令不得落持久化存储 / 日志（沿用 honesty ⑬ 口径）', () => {
   for (const rel of [FIELDSET, PAGE]) {
     const src = read(rel);
     for (const leak of ['localStorage', 'sessionStorage', 'console.log']) {

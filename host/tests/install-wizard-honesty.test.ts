@@ -245,7 +245,10 @@ test('⑫ 一键生成必须用密码学安全随机源，且不得用 Math.rand
   }
 });
 
-test('⑬ 口令明文不得落 URL / 日志 / 持久化存储', () => {
+// ★按 rb01 I3 同类修正：原名含「不得落 URL」但只查持久化/日志，URL 那条没查。
+//   理由与处置见 install-pg-form.test.ts 用例 ⑩ 的注释（apply 契约本身要求提交
+//   整串 postgres:// 连接串，那不是泄漏；不写永不转红的假断言）。
+test('⑬ 口令明文不得落持久化存储 / 日志', () => {
   for (const f of [INSTALL_PAGE, ADMIN_FIELDSET, COMPLETION_PANEL]) {
     const src = read(f);
     for (const leak of ['localStorage', 'sessionStorage', 'console.log']) {
