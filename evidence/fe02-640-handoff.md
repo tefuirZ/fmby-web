@@ -125,3 +125,43 @@ cmd: npx vite build --configLoader runner --outDir /tmp/fe02-dist
 4. 未推远端、未开 PR（无 upstream，`gh pr list` 该 head 为空）——等指示。
 5. fe02.md 的 a11y 段仍挂 4 个 declared 阻塞项（rv01 复评 / treegrid 裁决 /
    17 提交入 main / 17 张表实证用例），非本会话可自主推进。
+
+## 七、2026-10-14 rb01 评审返工（C1/C2/I1/I3/I4/N1/N2 全条返完）
+
+每条都**先自核再动手**，两条与评审描述有出入的已按实测处置：
+
+| 条 | 评审意见 | 自核结论 | 处置 | commit |
+|---|---|---|---|---|
+| C1 | 两组件无条件写「不需重启」，与 restart_required:true 矛盾 | **属实且更严重**：restart_required 此前只存在于第 40 行**注释**，UI 上 0 次 | 文案限定「这三步之间不需重启；complete 落锁后仍须重启」；完成态显式展示后端 restart_required | `538387d` |
+| C2 | describeCache 明文回显 redis 连接串（与 PG 口径不一致） | **属实** | 抽 `serverConfigLabels.ts`（.tsx 在 node 下加载不了），userinfo 一律不输出；解析失败绝不原样回显；7 例真跑 | `ce046dd` |
+| I1 | 泛化 permission denied 排在 auth 前 ⇒ 「对库无权」误归 schema-unwritable | **属实**（断言实证） | 收窄为 `permission denied for schema`；对库无权落 unknown 展示原文 | `738314d` |
+| I3 | 用例名写「不得落 URL」但只查持久化/日志 | **属实** | 改名（不补永不转红的假断言：apply 契约本就要提交整串 postgres://）；honesty ⑬ 同病一并改 | `fa510a5` |
+| I4 | ④ 是 OR（lock\|重启）⇒ 含 lock 即绿，放过 C1 | **属实** | 拆 ④a/④b 两条；回退验证：移除「重启」后 ④b 转红 | `d59f751` |
+| N1 | 第 ② 步不收集输入却称「三页」 | **属实** | 措辞降级「两步填写 + 一步核对」 | `983b7b7` |
+| N2 | Redis 探活按钮 disabled 漏 !canProbe | **属实** | 补 !canProbe，与 DB 按钮同口径；RED 实证（改前仅 1 个） | `b67f5f5` |
+
+I2（后端 apply_install 不校口令强度）按裁决**不由前端管**，已另派后端卡。
+
+★两条防回归断言均做了**回退验证**（证明能抓回归、不是摆设）：
+- C1 ⑰：临时去掉「落锁后」限定 ⇒ ⑰ 由绿转红，还原复绿。
+- I4 ④b：临时把三处「重启」换异体字 ⇒ ④b 由绿转红（17/18），还原复绿；旧 OR 版本在同样状态下仍假绿。
+
+### 本轮验证（PR #23 head 上实跑）
+
+```
+install 全套            ℹ tests 87   pass 87   fail 0
+全量宿主 tests/*.test.ts ℹ tests 614  pass 614  fail 0   EXIT=0
+tsc -p tsconfig.app.json --noEmit     EXIT=0
+vite build --configLoader runner      ✓ built in 30.37s（InstallPage-DYYS0EGB.js 22.87 kB）
+门禁 css-usage / contract-mappers / frontend-dupes        三项 PASS
+组件行数闸                             **EXIT=1**（见下）
+```
+
+### ⚠️ 组件行数闸 EXIT=1 —— 存量红，非本轮引入
+
+报 `MountTable 408 / MediaItemArtworkSection 405 / ManageRuntimeLogsPage 401` 为「新增」。
+证据：main 上基线 `fe-component-size-baseline.json` **只有 client.ts 一条**，
+三个组件在 main 上就是 408/405/401（均 >400 且不在基线）⇒ 按脚本规则
+「基线外新增超线文件 → FAIL」**main 上该闸本来就是红的**，#640 全程未触碰这三个文件。
+修复在 **PR #24**（`6ca1101` 基线补登 + `b5da4fa` 抽 useLogViewsRoving 使
+ManageRuntimeLogsPage 400 行脱红线）；须待 PR #24 合入 main 后本闸才转绿。
