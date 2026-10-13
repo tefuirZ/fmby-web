@@ -125,12 +125,23 @@ test('③ 探活仍须标注「只探活，不写配置」（探活本身确实�
   );
 });
 
-test('④ 完成后须说明会落锁并需重启（complete 语义）', () => {
+// ★rb01 I4：原本这两条合并成一条 OR（/fmby-install\.lock|重启/）⇒ 只要含 lock 就绿，
+//   **放过了 C1**（当时缺的正是重启指引）。拆开后两条都得成立。
+test('④a 完成后须说明会落安装锁（complete 语义）', () => {
   const src = renderedInstall('');
   assert.equal(
-    /fmby-install\.lock|重启/.test(src),
+    /fmby-install\.lock/.test(src),
     true,
-    '完成步骤须说明落 fmby-install.lock 且重启后由主应用接管',
+    '完成步骤须说明落 fmby-install.lock',
+  );
+});
+
+test('④b 完成后须给出重启指引（安装模式进程不挂主应用路由）', () => {
+  const src = renderedInstall('');
+  assert.equal(
+    /重启/.test(src),
+    true,
+    'complete 落锁后须重启、由主应用接管 —— 与 ④a 分列，避免 OR 互相掩盖',
   );
 });
 
