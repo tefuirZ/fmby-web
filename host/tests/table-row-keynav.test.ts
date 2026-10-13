@@ -4701,3 +4701,103 @@ test('接线实证（真实 ManageCasPage）：盘配置表表头语义 + 3 行 
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 2/N：UpstreamMappingWizardSection —— 映射预览结果表      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 表在 PreviewResultCard 里，由 previewMutation（POST .../mapping/preview）结果驱动，
+ * 初始无行 ⇒ 必须点真按钮「生成预览」触发。presetsQuery（GET .../mapping/presets）
+ * 挂载即发，mock 一并打桩。纯只读结果清单（行内 StatusBadge 非可聚焦）⇒ 不传 onActivate。
+ */
+const UPSTREAM_WIZARD_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { UpstreamMappingWizardSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const preview = {
+  source_id: 'src-1',
+  items: [
+    { category_id: 'c1', upstream_category_id: 'u1', category_name: '电影', selected: true, action: 'bind_existing', library_id: 'lib1', library_name: '电影库', create_key: null, create_library_name: null, create_library_type: null, skip_reason: null, conflict_message: null },
+    { category_id: 'c2', upstream_category_id: 'u2', category_name: '剧集', selected: true, action: 'create_library', library_id: null, library_name: null, create_key: 'k2', create_library_name: '剧集库', create_library_type: 'Series', skip_reason: null, conflict_message: null },
+    { category_id: 'c3', upstream_category_id: 'u3', category_name: '综艺', selected: true, action: 'skip', library_id: null, library_name: null, create_key: null, create_library_name: null, create_library_type: null, skip_reason: '已被排除', conflict_message: null },
+  ],
+  creates: [],
+  bind_count: 1,
+  create_count: 1,
+  skip_count: 1,
+  conflict_count: 0,
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/mapping/presets')) {
+    return json({ items: [], total: 0 });
+  }
+  if (u.includes('/mapping/preview')) {
+    return json(preview);
+  }
+  return json({});
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(UpstreamMappingWizardSection, { sourceId: 'src-1' })),
+);
+`;
+
+test('接线实证（真实 UpstreamMappingWizardSection）：真按钮触发后预览结果表独立漫游（补测批次 D 2/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-wizard-',
+    UPSTREAM_WIZARD_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamMappingWizardSection.tsx'),
+    // 初始无行（表要跑完 previewMutation 才有行），先等真按钮出现证明组件挂上。
+    'button:has-text("生成预览")',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 初始无行 ⇒ 无停靠点（确认表确实是 previewMutation 驱动的）。
+    assert.deepEqual(await rovingStopsIn(page, 0), [], '未生成预览前不应有停靠点');
+
+    await clickButtonByText(page, '生成预览');
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 表头语义。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['类目', '动作', '目标库', '说明'], '预览结果表表头应为 类目/动作/目标库/说明');
+
+    // ② 行数 = fixture 条数。
+    const rows = await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index]').length);
+    assert.equal(rows, 3, '应渲染 3 行（与 fixture 一致）');
+
+    // ③ roving 唯一停靠点 —— 「无接线」时所有 <tr> 没有 tabindex ⇒ [] !== ['0']。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '预览结果表首行应是唯一 Tab 停靠点');
+
+    // ④ 真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
