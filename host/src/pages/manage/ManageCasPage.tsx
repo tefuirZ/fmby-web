@@ -15,6 +15,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { UseMutationResult } from '@tanstack/react-query';
 import {
   casAdminApi,
   isCasAdminUnwired,
@@ -202,6 +203,27 @@ function DriveConfigTable({
   );
 }
 
+/**
+ * 触发对账按钮（#671 写面：`POST /api/admin/cas/reconcile/trigger?confirmed=true`）。
+ *
+ * ★失败语义照后端、不猜：503 未装配 / 403 能力不足 / 400 缺 confirmed ——
+ *   一律用 `getErrorMessage` **透传后端原文**，不另造文案。
+ */
+function ReconcileTriggerButton({ mutation }: { mutation: UseMutationResult<void, unknown, void> }) {
+  return (
+    <div>
+      <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+        {mutation.isPending ? '触发中…' : '触发对账'}
+      </button>
+      {mutation.isSuccess ? <span>已触发对账（报告稍后刷新）</span> : null}
+      {mutation.isError ? (
+        // ★透传后端原文：503/403/400 的原因由后端给出，前端不猜测、不美化。
+        <span>触发失败：{getErrorMessage(mutation.error)}</span>
+      ) : null}
+    </div>
+  );
+}
+
 function FanoutLookup({
   value,
   onChange,
@@ -261,6 +283,13 @@ function ReconcileReportsSection({ unwired }: { unwired: boolean }) {
     enabled: !unwired,
   });
 
+  const trigger = useMutation({
+    mutationFn: () => casAdminApi.triggerReconcile(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.manage.cas.reconcile() });
+    },
+  });
+
   const sectionState = resolveReconcileSectionState({
     unwired,
     isPending: query.isPending,
@@ -288,6 +317,7 @@ function ReconcileReportsSection({ unwired }: { unwired: boolean }) {
           title="对账报告载入失败"
           description={getErrorMessage(query.error)}
         />
+        <ReconcileTriggerButton mutation={trigger} />
       </ManageSectionCard>
     );
   }
@@ -300,6 +330,7 @@ function ReconcileReportsSection({ unwired }: { unwired: boolean }) {
       title="对账报告"
       description="状态由后端 identified / reconciled 两字段派生：未识别 / 已识别·未对账 / 已对账。"
     >
+      <ReconcileTriggerButton mutation={trigger} />
       {sectionState === 'empty' ? (
         // 空列表是**真状态**（端口装配了但无报告），与「未启用」区分开。
         <p>暂无对账报告。</p>

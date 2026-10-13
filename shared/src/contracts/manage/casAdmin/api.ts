@@ -110,6 +110,35 @@ export const casAdminApi = {
     const raw = await httpClient.get<RawCasReconcileReport[]>(RECONCILE_PATH);
     return (raw ?? []).map(mapCasReconcileReport);
   },
+
+  ///
+  /// `POST` —— 触发一次 `.cas` 对账（#671 写面，rb01 PR #678）。
+  ///
+  /// 端点：`POST /api/admin/cas/reconcile/trigger?confirmed=true`
+  /// 失败语义（**照后端，不猜**）：未装配/不可用 ⇒ **503**；能力不足 ⇒ 403；
+  /// 缺 `confirmed` ⇒ 400。一律由 `httpClient` 抛错，前端用 `getErrorMessage`
+  /// **透传后端原文**（不另造文案）。
+  /// 当前端调用前无需判断能力：403 即能力不足，交给错误文案呈现。
+  async triggerReconcile(): Promise<void> {
+    await httpClient.post<void>(`${RECONCILE_PATH}/trigger`, {
+      params: { confirmed: true },
+    });
+  },
+
+  ///
+  /// `POST` —— 重试某内容在某盘上的复制（#671 写面，rb01 同 PR）。
+  ///
+  /// 端点：`POST /api/admin/cas/fanout/{contentId}/drives/{driveId}/retry?confirmed=true`
+  /// 失败语义同上（503 未装配 / 403 能力不足 / 400 缺 confirmed）。
+  ///
+  /// ★rb01 本端点**尚未合入** ⇒ 前端接线但不伪装可用：未装配时按 503 显式报
+  ///   「端点未装配」（沿用既有 fail-closed 纪律）。
+  async retryFanoutCopy(contentId: number, driveId: number): Promise<void> {
+    await httpClient.post<void>(
+      `${FANOUT_PATH}/${contentId}/drives/${driveId}/retry`,
+      { params: { confirmed: true } },
+    );
+  },
 };
 
 // 错误面复用 `shared/src/errors` 既有口径（端口未装配 ⇒ 后端 503，由调用方对拍，
