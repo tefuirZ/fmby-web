@@ -5022,3 +5022,130 @@ test('接线实证（真实 OperationsGapSections）：负载表 + 播放表各�
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 5/N：ManageEventsPage —— 主事件表 + 嵌套时间线/审计表    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 主事件表由 listQuery（GET /api/manage/events）驱动，挂载即有行；行内有「详情」按钮
+ * （原生 Tab 可达）⇒ 不传 onActivate。点「详情」置 expandedId ⇒ detailQuery
+ * （GET /api/manage/events/{requestId}）触发，EventDetailPanel 内渲染**嵌套**的
+ * 「时间线」「审计记录」两张只读表。三表各自独立 roving 域（A 方案：父子各从 0 起）。
+ */
+const MANAGE_EVENTS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageEventsPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const list = {
+  events: [
+    { id: 'e1', kind: 'Identify', timestamp: 1700000000000, severity: 'info', title: '识别完成', module: 'identify', summary: '识别了 3 个条目', requestId: 'req-1' },
+    { id: 'e2', kind: 'Scrape', timestamp: 1700000001000, severity: 'warning', title: '刮削告警', module: 'scrape', summary: '部分元数据缺失', requestId: 'req-2' },
+    { id: 'e3', kind: 'Auth', timestamp: 1700000002000, severity: 'critical', title: '登录失败', module: 'auth', summary: '凭据过期', requestId: 'req-3' },
+  ],
+  total: 3, page: 1, pageSize: 100, runtimeSourceAvailable: false,
+};
+
+const detail = {
+  requestId: 'req-1',
+  timeline: [
+    { step: 1, label: '接收请求', status: 'success', timestamp: 1700000000000, detail: null },
+    { step: 2, label: '识别', status: 'success', timestamp: 1700000000500, detail: '命中缓存' },
+    { step: 3, label: '完成', status: 'success', timestamp: 1700000001000, detail: null },
+  ],
+  result: 'ok', errorCode: null, diagnosis: null,
+  auditRecords: [
+    { timestamp: 1700000000000, actor: 'admin', action: 'identify.run', target: 'library:1', result: 'success', traceId: 'trace-1', fields: [] },
+    { timestamp: 1700000001000, actor: 'admin', action: 'identify.commit', target: 'item:3', result: 'success', traceId: 'trace-1', fields: [] },
+  ],
+  runtimeRecords: [], runtimeSourceAvailable: false,
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (/\\/api\\/manage\\/events\\/[^?]/.test(u)) {
+    return json(detail);
+  }
+  if (u.includes('/api/manage/events')) {
+    return json(list);
+  }
+  return json({ events: [], total: 0 });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ManageEventsPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageEventsPage）：主事件表 + 嵌套时间线/审计表各自独立漫游（补测批次 D 5/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-events-',
+    MANAGE_EVENTS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageEventsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 主事件表（域 0）：表头语义 + 行数。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[0].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['时间', '严重级', '种类', '模块', '标题', '摘要', '操作'], '主事件表表头应为 时间/严重级/种类/模块/标题/摘要/操作');
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[0].querySelectorAll('tbody tr[data-row-index]').length),
+      3,
+      '主事件表应渲染 3 行（与 fixture 一致）',
+    );
+
+    // ② 主事件表 roving 唯一停靠点 + 真实键盘漫游。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '主事件表首行应是唯一 Tab 停靠点');
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在主事件表首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 主事件表第 1 行');
+
+    // ③ 行内「详情」按钮保持原生 Tab（roving 不得改写它的 tabindex）。
+    const btn = page.locator('tbody tr[data-row-index="0"] button:has-text("详情")');
+    assert.equal(await btn.count(), 1, '行内应有一个「详情」按钮');
+    assert.equal(await btn.evaluate((b: any) => b.getAttribute('tabindex')), null, '行内「详情」按钮不得被 roving 改写 tabindex');
+
+    // ④ 点「详情」⇒ detailQuery 触发 ⇒ EventDetailPanel 渲染嵌套的时间线/审计表。
+    await btn.click();
+    await page.waitForFunction(() => document.querySelectorAll('tbody').length >= 3, null, { timeout: 20000 });
+
+    // ⑤ 三表各自独立 roving 域（域 0 主表、域 1 时间线、域 2 审计）。
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '嵌套时间线表应是独立域的首行停靠点');
+    assert.deepEqual(await rovingStopsIn(page, 2), ['0'], '嵌套审计记录表应是独立域的首行停靠点');
+
+    // ⑥ 嵌套时间线表头语义 + 行数。
+    const tlHeads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[1].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(tlHeads, ['步', '标签', '状态', '时间', '详情'], '时间线表表头应为 步/标签/状态/时间/详情');
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[1].querySelectorAll('tbody tr[data-row-index]').length),
+      3,
+      '时间线表应渲染 3 行（与 fixture 一致）',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
