@@ -39,8 +39,11 @@ import styles from '../login/LoginPage.module.css';
  *   POST /api/install/apply             → 一次收全三组 ⇒ 落配置 → bootstrap → 建首管理员 → 自动登录
  *   POST /api/install/complete          → 校验 users>0 → 落锁 → restart_required
  *
- * ★页面结构 = 卡面三页：① 数据库 / 缓存 ② 服务器配置 ③ 管理员配置。
- *   三页只是**呈现顺序**，提交仍是 apply 一次收全（V2 后端没有分步端点）。
+ * ★页面结构 = 卡面三步：① 数据库 / 缓存 ② 服务器配置 ③ 管理员配置。
+ *   **第 ② 步不收集任何输入**（V2 apply 无 server 字段）⇒ 它是**核对页**，恒过门控；
+ *   真正要填的只有 ①③ 两步。故对用户的措辞是「两步填写 + 一步核对」（rb01 N1），
+ *   不叫「三步填写」—— 叫三步会让人以为第 ② 步也要填。
+ *   三步只是**呈现顺序**，提交仍是 apply 一次收全（V2 后端没有分步端点）。
  *   门控在 `installWizard.ts`（纯函数、可实测），本页不写规则。
  *
  * ★路由只挂**安装模式进程**（`main.rs` 的 `install_mode_main`）。该形态 Router 只有
@@ -186,7 +189,7 @@ export function InstallPage() {
       <main className={styles.card}>
         <h1 className={styles.brand}>FMBY</h1>
         <p className={styles.subtitle}>
-          安装向导 · 三步
+          安装向导 · 两步填写 + 一步核对
           <br />
           当前状态：{STATE_HEADLINE[state]}
         </p>

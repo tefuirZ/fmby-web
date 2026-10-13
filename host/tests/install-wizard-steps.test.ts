@@ -10,7 +10,10 @@ import {
 } from '../src/pages/install/installWizard.ts';
 
 /**
- * #640「三页向导」的**步骤门控**纯函数实测。
+ * #640「三步向导」的**步骤门控**纯函数实测。
+ *
+ * ★措辞口径（rb01 N1）：结构三步，但第 ② 步（服务器配置）**不收集输入、恒过**，
+ *   实为核对页 ⇒ 对外称「两步填写 + 一步核对」。
  *
  * 为什么要抽出来：门控是「哪页填齐了才能往下走」的分支逻辑，塞进组件就测不到
  * （本仓无 jsdom）。判定本体仍归 `passwordPolicy.ts` / `pgConnection.ts`，
@@ -29,7 +32,7 @@ const empty: WizardValues = {
   adminDisplayName: '',
 };
 
-test('① 三页顺序 = 卡面：① 数据库+缓存 ② 服务器配置 ③ 管理员配置', () => {
+test('① 三步结构 = 卡面，且第 ② 步是核对页（不收集输入）', () => {
   assert.deepEqual(WIZARD_STEPS.map((s) => s.id), ['database', 'server', 'admin']);
   assert.deepEqual(WIZARD_STEPS.map((s) => s.title), ['数据库 / 缓存', '服务器配置', '管理员配置']);
 });

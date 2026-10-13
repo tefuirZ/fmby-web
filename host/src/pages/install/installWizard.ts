@@ -1,5 +1,9 @@
 /**
- * 安装向导的**三页编排**（fmby-v2 #640 卡面：① 数据库+缓存 ② 服务器配置 ③ 管理员配置）。
+ * 安装向导的**三步编排**（fmby-v2 #640 卡面：① 数据库+缓存 ② 服务器配置 ③ 管理员配置）。
+ *
+ * ★措辞口径（rb01 N1）：结构三步，但**第 ② 步是核对页、不收集任何输入**
+ *   （V2 apply 无 server 字段）⇒ 对外说「两步填写 + 一步核对」，不说「三步填写」，
+ *   否则用户会以为第 ② 步也要填。
  *
  * 只做门控与翻页，**不重写任何判定**：
  *   - 口令强度/二次确认 → `passwordPolicy.ts`
@@ -14,7 +18,7 @@ export type WizardStepId = 'database' | 'server' | 'admin';
 
 export interface WizardStepMeta {
   id: WizardStepId;
-  /** 页签标题（卡面三页措辞）。 */
+  /** 步骤标题。第 ② 步实为**核对页**（不收集输入，见 stepProblem 的 server 分支）。 */
   title: string;
   /** 序号文案，1 起。 */
   index: number;
