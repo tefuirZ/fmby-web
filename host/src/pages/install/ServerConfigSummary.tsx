@@ -59,7 +59,8 @@ export function ServerConfigSummary({ values }: ServerConfigSummaryProps) {
       </dl>
       <p className={styles.noticeBanner}>
         以上为将要写入的生效值。应用安装是<strong>一次收全</strong>（探测 → 只写非默认项 →
-        建库 → 建管理员），配置由后端<strong>热加载</strong>，不需重启进程。
+        建库 → 建管理员），配置由后端<strong>热加载</strong> —— 指这三步之间不需重启；
+        <strong>complete 落锁后仍须重启</strong>，由主应用接管（安装模式进程不挂主应用路由）。
       </p>
       <p className={styles.fieldHint}>
         V2 安装接口不接收额外的服务器参数；如需改监听地址等，请在安装完成后到管理面配置。

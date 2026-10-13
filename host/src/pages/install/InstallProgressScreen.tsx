@@ -50,8 +50,9 @@ export function InstallProgressScreen({ phase }: InstallProgressScreenProps) {
           ))}
         </ul>
         <p className={styles.noticeBanner}>
-          配置为<strong>热加载</strong>，不需重启服务。耗时取决于数据库建库与网络，
-          请稍候，<strong>不要刷新本页</strong>。
+          配置为<strong>热加载</strong>：应用安装这三步之间<strong>不需重启</strong>。
+          耗时取决于数据库建库与网络，请稍候，<strong>不要刷新本页</strong>。
+          （complete 落锁后须重启进主应用 —— 安装模式进程不挂主应用路由，见完成页。）
         </p>
       </main>
     </div>

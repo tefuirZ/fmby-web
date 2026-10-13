@@ -273,3 +273,32 @@ test('⑮ 用户名不得加 ASCII-only 白名单（中文等 Unicode 必须可�
     '不得用正则过滤掉非 ASCII 字符',
   );
 });
+
+/* ── rb01 C1 防回归（2026-10-14 返工）──────────────────────────────
+ * 后端 complete 返回 restart_required（契约已 pin 于 install-flow-wire.test.ts ④），
+ * 且安装模式进程只挂 install_flow::router + /health（不挂主应用路由）
+ * ⇒ 「热加载 / 不需重启」**只能**指 apply 三步之间，落锁后必须重启。
+ * 此前两组件无条件写「不需重启」，且完成态 UI 上 restart_required 出现 0 次。
+ */
+
+test('⑯ 完成态必须显式展示 restart_required（后端返回值，此前 UI 上完全缺失）', () => {
+  const page = rendered(INSTALL_PAGE);
+  assert.match(page, /restart_required/, '完成态须展示后端的 restart_required，不能只写在注释里');
+});
+
+test('⑰ 提到「热加载」的组件必须同时限定「落锁后须重启」', () => {
+  for (const rel of [
+    INSTALL_PAGE,
+    'host/src/pages/install/InstallProgressScreen.tsx',
+    'host/src/pages/install/ServerConfigSummary.tsx',
+  ]) {
+    const src = rendered(rel);
+    if (/热加载/.test(src)) {
+      assert.match(
+        src,
+        /落锁后/,
+        `${rel} 提到热加载 ⇒ 必须同时写明「落锁后须重启」，不得无条件声称不需重启`,
+      );
+    }
+  }
+});

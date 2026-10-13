@@ -213,7 +213,12 @@ export function InstallPage() {
           <>
             <div className={styles.noticeBanner} role="status">
               <strong className={styles.noticeTitle}>安装已完成</strong>
-              请重启服务后从首页登录。
+              安装锁已落盘。
+              <strong>
+                restart_required =
+                {String(complete.data?.restart_required ?? true)}
+              </strong>
+              ：为 true 时须重启服务，由主应用接管后再登录（安装模式进程不挂主应用路由）。
             </div>
             <button
               className={styles.submitButton}
