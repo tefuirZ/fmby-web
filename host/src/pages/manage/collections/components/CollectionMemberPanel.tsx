@@ -70,7 +70,7 @@ export function CollectionMemberPanel({
   return (
     <div>
       <div className={styles.tableWrap}>
-        <table className={styles.table}>
+        <table className={styles.table} role="treegrid">
           <thead>
             <tr>
               <th>成员</th>
@@ -86,7 +86,7 @@ export function CollectionMemberPanel({
           </thead>
           <tbody ref={tbodyRef}>
             {members.map((member, index) => (
-              <tr key={member.id} data-row-index={index}>
+              <tr key={member.id} data-row-index={index} aria-level={2}>
                 <td>{member.titleSnapshot}</td>
                 <td>{member.mediaKind}</td>
                 <td>{member.yearSnapshot ?? '—'}</td>

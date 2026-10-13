@@ -5297,3 +5297,73 @@ test('接线实证（真实 ManageOperationsPage）：概览多表各自独立�
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* 嵌套表 treegrid ARIA：父子表 role=treegrid + 行 aria-level + aria-expanded */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 全仓唯一逻辑父子表（合集列表 → 展开行 td 内嵌成员表）此前是两张平级 <table>，
+ * 屏幕阅读器读不出层级。本用例钉住 treegrid 语义：
+ * - 父表 / 子表均 role="treegrid"；
+ * - 父数据行 aria-level="1" + aria-expanded（折叠 false / 展开 true，表达可展开节点）；
+ * - 子数据行 aria-level="2"（比父深一级）。
+ * aria-expanded 落在 **行**（treegrid 的 treeitem）上，而非仅按钮。
+ */
+test('嵌套表 treegrid ARIA：父子表 role=treegrid + 行 aria-level(1/2) + aria-expanded', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-treegrid-',
+    NESTED_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageCollectionsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 折叠态：父表 role=treegrid；父数据行 aria-level=1 + aria-expanded=false。
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody')[0]?.closest('table')?.getAttribute('role')),
+      'treegrid',
+      '父合集表应为 role=treegrid',
+    );
+    const parentCollapsed = await page.evaluate(() => {
+      const tr = document.querySelectorAll('tbody')[0]?.querySelector('tr[data-row-index="0"]');
+      return { level: tr?.getAttribute('aria-level'), expanded: tr?.getAttribute('aria-expanded') };
+    });
+    assert.equal(parentCollapsed.level, '1', '父数据行 aria-level 应为 1');
+    assert.equal(parentCollapsed.expanded, 'false', '折叠态父行 aria-expanded 应为 false');
+
+    // ② 点「成员」展开 ⇒ 子表出现。
+    await page.locator('tbody tr[data-row-index="0"] button', { hasText: '成员' }).first().click();
+    await page.waitForFunction(
+      () =>
+        document.querySelectorAll('tbody').length === 2 &&
+        (document.querySelectorAll('tbody')[1]?.querySelectorAll('[data-row-index]').length ?? 0) >= 1,
+      undefined,
+      { timeout: 20000 },
+    );
+
+    // ③ 子表 role=treegrid；子数据行 aria-level=2。
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody')[1]?.closest('table')?.getAttribute('role')),
+      'treegrid',
+      '子成员表应为 role=treegrid',
+    );
+    const childLevel = await page.evaluate(() =>
+      document.querySelectorAll('tbody')[1]?.querySelector('tr[data-row-index="0"]')?.getAttribute('aria-level'),
+    );
+    assert.equal(childLevel, '2', '子数据行 aria-level 应为 2（比父深一级）');
+
+    // ④ 展开态：父行 aria-expanded=true。
+    const parentExpanded = await page.evaluate(() =>
+      document.querySelectorAll('tbody')[0]?.querySelector('tr[data-row-index="0"]')?.getAttribute('aria-expanded'),
+    );
+    assert.equal(parentExpanded, 'true', '展开态父行 aria-expanded 应为 true');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});

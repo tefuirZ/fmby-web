@@ -103,7 +103,11 @@ export function CollectionListTable({
               清空本页
             </button>
           </div>
-          <table className={styles.table}>
+          {/* treegrid 语义：父子表均 role=treegrid；父行 aria-level=1 + aria-expanded
+              （可展开节点，aria-expanded 落在**行**上而非仅按钮，避免双重播报）；
+              子行 aria-level=2（见 CollectionMemberPanel）。展开行(colSpan)不给索引/层级，
+              它是容器非数据行。 */}
+          <table className={styles.table} role="treegrid">
             <thead>
               <tr>
                 <th style={{ width: 36 }}>
@@ -135,7 +139,7 @@ export function CollectionListTable({
                 const expanded = expandedId === collection.id;
                 return (
                   <Fragment key={collection.id}>
-                    <tr data-row-index={index}>
+                    <tr data-row-index={index} aria-level={1} aria-expanded={expanded}>
                       <td>
                         <Checkbox
                           checked={selection.selectedSet.has(collection.id)}
@@ -157,7 +161,6 @@ export function CollectionListTable({
                         <button
                           type="button"
                           className={styles.smallButton}
-                          aria-expanded={expanded}
                           onClick={() => setExpandedId(expanded ? null : collection.id)}
                         >
                           {expanded ? '收起' : '成员'}
