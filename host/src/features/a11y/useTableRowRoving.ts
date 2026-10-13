@@ -36,7 +36,7 @@
  * 按钮仍触发点击）—— 不抢行内控件语义。
  */
 
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
 import { gridDirectionForKey, nextGridIndex } from './useGridRovingFocus';
 
@@ -85,8 +85,29 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
   // 用 state 会引发一次额外 render + effect 重绑（纯属自伤）。
   const activeIndexRef = useRef(0);
 
+  // ★I-3 `<tbody>` 晚于首次 commit 挂载 ⇒ hook 永久静默失效。
+  //
+  // 管理面大量组件被 query/mutation 早退挡住（`if (q.isPending) return <加载中/>`），
+  // 此时调用方已经调了本 hook，但 `tbodyRef.current` 仍是 null，于是下面主 effect
+  // 直接 return。等数据到位、`<tbody>` 真正挂上后，ref 变了却**没有任何通知**
+  // （RefObject 不是 state），主 effect 的依赖 `[tbodyRef, rowCount, onActivate]`
+  // 又全是常量 ⇒ effect 永不重跑 ⇒ 该表**一行 tabindex 都不写** ⇒
+  // 整张表不进 Tab 序，键盘完全不可用（实测：ManageSystemAboutPage 的
+  // 「运行时」/「链接」两张表 rowCount 恒为 4，roving 停靠点为空）。
+  //
+  // 之前没暴露，是因为多数表的 rowCount 恰好会从 0 变成 N，
+  // 顺带把 effect 重跑了一次 —— 属**巧合恢复**，不是 hook 正确。
+  //
+  // 修法（不改 hook 的对外 API、不改调用方）：每次 commit 后把 ref 同步进 state，
+  // 用元素**身份**做依赖。挂载时机任意都能追上；身份不变时 setState 会
+  // 按 Object.is 直接 bail out，不会产生额外渲染循环。
+  const [attachedTbody, setAttachedTbody] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    const tbody = tbodyRef.current;
+    setAttachedTbody(tbodyRef.current);
+  });
+
+  useEffect(() => {
+    const tbody = attachedTbody;
     if (!tbody || rowCount <= 0) return;
 
     /**
@@ -215,5 +236,5 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
       observer.disconnect();
       tbody.removeEventListener('keydown', handleKeyDown);
     };
-  }, [tbodyRef, rowCount, onActivate]);
+  }, [attachedTbody, rowCount, onActivate]);
 }

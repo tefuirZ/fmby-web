@@ -1,4 +1,4 @@
-import { useDeferredValue, useRef, useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { manageApi, type RuntimeLogLevel, type RuntimeLogRecord } from '@fmby/v2-shared/contracts/manage';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -28,7 +28,7 @@ import {
 } from './runtime-logs/components';
 import { RuntimeLogDetailDialog } from './runtime-logs/RuntimeLogDetailDialog';
 import { RuntimeLogArchivesSection } from './runtime-logs/RuntimeLogArchivesSection';
-import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
+import { useLogViewsRoving } from './runtime-logs/useLogViewsRoving';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildRuntimeLogView,
@@ -86,6 +86,9 @@ export function ManageRuntimeLogsPage() {
     refetchInterval: 5000,
   });
 
+  // FE-LIST-KEYNAV-10：见 `useLogViewsRoving` —— 必须在 early return 之前调用，**勿下移**。
+  const logViewsTbodyRef = useLogViewsRoving((logsQuery.data?.items ?? []).length);
+
   if (logsQuery.isPending) {
     return (
       <FeedbackState
@@ -118,10 +121,6 @@ export function ManageRuntimeLogsPage() {
   const data = logsQuery.data;
   const items = data?.items ?? [];
   const logViews = items.map(buildRuntimeLogView);
-
-  // FE-LIST-KEYNAV-10：日志表行内有「详情」按钮（原生 Tab 可达）⇒ 不传 onActivate。
-  const logViewsTbodyRef = useRef<HTMLTableSectionElement>(null);
-  useTableRowRoving({ tbodyRef: logViewsTbodyRef, rowCount: logViews.length });
   const selectedLogView = selectedLog ? buildRuntimeLogView(selectedLog) : null;
   const categoryOptions = buildTargetOptions(data?.availableTargets ?? [], target);
 
