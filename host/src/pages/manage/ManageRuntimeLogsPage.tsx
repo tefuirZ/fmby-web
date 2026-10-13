@@ -1,4 +1,4 @@
-import { useDeferredValue, useRef, useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { manageApi, type RuntimeLogLevel, type RuntimeLogRecord } from '@fmby/v2-shared/contracts/manage';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -28,7 +28,7 @@ import {
 } from './runtime-logs/components';
 import { RuntimeLogDetailDialog } from './runtime-logs/RuntimeLogDetailDialog';
 import { RuntimeLogArchivesSection } from './runtime-logs/RuntimeLogArchivesSection';
-import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
+import { useLogViewsRoving } from './runtime-logs/useLogViewsRoving';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildRuntimeLogView,
@@ -86,18 +86,8 @@ export function ManageRuntimeLogsPage() {
     refetchInterval: 5000,
   });
 
-  // FE-LIST-KEYNAV-10：日志表行内有「详情」按钮（原生 Tab 可达）⇒ 不传 onActivate。
-  // ★必须位于 isPending/isError 的 early return **之前**：放在其后时，pending→loaded
-  //   迁移会让 hook 数量在两次 render 之间变化，React 直接抛
-  //   “Rendered more hooks than during the previous render.”（真实实证，
-  //   见 host/tests/table-row-keynav.test.ts 批次 C 3/N）。
-  //   rowCount 因此直接取自 logsQuery.data（此时 data 可能仍为 undefined ⇒ 0），
-  //   而不是取后面那份由 early return 之后推导出的 logViews。
-  const logViewsTbodyRef = useRef<HTMLTableSectionElement>(null);
-  useTableRowRoving({
-    tbodyRef: logViewsTbodyRef,
-    rowCount: (logsQuery.data?.items ?? []).length,
-  });
+  // FE-LIST-KEYNAV-10：见 `useLogViewsRoving` —— 必须在 early return 之前调用，**勿下移**。
+  const logViewsTbodyRef = useLogViewsRoving((logsQuery.data?.items ?? []).length);
 
   if (logsQuery.isPending) {
     return (
