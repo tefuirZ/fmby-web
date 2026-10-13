@@ -272,6 +272,10 @@ function FanoutLookup({
 
 /** `.cas` 对账报告区（fmby-web#658；只读，状态由后端 identified/reconciled 派生，不折叠）。 */
 function ReconcileReportsSection({ unwired }: { unwired: boolean }) {
+  // ★tsc TS2552 修复（#658 收尾）：本组件的 onSuccess 用 `queryClient` 失效对账报告，
+  //   但组件内此前**未声明**（主组件那份不可跨组件引用）⇒ 触发对账成功后
+  //   ReferenceError。契约测试只断结构未覆盖此运行路径，由 tsc 抓出。
+  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: queryKeys.manage.cas.reconcile(),
     queryFn: () => casAdminApi.reconcileReports(),
