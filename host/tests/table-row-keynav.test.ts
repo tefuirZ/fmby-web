@@ -4906,3 +4906,119 @@ test('接线实证（真实 UpstreamBindingsSection）：类目表头语义 + 3 
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 4/N：OperationsGapSections —— 数据源负载表 + 活跃播放表 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 两张只读统计表，各自由 mountLoad / activePlayback 两个 useQuery 驱动，挂载即有行。
+ * useOperationsRealtime(WS) 在测试环境连不上 ⇒ fail-closed 回落 REST 数据
+ * （WS 连接失败是网络事件，不触发 pageerror，探针不得抛错断言不受影响）。
+ * 两张表各自独立 roving 域 ⇒ 一并断言。
+ */
+const OPS_GAP_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { OperationsGapSections } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// 打桩 WebSocket：测试环境无 WS 服务，真实连接会触发 console error
+//（net::ERR_NAME_NOT_RESOLVED）污染「探针不得抛错」。留一个永不触发 handler 的桩
+// ⇒ hook 停在 connecting、不回连，effective* 回落 REST 数据（正是要测的 fail-closed 路径）。
+globalThis.WebSocket = class {
+  constructor(url) { this.url = url; }
+  close() {}
+};
+
+const mountLoad = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  items: [
+    { source_id: 's1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1', active_session_count: 2, playing_count: 1, paused_count: 1, media_source_count: 5, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'normal', advice: null, requests_total: 100, success_total: 98, errors_total: 2, rejected_total: 0, rate_limited_total: 0, last_hold_ms: 10 },
+    { source_id: 's2', source_name: 'Emby', provider_type: 'emby', mount_id: 'm2', active_session_count: 3, playing_count: 2, paused_count: 1, media_source_count: 8, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'warning', advice: '建议扩容', requests_total: null, success_total: null, errors_total: null, rejected_total: null, rate_limited_total: null, last_hold_ms: null },
+    { source_id: 's3', source_name: 'OpenList', provider_type: 'openlist', mount_id: 'm3', active_session_count: 0, playing_count: 0, paused_count: 0, media_source_count: 0, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'critical', advice: null, requests_total: 50, success_total: 50, errors_total: 0, rejected_total: 0, rate_limited_total: 5, last_hold_ms: 0 },
+  ],
+};
+
+const activePlayback = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  limit: 50,
+  total_returned: 2,
+  sessions: [
+    { session_id: 'sess1', device_session_id: null, remote_control_available: false, supported_commands: [], client_connection_status: null, last_command_status: null, client: { device_name: null, client_name: null, device_os: null, client_version: null }, client_info: null, user: { user_id: 'u1', username: 'alice', display_name: null }, item: { item_id: 'i1', title: '电影A', media_type: 'Movie', series_title: null }, source: { media_source_id: 'ms1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1' }, status: 'playing', play_method: null, position_ticks: null, duration_ticks: null, progress_percent: 42, started_at: '2026-01-01T00:00:00Z', last_heartbeat_at: '2026-01-01T00:00:00Z' },
+    { session_id: 'sess2', device_session_id: null, remote_control_available: false, supported_commands: [], client_connection_status: null, last_command_status: null, client: { device_name: null, client_name: null, device_os: null, client_version: null }, client_info: null, user: { user_id: 'u2', username: 'bob', display_name: null }, item: { item_id: 'i2', title: '剧集B', media_type: 'Series', series_title: null }, source: { media_source_id: 'ms2', source_name: 'Emby', provider_type: 'emby', mount_id: 'm2' }, status: 'paused', play_method: null, position_ticks: null, duration_ticks: null, progress_percent: null, started_at: '2026-01-01T00:00:00Z', last_heartbeat_at: '2026-01-01T00:00:00Z' },
+  ],
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/data-sources/load')) {
+    return json(mountLoad);
+  }
+  if (u.includes('/playback/active')) {
+    return json(activePlayback);
+  }
+  return json({ items: [], sessions: [] });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(OperationsGapSections, null)),
+);
+`;
+
+test('接线实证（真实 OperationsGapSections）：负载表 + 播放表各自独立漫游（补测批次 D 4/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-opsgap-',
+    OPS_GAP_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/operations/OperationsGapSections.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 两张表各自独立 roving 域（首行都是唯一停靠点）。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '数据源负载表首行应是唯一 Tab 停靠点');
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '活跃播放表首行应是独立域的停靠点');
+
+    // ② 负载表头语义 + 行数。
+    const loadHeads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[0].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(
+      loadHeads,
+      ['数据源', '类型', '活跃', '播放中', '暂停', '等级', '请求', '成功', '错误', '限流'],
+      '数据源负载表表头应为 数据源/类型/活跃/播放中/暂停/等级/请求/成功/错误/限流',
+    );
+    const loadRows = await page.evaluate(
+      () => document.querySelectorAll('table')[0].querySelectorAll('tbody tr[data-row-index]').length,
+    );
+    assert.equal(loadRows, 3, '负载表应渲染 3 行（与 fixture 一致）');
+
+    // ③ 负载表真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在负载表首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 负载表第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 负载表末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错（WS 回落 REST 不应产生 pageerror）');
+  } finally {
+    await h.close();
+  }
+});
