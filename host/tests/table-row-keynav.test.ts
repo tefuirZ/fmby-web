@@ -5149,3 +5149,151 @@ test('接线实证（真实 ManageEventsPage）：主事件表 + 嵌套时间线
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 6/N：ManageOperationsPage —— 概览多表各自独立漫游        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 本页由单个 overviewQuery（GET /api/manage/operations/overview）驱动出 7 张只读统计表
+ * （热播榜/活跃用户榜/媒体增长/用户注册/播放趋势/活跃快照/数据源负载，全 camelCase 直传），
+ * 并内嵌 OperationsGapSections（另有 mountLoad/activePlayback 两查询 + WS 实时 hook）。
+ * 全部只读 ⇒ 都不传 onActivate。本用例聚焦热播榜（tbody 0）为主域，并抽查其余域各自独立。
+ */
+const MANAGE_OPS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageOperationsPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// 打桩 WebSocket：OperationsGapSections 的实时 hook 测试环境连不上会触发 console error。
+globalThis.WebSocket = class {
+  constructor(url) { this.url = url; }
+  close() {}
+};
+
+const overview = {
+  days: 7,
+  windowStart: 1699900000000,
+  now: 1700000000000,
+  summary: { plays: 120, uniqueUsers: 30, totalMedia: 500, totalUsers: 80 },
+  hotItems: [
+    { itemId: 'i1', title: '电影A', mediaType: 'Movie', playCount: 40, uniqueUserCount: 20 },
+    { itemId: 'i2', title: '剧集B', mediaType: 'Series', playCount: 30, uniqueUserCount: 15 },
+    { itemId: 'i3', title: '综艺C', mediaType: 'Variety', playCount: 20, uniqueUserCount: 10 },
+  ],
+  activeUsers: [
+    { userId: 'u1', username: 'alice', playCount: 15, latestPlayedAt: 1700000000000 },
+    { userId: 'u2', username: 'bob', playCount: 10, latestPlayedAt: 1699999000000 },
+  ],
+  mediaTrend: [
+    { date: '2026-01-01', added: 5, cumulative: 100 },
+    { date: '2026-01-02', added: 3, cumulative: 103 },
+  ],
+  registrationTrend: [{ date: '2026-01-01', added: 2, cumulative: 50 }],
+  playbackTrend: [{ date: '2026-01-01', playCount: 40, uniqueUserCount: 20 }],
+  activeSnapshot: {
+    activeSessionCount: 2,
+    runningTasks: 1,
+    sessions: [
+      { sessionId: 's1', userId: 'u1', username: 'alice', itemId: 'i1', title: '电影A', paused: false, positionTicks: 1000, durationTicks: 2000, startedAt: 1700000000000, updatedAt: 1700000000000 },
+      { sessionId: 's2', userId: 'u2', username: 'bob', itemId: 'i2', title: '剧集B', paused: true, positionTicks: null, durationTicks: null, startedAt: 1699999000000, updatedAt: 1699999000000 },
+    ],
+  },
+  dataSourceLoad: [
+    { mountId: 'm1', mountName: '115 网盘', providerType: 'pan115', activeSessionCount: 2, playingCount: 1, pausedCount: 1 },
+    { mountId: 'm2', mountName: 'Emby', providerType: 'emby', activeSessionCount: 1, playingCount: 1, pausedCount: 0 },
+  ],
+};
+
+const mountLoad = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  items: [
+    { source_id: 's1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1', active_session_count: 2, playing_count: 1, paused_count: 1, media_source_count: 5, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'normal', advice: null, requests_total: 100, success_total: 98, errors_total: 2, rejected_total: 0, rate_limited_total: 0, last_hold_ms: 10 },
+  ],
+};
+
+const activePlayback = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  limit: 50,
+  total_returned: 1,
+  sessions: [
+    { session_id: 'sess1', device_session_id: null, remote_control_available: false, supported_commands: [], client_connection_status: null, last_command_status: null, client: { device_name: null, client_name: null, device_os: null, client_version: null }, client_info: null, user: { user_id: 'u1', username: 'alice', display_name: null }, item: { item_id: 'i1', title: '电影A', media_type: 'Movie', series_title: null }, source: { media_source_id: 'ms1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1' }, status: 'playing', play_method: null, position_ticks: null, duration_ticks: null, progress_percent: 42, started_at: '2026-01-01T00:00:00Z', last_heartbeat_at: '2026-01-01T00:00:00Z' },
+  ],
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/operations/overview')) {
+    return json(overview);
+  }
+  if (u.includes('/data-sources/load')) {
+    return json(mountLoad);
+  }
+  if (u.includes('/playback/active')) {
+    return json(activePlayback);
+  }
+  return json({});
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ManageOperationsPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageOperationsPage）：概览多表各自独立漫游（补测批次 D 6/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-ops-',
+    MANAGE_OPS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageOperationsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 热播榜（域 0）：表头语义 + 行数。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[0].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['#', '标题', '类型', '播放次数', '活跃用户'], '热播榜表头应为 #/标题/类型/播放次数/活跃用户');
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[0].querySelectorAll('tbody tr[data-row-index]').length),
+      3,
+      '热播榜应渲染 3 行（与 fixture 一致）',
+    );
+
+    // ② 热播榜 roving 唯一停靠点 + 真实键盘漫游。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '热播榜首行应是唯一 Tab 停靠点');
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在热播榜首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 热播榜第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 热播榜末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    // ③ 概览区多表各自独立漫游域（域 1 活跃用户榜 / 域 6 数据源负载 各从 0 起）。
+    const tbodyCount = await page.evaluate(() => document.querySelectorAll('tbody').length);
+    assert.ok(tbodyCount >= 7, `概览区应至少 7 张表（实测 ${tbodyCount} 个 tbody）`);
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '活跃用户榜应是独立域的首行停靠点');
+    assert.deepEqual(await rovingStopsIn(page, 6), ['0'], '数据源负载表应是独立域的首行停靠点');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错（WS 回落 REST 不应产生 pageerror）');
+  } finally {
+    await h.close();
+  }
+});
