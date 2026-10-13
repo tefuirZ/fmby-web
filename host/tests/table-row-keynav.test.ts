@@ -1442,6 +1442,11 @@ async function mountPageProbe(
         // 新探针统一写 file:///COMPONENT_PATH_PLACEHOLDER。
         .replace('file:///COMPONENT_PATH_PLACEHOLDER', `file://${compFile}`)
         .replace('file:///AI_PATH_PLACEHOLDER', compFile.replace('file://', ''))
+        // 需要真实 mutations hook 的段落（MediaItemArtworkSection 等）用这个占位符。
+        .replace(
+          'file:///MUTATIONS_PATH_PLACEHOLDER',
+          `file://${join(HOST_ROOT, 'src/pages/manage/media-items/hooks/useMediaItemMutations.ts')}`,
+        )
     ),
     'utf8',
   );
@@ -3317,6 +3322,9 @@ const ARTWORK_ENTRY = `
 import { createElement } from '${'${NM_REACT}'}';
 import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
 import { MediaItemArtworkSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+import { ToastProvider } from '@fmby/v2-shared/ui';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { useManageMediaItemMetadataMutations } from 'file:///MUTATIONS_PATH_PLACEHOLDER';
 
 const remoteAssets = [0, 1, 2].map((i) => ({
   id: 'asset-' + i,
@@ -3345,8 +3353,20 @@ const detail = {
   metadataStatus: {},
 };
 
+// ⚠ 两层 Provider 都不能少（都与 main.tsx / 真实页面一致）：
+//   ① ToastProvider —— 组件首行 useToast()，缺了就抛「useToast 必须在 <ToastProvider> 内部使用」；
+//   ② QueryClientProvider —— mutations 不能传 {} 糊弄：组件直接解构
+//      uploadArtworkMutation.isPending，undefined.isPending 会 TypeError 白屏。
+//      这里调真实 hook（真实 useMutation 实例），不造假的 mutation 形状。
+function Probe() {
+  const mutations = useManageMediaItemMetadataMutations('mi-1');
+  return createElement(MediaItemArtworkSection, { detail, mutations });
+}
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 createRoot(document.getElementById('root')).render(
-  createElement(MediaItemArtworkSection, { detail, mutations: {} }),
+  createElement(ToastProvider, null,
+    createElement(QueryClientProvider, { client: qc }, createElement(Probe, null))),
 );
 `;
 
@@ -3414,6 +3434,12 @@ globalThis.fetch = async (url) => {
       run_id: 'run-1',
       provider: 'smtp',
       scenario: 'validate_config',
+      // ⚠ status/summary/artifacts 缺一个就是 TypeError：
+      // 卡片无条件读 result.status（StatusBadge variant 三分支）与
+      // result.summary.title（<strong>{result.summary.title}</strong>）⇒
+      // 缺 summary 会直接白屏，而不是“没渲染出预期表格”。
+      status: 'success',
+      summary: { title: '配置校验通过', message: '一切正常' },
       steps: [0, 1, 2].map((i) => ({
         code: 's-' + i,
         title: '步骤 ' + i,
@@ -3445,6 +3471,9 @@ test('ProviderDiagnosticsCard 自检步骤表：真按钮触发后真实 Tab 步
     'fe02-diag-',
     DIAG_CARD_ENTRY,
     join(HOST_ROOT, 'src/pages/manage/auth-providers/ProviderDiagnosticsCard.tsx'),
+    // 初始没有行（表要跑完 mutation 才有行），不能等默认的 [data-row-index="0"]。
+    // 先等真实「开始自检」按钮出现，证明卡片真的挂上了。
+    'button:has-text("开始自检")',
   );
   if (!h) return;
   try {
