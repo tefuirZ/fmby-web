@@ -4801,3 +4801,108 @@ test('接线实证（真实 UpstreamMappingWizardSection）：真按钮触发后
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 3/N：UpstreamBindingsSection —— 类目与绑定表            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 类目表由 categoriesQuery（GET .../apple-cms/categories）驱动，挂载即有行。
+ * 行内有「绑定到」<select>（原生 Tab 可达）⇒ 不传 onActivate。
+ * 另有 librariesQuery（GET /api/manage/libraries）喂下拉选项，一并打桩。
+ */
+const UPSTREAM_BINDINGS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { UpstreamBindingsSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const categories = {
+  items: [
+    { id: 'c1', source_id: 'src-1', upstream_category_id: 'u1', parent_upstream_category_id: null, name: '电影', kind: 'category', library_id: 'lib1', library_name: '电影库', discovered_at: 1700000000000, updated_at: 1700000000000 },
+    { id: 'c2', source_id: 'src-1', upstream_category_id: 'u2', parent_upstream_category_id: null, name: '剧集', kind: 'category', library_id: null, library_name: null, discovered_at: 1700000000000, updated_at: 1700000000000 },
+    { id: 'c3', source_id: 'src-1', upstream_category_id: 'u3', parent_upstream_category_id: null, name: '综艺', kind: 'category', library_id: null, library_name: null, discovered_at: 1700000000000, updated_at: 1700000000000 },
+  ],
+  total: 3,
+};
+
+const libraries = {
+  items: [
+    { id: 'lib1', name: '电影库', kind: 'Movie', type_label: '电影', item_count: 0, total_items: 0, status: 'active', updated_at: '2026-01-01T00:00:00Z', sources: [] },
+    { id: 'lib2', name: '剧集库', kind: 'Series', type_label: '剧集', item_count: 0, total_items: 0, status: 'active', updated_at: '2026-01-01T00:00:00Z', sources: [] },
+  ],
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/apple-cms/categories')) {
+    return json(categories);
+  }
+  if (u.includes('/api/manage/libraries')) {
+    return json(libraries);
+  }
+  return json({ items: [] });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(UpstreamBindingsSection, { sourceId: 'src-1' })),
+);
+`;
+
+test('接线实证（真实 UpstreamBindingsSection）：类目表头语义 + 3 行 + 唯一停靠点 + 行内 select 原生 Tab（补测批次 D 3/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-bindings-',
+    UPSTREAM_BINDINGS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamBindingsSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 表头语义。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['名称', '上游 ID', '当前绑定', '绑定到', '发现时间'], '类目表表头应为 名称/上游 ID/当前绑定/绑定到/发现时间');
+
+    // ② 行数 = fixture 条数。
+    const rows = await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index]').length);
+    assert.equal(rows, 3, '应渲染 3 行（与 fixture 一致）');
+
+    // ③ roving 唯一停靠点 —— 「无接线」时所有 <tr> 没有 tabindex ⇒ [] !== ['0']。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '类目表首行应是唯一 Tab 停靠点');
+
+    // ④ 真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    // ⑤ 行内「绑定到」select 保持原生 Tab（roving 不得改写它的 tabindex）。
+    const sel = page.locator('tbody tr[data-row-index="0"] select');
+    assert.equal(await sel.count(), 1, '行内应有一个「绑定到」select');
+    assert.equal(
+      await sel.evaluate((s: any) => s.getAttribute('tabindex')),
+      null,
+      '行内 select 不得被 roving 改写 tabindex',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
