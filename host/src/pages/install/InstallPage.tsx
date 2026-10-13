@@ -14,6 +14,7 @@ import { useSession } from '@/session/SessionProvider';
 import { AdminFieldset } from './AdminFieldset';
 import { DatabaseCacheFieldset } from './DatabaseCacheFieldset';
 import { InstallCompletionPanel } from './InstallCompletionPanel';
+import { InstallProgressScreen } from './InstallProgressScreen';
 import { ServerConfigSummary } from './ServerConfigSummary';
 import { buildPgUrl } from './pgConnection';
 import {
@@ -165,6 +166,12 @@ export function InstallPage() {
         <Loader2 className={styles.spinner} />
       </div>
     );
+  }
+
+  // 动态配置阶段整页过渡（卡面）：apply 会建库/建池/建管理员，complete 会落锁，
+  // 两段都可能让界面沉默数秒 —— 用手刷新会丢掉刚写好的配置回执。
+  if (apply.isPending || complete.isPending) {
+    return <InstallProgressScreen phase={apply.isPending ? 'applying' : 'completing'} />;
   }
 
   const installError =
