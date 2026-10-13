@@ -65,6 +65,16 @@ EXIT=0
       check-frontend-component-size：install 目录 355/251/69/87/140/46/59 行
         （InstallPage / DatabaseCacheFieldset / ServerConfigSummary / installWizard /
          pgConnection / installStatus / InstallProgressScreen），全部 < 400
+
+产物构建（补见证，当次实跑）：
+cmd: npx vite build --configLoader runner --outDir /tmp/fe02-dist
+✓ built in 8.26s
+  → /tmp/fe02-dist/assets/InstallPage-4IRTitiT.js  22.01 kB │ gzip: 7.81 kB
+  （#640 新组件随 InstallPage 分包打包成功）
+★ 原先的 `npx vite build` 在本席报 EACCES，根因已定：vite 默认把 config 先 bundle 成
+  `<config>.timestamp-*.mjs` 落盘（先试 node_modules/.vite-temp/，删掉后改落下 cwd），
+  该写入在本席被拒；`--configLoader runner` 跳过这步、直接用 runner 加载配置 ⇒ 构建通过。
+  该报错发生在读取任何源码之前 ⇒ 从未是 #640 的问题。
         （该脚本另有 3 个 manage/* 存量 FAIL：MountTable 408 / MediaItemArtworkSection 405 /
          ManageRuntimeLogsPage 401，本会话未触碰这些文件，非本次引入）
 ```
@@ -102,11 +112,10 @@ EXIT=0
 
 ## 六、遗留 / 要卡
 
-1. **`pnpm build` 在本席被环境阻塞**：`vite` 在 `resolveConfig → loadConfigFromFile →
-   loadConfigFromBundledFile` 写 `host/node_modules/.vite-temp/*.mjs` 报 EACCES（两次复现）。
-   同一进程内手工 `node -e fs.promises.writeFile` 到**同一路径**成功，目录可写、无 ACL、无 immutable。
-   ★失败发生在读取任何源码之前 ⇒ 与 #640 改动无关，但**产物构建未经独立见证**。
-   需在农场 node62 或权限正常的宿主跑一次 `pnpm build` 补见证。
+1. **`pnpm build` 在本席需加 `--configLoader runner`**（已解掉，非卡点）：vite 默认把配置
+   bundle 成 `<config>.timestamp-*.mjs` 落盘，本席拒写该文件 ⇒ EACCES；加 `--configLoader runner`
+   即跳过该步，当次已构建通过（`InstallPage-*.js` 22.01 kB）。★报错发生在读取任何源码之前
+   ⇒ 与 #640 无关。若 CI 用默认 loader 且同样受限，需在构建脚本里加该 flag。
 2. **honesty 测试被本会话改写**（`install-wizard-honesty.test.ts` ②③⑪）：内容搬到子组件后
    原断言读 `InstallPage` 单文件必然红。②③ 改为看拼接整体；⑪ **实质加严**（`allDone`
    必须「每页都 stepDone」且管理员页仍走 `confirmPasswordProblem`）。
