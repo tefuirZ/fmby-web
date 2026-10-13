@@ -145,12 +145,7 @@ function pick(charset: string): string {
 export function generateStrongPassword(
   length: number = GENERATED_PASSWORD_LENGTH,
 ): string {
-  const pool = [
-    ...CHARSETS.upper,
-    ...CHARSETS.lower,
-    ...CHARSETS.digit,
-    ...CHARSETS.special,
-  ];
+  const pool = CHARSETS.upper + CHARSETS.lower + CHARSETS.digit + CHARSETS.special;
   // 四类各保底一位；长度不足 4 时无法同时满足四类 ⇒ 退到 4。
   const total = Math.max(length, 4);
   const chars = [

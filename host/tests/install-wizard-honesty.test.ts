@@ -52,7 +52,20 @@ function rendered(rel: string): string {
 }
 
 const INSTALL_PAGE = 'host/src/pages/install/InstallPage.tsx';
+const ADMIN_FIELDSET = 'host/src/pages/install/AdminFieldset.tsx';
+const COMPLETION_PANEL = 'host/src/pages/install/InstallCompletionPanel.tsx';
 const AUTH_API = 'shared/src/contracts/auth/api.ts';
+
+/**
+ * 安装向导现已拆为三个文件（#640）：
+ *   InstallPage.tsx        —— 编排（status / probe / apply / complete）
+ *   AdminFieldset.tsx      —— ③ 管理员区（强度 / 二次确认 / 一键生成 / 显隐）
+ *   InstallCompletionPanel.tsx —— ④ 完成区（凭据回显 + 落锁防误触）
+ * 故除编排页外，断言需同时看三个文件的**拼接**（拼接后再剥注释）。
+ */
+function renderedInstall(rel: string): string {
+  return [INSTALL_PAGE, ADMIN_FIELDSET, COMPLETION_PANEL].map(rendered).join('\n');
+}
 
 test('① 标题须说明这是「安装向导」（不再是 D 阶段那个只能探活的检查页）', () => {
   const src = rendered(INSTALL_PAGE);
@@ -82,7 +95,7 @@ test('③ 探活仍须标注「只探活，不写配置」（探活本身确实�
 });
 
 test('④ 完成后须说明会落锁并需重启（complete 语义）', () => {
-  const src = rendered(INSTALL_PAGE);
+  const src = renderedInstall('');
   assert.equal(
     /fmby-install\.lock|重启/.test(src),
     true,
@@ -91,12 +104,13 @@ test('④ 完成后须说明会落锁并需重启（complete 语义）', () => {
 });
 
 test('⑤ complete 必须走精确确认串（防误触，后端强校验）', () => {
-  const src = rendered(INSTALL_PAGE);
+  // 确认串的**比较**现在在完成面板里（完成区已从编排页抽出）。
+  const src = renderedInstall('');
   // 前端必须有「输入确认串才启用完成按钮」的闸门
   assert.equal(
-    /completeConfirm\s*!==\s*INSTALL_COMPLETE_CONFIRM_ACTION/.test(src),
+    /confirmValue\s*!==\s*confirmAction/.test(src),
     true,
-    'complete 按钮必须校验输入 === INSTALL_COMPLETE_CONFIRM_ACTION（防误触）',
+    'complete 按钮必须校验输入 === 精确确认串（防误触）',
   );
 });
 
@@ -146,4 +160,68 @@ test('⑨ 不得再发 V1 的四步端点（V2 后端没有，发必 404）', ()
   ]) {
     assert.equal(api.includes(legacy), false, `不得出现 V1 端点 ${legacy}`);
   }
+});
+
+/* ────────────────────────────────────────────────────────────────
+ * #640 管理员口令卡：以下为**源码/文案契约**断言，非浏览器行为测试。
+ * 口令规则本体（强度/弱口令/确认/生成器）另有**纯函数实测**：
+ *   host/tests/install-password-policy.test.ts（7 例，node:test 真跑）。
+ * ──────────────────────────────────────────────────────────────── */
+
+test('⑩ 管理员口令必须走已实测的策略函数，不得在组件里重写规则', () => {
+  const admin = rendered(ADMIN_FIELDSET);
+  for (const fn of ['assessPassword', 'confirmPasswordProblem', 'generateStrongPassword']) {
+    assert.equal(admin.includes(fn), true, `管理员区应调用已实测的 ${fn}，不得重写规则`);
+  }
+});
+
+test('⑪ 提交前 fail-closed：口令不合格就不发 apply（不只是事后报错）', () => {
+  const page = rendered(INSTALL_PAGE);
+  assert.equal(
+    /if\s*\(adminProblem\)/.test(page) && /return;/.test(page),
+    true,
+    'apply 前必须先看 adminProblem 并 return（后端不校强度，弱口令一旦 apply 就成可登录凭据）',
+  );
+  assert.equal(
+    /disabled=\{anyPending\s*\|\|\s*adminProblem\s*!==\s*null\}/.test(page),
+    true,
+    '提交按钮必须在 adminProblem 非空时禁用',
+  );
+});
+
+test('⑫ 一键生成必须用密码学安全随机源，且不得用 Math.random()', () => {
+  const policy = read('host/src/pages/install/passwordPolicy.ts');
+  assert.equal(/crypto\.getRandomValues/.test(policy), true, '生成器须用 CSPRNG');
+  for (const f of [ADMIN_FIELDSET, COMPLETION_PANEL, 'host/src/pages/install/passwordPolicy.ts']) {
+    assert.equal(read(f).includes('Math.random'), false, `${f} 不得使用 Math.random() 生成口令`);
+  }
+});
+
+test('⑬ 口令明文不得落 URL / 日志 / 持久化存储', () => {
+  for (const f of [INSTALL_PAGE, ADMIN_FIELDSET, COMPLETION_PANEL]) {
+    const src = read(f);
+    for (const leak of ['localStorage', 'sessionStorage', 'console.log']) {
+      assert.equal(src.includes(leak), false, `${f} 不得把明文口令写入 ${leak}`);
+    }
+  }
+});
+
+test('⑭ 完成页回显口令：默认隐藏 + 可显隐（裁定 ④）', () => {
+  const panel = rendered(COMPLETION_PANEL);
+  assert.equal(/type=\{visible\s*\?\s*'text'\s*:\s*'password'\}/.test(panel), true,
+    '完成页口令框须在 text / password 间切换');
+  assert.equal(/useState\(false\)/.test(panel), true,
+    '显隐状态初值必须是 false（即默认隐藏）');
+  assert.equal(/PasswordToggle/.test(panel), true, '须复用既有 PasswordToggle 而非自造控件');
+});
+
+test('⑮ 用户名不得加 ASCII-only 白名单（中文等 Unicode 必须可用）', () => {
+  const admin = rendered(ADMIN_FIELDSET);
+  assert.equal(/pattern=/.test(admin), false, '不得用 HTML pattern 限定 ASCII 用户名');
+  assert.equal(/maxLength=/.test(admin), false, '不得加会截断 Unicode 的长度上限');
+  assert.equal(
+    /replace\(\s*\/\[\\x00-\\x7F\]/.test(admin) || /\[\^\\x00-\\x7F\]/.test(admin),
+    false,
+    '不得用正则过滤掉非 ASCII 字符',
+  );
 });

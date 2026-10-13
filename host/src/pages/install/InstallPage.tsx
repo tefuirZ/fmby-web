@@ -12,6 +12,9 @@ import {
 import { queryKeys } from '@fmby/v2-shared/query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { useSession } from '@/session/SessionProvider';
+import { AdminFieldset } from './AdminFieldset';
+import { InstallCompletionPanel } from './InstallCompletionPanel';
+import { confirmPasswordProblem } from './passwordPolicy';
 import styles from '../login/LoginPage.module.css';
 
 /**
@@ -78,7 +81,11 @@ export function InstallPage() {
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminDisplayName, setAdminDisplayName] = useState('');
+  // #640 裁定 ②：二次确认口令与强度判定。判定本体在 passwordPolicy.ts（纯函数、可实测），
+  // 这里只持有确认串并做提交前 fail-closed —— 不重复实现规则。
+  const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('');
   const [completeConfirm, setCompleteConfirm] = useState('');
+  const [adminSubmitError, setAdminSubmitError] = useState<string | null>(null);
 
   const status = useQuery({
     queryKey: queryKeys.install.status(),
@@ -86,6 +93,18 @@ export function InstallPage() {
   });
   const state = readInstallState(status.data);
   const canProbe = status.data?.can_probe !== false && state !== 'completed';
+
+  /**
+   * 管理员输入是否可提交。null = 可提交。
+   * 提交前拦下（而不是提交后报错），因为 apply 一旦成功就建了管理员，
+   * 弱口令会直接变成可登录凭据、且服务端只存哈希、**无法回收**。
+   */
+  const adminProblem: string | null =
+    adminPassword.length === 0
+      ? '请先设置管理员密码'
+      : adminPassword.trim().length === 0
+        ? '密码不能只有空白字符'
+        : confirmPasswordProblem(adminPassword, adminPasswordConfirm);
 
   const probeDb = useMutation({
     mutationFn: (data: DatabaseProbeRequest) => authApi.probeDatabase(data),
@@ -189,6 +208,13 @@ export function InstallPage() {
             className={styles.form}
             onSubmit={(event) => {
               event.preventDefault();
+              // ★fail-closed：强度/二次确认不过就不发请求（后端当前不校强度，
+              //   在前端拿这道门拦住，比等一个哈希了的弱口令留下更便宜）。
+              if (adminProblem) {
+                setAdminSubmitError(adminProblem);
+                return;
+              }
+              setAdminSubmitError(null);
               apply.mutate();
             }}
           >
@@ -306,71 +332,42 @@ export function InstallPage() {
               )}
             </fieldset>
 
-            {/* ── ③ 管理员 ───────────────────────────────────────────── */}
-            <fieldset className={styles.fieldset}>
-              <legend className={styles.legend}>③ 管理员账号</legend>
-              <label className={styles.fieldGroup}>
-                用户名
-                <input
-                  className={styles.input}
-                  required
-                  autoComplete="username"
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                />
-              </label>
-              <label className={styles.fieldGroup}>
-                密码
-                <input
-                  className={styles.input}
-                  required
-                  type="password"
-                  autoComplete="new-password"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                />
-              </label>
-              <label className={styles.fieldGroup}>
-                显示名（可选）
-                <input
-                  className={styles.input}
-                  value={adminDisplayName}
-                  onChange={(e) => setAdminDisplayName(e.target.value)}
-                />
-              </label>
-            </fieldset>
+            {/* ── ③ 管理员（#640 ②③④：强度/二次确认/一键生成/显隐在组件内）── */}
+            <AdminFieldset
+              username={adminUsername}
+              password={adminPassword}
+              confirm={adminPasswordConfirm}
+              displayName={adminDisplayName}
+              onUsernameChange={setAdminUsername}
+              onPasswordChange={setAdminPassword}
+              onConfirmChange={setAdminPasswordConfirm}
+              onDisplayNameChange={setAdminDisplayName}
+            />
+            {adminSubmitError ? (
+              <p className={styles.errorBanner} role="alert">
+                {adminSubmitError}
+              </p>
+            ) : null}
 
-            <button className={styles.submitButton} type="submit" disabled={anyPending}>
+            <button
+              className={styles.submitButton}
+              type="submit"
+              disabled={anyPending || adminProblem !== null}
+            >
               {apply.isPending ? '安装中…' : '应用安装并创建管理员'}
             </button>
 
-            {/* ── ④ 完成（落锁）───────────────────────────────────────── */}
+            {/* ④ 完成（落锁 + 凭据回显：#640 裁定「完成页展示账号与密码」）*/}
             {apply.isSuccess ? (
-              <fieldset className={styles.fieldset}>
-                <legend className={styles.legend}>④ 完成安装</legend>
-                <p className={styles.noticeBanner}>
-                  最后一步会落盘安装锁（<code>fmby-install.lock</code>），此后主应用接管。
-                  需要手动输入 <code>{INSTALL_COMPLETE_CONFIRM_ACTION}</code> 以防误触。
-                </p>
-                <label className={styles.fieldGroup}>
-                  输入 {INSTALL_COMPLETE_CONFIRM_ACTION} 以确认
-                  <input
-                    className={styles.input}
-                    value={completeConfirm}
-                    onChange={(e) => setCompleteConfirm(e.target.value)}
-                    placeholder={INSTALL_COMPLETE_CONFIRM_ACTION}
-                    autoComplete="off"
-                  />
-                </label>
-                <button
-                  className={styles.submitButton}
-                  type="button"
-                  disabled={complete.isPending || completeConfirm !== INSTALL_COMPLETE_CONFIRM_ACTION}
-                  onClick={() => complete.mutate()}
-                >
-                  {complete.isPending ? '提交中…' : '标记安装完成'}
-                </button>
-              </fieldset>
+              <InstallCompletionPanel
+                username={adminUsername.trim()}
+                password={adminPassword}
+                confirmAction={INSTALL_COMPLETE_CONFIRM_ACTION}
+                confirmValue={completeConfirm}
+                onConfirmChange={setCompleteConfirm}
+                completing={complete.isPending}
+                onComplete={() => complete.mutate()}
+              />
             ) : null}
           </form>
         )}
