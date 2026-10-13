@@ -3579,3 +3579,109 @@ test('ManageMediaReviewsPage 待审项表：真实 Tab 步数 + 唯一停靠点 
     await h.close();
   }
 });
+
+/* ------------------------------------------------------------------ */
+/* ManageSystemAboutPage 接线实证（补测批次 B 1/N）                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 本页三张表：运行时（静态 4 行）、运行依赖（query 驱动）、链接（静态 4 行）。
+ * 三个 roving 域彼此独立，其中两张的行数与 query 完全无关 —— 正好用来钉死
+ * 「依赖表就绪不影响另外两表停靠点」。
+ *
+ * fixture 必须是**后端原始 snake_case**（shared/src/contracts/manage/system-about/api.ts
+ * 的 RawSystemAboutResponse）：httpClient 把 JSON 直接交给 fromRaw，喂 camelCase
+ * 会让 runtime/links/dependencies 全 undefined 而渲染不出行。
+ */
+const SYSTEM_ABOUT_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageSystemAboutPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const dependencies = [0, 1, 2].map((i) => ({
+  id: 'dep-' + i,
+  name: '依赖' + i,
+  status: ['ok', 'missing', 'error'][i],
+  required: i !== 2,
+  version: '1.' + i + '.0',
+  message: i === 1 ? '探测失败' : null,
+}));
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  const body = u.includes('/api/manage/system/about')
+    ? {
+        generated_at: '2026-01-01T00:00:00Z',
+        app: { name: 'fmby', version: '0.1.0' },
+        links: {
+          github_profile: 'https://example.com/profile',
+          source_repo: 'https://example.com/src',
+          distribution_repo: 'https://example.com/dist',
+          dockerhub_repo: 'https://example.com/hub',
+          changelog: 'https://example.com/changelog',
+        },
+        runtime: {
+          rust_package_version: '0.1.0',
+          target_os: 'linux',
+          target_arch: 'x86_64',
+          features: ['a', 'b'],
+        },
+        dependencies,
+        warnings: [],
+      }
+    : {};
+  return new Response(JSON.stringify(body), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(ManageSystemAboutPage, null)),
+);
+`;
+
+test('接线实证（ManageSystemAboutPage）：三张表各自独立漫游，两张静态表行数不受 query 影响（补测批次 B 1/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-sysabout-',
+    SYSTEM_ABOUT_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageSystemAboutPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody').length),
+      3,
+      '运行时/运行依赖/链接三张表应有各自 tbody（索引域独立）',
+    );
+    // 运行时表：静态 4 行、零控件 ⇒ 键盘入口全靠 roving 停靠点（真实键盘起步）。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '运行时表首行应是唯一 Tab 停靠点');
+    assert.equal(await tabIntoRow(page, 0), 0, '连按 Tab 应能走到运行时表活动行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, '运行时表 ↓ → 第 2 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 3, '运行时表 End → 末行');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['3'], '运行时表停靠点须跟着焦点走');
+
+    // 运行依赖表：由 query 驱动，3 行。停靠点独立于运行时表（index 各从 0 起）。
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '依赖表首行应是唯一停靠点');
+    await tabIntoRow(page, 1);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 1), 2, '依赖表 ↓↓ → 第 3 行');
+    assert.equal(await focusedRowIn(page, 0), null, '焦点须在依赖表，不得串到运行时表');
+
+    // 链接表：静态 4 行。必须仍停在 index 0 —— 上一表走到第 3 行不能带偏它。
+    assert.deepEqual(await rovingStopsIn(page, 2), ['0'], '链接表停靠点须独立，仍为首行');
+    assert.equal(await tabIntoRow(page, 2), 0, '连按 Tab 应能走到链接表活动行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 2), 0, '链接表 Home → 首行');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
