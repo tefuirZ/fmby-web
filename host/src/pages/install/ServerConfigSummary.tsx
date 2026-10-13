@@ -12,31 +12,11 @@
 
 import type { WizardValues } from './installWizard';
 import styles from '../login/LoginPage.module.css';
+import { describeCache, describeDatabase } from './serverConfigLabels';
+
 
 export interface ServerConfigSummaryProps {
   values: WizardValues;
-}
-
-/** 数据库一行的可读描述（口令一律打码，摘要不是回显密码的地方）。 */
-function describeDatabase(values: WizardValues): string {
-  if (values.dbKind === 'sqlite') {
-    return values.sqlitePath.trim().length > 0
-      ? `SQLite · ${values.sqlitePath.trim()}`
-      : 'SQLite · 内置默认路径';
-  }
-  const { host, port, database } = values.pg;
-  const suffix = port.trim().length > 0 ? `:${port.trim()}` : ':5432';
-  return `PostgreSQL · ${host.trim() || '（未填主机）'}${suffix}/${database.trim() || '（未填库名）'}`;
-}
-
-function describeCache(values: WizardValues): string {
-  if (values.cacheKind === 'redis') {
-    return values.redisUrl.trim().length > 0
-      ? `Redis · ${values.redisUrl.trim()}`
-      : 'Redis · （未填连接串）';
-  }
-  // 卡面语义：未填 Redis ⇒ 后端自动回落内存 + 文件。
-  return '内置（内存 + 文件）';
 }
 
 export function ServerConfigSummary({ values }: ServerConfigSummaryProps) {
