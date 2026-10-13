@@ -3838,3 +3838,226 @@ test('接线实证（真实 SyncSection）：输入挂载 ID 后两张只读表�
     await h.close();
   }
 });
+
+/**
+ * PreviewBrowseSection（预览凭据浏览）探针。
+ *
+ * 表由 useMutation 驱动：填完预览凭据 ID 点「浏览目录」提交表单才会有 tbody。
+ * 初始 DOM 零 tbody，故 readySelector 用表单里立即可见的输入框，而不是行。
+ */
+const PREVIEW_BROWSE_ENTRY = `
+import { createElement } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { PreviewBrowseSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+// fixture 用后端原始 snake_case（RawShareBrowseCommonResponse /
+// RawShareBrowseEntry）—— fromShareBrowseResponse 直接读 JSON 原字段。
+const entries = [0, 1, 2, 3].map((i) => ({
+  name: '目录/文件 ' + i,
+  path: '/dir/file-' + i,
+  cid: 'c-' + i,
+  is_dir: i % 2 === 0,
+  size: i === 1 ? null : 1024 * i,
+}));
+
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  const method = String(init?.method ?? 'GET').toUpperCase();
+  if (method === 'POST' && u.includes('/api/manage/pan115/previews/')) {
+    return new Response(
+      JSON.stringify({
+        current_path: '/dir',
+        parent_path: '/',
+        current_cid: 'c',
+        total: entries.length,
+        offset: 0,
+        limit: 100,
+        has_more: false,
+        entries,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(PreviewBrowseSection, null)),
+);
+`;
+
+test('接线实证（真实 PreviewBrowseSection）：提交表单后只读目录表独立漫游（补测批次 B 3/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-prevbrowse-',
+    PREVIEW_BROWSE_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/pan115-share/components/PreviewBrowseSection.tsx'),
+    'input[aria-label="预览凭据 ID"]',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+
+    // 提交前：连 tbody 都没有，不该有任何停靠点。
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody').length),
+      0,
+      '提交前不应渲染任何 tbody（mutation 未跑）',
+    );
+
+    // 真实用户路径：填 ID → 点提交按钮（disabled 初态靠 previewId 非空解锁）。
+    await page.locator('input[aria-label="预览凭据 ID"]').fill('pv-1');
+    await clickButtonByText(page, '浏览目录');
+    await page.waitForSelector('[data-row-index="0"]', { timeout: 20000 });
+
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody').length),
+      1,
+      '浏览结果应渲染单张目录表',
+    );
+
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '目录表首行应是唯一 Tab 停靠点');
+    // 真实连续 Tab 步数：1→previewId 输入框，2→path 输入框，3→提交按钮，
+    // 4→.tableWrap(region)，5→行停靠点。
+    assert.equal(
+      await countTabPressesToRow(page, 0),
+      5,
+      '真实 Tab 步数应为 两个输入框→按钮→滚动容器→行停靠点',
+    );
+    assert.equal(await focusedRowIn(page, 0), 0, '目录表起始活动行应为 index 0');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, '↓ 移到下一行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 3, 'End → 末行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 3, '末行再按 ↓ 不应越界回绕');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Home → 首行');
+
+    // 只读清单（行内无控件、不传 onActivate）：Enter 不应触发行操作。
+    await page.keyboard.press('Enter');
+    assert.deepEqual(h.errors, [], '只读表按 Enter 不得抛错');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/**
+ * ShareItemBrowseSection（匿名分享浏览）探针。
+ *
+ * 它不自己画表，而是委托给文件内的 BrowseResultTable（与 PreviewBrowseSection
+ * 的内联表是**两套独立接线**，都要各自覆盖）。BrowseResultTable 还有一个
+ * 别的表没有的分支：`data.entries.length === 0` 时 early return，tbody 根本不挂载。
+ */
+const SHARE_ITEM_BROWSE_ENTRY = `
+import { createElement } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { ShareItemBrowseSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const entries = [0, 1, 2].map((i) => ({
+  name: '条目 ' + i,
+  path: '/p/' + i,
+  cid: 'c-' + i,
+  is_dir: i === 0,
+  size: i === 0 ? null : 2048,
+}));
+
+function body(over) {
+  return {
+    current_path: '/p',
+    parent_path: '/',
+    current_cid: 'c',
+    total: entries.length,
+    offset: 0,
+    limit: 100,
+    has_more: false,
+    entries,
+    ...over,
+  };
+}
+
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  const method = String(init?.method ?? 'GET').toUpperCase();
+  if (method === 'POST' && u.includes('/api/manage/pan115/share-items/browse')) {
+    // 提取码 empty ⇒ 走「该目录/分享下没有可列出的条目。」early return 分支。
+    // ★wire 上是 snake_case（实测 body 为 {"share_code":...}），不是 camelCase。
+    const text = String(init?.body ?? '');
+    const empty = text.includes('"receive_code":"empty"');
+    return new Response(
+      JSON.stringify(body(empty ? { entries: [], total: 0 } : {})),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(ShareItemBrowseSection, null)),
+);
+`;
+
+test('接线实证（真实 ShareItemBrowseSection / BrowseResultTable）：匿名分享表漫游 + 空结果早退（补测批次 B 4/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-sharebrowse-',
+    SHARE_ITEM_BROWSE_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/pan115-share/components/ShareItemBrowseSection.tsx'),
+    'input[aria-label="115 分享码"]',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody').length),
+      0,
+      '提交前不应渲染任何 tbody',
+    );
+
+    // —— 有数据分支 ——
+    await page.locator('input[aria-label="115 分享码"]').fill('code-1');
+    await clickButtonByText(page, '浏览分享');
+    await page.waitForSelector('[data-row-index="0"]', { timeout: 20000 });
+
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '浏览结果表首行应是唯一 Tab 停靠点');
+    // 真实连续 Tab 步数：1→分享码，2→提取码，3→提交按钮，4→滚动容器，5→行。
+    assert.equal(
+      await countTabPressesToRow(page, 0),
+      5,
+      '真实 Tab 步数应为 两个输入框→按钮→滚动容器→行停靠点',
+    );
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 2, '↓↓ 移到末行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Home → 首行');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(h.errors, [], '只读表按 Enter 不得抛错');
+
+    // —— 空结果 early return 分支 ——
+    // BrowseResultTable 在 entries.length === 0 时提前 return，tbody 整个不挂载。
+    // 此时残留的 tabindex 必须一并消失，不能留下指向已卸载行的幽灵停靠点。
+    await page.locator('input[aria-label="115 提取码"]').fill('empty');
+    await clickButtonByText(page, '浏览分享');
+    await page.waitForSelector('text=该目录/分享下没有可列出的条目。', { timeout: 20000 });
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody tr[tabindex]').length),
+      0,
+      '空结果早退后不得残留任何 roving 停靠点',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
