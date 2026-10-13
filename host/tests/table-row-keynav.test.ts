@@ -4216,6 +4216,107 @@ createRoot(document.getElementById('root')).render(
 );
 `;
 
+/**
+ * ProviderSearchPanel 探针：候选表（有行内「选用」按钮 ⇒ 不传 onActivate）。
+ *
+ * 形态要点：searchQuery 用 enabled 门控（关键词非空才发），所以候选表是
+ * **输入后晚挂载** 的——tbodyRef 首次 commit 时为 null，但 rowCount 也是 0，
+ * 随输入变为 N。本例据此验证真实 late-mount + 独立 roving 域。
+ *
+ * ⚠ 本卡既有结论：动态 rowCount 让 effect 巧合重跑，因此本例**不**承担
+ * useTableRowRoving 的 attachedTbody 晚挂载回归职责（那由 ManageSystemAboutPage
+ * 的静态 rowCount + pending early return 实证承担）。
+ */
+const MEDIA_REVIEW_SEARCH_ENTRY = `
+import { createElement } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { ProviderSearchPanel } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const CANDIDATES = [
+  { provider: 'tmdb', entityType: 'movie', providerItemId: 'tt-1',
+    title: '沙丘', originalTitle: 'Dune', year: 2021, overview: null,
+    confidence: 0.9, externalId: null },
+  { provider: 'tmdb', entityType: 'movie', providerItemId: 'tt-2',
+    title: '沙丘2', originalTitle: 'Dune: Part Two', year: 2024, overview: null,
+    confidence: 0.8, externalId: null },
+];
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  const body = u.includes('/api/manage/media-reviews/provider-search')
+    ? { provider: 'tmdb', query: 'dune', candidates: CANDIDATES }
+    : {};
+  return new Response(JSON.stringify(body), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ProviderSearchPanel, { onPick: () => {} })),
+);
+`;
+
+test('接线实证（真实 ProviderSearchPanel）：输入后晚挂载的候选表只有一个 Tab 停靠点（补测批次 C 4/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-mreview-',
+    MEDIA_REVIEW_SEARCH_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/media-reviews/components.tsx'),
+    // 查询被 enabled 门控，候选表要输入关键词才挂载 ⇒ 初始 DOM 里没有任何
+    // data-row-index。改等「一直可见的输入框」，表格就绪由测试自己
+    // fill + waitForSelector 把握。
+    'input[placeholder="输入标题后搜索候选"]',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+
+    // enabled 门控：未输入关键词时无 tbody（候选表尚未挂载）。
+    assert.equal(await page.evaluate(() => document.querySelectorAll('tbody').length), 0,
+      '关键词为空时查询未发出，候选表不应存在');
+
+    // 真实输入触发查询 → 候选表挂载。
+    const input = page.locator('input[placeholder="输入标题后搜索候选"]');
+    await input.fill('dune');
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    assert.equal(await page.evaluate(() => document.querySelectorAll('tbody').length), 1,
+      '候选表应恰好一个 tbody');
+
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '候选表首行应是唯一 Tab 停靠点');
+
+    // 真实 Tab 起步：provider select → 关键词输入框 → 行停靠点，共 3 跳。
+    // 实测 2 跳：provider select → 关键词输入框 → 候选行停靠点。
+    // fill 后焦点已在输入框内，故从输入框算起只需 1 次 Tab 到行；
+    // 从 select 起算则共 2 跳（select 本身是第 1 个停靠点）。
+    assert.equal(await countTabPressesToRow(page, 0), 2, '真实 Tab 2 跳到达候选行停靠点');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 进入后活动行应为 index 0');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, '↓ 移到 index 1');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 1, 'End 应停在末行（只有 2 行）');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Home 回到首行');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '停靠点须跟着焦点走');
+
+    // 行内「选用」按钮保持原生 Tab：不因 roving 变成 tabIndex=-1。
+    assert.equal(await countTabPressesToRow(page, 0), 2, '行停靠点步数不受行内按钮影响');
+    const pick = page.locator('tbody').nth(0).locator('tr[data-row-index="0"] button');
+    assert.equal(await pick.count(), 1, '行内应有一个「选用」按钮');
+    assert.equal((await pick.textContent())?.trim(), '选用', '行内按钮文案应为选用');
+    assert.equal(await pick.evaluate((b: any) => b.getAttribute('tabindex')), null,
+      '行内按钮不得被 roving 改写 tabindex（保持原生 Tab 行为）');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
 test('接线实证（真实 ManageRuntimeLogsPage）：行停靠点唯一 + 行内详情按钮保持原生 Tab（补测批次 C 3/N）', async (t) => {
   const h = await mountPageProbe(
     t,
