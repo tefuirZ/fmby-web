@@ -13,7 +13,7 @@
  * 组件保持在 400 行门禁内（component-size）。
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   casAdminApi,
@@ -33,6 +33,7 @@ import {
   resolveReconcileView,
   summarizeReconcile,
 } from './cas/reconcilePresentation';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 
 export function ManageCasPage() {
   const queryClient = useQueryClient();
@@ -130,6 +131,12 @@ function DriveConfigTable({
   // 「保存」就是无操作；此时不提示「已保存」（⑧ 的 dirty 判据来源）。
   const [drafts, setDrafts] = useState<Record<string, CasDriveConfig>>({});
 
+  // FE-LIST-KEYNAV-10：本表行内有 checkbox / 数字输入 / 「保存」按钮，
+  // 均已具备原生 Tab 序 ⇒ 不传 onActivate，不凭空给行加 Enter 语义（保存是写操作）。
+  // ★hook 必须早于下面的「空列表」early return（Hooks 规则）。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef, rowCount: configs.length });
+
   const patch = (config: CasDriveConfig, next: Partial<CasDriveConfig>) => {
     const key = casDriveKey(config);
     setDrafts((prev) => ({
@@ -155,13 +162,13 @@ function DriveConfigTable({
           <th />
         </tr>
       </thead>
-      <tbody>
-        {configs.map((config) => {
+      <tbody ref={tbodyRef}>
+        {configs.map((config, index) => {
           const key = casDriveKey(config);
           const draft = drafts[key] ?? config;
           const dirty = isDirty(config);
           return (
-            <tr key={key}>
+            <tr key={key} data-row-index={index}>
               <td>
                 {config.providerType} · {config.driveRef}
               </td>

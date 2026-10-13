@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Trash2, Upload } from 'lucide-react';
 import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
 import type {
@@ -22,6 +22,7 @@ import {
 import styles from '../MediaItemDetail.module.css';
 import type { MediaItemMutations } from '../types';
 import { ArtImage } from './ArtImage';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 interface MediaItemArtworkSectionProps {
   detail: ManageMediaItemDetailRecord;
@@ -61,6 +62,11 @@ export function MediaItemArtworkSection({
   // 上传成功后靠改 key 强制重建 input，把已选文件名清掉。
   const [fileInputKey, setFileInputKey] = useState(0);
   const [pendingDelete, setPendingDelete] = useState<PendingArtworkDelete | null>(null);
+
+  // FE-LIST-KEYNAV-10：「随文件资源」表。行内有「打开」链接（原生 Tab 可达）
+  // ⇒ 不传 onActivate，不凭空给行加 Enter 语义。
+  const remoteAssetsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: remoteAssetsTbodyRef, rowCount: detail.remoteAssets.length });
 
   const handleUpload = () => {
     if (!selectedFile) {
@@ -320,9 +326,9 @@ export function MediaItemArtworkSection({
                   <th>操作</th>
                 </tr>
               </thead>
-              <tbody>
-                {detail.remoteAssets.map((asset) => (
-                  <tr key={asset.id}>
+              <tbody ref={remoteAssetsTbodyRef}>
+                {detail.remoteAssets.map((asset, index) => (
+                  <tr key={asset.id} data-row-index={index}>
                     <td>
                       <div className={sharedStyles.stackText}>
                         <span className={sharedStyles.primaryText}>

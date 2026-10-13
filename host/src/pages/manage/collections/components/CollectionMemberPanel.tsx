@@ -1,10 +1,13 @@
 /** 合集成员明细面板（V1F 拆分：ManageCollectionsPage → 子组件）。 */
 
+import { useRef } from 'react';
+
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import type { useCollectionDetailQuery } from '../hooks';
 import { moveMemberIds } from './memberReorder';
+import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 interface CollectionMemberPanelProps {
   collectionId: string;
@@ -30,6 +33,20 @@ export function CollectionMemberPanel({
   togglePending,
 }: CollectionMemberPanelProps) {
   void collectionId;
+
+  // FE-LIST-KEYNAV-10（A 方案）：本表是**子表**，DOM 上嵌在父表（CollectionListTable）
+  // 展开行的 <td> 里。父子**各自独立索引域** ⇒ 这里同样从 0 起算，不与父表拼接，
+  // 父表的 data-row-index 也不会被本表影响（两个 tbody 互不读写）。
+  // 行内已有 4 个真按钮（上移/下移/启用停用/移除），均有原生 Tab 序 ⇒ 不传 onActivate，
+  // 不凭空给行加 Enter 语义。
+  //
+  // ⚠ hook 必须放在**所有 early return 之前**（Hooks 规则）：本组件上面有三个
+  // early return（加载中 / 加载失败 / 空成员），把 hook 放在它们之后会让
+  // 「本组件是否含 hook」随数据变化 ⇒ React 报
+  // `Internal React error: Expected static flag was missing`（实测复现）。
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef, rowCount: detailQuery.data?.members?.length ?? 0 });
+
   if (detailQuery.isPending) {
     return <div className={styles.tableHint}>正在加载成员明细…</div>;
   }
@@ -67,9 +84,9 @@ export function CollectionMemberPanel({
               <th className="nowrap">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={tbodyRef}>
             {members.map((member, index) => (
-              <tr key={member.id}>
+              <tr key={member.id} data-row-index={index}>
                 <td>{member.titleSnapshot}</td>
                 <td>{member.mediaKind}</td>
                 <td>{member.yearSnapshot ?? '—'}</td>

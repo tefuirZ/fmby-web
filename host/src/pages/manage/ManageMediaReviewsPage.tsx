@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   isMediaReviewsUnwiredError,
@@ -12,6 +12,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { EmptyTableRow, ManagePageHeader, ManageSectionCard, getManageStatusVariant } from './longtail-shared/components';
 import { ProviderSearchPanel, ReviewDetailPanel, ReviewMobileCard } from './media-reviews/components';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 import {
   RESOLVE_ACTIONS,
   REVIEW_STAGE_LABELS as STAGE_LABELS,
@@ -73,6 +74,11 @@ export function ManageMediaReviewsPage() {
   });
 
   const items = listQuery.data?.items ?? [];
+
+  // FE-LIST-KEYNAV-10：工单表行内有复审操作按钮（原生 Tab 可达）⇒ 不传 onActivate。
+  // ★hook 必须早于下面 isPending / isError 两个 early return（Hooks 规则）。
+  const itemsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: itemsTbodyRef, rowCount: items.length });
 
   if (listQuery.isPending) {
     return (
@@ -203,15 +209,15 @@ export function ManageMediaReviewsPage() {
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={itemsTbodyRef}>
               {items.length === 0 ? (
                 <EmptyTableRow colSpan={8} title="暂无审核工单" description="待后端返回队列数据后展示。" />
               ) : (
-                items.map((item) => {
+                items.map((item, index) => {
                   const expanded = expandedId === item.id;
                   return (
                     <Fragment key={item.id}>
-                      <tr>
+                      <tr data-row-index={index}>
                         <td>{item.priority}</td>
                         <td className={styles.mono}>{item.mediaItemId}</td>
                         <td>{STAGE_LABELS[item.reviewStage] ?? item.reviewStage}</td>

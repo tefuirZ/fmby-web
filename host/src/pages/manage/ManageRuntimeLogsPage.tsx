@@ -28,6 +28,7 @@ import {
 } from './runtime-logs/components';
 import { RuntimeLogDetailDialog } from './runtime-logs/RuntimeLogDetailDialog';
 import { RuntimeLogArchivesSection } from './runtime-logs/RuntimeLogArchivesSection';
+import { useLogViewsRoving } from './runtime-logs/useLogViewsRoving';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildRuntimeLogView,
@@ -84,6 +85,9 @@ export function ManageRuntimeLogsPage() {
       }),
     refetchInterval: 5000,
   });
+
+  // FE-LIST-KEYNAV-10：见 `useLogViewsRoving` —— 必须在 early return 之前调用，**勿下移**。
+  const logViewsTbodyRef = useLogViewsRoving((logsQuery.data?.items ?? []).length);
 
   if (logsQuery.isPending) {
     return (
@@ -312,7 +316,7 @@ export function ManageRuntimeLogsPage() {
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={logViewsTbodyRef}>
               {items.length === 0 ? (
                 <EmptyTableRow
                   colSpan={7}
@@ -320,8 +324,8 @@ export function ManageRuntimeLogsPage() {
                   description="如果刚启动服务还没打出文件日志，先操作几次再回来刷。"
                 />
               ) : (
-                logViews.map((view) => (
-                  <tr key={view.record.id}>
+                logViews.map((view, index) => (
+                  <tr key={view.record.id} data-row-index={index}>
                     <td>{formatDateTime(view.record.timestamp)}</td>
                     <td>
                       <StatusBadge

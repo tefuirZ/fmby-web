@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { manageApi } from '@fmby/v2-shared/contracts/manage';
 import {
@@ -10,6 +10,7 @@ import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { EmptyTableRow, ManageSectionCard } from '../longtail-shared/components';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 import { formatEpochMs } from './shared';
 
 type BindScope = 'apple-cms' | 'emby';
@@ -76,6 +77,11 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
   });
 
   const items = categoriesQuery.data?.items ?? [];
+
+  // FE-LIST-KEYNAV-10：类目表行内有「绑定到」下拉（原生 Tab 可达）⇒ 不传 onActivate。
+  // ★hook 必须早于下面 isPending / isError 两个 early return（Hooks 规则）。
+  const itemsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: itemsTbodyRef, rowCount: items.length });
 
   // 服务端数据回来后以它为草稿基线（避免脏草稿覆盖真实绑定）。
   useEffect(() => {
@@ -177,10 +183,11 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
                   <th>发现时间</th>
                 </tr>
               </thead>
-              <tbody>
-                {items.map((item) => (
+              <tbody ref={itemsTbodyRef}>
+                {items.map((item, index) => (
                   <CategoryRow
                     key={item.id}
+                    index={index}
                     item={item}
                     libraries={libraries.map((l) => ({ id: l.id, name: l.name }))}
                     value={draft[item.id] ?? ''}
@@ -198,18 +205,20 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
 
 function CategoryRow({
   item,
+  index,
   libraries,
   value,
   onChange,
 }: {
   item: UpstreamCategoryRecord;
+  index: number;
   libraries: { id: string; name: string }[];
   value: string;
   onChange: (libraryId: string) => void;
 }) {
   const changed = value !== (item.libraryId ?? '');
   return (
-    <tr>
+    <tr data-row-index={index}>
       <td>{item.name}</td>
       <td className={styles.mono}>{item.upstreamCategoryId}</td>
       <td>
@@ -245,6 +254,13 @@ export function UpstreamBindingsOverview({ sourceId }: { sourceId: string }) {
     queryFn: () => upstreamsApi.listBindings(sourceId),
   });
 
+  // FE-LIST-KEYNAV-10：绑定总览是**纯只读清单**（行内无控件）⇒ 不传 onActivate。
+  const bindingsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: bindingsTbodyRef,
+    rowCount: bindingsQuery.data?.items.length ?? 0,
+  });
+
   return (
     <ManageSectionCard
       title="当前生效绑定"
@@ -267,12 +283,12 @@ export function UpstreamBindingsOverview({ sourceId }: { sourceId: string }) {
                 <th>更新时间</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={bindingsTbodyRef}>
               {(bindingsQuery.data?.items ?? []).length === 0 ? (
                 <EmptyTableRow colSpan={4} title="暂无绑定" description="" />
               ) : (
-                (bindingsQuery.data?.items ?? []).map((b) => (
-                  <tr key={b.id}>
+                (bindingsQuery.data?.items ?? []).map((b, index) => (
+                  <tr key={b.id} data-row-index={index}>
                     <td>{b.name}</td>
                     <td>{b.kind}</td>
                     <td>{b.libraryName ?? '—'}</td>

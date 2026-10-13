@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   eventsApi,
@@ -12,6 +12,7 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { EmptyTableRow, ManagePageHeader, ManageSectionCard, getManageStatusVariant } from './longtail-shared/components';
+import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 
 const SEVERITY_LABELS: Record<string, string> = {
   info: '信息',
@@ -49,6 +50,11 @@ export function ManageEventsPage() {
   });
 
   const events = listQuery.data?.events ?? [];
+
+  // FE-LIST-KEYNAV-10：主表行内有「详情」按钮（原生 Tab 可达）⇒ 不传 onActivate。
+  // ★hook 必须早于下面 isPending / isError 两个 early return（Hooks 规则）。
+  const eventsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: eventsTbodyRef, rowCount: events.length });
 
   if (listQuery.isPending) {
     return (
@@ -160,15 +166,15 @@ export function ManageEventsPage() {
                 <th>操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={eventsTbodyRef}>
               {events.length === 0 ? (
                 <EmptyTableRow colSpan={7} title="暂无事件" description="待后端返回审计事件数据后展示。" />
               ) : (
-                events.map((event) => {
+                events.map((event, index) => {
                   const expanded = expandedId === event.id;
                   return (
                     <Fragment key={event.id}>
-                      <tr>
+                      <tr data-row-index={index}>
                         <td className="nowrap">{formatEpochMs(event.timestamp)}</td>
                         <td>
                           <StatusBadge
@@ -250,6 +256,21 @@ function EventDetailPanel({
   detailQuery: UseQueryResult<EventDetailRecord>;
 }) {
   void event;
+
+  // FE-LIST-KEYNAV-10（A 方案）：本面板的「时间线」「审计记录」两张表在 DOM 上
+  // 嵌在**父表**（主事件列表）展开行的 <td> 里 ⇒ 父子各自独立索引域，均从 0 起。
+  // 两表都是纯只读清单（行内无控件）⇒ 不传 onActivate。
+  // ★hook 必须早于下面三个 early return（Hooks 规则）——
+  // 否则「本组件是否含 hook」随数据变化，React 报 Expected static flag was missing。
+  const timelineTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({ tbodyRef: timelineTbodyRef, rowCount: detailQuery.data?.timeline.length ?? 0 });
+
+  const auditRecordsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: auditRecordsTbodyRef,
+    rowCount: detailQuery.data?.auditRecords.length ?? 0,
+  });
+
   if (detailQuery.isPending) {
     return <div className={styles.tableHint}>正在加载事件详情…</div>;
   }
@@ -299,12 +320,12 @@ function EventDetailPanel({
               <th>详情</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={timelineTbodyRef}>
             {detail.timeline.length === 0 ? (
               <EmptyTableRow colSpan={5} title="无时间线" description="" />
             ) : (
-              detail.timeline.map((t) => (
-                <tr key={t.step}>
+              detail.timeline.map((t, index) => (
+                <tr key={t.step} data-row-index={index}>
                   <td>{t.step}</td>
                   <td>{t.label}</td>
                   <td>
@@ -332,12 +353,12 @@ function EventDetailPanel({
               <th>Trace</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody ref={auditRecordsTbodyRef}>
             {detail.auditRecords.length === 0 ? (
               <EmptyTableRow colSpan={6} title="无审计记录" description="" />
             ) : (
-              detail.auditRecords.map((r, i) => (
-                <tr key={i}>
+              detail.auditRecords.map((r, index) => (
+                <tr key={index} data-row-index={index}>
                   <td className="nowrap">{formatEpochMs(r.timestamp)}</td>
                   <td>{r.actor}</td>
                   <td className={styles.mono}>{r.action}</td>

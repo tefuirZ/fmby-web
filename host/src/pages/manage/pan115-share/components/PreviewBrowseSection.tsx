@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
 import type {
@@ -8,6 +8,7 @@ import type {
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 
 function formatSize(size: number | null): string {
@@ -24,12 +25,21 @@ function formatSize(size: number | null): string {
  * 支持按 cid / path 下钻；fail-closed：端口未装配后端 503，前端透传错误码。
  */
 export function PreviewBrowseSection() {
+
   const [previewId, setPreviewId] = useState('');
   const [path, setPath] = useState('/');
 
   const browseMutation = useMutation({
     mutationFn: (req: Pan115PreviewBrowseRequest & { previewId: string }) =>
       pan115Api.browsePreview(req.previewId, { path: req.path }),
+  });
+
+  // FE-LIST-KEYNAV-10：浏览结果是**纯只读清单**（行内无控件）⇒ 不传 onActivate。
+  // rowCount 必须在 browseMutation 之后取（TDZ），并用可选链兜住未查询 / 查询中。
+  const entriesTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: entriesTbodyRef,
+    rowCount: browseMutation.data?.entries.length ?? 0,
   });
 
   const data: Pan115ShareBrowseResponse | undefined = browseMutation.data;
@@ -97,9 +107,9 @@ export function PreviewBrowseSection() {
                   <th scope="col">cid</th>
                 </tr>
               </thead>
-              <tbody>
-                {data.entries.map((e) => (
-                  <tr key={`${e.cid}:${e.path}`}>
+              <tbody ref={entriesTbodyRef}>
+                {data.entries.map((e, index) => (
+                  <tr key={`${e.cid}:${e.path}`} data-row-index={index}>
                     <td className={styles.cellText}>{e.name}</td>
                     <td className={styles.mutedText}>{e.isDir ? '目录' : '文件'}</td>
                     <td className={styles.mutedText}>{e.isDir ? '—' : formatSize(e.size)}</td>
