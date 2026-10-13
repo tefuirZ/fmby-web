@@ -164,6 +164,33 @@ export { isApiError, getErrorMessage };
  * ★绝不能把业务 **404** 算成未装配 —— 404 意味着路由没接对，
  *   把它伪装成「服务未启用」会让接线错误长期隐身。
  */
+/**
+ * CAS 写操作（触发对账 / 重试复制）的失败分类（纯函数，可被直接断言）。
+ *
+ * 后端语义（#671，照后端、**不猜**）：
+ *   - 未装配 / 不可用 ⇒ **503**（不是 500）；
+ *   - 能力不足 ⇒ 403；
+ *   - 缺 `confirmed` ⇒ 400；
+ *   - 其余（含未知错误码）⇒ `other`，**错误码与原文一律保留**，由 UI 透传。
+ */
+export type CasWriteErrorKind = 'unwired' | 'forbidden' | 'bad_request' | 'other';
+
+export function classifyCasWriteError(error: unknown): CasWriteErrorKind {
+  if (isCasAdminUnwired(error)) return 'unwired';
+  if (!isApiError(error)) return 'other';
+  const code = error.code;
+  if (code === 'forbidden' || code === 'FORBIDDEN' || code === 'HTTP_403') return 'forbidden';
+  if (
+    code === 'validation' ||
+    code === 'VALIDATION' ||
+    code === 'bad_request' ||
+    code === 'HTTP_400'
+  ) {
+    return 'bad_request';
+  }
+  return 'other';
+}
+
 export function isCasAdminUnwired(error: unknown): boolean {
   if (!isApiError(error)) return false;
   const code = error.code;

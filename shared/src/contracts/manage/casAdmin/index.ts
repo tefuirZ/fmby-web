@@ -1,5 +1,6 @@
 export { casAdminApi, mapCasDriveStatus, mapCasDriveConfig, mapCasFanoutStatus, mapCasReconcileReport } from "./api";
-export { isApiError, getErrorMessage, isCasAdminUnwired } from "./api";
+export { isApiError, getErrorMessage, isCasAdminUnwired, classifyCasWriteError } from "./api";
+export type { CasWriteErrorKind } from "./api";
 export type {
   CasDriveConfig,
   CasDriveStatus,
