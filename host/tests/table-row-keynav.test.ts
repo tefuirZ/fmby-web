@@ -53,15 +53,20 @@ import { createElement, useRef, useState } from '\${NM_REACT}';
 import { createRoot } from '\${NM_REACT_DOM_CLIENT}';
 import { useTableRowRoving } from '${new URL('file:///PLACEHOLDER').href}';
 
+function RovingHost({ tbodyRef, rowCount, onActivate }) {
+  // hook 挂在内层（可独立卸载）；tbody 由外层 Table 持有 ⇒ 卸载内层时
+  // 行 DOM 保留，便于验证 teardown 是否还原 roving tabindex（rv02 #24 M-1）。
+  useTableRowRoving({ tbodyRef, rowCount, onActivate });
+  return null;
+}
+
 function Table() {
   const tbodyRef = useRef(null);
   const [opened, setOpened] = useState(-1);
-  useTableRowRoving({
-    tbodyRef,
-    rowCount: 4,
-    onActivate: (i) => setOpened(i),
-  });
+  const [hostMounted, setHostMounted] = useState(true);
   globalThis.__opened = () => opened;
+  // 控制内层 RovingHost 挂载/卸载（tbody 保留），用于 teardown 断言。
+  globalThis.__setHostMounted = (v) => setHostMounted(v);
   return createElement('table', null,
     createElement('tbody', { ref: tbodyRef },
       [0, 1, 2, 3].map((i) =>
@@ -75,10 +80,15 @@ function Table() {
         ),
       ),
     ),
+    hostMounted
+      ? createElement(RovingHost, { tbodyRef, rowCount: 4, onActivate: (i) => setOpened(i) })
+      : null,
   );
 }
 
-createRoot(document.getElementById('root')).render(createElement(Table));
+const __root = createRoot(document.getElementById('root'));
+__root.render(createElement(Table));
+globalThis.__root = __root;
 `;
 
 async function mount(t: any) {
@@ -419,7 +429,36 @@ test('契约③：行本身 tabindex=-1 ⇒ 不进 Tab 序，行内控件仍可 
   }
 });
 
-test('接线实证（真实 LibraryTable）：↑↓ 在行间移动 + Enter 开详情', async (t) => {
+test('teardown 断言：卸载 RovingHost 后不残留 roving tabindex（rv02 #24 M-1 防回归）', async (t) => {
+  const h = await mount(t);
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 先按 ↓ 让目标行被 hook 设为 tabindex=-1（tbody 由外层 Table 持有，卸载内层后保留）
+    await page.focus('[data-row-index="0"] button');
+    await page.keyboard.press('ArrowDown');
+    const before = await page.evaluate(
+      () => document.querySelector('[data-row-index="1"]')?.getAttribute('tabindex'),
+    );
+    assert.equal(before, '-1', '前置：聚焦后目标行应有 tabindex=-1');
+
+    // 卸载内层 RovingHost（tbody/DOM 保留）⇒ 触发 hook cleanup
+    await page.evaluate(() => (globalThis as any).__setHostMounted(false));
+    await page.waitForTimeout(50);
+    const after = await page.evaluate(
+      () => document.querySelector('[data-row-index="1"]')?.getAttribute('tabindex'),
+    );
+    // ★防回归：若删 cleanup 还原行，此断言转红（残留 tabindex=-1 破坏 Tab 序）
+    assert.equal(after, null, '卸载后 roving tabindex 须被还原（不残留）');
+  } finally {
+    await h.close();
+  }
+});
+
+test('接线实证（真实 LibraryTable）：↑↓ 在行间移动 + Enter 开详情', { timeout: 60000 }, async (t) => {
+  // ★rv02 #24 Minor：此实证较重（真实组件打包 + Chromium 启动，本地 ~16s）。
+  // 显式留 60s 余量，避免 CI/农场抖动把单测误杀（node:test 默认无单测上限，
+  // 这里主动标注耗时量级，便于后续若再变重时排查）。
   const h = await mountLibTable(t);
   if (!h) return;
   try {
@@ -450,7 +489,8 @@ test('接线实证（真实 LibraryTable）：↑↓ 在行间移动 + Enter 开
   }
 });
 
-test('接线实证（真实 LibraryTable）：行内按钮 Tab 可达性未被破坏（无回归）', async (t) => {
+test('接线实证（真实 LibraryTable）：行内按钮 Tab 可达性未被破坏（无回归）', { timeout: 60000 }, async (t) => {
+  // ★rv02 #24 Minor：同上，重实证显式留 60s 余量。
   const h = await mountLibTable(t);
   if (!h) return;
   try {
