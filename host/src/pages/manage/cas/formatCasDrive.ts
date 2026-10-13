@@ -62,7 +62,9 @@ export const KNOWN_COPY_STATES = Object.keys(COPY_STATE_LABELS);
  * @param copyState 后端原样透出的 `copy_state`（可能为空/未列出）。
  */
 export function formatUnknownCopyState(copyState: string): string {
-  const raw = (copyState ?? '').trim();
+  // ★rv02 #25 M-1 收口：签名是 `string`（调用方 mapCasDriveStatus 已 `?? ''` 兑底），
+  //   此处不再防御性 `?? ''` —— 与类型签名保持一致，不写死代码。
+  const raw = copyState.trim();
   // 空码：明确说「未提供」，不显示一对空括号（那看着像渲染 bug）。
   return raw.length === 0 ? '未知状态（后端未提供状态码）' : `未知状态（${raw}）`;
 }
