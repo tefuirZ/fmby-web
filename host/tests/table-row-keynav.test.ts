@@ -4611,3 +4611,93 @@ test('接线实证（真实 UpstreamSourceListSection）：查询表 + 局域网
   }
 });
 ;
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 1/N：ManageCasPage —— 盘配置表（provider_type/drive_ref…） */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 本表形态：行内有 checkbox（纳入扇出）+ 数字输入（优先级）+ 「保存」按钮，
+ * 三者都是原生 Tab 可达 ⇒ 组件刻意**不传** onActivate。
+ * 因此「唯一 Tab 停靠点」是它唯一的 roving 入口，去掉接线必然转红。
+ *
+ * fixture 用**后端原始 snake_case**（RawCasDriveConfig）：httpClient 把 JSON 直接交给
+ * mapCasDriveConfig，喂 camelCase 会让 providerType/driveRef 全 undefined 而渲染不出盘名。
+ */
+const CAS_DRIVES_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageCasPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const configs = [
+  { provider_type: 'pan115', drive_ref: 'drive-a', enabled: true, priority: 1 },
+  { provider_type: 'pan115', drive_ref: 'drive-b', enabled: false, priority: 2 },
+  { provider_type: 'openlist', drive_ref: 'drive-c', enabled: true, priority: 3 },
+];
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/api/admin/cas/drives')) {
+    return new Response(JSON.stringify(configs), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(ManageCasPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageCasPage）：盘配置表表头语义 + 3 行 + 唯一停靠点 + 行内控件原生 Tab', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-casdrives-',
+    CAS_DRIVES_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageCasPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 表头语义（不是「渲染不炸」）。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['盘', '纳入扇出', '优先级', ''], '盘配置表表头应为 盘/纳入扇出/优先级/操作');
+
+    // ② 行数 = fixture 条数。
+    const rows = await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index]').length);
+    assert.equal(rows, 3, '应渲染 3 行（与 fixture 一致）');
+
+    // ③ roving 唯一停靠点 —— 「无接线」时所有 <tr> 没有 tabindex ⇒ [] !== ['0']。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '盘配置表首行应是唯一 Tab 停靠点');
+
+    // ④ 真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    // ⑤ 行内控件保持原生 Tab（roving 不得改写它们的 tabindex）。
+    const box = page.locator('tbody tr[data-row-index="0"] input[type="checkbox"]');
+    assert.equal(await box.count(), 1, '行内应有一个「纳入扇出」checkbox');
+    assert.equal(
+      await box.evaluate((b: any) => b.getAttribute('tabindex')),
+      null,
+      '行内 checkbox 不得被 roving 改写 tabindex',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
