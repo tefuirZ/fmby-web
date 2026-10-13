@@ -33,8 +33,12 @@ import styles from '../login/LoginPage.module.css';
  * ★与 V1 的形态差异：V1 是 4 步（initialize / config / setup / complete），
  *   V2 收敛为 **apply 一次收全** + **complete 落锁**。本页按 V2 实现，不发 V1 端点。
  *
- * ★路由只挂**安装模式进程**（main.rs install_mode_main）；已安装实例下除 status
- *   外一律 404 下线 ⇒ 本页按 status.state 决定是否展示向导步骤。
+ * ★路由只挂**安装模式进程**（`main.rs:116` → `install_mode_main`，函数体
+ *   `main.rs:202-238`）。该形态 Router 只有 `install_flow::router` + `/health`，
+ *   **不挂 web_static** ⇒ 安装模式下浏览器请求 `/install` 拿不到本页（无 SPA 回落）。
+ *   已安装实例同样不挂 `install_flow::router`，故 `/api/install/*` 五条**全部** 404
+ *   （含 `/api/install/status`）。本页按 status.state 决定是否展示向导步骤；
+ *   status 请求失败时必须显式报错，**不得**当成“已安装”静默跳走。
  */
 
 type InstallState = 'needs_database' | 'configured' | 'needs_admin' | 'completed' | 'unknown';
