@@ -2241,6 +2241,30 @@ createRoot(document.getElementById('root')).render(
  * 用户必须连按若干次 Tab 才能走到表格 —— 这正是要验证的真实路径。
  * 返回命中的 `data-row-index`（超预算未命中返回 -1）。
  */
+/** 逐次记录真实 Tab 路径上每个停靠点的可读描述（用于断言实测步数，不放宽口径）。 */
+async function tabPathToRow(page: any, tableIndex = 0, maxPresses = 15) {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.locator('body').click({ position: { x: 2, y: 2 } });
+  const path: Array<{ presses: number; inRow: boolean; tag: string; text: string }> = [];
+  for (let i = 1; i <= maxPresses; i++) {
+    await page.keyboard.press('Tab');
+    const stop = await page.evaluate((ti: number) => {
+      const tbody = document.querySelectorAll('tbody')[ti];
+      const a = document.activeElement as HTMLElement | null;
+      if (!a) return null;
+      return {
+        inRow: a.closest('tbody') === tbody && a.hasAttribute('data-row-index'),
+        tag: a.tagName,
+        text: (a.getAttribute('aria-label') || a.textContent || '').trim().slice(0, 24),
+      };
+    }, tableIndex);
+    if (!stop) continue;
+    path.push({ presses: i, ...stop });
+    if (stop.inRow) return path;
+  }
+  return path;
+}
+
 async function tabIntoRow(page: any, tableIndex = 0, maxPresses = 15): Promise<number> {
   // ⚠ 光 blur() 不够：Chrome 的**顺序焦点导航**会从上一个焦点元素继续往下走，
   // 于是「从 body 起步」实际是从上次停的地方起步（嵌套表里表现为永远走不到
@@ -4165,3 +4189,172 @@ test('接线实证（真实 AuthProvidersSection）：行停靠点唯一 + 行�
     await h.close();
   }
 });
+
+/**
+ * UpstreamSourceListSection 探针：一次覆盖该文件两张表。
+ *
+ * 两张表形态不同，构成一组对照：
+ *   - 源列表（查询驱动）：行内有启停/编辑/删除按钮，走原生 Tab；
+ *   - 局域网发现结果（mutation 驱动）：行内纯只读，tbody 直到点「局域网发现」
+ *     成功才挂载。
+ *
+ * ⚠ 本例**不**覆盖 useTableRowRoving 的 attachedTbody 生命周期修复：两张表的
+ *   rowCount 都从 0 变到 N，effect 会顺带重跑，属「巧合恢复」。判据③须回退接线。
+ *   attachedTbody 修复的专属实证在 ManageSystemAboutPage 的静态表（rowCount 恒定）。
+ */
+const UPSTREAM_SOURCE_LIST_ENTRY = `
+import { createElement } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { UpstreamSourceListSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const src = (id, name, status) => ({
+  id, name,
+  source_type: 'emby',
+  source_type_label: 'Emby',
+  base_url: 'http://' + id + '.local:8096',
+  auth_method: 'password',
+  status,
+  username: null,
+  user_agent: null,
+  referer: null,
+  extra_headers: {},
+  has_secret: false,
+  last_health_check_at: null,
+  last_sync_at: null,
+  last_error_at: null,
+  last_error_message: null,
+  created_by: null,
+  created_at: 0,
+  updated_at: 0,
+});
+
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  const method = String(init?.method ?? 'GET').toUpperCase();
+  if (u.includes('/api/manage/upstreams/emby/discover-lan') && method === 'POST') {
+    return new Response(
+      JSON.stringify({
+        items: [
+          { name: '客厅 Emby', server_id: 'srv-1', base_url: 'http://192.168.1.10:8096', endpoint_address: '192.168.1.10' },
+          { name: '卧室 Emby', server_id: 'srv-2', base_url: 'http://192.168.1.11:8096', endpoint_address: '192.168.1.11' },
+        ],
+        total: 2,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (u.includes('/api/manage/upstreams') && method === 'GET') {
+    return new Response(
+      JSON.stringify({ items: [src('s-1', '主库', 'ready'), src('s-2', '备用库', 'disabled')], total: 2 }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(
+    QueryClientProvider,
+    { client: qc },
+    createElement(UpstreamSourceListSection, { sourceType: '' }),
+  ),
+);
+`;
+
+test('接线实证（真实 UpstreamSourceListSection）：查询表 + 局域网发现表各自独立 roving 域 + 跨表漫游（补测批次 C 2/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-upsrc-',
+    UPSTREAM_SOURCE_LIST_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamSourceListSection.tsx'),
+    'table',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+
+    // ⚠ 索引必须**在每次表数量变化后重新解析**。局域网发现卡片挂在源列表卡片
+    //   **之前**，所以发现成功后源列表从 tbody[0] 变到 tbody[1]（实测：给
+    //   tbody 打标记后确认节点身份不变、仅序号平移）。本轮两次踩坑都是复用了
+    //   触发前的旧索引 ⇒ 读到发现表而误判 hook 串台。故下面每次都现查。
+    const tbodyIndexOf = async (needle: string): Promise<number> => {
+      const idx = await page.evaluate((n: string) => {
+        return Array.from(document.querySelectorAll('tbody')).findIndex(
+          (tb) => (tb.querySelector('tr td')?.textContent ?? '').includes(n),
+        );
+      }, needle);
+      assert.notEqual(idx, -1, `应能找到首格含「${needle}」的表`);
+      return idx;
+    };
+
+    // ── 源列表（查询驱动：rowCount 0 → 2）
+    assert.equal(await page.evaluate(() => document.querySelectorAll('tbody').length), 1,
+      '发现表未触发前不应存在第二个 tbody');
+
+    const srcIdx0 = await tbodyIndexOf('主库');
+    assert.deepEqual(await rovingStopsIn(page, srcIdx0), ['0'], '源列表首行应是唯一 Tab 停靠点');
+
+    // ★按**实测**路径断言步数，不写死猜测值：真实 Tab 顺序是
+    //   局域网发现按钮 → 新建上游源按钮 → 类型 select → 行停靠点，共 4 跳。
+    const path = await tabPathToRow(page, srcIdx0);
+    assert.deepEqual(
+      path.map((p) => p.text),
+      ['局域网发现', '新建上游源', '全部类型EmbyApple CMSWebDAV', '主库Embyhttp://s-1.local:8'],
+      '源列表前的真实 Tab 路径应是两个按钮 + 类型 select',
+    );
+    assert.equal(path.at(-1)?.presses, 4, '真实 Tab 应 4 次到达源列表停靠点');
+    assert.equal(await countTabPressesToRow(page, srcIdx0), 4, '实测步数应稳定可复现');
+    assert.equal(await focusedRowIn(page, srcIdx0), 0, 'Tab 进入后活动行应为 index 0');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, srcIdx0), 1, '↓ 移到源列表 index 1');
+    const stopsBefore = await rovingStopsIn(page, srcIdx0);
+    assert.deepEqual(stopsBefore, ['1'], '源列表停靠点此时应在 index 1');
+
+    // ── 局域网发现表（mutation 驱动：tbody 直到点按钮成功才挂载）
+    await clickButtonByText(page, '局域网发现');
+    await page.waitForSelector('text=客厅 Emby', { timeout: 20000 });
+    assert.equal(await page.evaluate(() => document.querySelectorAll('tbody').length), 2,
+      '发现成功后应出现第二个 tbody');
+
+    // 本表由 mutation 驱动、tbody 晚挂载，roving 仍必须初始化成功。
+    // ⚠ 诚实的覆盖边界：此处 rowCount 同样是 0 → 2（随 discoveryMutation.data
+    //   变化），所以**回退 useTableRowRoving 的 attachedTbody 修复并不会让本例
+    //   失败** —— 属"巧合恢复"。真正只能靠 attachedTbody 救的是 rowCount 恒定的
+    //   静态表（ManageSystemAboutPage 的运行时/链接表，已有独立实证覆盖）。
+    //   本例的价值在接线 + 跨表行为，不在 hook 生命周期。判据③据此改为回退接线。
+    const discIdx = await tbodyIndexOf('客厅 Emby');
+    assert.deepEqual(await rovingStopsIn(page, discIdx), ['0'], '发现表首行应是唯一 Tab 停靠点');
+
+    // 索引平移后复查：源列表节点身份未变，其停靠点**必须仍是 index 1**（不串台）。
+    const srcIdx1 = await tbodyIndexOf('主库');
+    assert.notEqual(srcIdx1, srcIdx0, '发现表插在前面，源列表 tbody 序号应平移');
+    assert.deepEqual(await rovingStopsIn(page, srcIdx1), stopsBefore, '挂载新表不得改动源列表停靠点');
+
+    // 发现表内漫游（行内无控件 ⇒ Tab 直接进入行本身）
+    assert.equal(await countTabPressesToRow(page, discIdx), 1, '真实 Tab 应一次到达发现表停靠点');
+    assert.equal(await focusedRowIn(page, discIdx), 0, '发现表活动行应为 index 0');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, discIdx), 1, '↓ 移到发现表 index 1');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, discIdx), 0, 'Home 回到发现表 index 0');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, discIdx), 1, 'End 到发现表 index 1');
+
+    // 跨表：Tab 离开发现表应走到后面的源表格内，而不是回环停在发现表自身。
+    await page.keyboard.press('Tab');
+    const landed = await page.evaluate(() => {
+      const a = document.activeElement as HTMLElement | null;
+      const inDisc = !!a?.closest('tbody') && (a.closest('tbody')?.querySelector('tr td')?.textContent ?? '').includes('客厅');
+      return { inDisc, tag: a?.tagName ?? null };
+    });
+    assert.equal(landed.inDisc, false, 'Tab 离开发现表后不应回环停在发现表内');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+;
