@@ -15,7 +15,6 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { UseMutationResult } from '@tanstack/react-query';
 import {
   casAdminApi,
   isCasAdminUnwired,
@@ -26,6 +25,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { CasCopyStateBadge } from './cas/CasCopyStateBadge';
+import { ReconcileTriggerButton, RetryCopyButton } from './cas/casWriteActions';
 import { casDriveKey, isDriveDirty, parsePriorityInput } from './cas/driveConfigEditing';
 import {
   formatGeneratedAt,
@@ -203,27 +203,6 @@ function DriveConfigTable({
   );
 }
 
-/**
- * 触发对账按钮（#671 写面：`POST /api/admin/cas/reconcile/trigger?confirmed=true`）。
- *
- * ★失败语义照后端、不猜：503 未装配 / 403 能力不足 / 400 缺 confirmed ——
- *   一律用 `getErrorMessage` **透传后端原文**，不另造文案。
- */
-function ReconcileTriggerButton({ mutation }: { mutation: UseMutationResult<void, unknown, void> }) {
-  return (
-    <div>
-      <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
-        {mutation.isPending ? '触发中…' : '触发对账'}
-      </button>
-      {mutation.isSuccess ? <span>已触发对账（报告稍后刷新）</span> : null}
-      {mutation.isError ? (
-        // ★透传后端原文：503/403/400 的原因由后端给出，前端不猜测、不美化。
-        <span>触发失败：{getErrorMessage(mutation.error)}</span>
-      ) : null}
-    </div>
-  );
-}
-
 function FanoutLookup({
   value,
   onChange,
@@ -263,12 +242,29 @@ function FanoutLookup({
           description={getErrorMessage(fanoutQuery.error)}
         />
       ) : (
-        (fanoutQuery.data?.drives ?? []).map((drive) => (
-          <CasCopyStateBadge
-            key={`${drive.driveId}:${drive.driveRef}`}
-            drive={drive}
-          />
-        ))
+        <table>
+          <thead>
+            <tr>
+              <th>盘 / 副本状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(fanoutQuery.data?.drives ?? []).map((drive) => (
+              <tr key={`${drive.driveId}:${drive.driveRef}`}>
+                <td>
+                  <CasCopyStateBadge drive={drive} />
+                </td>
+                <td>
+                  {/* 重试仅对「实体丢失 / 上游已删」有意义；健康盘不给无用按钮。 */}
+                  {drive.copyState === 'failed' || drive.copyState === 'tombstoned' ? (
+                    <RetryCopyButton contentId={contentId} driveId={drive.driveId} />
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );
