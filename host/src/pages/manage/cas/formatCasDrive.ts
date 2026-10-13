@@ -50,14 +50,39 @@ const UNKNOWN_STATE: { label: string; tone: CasCopyStateTone } = {
  */
 export const KNOWN_COPY_STATES = Object.keys(COPY_STATE_LABELS);
 
-/** 徽章文案。★未知 ⇒ 「状态未知」（不得谎称已复制）。 */
+/**
+ * 未知 / 契约未列出的 `copy_state` 的**统一**呈现（fail-closed）。
+ *
+ * ★为什么必须**带上原文码**（而不是一句「状态未知」）：
+ *   后端若新增第五个取值（或拼错、大小写漂移），只显示「状态未知」运维**无法上报
+ *   是哪个码**，排查链断在最前面。带上原文码 ⇒ 一眼可报、可粘给后端。
+ * ★绝不静默归入 `present`：那是最危险的谎言（把「不知道」说成「已复制」，
+ *   运维据此以为副本齐了，实际可能实体已丢失）。
+ *
+ * @param copyState 后端原样透出的 `copy_state`（可能为空/未列出）。
+ */
+export function formatUnknownCopyState(copyState: string): string {
+  const raw = (copyState ?? '').trim();
+  // 空码：明确说「未提供」，不显示一对空括号（那看着像渲染 bug）。
+  return raw.length === 0 ? '未知状态（后端未提供状态码）' : `未知状态（${raw}）`;
+}
+
+/**
+ * 该 `copy_state` 是否属于契约已知的四态。
+ * 供调用方在需要时做「已知/未知」分支（展示层一律走 label/tone，不自行判断）。
+ */
+export function isKnownCopyState(copyState: string): boolean {
+  return Object.prototype.hasOwnProperty.call(COPY_STATE_LABELS, copyState);
+}
+
+/** 徽章文案。★未知 ⇒ 「未知状态（原文码）」（不得谎称已复制，且保留可上报的码）。 */
 export function resolveCopyStateLabel(copyState: string): string {
-  return (COPY_STATE_LABELS[copyState] ?? UNKNOWN_STATE).label;
+  return COPY_STATE_LABELS[copyState]?.label ?? formatUnknownCopyState(copyState);
 }
 
 /** 徽章色调。未知 ⇒ neutral（视觉上不与「成功」混淆）。 */
 export function resolveCopyStateTone(copyState: string): CasCopyStateTone {
-  return (COPY_STATE_LABELS[copyState] ?? UNKNOWN_STATE).tone;
+  return COPY_STATE_LABELS[copyState]?.tone ?? UNKNOWN_STATE.tone;
 }
 
 /** 字节数格式化；`null`/非法/负值 ⇒ 「大小未知」（不伪造 0）。 */

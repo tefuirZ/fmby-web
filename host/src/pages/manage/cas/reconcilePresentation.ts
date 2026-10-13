@@ -54,6 +54,37 @@ export function formatGeneratedAt(generatedAtMs: number | null | undefined): str
 }
 
 /**
+ * 对账区块的渲染态（五态，互斥且完备）。
+ *
+ * ★`unwired`（后端端口未装配）必须**独占**一档：此时区块应**完全不渲染**，
+ *   **不得**回落成 `empty` —— 那会让运维以为「配好了但一条报告都没有」，
+ *   把「服务没启用」伪装成「没有数据」（本页最危险的假空态）。
+ */
+export type CasReconcileSectionState =
+  | 'unwired'
+  | 'loading'
+  | 'error'
+  | 'empty'
+  | 'list';
+
+/**
+ * 由查询状态派生区块渲染态（纯函数，可被直接断言）。
+ *
+ * 判定顺序即优先级：`unwired` > `loading` > `error` > `empty` > `list`。
+ */
+export function resolveReconcileSectionState(input: {
+  unwired?: boolean;
+  isPending?: boolean;
+  isError?: boolean;
+  count?: number;
+}): CasReconcileSectionState {
+  if (input.unwired) return 'unwired';
+  if (input.isPending) return 'loading';
+  if (input.isError) return 'error';
+  return (input.count ?? 0) === 0 ? 'empty' : 'list';
+}
+
+/**
  * 汇总计数（供页面头部「已对账 / 待处理 / 未识别」三档）。
  *
  * ★三档之和恒等于条目总数（不丢不重）—— 由测试锁死。
