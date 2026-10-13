@@ -16,6 +16,7 @@ import { DatabaseCacheFieldset } from './DatabaseCacheFieldset';
 import { InstallCompletionPanel } from './InstallCompletionPanel';
 import { InstallProgressScreen } from './InstallProgressScreen';
 import { ServerConfigSummary } from './ServerConfigSummary';
+import { installStatusProblem } from './installStatus';
 import { buildPgUrl } from './pgConnection';
 import {
   nextWizardStep,
@@ -192,9 +193,8 @@ export function InstallPage() {
 
         {status.error && state !== 'completed' ? (
           <div className={styles.errorBanner} role="alert">
-            读取安装状态失败：{getErrorMessage(status.error)}
-            <br />
-            安装面可能已下线（实例已安装时后端只保留状态查询）。
+            {installStatusProblem(status.error) ??
+              `读取安装状态失败：${getErrorMessage(status.error)}`}
           </div>
         ) : null}
         {installError && !status.error ? (
