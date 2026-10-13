@@ -101,3 +101,14 @@ test('⑩ 明文口令不得落持久化存储 / 日志（沿用 honesty ⑬ 口
     }
   }
 });
+
+/* ── rb01 N2 防回归：两个探活按钮都须受 canProbe 约束 ────────────── */
+
+test('⑪ 数据库与 Redis 两个探活按钮都须带 canProbe（缺一个 ⇒ 已安装实例下点了必 404）', () => {
+  const src = read(FIELDSET);
+  const gated = src.match(/disabled=\{[^}]*canProbe[^}]*\}/g) ?? [];
+  assert.ok(
+    gated.length >= 2,
+    `两个探活按钮都应受 canProbe 约束，当前只有 ${gated.length} 个：${JSON.stringify(gated)}`,
+  );
+});

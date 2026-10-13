@@ -224,7 +224,7 @@ export function DatabaseCacheFieldset({
             <button
               className={styles.secondaryButton}
               type="button"
-              disabled={redisProbe.pending || values.redisUrl.trim().length === 0}
+              disabled={!canProbe || redisProbe.pending || values.redisUrl.trim().length === 0}
               onClick={() => onProbeRedis(values.redisUrl.trim())}
             >
               {redisProbe.pending ? '连接测试中…' : '连接测试（只探活）'}
