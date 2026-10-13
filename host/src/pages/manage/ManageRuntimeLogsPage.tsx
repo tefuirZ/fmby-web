@@ -86,6 +86,19 @@ export function ManageRuntimeLogsPage() {
     refetchInterval: 5000,
   });
 
+  // FE-LIST-KEYNAV-10：日志表行内有「详情」按钮（原生 Tab 可达）⇒ 不传 onActivate。
+  // ★必须位于 isPending/isError 的 early return **之前**：放在其后时，pending→loaded
+  //   迁移会让 hook 数量在两次 render 之间变化，React 直接抛
+  //   “Rendered more hooks than during the previous render.”（真实实证，
+  //   见 host/tests/table-row-keynav.test.ts 批次 C 3/N）。
+  //   rowCount 因此直接取自 logsQuery.data（此时 data 可能仍为 undefined ⇒ 0），
+  //   而不是取后面那份由 early return 之后推导出的 logViews。
+  const logViewsTbodyRef = useRef<HTMLTableSectionElement>(null);
+  useTableRowRoving({
+    tbodyRef: logViewsTbodyRef,
+    rowCount: (logsQuery.data?.items ?? []).length,
+  });
+
   if (logsQuery.isPending) {
     return (
       <FeedbackState
@@ -118,10 +131,6 @@ export function ManageRuntimeLogsPage() {
   const data = logsQuery.data;
   const items = data?.items ?? [];
   const logViews = items.map(buildRuntimeLogView);
-
-  // FE-LIST-KEYNAV-10：日志表行内有「详情」按钮（原生 Tab 可达）⇒ 不传 onActivate。
-  const logViewsTbodyRef = useRef<HTMLTableSectionElement>(null);
-  useTableRowRoving({ tbodyRef: logViewsTbodyRef, rowCount: logViews.length });
   const selectedLogView = selectedLog ? buildRuntimeLogView(selectedLog) : null;
   const categoryOptions = buildTargetOptions(data?.availableTargets ?? [], target);
 

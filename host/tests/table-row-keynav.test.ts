@@ -4129,6 +4129,158 @@ createRoot(document.getElementById('root')).render(
 );
 `;
 
+/**
+ * ManageRuntimeLogsPage 探针：覆盖运行日志表。
+ *
+ * 形态：行内有「查看详情」按钮（原生 Tab 可达）⇒ 不传 onActivate。
+ * 注意：该组件把 useTableRowRoving 放在 isPending/isError 两个 early return
+ * **之后**（ManageRuntimeLogsPage.tsx:124，early return 在 89/99 行），
+ * 属条件调用；本例以真实 pending→loaded 迁移验证其可观察后果。
+ */
+const RUNTIME_LOGS_ENTRY = `
+import { createElement } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { ManageRuntimeLogsPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const RAW_LOGS = [
+  {
+    id: 'log-1',
+    timestamp: '2026-01-01T00:00:00Z',
+    level: 'info',
+    target: 'fmby::manage',
+    message: '启动完成',
+    request_id: 'req-1',
+    source_file: 'app.log',
+    raw_line: 'line-1',
+  },
+  {
+    id: 'log-2',
+    timestamp: '2026-01-01T00:01:00Z',
+    level: 'error',
+    target: 'fmby::scan',
+    message: '扫描失败',
+    request_id: null,
+    source_file: 'app.log',
+    raw_line: 'line-2',
+  },
+];
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  const body = u.includes('/api/manage/runtime-logs')
+    ? {
+        items: RAW_LOGS,
+        total: 2,
+        truncated: false,
+        log_dir: '/var/log/fmby',
+        available_targets: ['fmby::manage'],
+      }
+    : u.includes('/api/manage/runtime-log-archives')
+    ? {
+        items: [
+          {
+            id: 'arc-1',
+            file_name: 'app-2026-01-01.log.gz',
+            log_date: '2026-01-01',
+            compressed_size_bytes: 1024,
+            original_size_bytes: 4096,
+            compression_ratio: 4,
+            created_at: '2026-01-01T00:00:00Z',
+            expires_at: '2026-02-01T00:00:00Z',
+          },
+          {
+            id: 'arc-2',
+            file_name: 'app-2025-12-31.log.gz',
+            log_date: '2025-12-31',
+            compressed_size_bytes: 512,
+            original_size_bytes: 2048,
+            compression_ratio: 4,
+            created_at: '2025-12-31T00:00:00Z',
+            expires_at: '2026-01-31T00:00:00Z',
+          },
+        ],
+        total: 2,
+        log_dir: '/var/log/fmby',
+        retention_days: 30,
+      }
+    : {};
+  return new Response(JSON.stringify(body), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(ManageRuntimeLogsPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageRuntimeLogsPage）：行停靠点唯一 + 行内详情按钮保持原生 Tab（补测批次 C 3/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-rtlogs-',
+    RUNTIME_LOGS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageRuntimeLogsPage.tsx'),
+    'table',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // 两张表：日志表 + RuntimeLogArchivesSection 的归档表（独立组件、独立 roving 域）。
+    // ⚠ 实测为 2 个 tbody —— 移动端卡片不是 table，归档表才是第二个。
+    assert.equal(await page.evaluate(() => document.querySelectorAll('tbody').length), 2,
+      '日志表 + 归档表应各有一个 tbody（索引域独立）');
+
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '日志表首行应是唯一 Tab 停靠点');
+
+    // ⚠ 必须按 tbody 限定：两表都有 data-row-index="0" 行，不限定会命中归档表行。
+    const btn = page.locator('tbody').nth(0).locator('tr[data-row-index="0"] button');
+    assert.equal(await btn.count(), 1, '行内应有一个「查看详情」按钮');
+    assert.equal((await btn.textContent())?.trim(), '查看详情', '行内按钮文案应为查看详情');
+
+    // 实测路径（13 跳，不是 1）：刷新按钮 → 4 个筛选 select（级别/条数/类别/方式）
+    // → 6 个文本输入（路径/客户端/IP/用户/请求 ID/关键字）→ 清空筛选按钮 → 日志行。
+    // 如实写死实测值；若日后精简筛选控件，此断言会失败并提示同步更新。
+    assert.equal(await countTabPressesToRow(page, 0), 13, '真实 Tab 13 跳到达日志行停靠点');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 进入后活动行应为 index 0');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, '↓ 移到 index 1');
+
+    // 从活动行再按一次 Tab：应落到**同一行**内的原生按钮（roving 不吞行内控件）。
+    await page.keyboard.press('Tab');
+    const landedInRow0 = await page.evaluate(() => {
+      const a = document.activeElement as HTMLElement | null;
+      return { row: a?.closest('tr')?.getAttribute('data-row-index') ?? null, tag: a?.tagName ?? null };
+    });
+    assert.deepEqual(landedInRow0, { row: '1', tag: 'BUTTON' }, '活动行内 Tab 应落在本行按钮上');
+
+    // roving 活动行不因焦点进入行内按钮而改变：用停靠点读数判定，而非 focusedRowIn
+    // ——后者只在焦点**落在行元素本身**时返回 index，焦点在按钮上时本就该返回 null。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['1'], '焦点在行内按钮时停靠点仍停在 index 1');
+
+    // ── 归档表（独立组件 RuntimeLogArchivesSection，独立 roving 域）
+    // .tableScroll 是 role=region + tabIndex=0 的滚动容器 ⇒ 比日志表多一跳停靠点。
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '归档表首行应是唯一 Tab 停靠点');
+    // 实测 19 跳：日志表 13 跳到行 → 该行「查看详情」按钮 → 下一行 → 其按钮 → …（4 个
+    // 行内按钮共 4 跳）→ 归档表 role=region 容器（tabIndex=0，再 1 跳）→ 归档行。
+    // 即归档表比日志表多 6 跳；tabIntoRow 默认 maxPresses=15 不够，须显式放宽。
+    assert.equal(await tabIntoRow(page, 1, 40), 0, '连按 Tab 应能走到归档表活动行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 1), 1, '归档表 ↓ → 第 2 行');
+    await page.keyboard.press('Home');
+    assert.equal(await focusedRowIn(page, 1), 0, '归档表 Home → 首行');
+    assert.equal(await focusedRowIn(page, 0), null, '焦点须在归档表，不得串到日志表');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
 test('接线实证（真实 AuthProvidersSection）：行停靠点唯一 + 行内 checkbox 保持原生 Tab 可达（补测批次 C 1/N）', async (t) => {
   const h = await mountPageProbe(
     t,
