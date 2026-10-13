@@ -26,6 +26,7 @@ const empty: WizardValues = {
   adminUsername: '',
   adminPassword: '',
   adminConfirm: '',
+  adminDisplayName: '',
 };
 
 test('① 三页顺序 = 卡面：① 数据库+缓存 ② 服务器配置 ③ 管理员配置', () => {
@@ -107,4 +108,11 @@ test('⑨ 翻页边界：第一页没有上一页，最后一页没有下一页'
 test('⑩ 未完成时不能跳页往前冲（未填 PG 就想到第 3 页 ⇒ 拦）', () => {
   assert.equal(stepDone('database', { ...empty, dbKind: 'postgresql' }), false);
   assert.equal(stepDone('database', { ...empty, dbKind: 'sqlite' }), true);
+});
+
+test('⑪ 显示名可选：填了不影响判定，不填也不拦（不是门控项）', () => {
+  const strong = 'Abcdefghij1!2345678';
+  const base = { ...empty, adminUsername: 'root', adminPassword: strong, adminConfirm: strong };
+  assert.equal(stepProblem('admin', base), null);
+  assert.equal(stepProblem('admin', { ...base, adminDisplayName: '运维小张' }), null);
 });

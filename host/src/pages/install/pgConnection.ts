@@ -108,3 +108,33 @@ export function describeProbeFailure(message: string | undefined): string {
   const raw = (message ?? '').trim();
   return raw.length > 0 ? `${PROBE_FAILURE_LABEL[kind]}（后端原文：${raw}）` : PROBE_FAILURE_LABEL[kind];
 }
+
+/** 探活响应的最小形状（`DatabaseProbeResponse` 的结构子集，便于纯函数实测）。 */
+export interface ProbeOutcomeLike {
+  ok?: boolean;
+  reachable?: boolean;
+  message?: string;
+}
+
+/**
+ * 只有后端**明确**说 ok / reachable 才算可用。
+ * 请求返回 200 但 `ok: false` 不是成功（这是最容易谎报成「可用」的地方）。
+ */
+export function probeSucceeded(data: ProbeOutcomeLike | undefined): boolean {
+  return data ? data.ok === true || data.reachable === true : false;
+}
+
+/**
+ * 汇总两种失败路径的分类文案：
+ *   ① 请求层报错（fetch reject / 4xx）—— 走 `requestError`；
+ *   ② 业务层失败（200 + `ok: false`）—— 走 `data.message`。
+ * 无失败 ⇒ null（不得凭空造红字）。
+ */
+export function probeFailureText(
+  data: ProbeOutcomeLike | undefined,
+  requestError?: string,
+): string | null {
+  if (requestError) return describeProbeFailure(requestError);
+  if (data && !probeSucceeded(data)) return describeProbeFailure(data.message);
+  return null;
+}

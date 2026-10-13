@@ -5,6 +5,8 @@ import {
   classifyProbeFailure,
   PROBE_FAILURE_LABEL,
   pgFieldsProblem,
+  probeFailureText,
+  probeSucceeded,
   type PgFields,
   type ProbeFailureKind,
 } from '../src/pages/install/pgConnection.ts';
@@ -115,4 +117,32 @@ test('⑨ 分类器是关键词匹配不是整串相等（同一类不同措辞�
     classifyProbeFailure('could not translate host name "x": Name or service not known'),
     '两种 DNS 措辞应归同类',
   );
+});
+
+/* ── 探活结果判定（组件侧只有分支，本体在此实测）──────────────── */
+
+test('⑩ probeSucceeded：只有后端明确说 ok/reachable 才算成功', () => {
+  assert.equal(probeSucceeded(undefined), false, '无响应不算成功');
+  assert.equal(probeSucceeded({}), false, '空对象不算成功');
+  assert.equal(probeSucceeded({ ok: true }), true);
+  assert.equal(probeSucceeded({ reachable: true }), true);
+  assert.equal(probeSucceeded({ ok: false, reachable: false }), false);
+  // ★不得把「请求成功但 ok:false」当成可用（这是最容易谎报的地方）
+  assert.equal(probeSucceeded({ ok: false, message: '数据库 "x" does not exist' }), false);
+});
+
+test('⑪ probeFailureText：请求层报错与业务层 ok:false 都要给出分类原因', () => {
+  assert.equal(
+    probeFailureText(undefined, 'password authentication failed for user "fmby"'),
+    `${PROBE_FAILURE_LABEL.auth}（后端原文：password authentication failed for user "fmby"）`,
+  );
+  assert.equal(
+    probeFailureText({ ok: false, message: 'database "fmby" does not exist' }, undefined),
+    `${PROBE_FAILURE_LABEL['database-missing']}（后端原文：database "fmby" does not exist）`,
+  );
+  // 成功时不得凭空造原因（否则 UI 会一边绿一边红）
+  assert.equal(probeFailureText({ ok: true }, undefined), null);
+  // 业务失败但后端没给 message ⇒ 仍要给文案，且走 unknown（不编造具体原因）
+  assert.equal(probeFailureText({ ok: false }, undefined), PROBE_FAILURE_LABEL.unknown);
+  assert.equal(probeFailureText(undefined, undefined), null, '什么都没发生 ⇒ 无文案');
 });

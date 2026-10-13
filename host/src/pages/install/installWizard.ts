@@ -37,6 +37,8 @@ export interface WizardValues {
   adminUsername: string;
   adminPassword: string;
   adminConfirm: string;
+  /** 显示名（可选，不是门控项）。 */
+  adminDisplayName: string;
 }
 
 /**

@@ -54,7 +54,33 @@ function rendered(rel: string): string {
 const INSTALL_PAGE = 'host/src/pages/install/InstallPage.tsx';
 const ADMIN_FIELDSET = 'host/src/pages/install/AdminFieldset.tsx';
 const COMPLETION_PANEL = 'host/src/pages/install/InstallCompletionPanel.tsx';
+const DATABASE_FIELDSET = 'host/src/pages/install/DatabaseCacheFieldset.tsx';
+const SERVER_SUMMARY = 'host/src/pages/install/ServerConfigSummary.tsx';
+const WIZARD_STEPS = 'host/src/pages/install/installWizard.ts';
 const AUTH_API = 'shared/src/contracts/auth/api.ts';
+
+/**
+ * 安装向导现已拆为多个文件（#640）：
+ *   InstallPage.tsx          —— 编排（status / probe / apply / complete + 翻页）
+ *   DatabaseCacheFieldset.tsx —— ① 数据库 / 缓存（PG 拆分表单 + 连接测试）
+ *   ServerConfigSummary.tsx   —— ② 服务器配置（生效值摘要）
+ *   AdminFieldset.tsx         —— ③ 管理员（强度 / 二次确认 / 一键生成 / 显隐）
+ *   InstallCompletionPanel.tsx —— ④ 完成（凭据回显 + 落锁防误触）
+ *   installWizard.ts           —— 三页门控纯函数
+ * ⇒ 「页面应当包含 X」类断言须看**拼接后的整体**，否则把代码拆开会误报红。
+ */
+const ALL_INSTALL_FILES = [
+  INSTALL_PAGE,
+  DATABASE_FIELDSET,
+  SERVER_SUMMARY,
+  ADMIN_FIELDSET,
+  COMPLETION_PANEL,
+  WIZARD_STEPS,
+];
+
+function renderedAll(): string {
+  return ALL_INSTALL_FILES.map(rendered).join('\n');
+}
 
 /**
  * 安装向导现已拆为三个文件（#640）：
@@ -63,8 +89,12 @@ const AUTH_API = 'shared/src/contracts/auth/api.ts';
  *   InstallCompletionPanel.tsx —— ④ 完成区（凭据回显 + 落锁防误触）
  * 故除编排页外，断言需同时看三个文件的**拼接**（拼接后再剥注释）。
  */
-function renderedInstall(rel: string): string {
-  return [INSTALL_PAGE, ADMIN_FIELDSET, COMPLETION_PANEL].map(rendered).join('\n');
+/**
+ * 向后兼容：旧断言里的 `renderedInstall('')` = 三文件拼接（#640 拆分前）。
+ * 现在统一指向全量拼接。
+ */
+function renderedInstall(_legacy: string): string {
+  return renderedAll();
 }
 
 test('① 标题须说明这是「安装向导」（不再是 D 阶段那个只能探活的检查页）', () => {
@@ -79,14 +109,15 @@ test('① 标题须说明这是「安装向导」（不再是 D 阶段那个只�
 });
 
 test('② 三组选择齐备：数据库 / 缓存 / 管理员（apply 契约要求一次收全）', () => {
-  const src = rendered(INSTALL_PAGE);
+  // #640 拆页后三段内容分属三个组件 ⇒ 看拼接整体（实质不变：三组都必须在页上出现）。
+  const src = renderedAll();
   for (const kw of ['数据库', '缓存', '管理员']) {
     assert.equal(src.includes(kw), true, `向导应包含「${kw}」分组`);
   }
 });
 
 test('③ 探活仍须标注「只探活，不写配置」（探活本身确实不落盘）', () => {
-  const src = rendered(INSTALL_PAGE);
+  const src = renderedAll();
   assert.equal(
     /只探活/.test(src),
     true,
@@ -175,17 +206,34 @@ test('⑩ 管理员口令必须走已实测的策略函数，不得在组件里�
   }
 });
 
-test('⑪ 提交前 fail-closed：口令不合格就不发 apply（不只是事后报错）', () => {
+test('⑪ 提交前 fail-closed：任一门控不过就不发 apply（不只是事后报错）', () => {
   const page = rendered(INSTALL_PAGE);
+  // #640 三页化后，门控本体在 installWizard.stepProblem；编排页必须：
+  //   (a) 提交前整体拦截（allDone = 每一页都 stepDone）；
+  //   (b) 不过就 return，不发 apply；
+  //   (c) 提交按钮同时禁用。
   assert.equal(
-    /if\s*\(adminProblem\)/.test(page) && /return;/.test(page),
+    /if\s*\(!allDone\)/.test(page) && /return;/.test(page),
     true,
-    'apply 前必须先看 adminProblem 并 return（后端不校强度，弱口令一旦 apply 就成可登录凭据）',
+    'apply 前必须先查整体门控并 return（后端不校强度，弱口令一旦 apply 就成可登录凭据）',
   );
   assert.equal(
-    /disabled=\{anyPending\s*\|\|\s*adminProblem\s*!==\s*null\}/.test(page),
+    /disabled=\{anyPending\s*\|\|\s*!allDone\}/.test(page),
     true,
-    '提交按钮必须在 adminProblem 非空时禁用',
+    '提交按钮必须在门控未过时禁用',
+  );
+  // 实质不能因为改名而变松：allDone 必须覆盖**每一页**，且管理员页的门控
+  // 必须包含二次确认/强度（委托 passwordPolicy，不重写）。
+  assert.equal(
+    /WIZARD_STEPS\.every\(\(meta\)\s*=>\s*stepDone\(meta\.id,\s*values\)\)/.test(page),
+    true,
+    'allDone 必须是“全部页都达标”，不能只查当前页',
+  );
+  const wizard = rendered(WIZARD_STEPS);
+  assert.equal(
+    /confirmPasswordProblem\(values\.adminPassword,\s*values\.adminConfirm\)/.test(wizard),
+    true,
+    '管理员页门控须继续走已实测的 confirmPasswordProblem',
   );
 });
 
