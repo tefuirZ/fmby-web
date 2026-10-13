@@ -45,6 +45,12 @@ export function mapCasDriveStatus(
     copyState: raw?.copy_state ?? "",
     sizeBytes: raw?.size_bytes ?? null,
     lastVerifiedAt: raw?.last_verified_at ?? null,
+    // #671：key 缺失 ⇒ null（**不是空串**）；存在但为空 ⇒ 空串。
+    // ★两者必须分开：用 `?? ''` 归一会把「健康（无原因）」与「给了 key 却是空值」
+    //   混同（rb01 特别提醒）。存在性单独落在 `reasonCodePresent`。
+    reasonCode: raw?.reason_code ?? null,
+    reasonDetail: raw?.reason_detail ?? null,
+    reasonCodePresent: raw != null && "reason_code" in raw,
   };
 }
 
