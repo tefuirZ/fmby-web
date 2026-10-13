@@ -79,8 +79,9 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
       const direction = gridDirectionForKey(event.key);
       if (!direction) return;
 
-      // 当前行索引：以 activeElement 所在行为准（点击/程序化聚焦后仍正确，
-      // 这是网格 hook 曾踩过的 B-2：只信内部 ref 会导致「点第 5 行后按方向键回首行」）。
+      // 当前行索引：从 **activeElement 实时推导**，**不持有任何内部索引 ref**
+      // （点击/程序化聚焦后仍正确）。这是网格 hook 曾踩过的 B-2：只信内部 ref
+      // 会导致「点第 5 行后按方向键回首行」。
       const currentIndex = Number(
         active.closest(ROW_SELECTOR)?.getAttribute(ROW_ATTR) ?? -1,
       );
@@ -102,11 +103,20 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
       // 「切换选中」；37 表铺开后 `onActivate` 会整体退化成死分支。
       // 行本身设 tabindex=-1 ⇒ **程序化可聚焦、不进 Tab 序**（Tab 仍逐一可达行内
       // 控件，零回归原则不变），Enter 在行焦点上才可预期地触发 onActivate。
+      // ★本 hook 是「行不自带 tabindex」的唯一设值方：卸载时须还原（见 cleanup），
+      //   否则曾聚焦的行会残留 tabindex=-1。
       row.tabIndex = -1;
       row.focus();
     };
 
     tbody.addEventListener('keydown', handleKeyDown);
-    return () => tbody.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      tbody.removeEventListener('keydown', handleKeyDown);
+      // ★M-1 teardown（rv02 #24 评审）：与上面 `row.tabIndex = -1` 对称还原。
+      // 本 hook 是「行 tabindex」的唯一写入方，卸载时清掉所有行的 roving tabindex，
+      // 避免 React 卸载后 DOM 上残留 `tabindex=-1`（破坏 Tab 序 / 可访问性）。
+      // 调用方契约：行本身不自带 tabindex，故这里无差别清除是安全的。
+      tbody.querySelectorAll<HTMLElement>(ROW_SELECTOR).forEach((r) => r.removeAttribute('tabindex'));
+    };
   }, [tbodyRef, rowCount, onActivate]);
 }
