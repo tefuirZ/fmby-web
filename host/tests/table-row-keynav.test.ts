@@ -4061,3 +4061,107 @@ test('接线实证（真实 ShareItemBrowseSection / BrowseResultTable）：匿�
     await h.close();
   }
 });
+
+/**
+ * AuthProvidersSection（提供方配置）探针。
+ *
+ * 本表行内是**原生 checkbox**（启用/登录/绑定/找回密码），是「行停靠点 + 行内控件
+ * 各自独立 Tab 可达」这一形态的代表：roving 停靠点必须只有一个，但 checkbox 不能被
+ * 吞进 roving 里，也必须保持原生 Tab 顺序。
+ */
+const AUTH_PROVIDERS_ENTRY = `
+import { createElement } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { AuthProvidersSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const mk = (provider, name) => ({
+  provider,
+  display_name: name,
+  enabled: provider === 'discord',
+  configured: true,
+  allow_login: true,
+  allow_binding: false,
+  allow_password_reset: false,
+  public_config: {},
+  secret_fields_configured: ['client_secret'],
+  updated_at: '2026-01-01T00:00:00Z',
+});
+
+globalThis.fetch = async (url, init) => {
+  const u = String(url);
+  if (u.includes('/api/manage/auth-providers') && String(init?.method ?? 'GET') === 'GET') {
+    return new Response(
+      JSON.stringify({ items: [mk('discord', 'Discord'), mk('github', 'GitHub')] }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(AuthProvidersSection, null)),
+);
+`;
+
+test('接线实证（真实 AuthProvidersSection）：行停靠点唯一 + 行内 checkbox 保持原生 Tab 可达（补测批次 C 1/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-authprov-',
+    AUTH_PROVIDERS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/auth-providers/AuthProvidersSection.tsx'),
+    'table',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+
+    // 行停靠点唯一 —— 这条断言直接压在 roving 接线缺失上：
+    // 没有任何 useTableRowRoving 时所有 <tr> 都没有 tabindex，[] !== ['0']。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '提供方配置表首行应是唯一 Tab 停靠点');
+
+    // 行内原生 checkbox 必须独立 Tab 可达，且不被 roving 吞掉。
+    const box = page.locator('input[type="checkbox"][aria-label="启用 Discord"]');
+    assert.equal(await box.count(), 1, '行内 checkbox 应存在');
+
+    // ★先真实 Tab 进来再谈活动行：roving 只设置 tabindex，并不主动 focus()，
+    //   所以「唯一停靠点」与「当前焦点在行上」是两件事，必须按真实顺序断言。
+    assert.equal(await countTabPressesToRow(page, 0), 1, '真实 Tab 应一次到达行停靠点');
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 进入后活动行应为 index 0');
+
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, '↓ 移到下一行');
+    await page.keyboard.press('ArrowUp');
+    assert.equal(await focusedRowIn(page, 0), 0, '↑ 回到上一行');
+
+    // 从活动行走真实 Tab：应停在**同一行**的 checkbox（行停靠点之后紧邻行内控件）。
+    const before = await page.evaluate(() => {
+      const el = document.activeElement;
+      const tr = el?.closest?.('tr');
+      return { tr: !!tr, idx: tr?.getAttribute('data-row-index') ?? null, role: el?.getAttribute('type') ?? null };
+    });
+    assert.equal(before.tr, true, '按 Tab 前焦点应在行上');
+    await page.keyboard.press('Tab');
+    const after = await page.evaluate(() => {
+      const el = document.activeElement;
+      const tr = el?.closest?.('tr');
+      return {
+        tr: !!tr,
+        idx: tr?.getAttribute('data-row-index') ?? null,
+        type: el?.getAttribute('type') ?? null,
+        label: el?.getAttribute('aria-label') ?? null,
+      };
+    });
+    assert.equal(after.type, 'checkbox', '按一次 Tab 应落在原生 checkbox 上，而非另一行停靠点');
+    assert.equal(after.idx, before.idx, 'checkbox 应属于同一行（不跳到下一行）');
+
+    // checkbox 原生 Space 切换，roving 不应插手。
+    await page.keyboard.press('Space');
+    assert.equal(await box.isChecked(), false, 'Space 应切换 checkbox 原生状态');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
