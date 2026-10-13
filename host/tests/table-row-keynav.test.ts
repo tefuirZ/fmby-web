@@ -3685,3 +3685,156 @@ test('接线实证（ManageSystemAboutPage）：三张表各自独立漫游，�
     await h.close();
   }
 });
+
+/**
+ * SyncSection（115 同步管理）探针。
+ *
+ * 与前面「首屏就有行」的页面不同：这里是 `enabled: mountId.trim().length > 0`，
+ * 初始只有「请输入挂载 ID 以载入同步概览。」，**一个 data-row-index 都没有**。
+ * 所以 readySelector 必须等那个提示消失后的可见标志，不能等默认的行选择器。
+ *
+ * 这恰好是 roving 初始化最容易翻车的一种形态：tbody 是在**用户输入之后**才挂载的，
+ * 与 ca0e215 修的「query 早退后晚挂载」同源（ref 变了没通知），当时靠
+ * rowCount 从 0→N 巧合恢复；这里用真输入框驱动，验证用户视角下的真实路径。
+ */
+const SYNC_SECTION_ENTRY = `
+import { createElement } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { SyncSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+// fixture 必须是后端原始 snake_case（RawSyncSource / RawSyncTask）——
+// httpClient 直接把 JSON 交给 fromSyncSource/fromSyncTask，喂 camelCase 会全 undefined。
+const sources = [0, 1, 2].map((i) => ({
+  source_id: 's-' + i,
+  share_item_id: 'sh-' + i,
+  display_name: '来源 ' + i,
+  source_kind: 'share',
+  status: i === 1 ? 'error' : 'ok',
+  root_node_id: 'n-' + i,
+  last_error_message: i === 1 ? '拉取失败' : null,
+  updated_at: '2026-01-01T00:00:00Z',
+}));
+
+const recentTasks = [0, 1].map((i) => ({
+  id: 't-' + i,
+  source_id: 's-0',
+  share_item_id: 'sh-0',
+  display_name: '任务 ' + i,
+  task_kind: 'full_index',
+  request_reason: 'manual',
+  status: 'done',
+  attempt_count: 1,
+  max_attempts: 3,
+  last_error_message: null,
+  requested_at: '2026-01-01T00:00:00Z',
+}));
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/api/manage/pan115/sync/mounts/')) {
+    return new Response(
+      JSON.stringify({
+        mount_id: 'm-1',
+        provider_type: 'pan115',
+        sources,
+        checkpoints: [],
+        recent_tasks: recentTasks,
+        supported_actions: [],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(SyncSection, null)),
+);
+`;
+
+test('接线实证（真实 SyncSection）：输入挂载 ID 后两张只读表各自独立漫游（补测批次 B 2/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-syncsec-',
+    SYNC_SECTION_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/pan115-share/components/SyncSection.tsx'),
+    // 初始零行 ⇒ 等「请输入挂载 ID」这个立即可见的提示，而不是行。
+    'text=请输入挂载 ID 以载入同步概览。',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+
+    // ★先钉死「未输入时没有任何停靠点」，否则后面的断言可能被初始 DOM 蒙混过关。
+    assert.deepEqual(
+      await page.evaluate(() =>
+        Array.from(document.querySelectorAll('tbody tr[tabindex]')).map((r) => r.getAttribute('tabindex')),
+      ),
+      [],
+      '未输入挂载 ID 时不应有任何 roving 停靠点（表还没渲染）',
+    );
+
+    // 真实用户路径：往真输入框打字，query 才 enabled。
+    await page.locator('input[aria-label="挂载 ID"]').fill('m-1');
+    await page.waitForSelector('[data-row-index="0"]', { timeout: 20000 });
+
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody').length),
+      2,
+      '同步来源 / 最近任务两张表应有各自 tbody（索引域独立）',
+    );
+
+    // 来源表 3 行：唯一停靠点。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '同步来源表首行应是唯一 Tab 停靠点');
+    // 真实连续 Tab 步数：1→挂载 ID 输入框，2→.tableWrap 滚动容器
+    // （裁决②要求保留 tabIndex=0 + role="region"），3→行停靠点。
+    // 多一跳如实写死在这里，而不是写 maxTabIndex 上界把差异藏掉。
+    assert.equal(await countTabPressesToRow(page, 0), 3, '真实 Tab 步数应为 输入框→滚动容器→行停靠点');
+    assert.equal(await focusedRowIn(page, 0), 0, '同步来源表起始活动行应为 index 0');
+
+    // 方向键漫游。
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, '↓ 移到下一行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 2, '↓ 移到末行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 2, '末行再按 ↓ 不应越界回绕');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行');
+
+    // 只读表：Enter 不应触发任何行操作（两张表都不传 onActivate）。
+    await page.keyboard.press('Enter');
+    assert.deepEqual(h.errors, [], '只读表按 Enter 不得抛错');
+
+    // ★跨表：来源表停在末行（index 2），Tab 必须进到最近任务表的**活动行**，
+    // 而不是「另一张表的第一行」——独立索引域的核心断言。
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '最近任务表首行应是唯一 Tab 停靠点');
+    assert.equal(await focusedRowIn(page, 0), 2, '来源表仍停在末行');
+    const steps = await tabIntoRow(page, 1);
+    assert.equal(steps, 0, '按一次 Tab 应从来源表活动行进入最近任务表活动行');
+    assert.equal(await focusedRowIn(page, 1), 0, '进入最近任务表后应落在其活动行 index 0');
+
+    // ★Shift+Tab 回去要跨过最近任务表自己的 .tableWrap 滚动容器：
+    // DOM 顺序是 [表0wrap → 表0行 → 表1wrap → 表1行]，所以从表1行倒着走一步
+    // 先回到**表1自己的** region，再一步才回到表0行。
+    // 这两跳如实写死，不写上界把 region 的存在藏掉。
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(
+      await focusedRowIn(page, 0),
+      null,
+      '倒走一步应落在最近任务表自己的滚动容器（region），而非表0行',
+    );
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(
+      await focusedRowIn(page, 0),
+      2,
+      '再倒走一步应回到来源表当前活动行 index 2（不是硬编码首行）',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
