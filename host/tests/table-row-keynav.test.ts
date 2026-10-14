@@ -2564,6 +2564,21 @@ test('接线实证（MicrosoftOAuthSection）：两张只读表各自独立漫�
     assert.equal(await tabIntoRow(page, 1), 0, '再按 Tab 应能走到 site 表的活动行');
     await page.keyboard.press('End');
     assert.equal(await focusedRowIn(page, 1), 1, 'site 表 End → 末行（索引域独立于 drive 表）');
+
+    // tableWrap 滚动区 a11y（第七批）：OneDrive 网盘表 + SharePoint 站点表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const moTw = await page.evaluate(() => {
+      const grab = (label: string) => {
+        const el = document.querySelector(`div[aria-label="${label}"]`);
+        return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+      };
+      return {
+        drives: grab('OneDrive 网盘（可横向滚动）'),
+        sites: grab('SharePoint 站点（可横向滚动）'),
+      };
+    });
+    assert.deepEqual(moTw.drives, ['region', null, 'OneDrive 网盘（可横向滚动）'], 'OneDrive 网盘表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(moTw.sites, ['region', null, 'SharePoint 站点（可横向滚动）'], 'SharePoint 站点表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
