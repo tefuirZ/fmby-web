@@ -104,7 +104,7 @@ export function OperationsGapSections() {
         ) : loadItems.length === 0 ? (
           <div className={styles.emptyInlineState}>当前无数据源负载观测。</div>
         ) : (
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap} role="region" aria-label="数据源负载（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -197,7 +197,7 @@ export function OperationsGapSections() {
               后端回显 limit={activePlaybackQuery.data?.limit ?? EM_DASH}，
               本次返回 {activePlaybackQuery.data?.totalReturned ?? 0} 条。
             </div>
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="播放记录（可横向滚动）">
               <table className={styles.table}>
                 <thead>
                   <tr>
