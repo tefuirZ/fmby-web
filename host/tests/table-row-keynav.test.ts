@@ -2001,6 +2001,13 @@ test('接线实证（UpstreamMappingPresetsSection）：↑↓/Home/End 移动�
       () => (document.querySelector('[role="dialog"]') as HTMLElement)?.textContent ?? '',
     );
     assert.match(dialogText, /预设 1/, 'Enter 应打开该行的「编辑」对话框（与点按钮同语义）');
+    // tableWrap 滚动区 a11y（第十二批）：映射预设表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const presetTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="映射预设（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(presetTw, ['region', null, '映射预设（可横向滚动）'], '映射预设表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -4919,6 +4926,13 @@ test('接线实证（真实 UpstreamMappingWizardSection）：真按钮触发后
     await page.keyboard.press('End');
     assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行（3 行）');
     assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    // tableWrap 滚动区 a11y（第十二批）：映射预览结果表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const previewTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="映射预览结果（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(previewTw, ['region', null, '映射预览结果（可横向滚动）'], '映射预览结果表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
