@@ -39,7 +39,7 @@ export function MicrosoftAccountsSection({
         {configItems.length === 0 ? (
           <div className={styles.emptyInlineState}>后端未返回任何 provider 配置状态。</div>
         ) : (
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap} role="region" aria-label="应用凭据配置状态（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -90,7 +90,7 @@ export function MicrosoftAccountsSection({
         {profiles.length === 0 ? (
           <div className={styles.emptyInlineState}>还没有任何已授权账号。</div>
         ) : (
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap} role="region" aria-label="已授权账号（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>

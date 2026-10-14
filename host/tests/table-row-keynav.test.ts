@@ -2401,6 +2401,21 @@ test('接线实证（MicrosoftAccountsSection）：两张只读表各自独立�
       null,
       '焦点须已离开表2',
     );
+
+    // tableWrap 滚动区 a11y（第六批）：应用凭据配置状态表 + 已授权账号表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const maTw = await page.evaluate(() => {
+      const grab = (label: string) => {
+        const el = document.querySelector(`div[aria-label="${label}"]`);
+        return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+      };
+      return {
+        cred: grab('应用凭据配置状态（可横向滚动）'),
+        acct: grab('已授权账号（可横向滚动）'),
+      };
+    });
+    assert.deepEqual(maTw.cred, ['region', null, '应用凭据配置状态（可横向滚动）'], '应用凭据配置状态表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(maTw.acct, ['region', null, '已授权账号（可横向滚动）'], '已授权账号表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
