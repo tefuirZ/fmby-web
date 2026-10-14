@@ -154,7 +154,14 @@ export function ManageEventsPage() {
         </div>
 
         <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="事件列表（可横向滚动）">
-          <table className={styles.table}>
+          {/* treegrid 语义（对齐 CollectionListTable 既有范式）：
+              · 父表 role=treegrid，父数据行 aria-level=1 + aria-expanded（可展开父节点，
+                treegrid 承载展开态）；
+              · 展开按钮亦带 aria-expanded（disclosure 控件）—— 覆盖 Tab 焦点反馈；
+              · 展开行(colSpan=7)为容器行，不带索引与层级；内嵌 EventDetailPanel 内的
+                「时间线」与「审计记录」子表为普通明细表（带 aria-label），不标孤儿 treegrid；
+              · roving 独立（A 方案）保持不动。 */}
+          <table className={styles.table} role="treegrid">
             <thead>
               <tr>
                 <th>时间</th>
@@ -171,10 +178,10 @@ export function ManageEventsPage() {
                 <EmptyTableRow colSpan={7} title="暂无事件" description="待后端返回审计事件数据后展示。" />
               ) : (
                 events.map((event, index) => {
-                  const expanded = expandedId === event.id;
+                  const expanded = expandedId === event.requestId;
                   return (
                     <Fragment key={event.id}>
-                      <tr data-row-index={index}>
+                      <tr data-row-index={index} aria-level={1} aria-expanded={expanded}>
                         <td className="nowrap">{formatEpochMs(event.timestamp)}</td>
                         <td>
                           <StatusBadge
@@ -190,6 +197,7 @@ export function ManageEventsPage() {
                           <button
                             type="button"
                             className={styles.smallButton}
+                            aria-expanded={expanded}
                             onClick={() => setExpandedId(expanded ? null : event.requestId)}
                           >
                             {expanded ? '收起' : '详情'}
@@ -310,7 +318,7 @@ function EventDetailPanel({
 
       <div>
         <span className={styles.mutedText}>时间线</span>
-        <table className={styles.table}>
+        <table className={styles.table} aria-label="事件处理时间线">
           <thead>
             <tr>
               <th>步</th>
@@ -342,7 +350,7 @@ function EventDetailPanel({
 
       <div>
         <span className={styles.mutedText}>审计记录</span>
-        <table className={styles.table}>
+        <table className={styles.table} aria-label="事件审计记录">
           <thead>
             <tr>
               <th>时间</th>
