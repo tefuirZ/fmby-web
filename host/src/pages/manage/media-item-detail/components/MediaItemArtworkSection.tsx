@@ -1,11 +1,8 @@
 import { useRef, useState } from 'react';
-import { Trash2, Upload } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import type { DangerousActionRequest } from '@fmby/v2-shared/contracts/manage';
-import type {
-  ManageMediaItemArtworkKind,
-  ManageMediaItemDetailRecord,
-} from '@fmby/v2-shared/contracts/manage/media-items';
-import { InlineBanner, SensitiveActionDialog, StatusBadge, useToast } from '@fmby/v2-shared/ui';
+import type { ManageMediaItemDetailRecord } from '@fmby/v2-shared/contracts/manage/media-items';
+import { SensitiveActionDialog, StatusBadge, useToast } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import sharedStyles from '../../ManagePages.module.css';
@@ -22,6 +19,7 @@ import {
 import styles from '../MediaItemDetail.module.css';
 import type { MediaItemMutations } from '../types';
 import { ArtImage } from './ArtImage';
+import { ArtworkUploadForm } from './ArtworkUploadForm';
 import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 interface MediaItemArtworkSectionProps {
@@ -34,12 +32,6 @@ interface PendingArtworkDelete {
   kindLabel: string;
   filename: string;
 }
-
-const ARTWORK_KINDS: { value: ManageMediaItemArtworkKind; label: string }[] = [
-  { value: 'poster', label: '海报（竖版 2:3）' },
-  { value: 'backdrop', label: '背景图（横版 16:9）' },
-  { value: 'thumb', label: '缩略图（横版 16:9）' },
-];
 
 /**
  * 「图片资产」段落。
@@ -57,41 +49,12 @@ export function MediaItemArtworkSection({
   const { toast } = useToast();
   const { uploadArtworkMutation, deleteArtworkMutation } = mutations;
 
-  const [artworkKind, setArtworkKind] = useState<ManageMediaItemArtworkKind>('poster');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  // 上传成功后靠改 key 强制重建 input，把已选文件名清掉。
-  const [fileInputKey, setFileInputKey] = useState(0);
   const [pendingDelete, setPendingDelete] = useState<PendingArtworkDelete | null>(null);
 
   // FE-LIST-KEYNAV-10：「随文件资源」表。行内有「打开」链接（原生 Tab 可达）
   // ⇒ 不传 onActivate，不凭空给行加 Enter 语义。
   const remoteAssetsTbodyRef = useRef<HTMLTableSectionElement>(null);
   useTableRowRoving({ tbodyRef: remoteAssetsTbodyRef, rowCount: detail.remoteAssets.length });
-
-  const handleUpload = () => {
-    if (!selectedFile) {
-      return;
-    }
-    uploadArtworkMutation.mutate(
-      { artworkKind, file: selectedFile },
-      {
-        onSuccess: () => {
-          setSelectedFile(null);
-          setFileInputKey((current) => current + 1);
-          toast.success({
-            title: '图片已上传',
-            description: `${getArtworkKindLabel(artworkKind)}已替换为本地版本。`,
-          });
-        },
-        onError: (error) => {
-          toast.error({
-            title: '图片上传失败',
-            description: getErrorMessage(error),
-          });
-        },
-      },
-    );
-  };
 
   const handleConfirmDelete = (confirmation: DangerousActionRequest) => {
     if (!pendingDelete) {
@@ -129,60 +92,7 @@ export function MediaItemArtworkSection({
         </span>
       }
     >
-      <div className={styles.uploadForm}>
-        <label className={sharedStyles.fieldGroup}>
-          <span className={sharedStyles.label}>图片用途</span>
-          <select
-            className={sharedStyles.select}
-            value={artworkKind}
-            onChange={(event) =>
-              setArtworkKind(event.target.value as ManageMediaItemArtworkKind)
-            }
-          >
-            {ARTWORK_KINDS.map((kind) => (
-              <option key={kind.value} value={kind.value}>
-                {kind.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className={sharedStyles.fieldGroup}>
-          <span className={sharedStyles.label}>选择图片文件</span>
-          <input
-            accept="image/*"
-            className={styles.fileInput}
-            key={fileInputKey}
-            type="file"
-            onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-          />
-          <span className={sharedStyles.fieldHelpText}>
-            {selectedFile
-              ? `已选择 ${selectedFile.name}（${formatFileSize(selectedFile.size)}）`
-              : '支持常见图片格式，上传后立即作为该用途的本地覆盖生效。'}
-          </span>
-        </label>
-
-        <div className={sharedStyles.buttonRow}>
-          <button
-            className={sharedStyles.primaryButton}
-            disabled={!selectedFile || uploadArtworkMutation.isPending}
-            type="button"
-            onClick={handleUpload}
-          >
-            <Upload size={16} />
-            {uploadArtworkMutation.isPending ? '上传中…' : '上传并覆盖'}
-          </button>
-        </div>
-      </div>
-
-      {uploadArtworkMutation.isError ? (
-        <InlineBanner
-          description={getErrorMessage(uploadArtworkMutation.error)}
-          title="上传失败"
-          variant="error"
-        />
-      ) : null}
+      <ArtworkUploadForm uploadArtworkMutation={uploadArtworkMutation} />
 
       <div className={sharedStyles.stackText}>
         <span className={styles.kicker}>自定义封面</span>
