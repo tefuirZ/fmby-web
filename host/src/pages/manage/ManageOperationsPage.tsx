@@ -162,7 +162,7 @@ export function ManageOperationsPage() {
         {data.hotItems.length === 0 ? (
           <div className={styles.emptyInlineState}>窗口内暂无播放数据。</div>
         ) : (
-          <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+          <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="内容列表（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -193,7 +193,7 @@ export function ManageOperationsPage() {
         {data.activeUsers.length === 0 ? (
           <div className={styles.emptyInlineState}>窗口内暂无活跃用户。</div>
         ) : (
-          <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+          <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="用户播放统计（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -241,7 +241,7 @@ export function ManageOperationsPage() {
         {snapshotView.rows.length === 0 ? (
           <div className={styles.emptyInlineState}>当前无活跃会话。</div>
         ) : (
-          <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+          <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="任务与活动（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -275,7 +275,7 @@ export function ManageOperationsPage() {
         {loadRows.length === 0 ? (
           <div className={styles.emptyInlineState}>当前无数据源负载观测。</div>
         ) : (
-          <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+          <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="挂载会话（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -323,7 +323,7 @@ function TrendTable({
   return (
     <div className={styles.entityCard}>
       <strong className={styles.sectionTitle}>{title}</strong>
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap} role="region" aria-label="趋势（可横向滚动）">
         <table className={styles.table}>
           <thead>
             <tr>

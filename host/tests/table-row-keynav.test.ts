@@ -5309,6 +5309,27 @@ test('接线实证（真实 ManageOperationsPage）：概览多表各自独立�
     assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '活跃用户榜应是独立域的首行停靠点');
     assert.deepEqual(await rovingStopsIn(page, 6), ['0'], '数据源负载表应是独立域的首行停靠点');
 
+    // tableWrap 滚动区 a11y（第三批）：概览 5 处 tableWrap 补 role=region + aria-label
+    // （roving 表不加 tabIndex=0，避免双停靠点破坏 roving 停靠点，见第一批实测）。
+    const opsTw = await page.evaluate(() => {
+      const grab = (label: string) => {
+        const el = document.querySelector(`div[aria-label="${label}"]`);
+        return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+      };
+      return {
+        content: grab('内容列表（可横向滚动）'),
+        plays: grab('用户播放统计（可横向滚动）'),
+        tasks: grab('任务与活动（可横向滚动）'),
+        mounts: grab('挂载会话（可横向滚动）'),
+        trend: grab('趋势（可横向滚动）'),
+      };
+    });
+    assert.deepEqual(opsTw.content, ['region', null, '内容列表（可横向滚动）'], '内容列表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.plays, ['region', null, '用户播放统计（可横向滚动）'], '用户播放统计 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.tasks, ['region', null, '任务与活动（可横向滚动）'], '任务与活动 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.mounts, ['region', null, '挂载会话（可横向滚动）'], '挂载会话 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.trend, ['region', null, '趋势（可横向滚动）'], '趋势 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错（WS 回落 REST 不应产生 pageerror）');
   } finally {
     await h.close();
