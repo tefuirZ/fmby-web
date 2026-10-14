@@ -5387,14 +5387,55 @@ test('接线实证（真实 ManageEventsPage）：主事件表 + 嵌套时间线
     assert.equal(await btn.evaluate((b: any) => b.getAttribute('tabindex')), null, '行内「详情」按钮不得被 roving 改写 tabindex');
 
     // ④ 点「详情」⇒ detailQuery 触发 ⇒ EventDetailPanel 渲染嵌套的时间线/审计表。
+    // treegrid 校验：展开前主表 role=treegrid，首行 aria-level=1，aria-expanded=false
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[0].getAttribute('role')),
+      'treegrid',
+      '主事件表 role 应为 treegrid',
+    );
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index="0"]')[0].getAttribute('aria-level')),
+      '1',
+      '主事件表第 0 行 aria-level 应为 1',
+    );
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index="0"]')[0].getAttribute('aria-expanded')),
+      'false',
+      '展开前主事件表第 0 行 aria-expanded 应为 false',
+    );
+
     await btn.click();
     await page.waitForFunction(() => document.querySelectorAll('tbody').length >= 3, null, { timeout: 20000 });
+
+    const btnAfter = page.locator('tbody tr[data-row-index="0"] button:has-text("收起")');
+    // 展开后主表第 0 行 aria-expanded=true，详情按钮 aria-expanded=true
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index="0"]')[0].getAttribute('aria-expanded')),
+      'true',
+      '展开后主事件表第 0 行 aria-expanded 应为 true',
+    );
+    assert.equal(
+      await btnAfter.evaluate((b: any) => b.getAttribute('aria-expanded')),
+      'true',
+      '展开后按钮 aria-expanded 应为 true',
+    );
 
     // ⑤ 三表各自独立 roving 域（域 0 主表、域 1 时间线、域 2 审计）。
     assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '嵌套时间线表应是独立域的首行停靠点');
     assert.deepEqual(await rovingStopsIn(page, 2), ['0'], '嵌套审计记录表应是独立域的首行停靠点');
 
     // ⑥ 嵌套时间线表头语义 + 行数。
+    // 子表降级普通 table（去孤儿 treegrid），带可访问性 label
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[1].getAttribute('aria-label')),
+      '事件处理时间线',
+      '嵌套时间线表应有 aria-label',
+    );
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[2].getAttribute('aria-label')),
+      '事件审计记录',
+      '嵌套审计记录表应有 aria-label',
+    );
     const tlHeads = await page.evaluate(() =>
       Array.from(document.querySelectorAll('table')[1].querySelectorAll('thead th'))
         .map((th) => th.textContent?.trim() ?? ''),
