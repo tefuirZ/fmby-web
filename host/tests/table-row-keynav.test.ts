@@ -5057,6 +5057,20 @@ test('接线实证（真实 OperationsGapSections）：负载表 + 播放表各�
     assert.equal(await focusedRowIn(page, 0), 2, 'End → 负载表末行（3 行）');
     assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
 
+    // tableWrap 滚动区 a11y（第五批）：负载表 + 播放表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const ogTw = await page.evaluate(() => {
+      const grab = (label: string) => {
+        const el = document.querySelector(`div[aria-label="${label}"]`);
+        return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+      };
+      return {
+        load: grab('数据源负载（可横向滚动）'),
+        play: grab('播放记录（可横向滚动）'),
+      };
+    });
+    assert.deepEqual(ogTw.load, ['region', null, '数据源负载（可横向滚动）'], '负载表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(ogTw.play, ['region', null, '播放记录（可横向滚动）'], '播放表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错（WS 回落 REST 不应产生 pageerror）');
   } finally {
     await h.close();
