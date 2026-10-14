@@ -39,6 +39,8 @@ export function ItemDetailHero({ item, posterBadges }: ItemDetailHeroProps) {
                   onPosterError();
                   setPosterFailed(true);
                 }}
+                loading="lazy"
+                decoding="async"
               />
             ) : (
               <div
