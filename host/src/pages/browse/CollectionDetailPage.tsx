@@ -87,10 +87,22 @@ export function CollectionDetailPage() {
             <h2 className={styles.sectionTitle}>合集条目</h2>
             <p className={styles.sectionDescription}>共 {totalMembers} 个条目</p>
           </div>
-          <ul className={styles.mediaRail}>
+          <ul className={styles.posterGrid}>
             {members.map((member) => (
-              <li key={member.id} className={styles.posterRailItem}>
-                <strong>{member.titleSnapshot}</strong>
+              <li key={member.id} className={styles.posterGridCard}>
+                <div className={styles.posterGridImageWrap}>
+                  {member.posterUrlSnapshot ? (
+                    <img
+                      className={styles.posterGridImage}
+                      src={member.posterUrlSnapshot}
+                      alt=""
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className={styles.posterGridFallback}>暂无封面</div>
+                  )}
+                </div>
+                <span className={styles.posterGridTitle}>{member.titleSnapshot}</span>
                 {member.yearSnapshot ? (
                   <span className={styles.metaText}>{member.yearSnapshot}</span>
                 ) : null}

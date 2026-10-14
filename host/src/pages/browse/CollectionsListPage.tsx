@@ -105,14 +105,26 @@ export function CollectionsListPage() {
             </span>
             <span className={styles.filterChip}>每页 {pageSize}</span>
           </div>
-          <div className={styles.mediaRail}>
+          <div className={styles.posterGrid}>
             {items.map((collection) => (
               <Link
                 key={collection.id}
-                className={styles.posterRailItem}
+                className={styles.posterGridCard}
                 to={`/collections/${collection.id}`}
               >
-                <strong>{collection.title}</strong>
+                <div className={styles.posterGridImageWrap}>
+                  {collection.posterUrl ? (
+                    <img
+                      className={styles.posterGridImage}
+                      src={collection.posterUrl}
+                      alt=""
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className={styles.posterGridFallback}>暂无封面</div>
+                  )}
+                </div>
+                <span className={styles.posterGridTitle}>{collection.title}</span>
                 {collection.overview ? (
                   <span className={styles.metaText}>{collection.overview}</span>
                 ) : null}
