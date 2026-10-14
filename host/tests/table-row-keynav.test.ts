@@ -4611,3 +4611,785 @@ test('接线实证（真实 UpstreamSourceListSection）：查询表 + 局域网
   }
 });
 ;
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 1/N：ManageCasPage —— 盘配置表（provider_type/drive_ref…） */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 本表形态：行内有 checkbox（纳入扇出）+ 数字输入（优先级）+ 「保存」按钮，
+ * 三者都是原生 Tab 可达 ⇒ 组件刻意**不传** onActivate。
+ * 因此「唯一 Tab 停靠点」是它唯一的 roving 入口，去掉接线必然转红。
+ *
+ * fixture 用**后端原始 snake_case**（RawCasDriveConfig）：httpClient 把 JSON 直接交给
+ * mapCasDriveConfig，喂 camelCase 会让 providerType/driveRef 全 undefined 而渲染不出盘名。
+ */
+const CAS_DRIVES_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageCasPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const configs = [
+  { provider_type: 'pan115', drive_ref: 'drive-a', enabled: true, priority: 1 },
+  { provider_type: 'pan115', drive_ref: 'drive-b', enabled: false, priority: 2 },
+  { provider_type: 'openlist', drive_ref: 'drive-c', enabled: true, priority: 3 },
+];
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/api/admin/cas/drives')) {
+    return new Response(JSON.stringify(configs), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc }, createElement(ManageCasPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageCasPage）：盘配置表表头语义 + 3 行 + 唯一停靠点 + 行内控件原生 Tab', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-casdrives-',
+    CAS_DRIVES_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageCasPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 表头语义（不是「渲染不炸」）。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['盘', '纳入扇出', '优先级', ''], '盘配置表表头应为 盘/纳入扇出/优先级/操作');
+
+    // ② 行数 = fixture 条数。
+    const rows = await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index]').length);
+    assert.equal(rows, 3, '应渲染 3 行（与 fixture 一致）');
+
+    // ③ roving 唯一停靠点 —— 「无接线」时所有 <tr> 没有 tabindex ⇒ [] !== ['0']。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '盘配置表首行应是唯一 Tab 停靠点');
+
+    // ④ 真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    // ⑤ 行内控件保持原生 Tab（roving 不得改写它们的 tabindex）。
+    const box = page.locator('tbody tr[data-row-index="0"] input[type="checkbox"]');
+    assert.equal(await box.count(), 1, '行内应有一个「纳入扇出」checkbox');
+    assert.equal(
+      await box.evaluate((b: any) => b.getAttribute('tabindex')),
+      null,
+      '行内 checkbox 不得被 roving 改写 tabindex',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 2/N：UpstreamMappingWizardSection —— 映射预览结果表      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 表在 PreviewResultCard 里，由 previewMutation（POST .../mapping/preview）结果驱动，
+ * 初始无行 ⇒ 必须点真按钮「生成预览」触发。presetsQuery（GET .../mapping/presets）
+ * 挂载即发，mock 一并打桩。纯只读结果清单（行内 StatusBadge 非可聚焦）⇒ 不传 onActivate。
+ */
+const UPSTREAM_WIZARD_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { UpstreamMappingWizardSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const preview = {
+  source_id: 'src-1',
+  items: [
+    { category_id: 'c1', upstream_category_id: 'u1', category_name: '电影', selected: true, action: 'bind_existing', library_id: 'lib1', library_name: '电影库', create_key: null, create_library_name: null, create_library_type: null, skip_reason: null, conflict_message: null },
+    { category_id: 'c2', upstream_category_id: 'u2', category_name: '剧集', selected: true, action: 'create_library', library_id: null, library_name: null, create_key: 'k2', create_library_name: '剧集库', create_library_type: 'Series', skip_reason: null, conflict_message: null },
+    { category_id: 'c3', upstream_category_id: 'u3', category_name: '综艺', selected: true, action: 'skip', library_id: null, library_name: null, create_key: null, create_library_name: null, create_library_type: null, skip_reason: '已被排除', conflict_message: null },
+  ],
+  creates: [],
+  bind_count: 1,
+  create_count: 1,
+  skip_count: 1,
+  conflict_count: 0,
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/mapping/presets')) {
+    return json({ items: [], total: 0 });
+  }
+  if (u.includes('/mapping/preview')) {
+    return json(preview);
+  }
+  return json({});
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(UpstreamMappingWizardSection, { sourceId: 'src-1' })),
+);
+`;
+
+test('接线实证（真实 UpstreamMappingWizardSection）：真按钮触发后预览结果表独立漫游（补测批次 D 2/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-wizard-',
+    UPSTREAM_WIZARD_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamMappingWizardSection.tsx'),
+    // 初始无行（表要跑完 previewMutation 才有行），先等真按钮出现证明组件挂上。
+    'button:has-text("生成预览")',
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    // 初始无行 ⇒ 无停靠点（确认表确实是 previewMutation 驱动的）。
+    assert.deepEqual(await rovingStopsIn(page, 0), [], '未生成预览前不应有停靠点');
+
+    await clickButtonByText(page, '生成预览');
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 表头语义。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['类目', '动作', '目标库', '说明'], '预览结果表表头应为 类目/动作/目标库/说明');
+
+    // ② 行数 = fixture 条数。
+    const rows = await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index]').length);
+    assert.equal(rows, 3, '应渲染 3 行（与 fixture 一致）');
+
+    // ③ roving 唯一停靠点 —— 「无接线」时所有 <tr> 没有 tabindex ⇒ [] !== ['0']。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '预览结果表首行应是唯一 Tab 停靠点');
+
+    // ④ 真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 3/N：UpstreamBindingsSection —— 类目与绑定表            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 类目表由 categoriesQuery（GET .../apple-cms/categories）驱动，挂载即有行。
+ * 行内有「绑定到」<select>（原生 Tab 可达）⇒ 不传 onActivate。
+ * 另有 librariesQuery（GET /api/manage/libraries）喂下拉选项，一并打桩。
+ */
+const UPSTREAM_BINDINGS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { UpstreamBindingsSection } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const categories = {
+  items: [
+    { id: 'c1', source_id: 'src-1', upstream_category_id: 'u1', parent_upstream_category_id: null, name: '电影', kind: 'category', library_id: 'lib1', library_name: '电影库', discovered_at: 1700000000000, updated_at: 1700000000000 },
+    { id: 'c2', source_id: 'src-1', upstream_category_id: 'u2', parent_upstream_category_id: null, name: '剧集', kind: 'category', library_id: null, library_name: null, discovered_at: 1700000000000, updated_at: 1700000000000 },
+    { id: 'c3', source_id: 'src-1', upstream_category_id: 'u3', parent_upstream_category_id: null, name: '综艺', kind: 'category', library_id: null, library_name: null, discovered_at: 1700000000000, updated_at: 1700000000000 },
+  ],
+  total: 3,
+};
+
+const libraries = {
+  items: [
+    { id: 'lib1', name: '电影库', kind: 'Movie', type_label: '电影', item_count: 0, total_items: 0, status: 'active', updated_at: '2026-01-01T00:00:00Z', sources: [] },
+    { id: 'lib2', name: '剧集库', kind: 'Series', type_label: '剧集', item_count: 0, total_items: 0, status: 'active', updated_at: '2026-01-01T00:00:00Z', sources: [] },
+  ],
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/apple-cms/categories')) {
+    return json(categories);
+  }
+  if (u.includes('/api/manage/libraries')) {
+    return json(libraries);
+  }
+  return json({ items: [] });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(UpstreamBindingsSection, { sourceId: 'src-1' })),
+);
+`;
+
+test('接线实证（真实 UpstreamBindingsSection）：类目表头语义 + 3 行 + 唯一停靠点 + 行内 select 原生 Tab（补测批次 D 3/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-bindings-',
+    UPSTREAM_BINDINGS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/upstreams/UpstreamBindingsSection.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 表头语义。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['名称', '上游 ID', '当前绑定', '绑定到', '发现时间'], '类目表表头应为 名称/上游 ID/当前绑定/绑定到/发现时间');
+
+    // ② 行数 = fixture 条数。
+    const rows = await page.evaluate(() => document.querySelectorAll('tbody tr[data-row-index]').length);
+    assert.equal(rows, 3, '应渲染 3 行（与 fixture 一致）');
+
+    // ③ roving 唯一停靠点 —— 「无接线」时所有 <tr> 没有 tabindex ⇒ [] !== ['0']。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '类目表首行应是唯一 Tab 停靠点');
+
+    // ④ 真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    // ⑤ 行内「绑定到」select 保持原生 Tab（roving 不得改写它的 tabindex）。
+    const sel = page.locator('tbody tr[data-row-index="0"] select');
+    assert.equal(await sel.count(), 1, '行内应有一个「绑定到」select');
+    assert.equal(
+      await sel.evaluate((s: any) => s.getAttribute('tabindex')),
+      null,
+      '行内 select 不得被 roving 改写 tabindex',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 4/N：OperationsGapSections —— 数据源负载表 + 活跃播放表 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 两张只读统计表，各自由 mountLoad / activePlayback 两个 useQuery 驱动，挂载即有行。
+ * useOperationsRealtime(WS) 在测试环境连不上 ⇒ fail-closed 回落 REST 数据
+ * （WS 连接失败是网络事件，不触发 pageerror，探针不得抛错断言不受影响）。
+ * 两张表各自独立 roving 域 ⇒ 一并断言。
+ */
+const OPS_GAP_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { OperationsGapSections } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// 打桩 WebSocket：测试环境无 WS 服务，真实连接会触发 console error
+//（net::ERR_NAME_NOT_RESOLVED）污染「探针不得抛错」。留一个永不触发 handler 的桩
+// ⇒ hook 停在 connecting、不回连，effective* 回落 REST 数据（正是要测的 fail-closed 路径）。
+globalThis.WebSocket = class {
+  constructor(url) { this.url = url; }
+  close() {}
+};
+
+const mountLoad = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  items: [
+    { source_id: 's1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1', active_session_count: 2, playing_count: 1, paused_count: 1, media_source_count: 5, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'normal', advice: null, requests_total: 100, success_total: 98, errors_total: 2, rejected_total: 0, rate_limited_total: 0, last_hold_ms: 10 },
+    { source_id: 's2', source_name: 'Emby', provider_type: 'emby', mount_id: 'm2', active_session_count: 3, playing_count: 2, paused_count: 1, media_source_count: 8, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'warning', advice: '建议扩容', requests_total: null, success_total: null, errors_total: null, rejected_total: null, rate_limited_total: null, last_hold_ms: null },
+    { source_id: 's3', source_name: 'OpenList', provider_type: 'openlist', mount_id: 'm3', active_session_count: 0, playing_count: 0, paused_count: 0, media_source_count: 0, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'critical', advice: null, requests_total: 50, success_total: 50, errors_total: 0, rejected_total: 0, rate_limited_total: 5, last_hold_ms: 0 },
+  ],
+};
+
+const activePlayback = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  limit: 50,
+  total_returned: 2,
+  sessions: [
+    { session_id: 'sess1', device_session_id: null, remote_control_available: false, supported_commands: [], client_connection_status: null, last_command_status: null, client: { device_name: null, client_name: null, device_os: null, client_version: null }, client_info: null, user: { user_id: 'u1', username: 'alice', display_name: null }, item: { item_id: 'i1', title: '电影A', media_type: 'Movie', series_title: null }, source: { media_source_id: 'ms1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1' }, status: 'playing', play_method: null, position_ticks: null, duration_ticks: null, progress_percent: 42, started_at: '2026-01-01T00:00:00Z', last_heartbeat_at: '2026-01-01T00:00:00Z' },
+    { session_id: 'sess2', device_session_id: null, remote_control_available: false, supported_commands: [], client_connection_status: null, last_command_status: null, client: { device_name: null, client_name: null, device_os: null, client_version: null }, client_info: null, user: { user_id: 'u2', username: 'bob', display_name: null }, item: { item_id: 'i2', title: '剧集B', media_type: 'Series', series_title: null }, source: { media_source_id: 'ms2', source_name: 'Emby', provider_type: 'emby', mount_id: 'm2' }, status: 'paused', play_method: null, position_ticks: null, duration_ticks: null, progress_percent: null, started_at: '2026-01-01T00:00:00Z', last_heartbeat_at: '2026-01-01T00:00:00Z' },
+  ],
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/data-sources/load')) {
+    return json(mountLoad);
+  }
+  if (u.includes('/playback/active')) {
+    return json(activePlayback);
+  }
+  return json({ items: [], sessions: [] });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(OperationsGapSections, null)),
+);
+`;
+
+test('接线实证（真实 OperationsGapSections）：负载表 + 播放表各自独立漫游（补测批次 D 4/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-opsgap-',
+    OPS_GAP_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/operations/OperationsGapSections.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 两张表各自独立 roving 域（首行都是唯一停靠点）。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '数据源负载表首行应是唯一 Tab 停靠点');
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '活跃播放表首行应是独立域的停靠点');
+
+    // ② 负载表头语义 + 行数。
+    const loadHeads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[0].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(
+      loadHeads,
+      ['数据源', '类型', '活跃', '播放中', '暂停', '等级', '请求', '成功', '错误', '限流'],
+      '数据源负载表表头应为 数据源/类型/活跃/播放中/暂停/等级/请求/成功/错误/限流',
+    );
+    const loadRows = await page.evaluate(
+      () => document.querySelectorAll('table')[0].querySelectorAll('tbody tr[data-row-index]').length,
+    );
+    assert.equal(loadRows, 3, '负载表应渲染 3 行（与 fixture 一致）');
+
+    // ③ 负载表真实键盘：Tab 进入 + 方向键漫游。
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在负载表首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 负载表第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 负载表末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错（WS 回落 REST 不应产生 pageerror）');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 5/N：ManageEventsPage —— 主事件表 + 嵌套时间线/审计表    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 主事件表由 listQuery（GET /api/manage/events）驱动，挂载即有行；行内有「详情」按钮
+ * （原生 Tab 可达）⇒ 不传 onActivate。点「详情」置 expandedId ⇒ detailQuery
+ * （GET /api/manage/events/{requestId}）触发，EventDetailPanel 内渲染**嵌套**的
+ * 「时间线」「审计记录」两张只读表。三表各自独立 roving 域（A 方案：父子各从 0 起）。
+ */
+const MANAGE_EVENTS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageEventsPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const list = {
+  events: [
+    { id: 'e1', kind: 'Identify', timestamp: 1700000000000, severity: 'info', title: '识别完成', module: 'identify', summary: '识别了 3 个条目', requestId: 'req-1' },
+    { id: 'e2', kind: 'Scrape', timestamp: 1700000001000, severity: 'warning', title: '刮削告警', module: 'scrape', summary: '部分元数据缺失', requestId: 'req-2' },
+    { id: 'e3', kind: 'Auth', timestamp: 1700000002000, severity: 'critical', title: '登录失败', module: 'auth', summary: '凭据过期', requestId: 'req-3' },
+  ],
+  total: 3, page: 1, pageSize: 100, runtimeSourceAvailable: false,
+};
+
+const detail = {
+  requestId: 'req-1',
+  timeline: [
+    { step: 1, label: '接收请求', status: 'success', timestamp: 1700000000000, detail: null },
+    { step: 2, label: '识别', status: 'success', timestamp: 1700000000500, detail: '命中缓存' },
+    { step: 3, label: '完成', status: 'success', timestamp: 1700000001000, detail: null },
+  ],
+  result: 'ok', errorCode: null, diagnosis: null,
+  auditRecords: [
+    { timestamp: 1700000000000, actor: 'admin', action: 'identify.run', target: 'library:1', result: 'success', traceId: 'trace-1', fields: [] },
+    { timestamp: 1700000001000, actor: 'admin', action: 'identify.commit', target: 'item:3', result: 'success', traceId: 'trace-1', fields: [] },
+  ],
+  runtimeRecords: [], runtimeSourceAvailable: false,
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (/\\/api\\/manage\\/events\\/[^?]/.test(u)) {
+    return json(detail);
+  }
+  if (u.includes('/api/manage/events')) {
+    return json(list);
+  }
+  return json({ events: [], total: 0 });
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ManageEventsPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageEventsPage）：主事件表 + 嵌套时间线/审计表各自独立漫游（补测批次 D 5/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-events-',
+    MANAGE_EVENTS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageEventsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 主事件表（域 0）：表头语义 + 行数。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[0].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['时间', '严重级', '种类', '模块', '标题', '摘要', '操作'], '主事件表表头应为 时间/严重级/种类/模块/标题/摘要/操作');
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[0].querySelectorAll('tbody tr[data-row-index]').length),
+      3,
+      '主事件表应渲染 3 行（与 fixture 一致）',
+    );
+
+    // ② 主事件表 roving 唯一停靠点 + 真实键盘漫游。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '主事件表首行应是唯一 Tab 停靠点');
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在主事件表首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 主事件表第 1 行');
+
+    // ③ 行内「详情」按钮保持原生 Tab（roving 不得改写它的 tabindex）。
+    const btn = page.locator('tbody tr[data-row-index="0"] button:has-text("详情")');
+    assert.equal(await btn.count(), 1, '行内应有一个「详情」按钮');
+    assert.equal(await btn.evaluate((b: any) => b.getAttribute('tabindex')), null, '行内「详情」按钮不得被 roving 改写 tabindex');
+
+    // ④ 点「详情」⇒ detailQuery 触发 ⇒ EventDetailPanel 渲染嵌套的时间线/审计表。
+    await btn.click();
+    await page.waitForFunction(() => document.querySelectorAll('tbody').length >= 3, null, { timeout: 20000 });
+
+    // ⑤ 三表各自独立 roving 域（域 0 主表、域 1 时间线、域 2 审计）。
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '嵌套时间线表应是独立域的首行停靠点');
+    assert.deepEqual(await rovingStopsIn(page, 2), ['0'], '嵌套审计记录表应是独立域的首行停靠点');
+
+    // ⑥ 嵌套时间线表头语义 + 行数。
+    const tlHeads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[1].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(tlHeads, ['步', '标签', '状态', '时间', '详情'], '时间线表表头应为 步/标签/状态/时间/详情');
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[1].querySelectorAll('tbody tr[data-row-index]').length),
+      3,
+      '时间线表应渲染 3 行（与 fixture 一致）',
+    );
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* 补测批次 D 6/N：ManageOperationsPage —— 概览多表各自独立漫游        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 本页由单个 overviewQuery（GET /api/manage/operations/overview）驱动出 7 张只读统计表
+ * （热播榜/活跃用户榜/媒体增长/用户注册/播放趋势/活跃快照/数据源负载，全 camelCase 直传），
+ * 并内嵌 OperationsGapSections（另有 mountLoad/activePlayback 两查询 + WS 实时 hook）。
+ * 全部只读 ⇒ 都不传 onActivate。本用例聚焦热播榜（tbody 0）为主域，并抽查其余域各自独立。
+ */
+const MANAGE_OPS_ENTRY = `
+import { createElement } from '${'${NM_REACT}'}';
+import { createRoot } from '${'${NM_REACT_DOM_CLIENT}'}';
+import { QueryClient, QueryClientProvider } from '${'${NM_RQ}'}';
+import { ManageOperationsPage } from 'file:///COMPONENT_PATH_PLACEHOLDER';
+
+const json = (v) =>
+  new Response(JSON.stringify(v), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// 打桩 WebSocket：OperationsGapSections 的实时 hook 测试环境连不上会触发 console error。
+globalThis.WebSocket = class {
+  constructor(url) { this.url = url; }
+  close() {}
+};
+
+const overview = {
+  days: 7,
+  windowStart: 1699900000000,
+  now: 1700000000000,
+  summary: { plays: 120, uniqueUsers: 30, totalMedia: 500, totalUsers: 80 },
+  hotItems: [
+    { itemId: 'i1', title: '电影A', mediaType: 'Movie', playCount: 40, uniqueUserCount: 20 },
+    { itemId: 'i2', title: '剧集B', mediaType: 'Series', playCount: 30, uniqueUserCount: 15 },
+    { itemId: 'i3', title: '综艺C', mediaType: 'Variety', playCount: 20, uniqueUserCount: 10 },
+  ],
+  activeUsers: [
+    { userId: 'u1', username: 'alice', playCount: 15, latestPlayedAt: 1700000000000 },
+    { userId: 'u2', username: 'bob', playCount: 10, latestPlayedAt: 1699999000000 },
+  ],
+  mediaTrend: [
+    { date: '2026-01-01', added: 5, cumulative: 100 },
+    { date: '2026-01-02', added: 3, cumulative: 103 },
+  ],
+  registrationTrend: [{ date: '2026-01-01', added: 2, cumulative: 50 }],
+  playbackTrend: [{ date: '2026-01-01', playCount: 40, uniqueUserCount: 20 }],
+  activeSnapshot: {
+    activeSessionCount: 2,
+    runningTasks: 1,
+    sessions: [
+      { sessionId: 's1', userId: 'u1', username: 'alice', itemId: 'i1', title: '电影A', paused: false, positionTicks: 1000, durationTicks: 2000, startedAt: 1700000000000, updatedAt: 1700000000000 },
+      { sessionId: 's2', userId: 'u2', username: 'bob', itemId: 'i2', title: '剧集B', paused: true, positionTicks: null, durationTicks: null, startedAt: 1699999000000, updatedAt: 1699999000000 },
+    ],
+  },
+  dataSourceLoad: [
+    { mountId: 'm1', mountName: '115 网盘', providerType: 'pan115', activeSessionCount: 2, playingCount: 1, pausedCount: 1 },
+    { mountId: 'm2', mountName: 'Emby', providerType: 'emby', activeSessionCount: 1, playingCount: 1, pausedCount: 0 },
+  ],
+};
+
+const mountLoad = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  items: [
+    { source_id: 's1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1', active_session_count: 2, playing_count: 1, paused_count: 1, media_source_count: 5, last_heartbeat_at: '2026-01-01T00:00:00Z', load_level: 'normal', advice: null, requests_total: 100, success_total: 98, errors_total: 2, rejected_total: 0, rate_limited_total: 0, last_hold_ms: 10 },
+  ],
+};
+
+const activePlayback = {
+  sampled_at: '2026-01-01T00:00:00Z',
+  cache_status: 'hit',
+  limit: 50,
+  total_returned: 1,
+  sessions: [
+    { session_id: 'sess1', device_session_id: null, remote_control_available: false, supported_commands: [], client_connection_status: null, last_command_status: null, client: { device_name: null, client_name: null, device_os: null, client_version: null }, client_info: null, user: { user_id: 'u1', username: 'alice', display_name: null }, item: { item_id: 'i1', title: '电影A', media_type: 'Movie', series_title: null }, source: { media_source_id: 'ms1', source_name: '115 网盘', provider_type: 'pan115', mount_id: 'm1' }, status: 'playing', play_method: null, position_ticks: null, duration_ticks: null, progress_percent: 42, started_at: '2026-01-01T00:00:00Z', last_heartbeat_at: '2026-01-01T00:00:00Z' },
+  ],
+};
+
+globalThis.fetch = async (url) => {
+  const u = String(url);
+  if (u.includes('/operations/overview')) {
+    return json(overview);
+  }
+  if (u.includes('/data-sources/load')) {
+    return json(mountLoad);
+  }
+  if (u.includes('/playback/active')) {
+    return json(activePlayback);
+  }
+  return json({});
+};
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(
+  createElement(QueryClientProvider, { client: qc },
+    createElement(ManageOperationsPage, null)),
+);
+`;
+
+test('接线实证（真实 ManageOperationsPage）：概览多表各自独立漫游（补测批次 D 6/N）', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-ops-',
+    MANAGE_OPS_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageOperationsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 热播榜（域 0）：表头语义 + 行数。
+    const heads = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('table')[0].querySelectorAll('thead th'))
+        .map((th) => th.textContent?.trim() ?? ''),
+    );
+    assert.deepEqual(heads, ['#', '标题', '类型', '播放次数', '活跃用户'], '热播榜表头应为 #/标题/类型/播放次数/活跃用户');
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('table')[0].querySelectorAll('tbody tr[data-row-index]').length),
+      3,
+      '热播榜应渲染 3 行（与 fixture 一致）',
+    );
+
+    // ② 热播榜 roving 唯一停靠点 + 真实键盘漫游。
+    assert.deepEqual(await rovingStopsIn(page, 0), ['0'], '热播榜首行应是唯一 Tab 停靠点');
+    const presses = await countTabPressesToRow(page, 0);
+    assert.ok(presses >= 1, `真实 Tab 必须能进入（实测 ${presses} 次）`);
+    assert.equal(await focusedRowIn(page, 0), 0, 'Tab 落在热播榜首个停靠行');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedRowIn(page, 0), 1, 'ArrowDown → 热播榜第 1 行');
+    await page.keyboard.press('End');
+    assert.equal(await focusedRowIn(page, 0), 2, 'End → 热播榜末行（3 行）');
+    assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点须跟着焦点走');
+
+    // ③ 概览区多表各自独立漫游域（域 1 活跃用户榜 / 域 6 数据源负载 各从 0 起）。
+    const tbodyCount = await page.evaluate(() => document.querySelectorAll('tbody').length);
+    assert.ok(tbodyCount >= 7, `概览区应至少 7 张表（实测 ${tbodyCount} 个 tbody）`);
+    assert.deepEqual(await rovingStopsIn(page, 1), ['0'], '活跃用户榜应是独立域的首行停靠点');
+    assert.deepEqual(await rovingStopsIn(page, 6), ['0'], '数据源负载表应是独立域的首行停靠点');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错（WS 回落 REST 不应产生 pageerror）');
+  } finally {
+    await h.close();
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* 嵌套表 treegrid ARIA：父子表 role=treegrid + 行 aria-level + aria-expanded */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 父子表 ARIA（rv01/rv02 评审返工后定稿）。
+ *
+ * ## 方案（rv02 Important-1 放行选项1 + Important-2）
+ * - **父表**（合集表）role=treegrid，父数据行 aria-level=1 + aria-expanded（可展开父节点）。
+ * - **子表**（成员表，嵌在父表展开行 <td> 内）**降级为普通 table**：去掉 role=treegrid 与
+ *   aria-level，加 aria-label。理由：子表若标 treegrid + aria-level，会因「独立 treegrid 内
+ *   无 level=1 祖先」成孤儿层级（r1 判据）。父子是「父表可展开树 + 子表数据明细表」的现实语义。
+ *   父子层级由 **父行 aria-expanded** + **DOM 嵌套**（子表在父展开行 <td> 内）表达，spec 合规。
+ * - **roving 独立（A 方案）不动**：用 data-row-index 漫游，与 role 无关（useTableRowRoving 不查 role）。
+ * - **aria-expanded 同时落在行与展开按钮**上（Important-2 已修）：行覆盖 roving 行焦点、按钮覆盖
+ *   Tab 按钮焦点，两种焦点都不丢展开态反馈。
+ */
+test('父子表 ARIA：父表 treegrid + 子表降级普通 table + 行/按钮 aria-expanded', async (t) => {
+  const h = await mountPageProbe(
+    t,
+    'fe02-treegrid-',
+    NESTED_ENTRY,
+    join(HOST_ROOT, 'src/pages/manage/ManageCollectionsPage.tsx'),
+  );
+  if (!h) return;
+  try {
+    const { page } = h;
+    await page.waitForSelector('tbody tr[data-row-index="0"]', { timeout: 20000 });
+
+    // ① 折叠态：父表 role=treegrid；父数据行 aria-level=1 + aria-expanded=false。
+    assert.equal(
+      await page.evaluate(() => document.querySelectorAll('tbody')[0]?.closest('table')?.getAttribute('role')),
+      'treegrid',
+      '父合集表应为 role=treegrid',
+    );
+    const parentCollapsed = await page.evaluate(() => {
+      const tr = document.querySelectorAll('tbody')[0]?.querySelector('tr[data-row-index="0"]');
+      return { level: tr?.getAttribute('aria-level'), expanded: tr?.getAttribute('aria-expanded') };
+    });
+    assert.equal(parentCollapsed.level, '1', '父数据行 aria-level 应为 1');
+    assert.equal(parentCollapsed.expanded, 'false', '折叠态父行 aria-expanded 应为 false');
+    // ①b 展开按钮也带 aria-expanded（rv02 ②：照顾 Tab 聚焦按钮的用户）。
+    // 用 button[aria-expanded] 精确选中「成员」按钮（行首 checkbox 也是 button，但不带 aria-expanded）。
+    const btnCollapsed = await page.evaluate(() =>
+      document.querySelector('tbody tr[data-row-index="0"] button[aria-expanded]')?.getAttribute('aria-expanded'),
+    );
+    assert.equal(btnCollapsed, 'false', '折叠态展开按钮 aria-expanded 应为 false');
+
+    // ② 点「成员」展开 ⇒ 子表出现。
+    await page.locator('tbody tr[data-row-index="0"] button', { hasText: '成员' }).first().click();
+    await page.waitForFunction(
+      () =>
+        document.querySelectorAll('tbody').length === 2 &&
+        (document.querySelectorAll('tbody')[1]?.querySelectorAll('[data-row-index]').length ?? 0) >= 1,
+      undefined,
+      { timeout: 20000 },
+    );
+
+    // ③ 子表**降级为普通 table**（rv02 Important-1 放行选项1）：**不是** treegrid、行**无** aria-level，
+    // 但带 aria-label（让 AT 播报表名）。roving 独立（A 方案）仍生效（用 data-row-index，与 role 无关）。
+    const childTable = await page.evaluate(() => {
+      const el = document.querySelectorAll('tbody')[1]?.closest('table');
+      return el ? { role: el.getAttribute('role'), label: el.getAttribute('aria-label') } : null;
+    });
+    assert.notEqual(childTable?.role, 'treegrid', '子成员表应降级为普通 table（非 treegrid，避免孤儿层级）');
+    assert.ok(childTable?.label, '子成员表应带 aria-label（rv02 建议：普通 table + aria-label）');
+    const childLevel = await page.evaluate(() =>
+      document.querySelectorAll('tbody')[1]?.querySelector('tr[data-row-index="0"]')?.getAttribute('aria-level'),
+    );
+    assert.equal(childLevel, null, '子数据行不应带 aria-level（子表非 treegrid，无 per-tree level 语义）');
+    // ③a 显式验证「父子嵌套」关系：子表 DOM 上是父表展开行 <td> 的后代（父 treegrid 的可展开行
+    // 内含子数据表，而非两张并列平级表）—— 层级深度靠此结构嵌套 + 父行 aria-expanded 表达。
+    const nestedInParent = await page.evaluate(() => {
+      const child = document.querySelectorAll('tbody')[1]?.closest('table');
+      const parent = document.querySelectorAll('tbody')[0]?.closest('table');
+      return child != null && parent != null && parent.contains(child);
+    });
+    assert.equal(nestedInParent, true, '子表应物理嵌套在父表内（父可展开行内含子数据表，非并列平级表）');
+
+    // ④ 展开态：父行 aria-expanded=true。
+    const parentExpanded = await page.evaluate(() =>
+      document.querySelectorAll('tbody')[0]?.querySelector('tr[data-row-index="0"]')?.getAttribute('aria-expanded'),
+    );
+    assert.equal(parentExpanded, 'true', '展开态父行 aria-expanded 应为 true');
+    // ④b 展开按钮 aria-expanded 亦翻为 true。
+    const btnExpanded = await page.evaluate(() =>
+      document.querySelector('tbody tr[data-row-index="0"] button[aria-expanded]')?.getAttribute('aria-expanded'),
+    );
+    assert.equal(btnExpanded, 'true', '展开态展开按钮 aria-expanded 应为 true');
+
+    assert.deepEqual(h.errors, [], '探针不得抛错');
+  } finally {
+    await h.close();
+  }
+});
