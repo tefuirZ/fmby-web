@@ -57,7 +57,7 @@ async function openLibraryGrid(page: import('@playwright/test').Page) {
   }, GRID);
   expect(railIndex.bestCount, '没有任何带卡片的轨道，无法验证漫游').toBeGreaterThan(1);
   await page.locator(GRID).nth(railIndex.best).waitFor({ state: 'visible' });
-  return railIndex.best;
+  return { best: railIndex.best, count: railIndex.bestCount };
 }
 
 test.describe('FE-LIST-KEYNAV — 网格方向键漫游', () => {
@@ -111,8 +111,8 @@ test.describe('FE-LIST-KEYNAV — 网格方向键漫游', () => {
     await expect.poll(() => activeIndex(page)).toBe(0, '首项 ↑ 必须停在 0');
   });
 
-  test('End 跳到当前行行尾，Home 回到行首', async ({ page }) => {
-    const rail = await openLibraryGrid(page);
+  test('End 跳到整个轨道末项，Home 回到首项（单列跨行语义，照 #649）', async ({ page }) => {
+    const { best, count } = await openLibraryGrid(page);
     await page.evaluate((sel) => {
       const first = document
         .querySelector(sel)
@@ -121,17 +121,40 @@ test.describe('FE-LIST-KEYNAV — 网格方向键漫游', () => {
     }, GRID);
     await expect.poll(() => activeIndex(page)).toBe(0);
 
-    const cols = await page.evaluate((sel) => {
-      const row = document.querySelector(`${sel} [data-library-virtualized-row]`);
-      if (!row) return 1;
-      return getComputedStyle(row).gridTemplateColumns.split(' ').length;
-    }, GRID);
-
+    // BrowseRail 是**一维横滚轨道**（columns=1，无虚拟化行），照 #649 跨行语义：
+    // End 落到整个轨道的**末项**，Home 回到**首项**（非行内——轨道本就一行，行内=死键）。
+    // 旧断言用 [data-library-virtualized-row] 探测 cols（该选择器在 BrowseRail 不存在 ⇒
+    // cols 恒为 1 ⇒ expected 恒为 0），与 #649 后的跨行语义冲突，已修正。
+    const last = count - 1;
     await page.keyboard.press('End');
-    await expect.poll(() => activeIndex(page)).toBe(Math.max(1, cols) - 1);
+    await expect.poll(() => activeIndex(page)).toBe(last, `End 应跳到末项 ${last}`);
 
     await page.keyboard.press('Home');
-    await expect.poll(() => activeIndex(page)).toBe(0);
+    await expect.poll(() => activeIndex(page)).toBe(0, 'Home 应回到首项 0');
+  });
+
+  test('End/Home 从中间项起算也跳到整轨首末（可证伪跨行）', async ({ page }) => {
+    const { best, count } = await openLibraryGrid(page);
+    const last = count - 1;
+    // 取一个明确的**中间**索引（不足以直接断言就用 1 与 last-1，保证 >0 且 <last）
+    const mid = Math.min(1, last);
+    await page.evaluate(({ sel, idx }) => {
+      const item = document
+        .querySelector(sel)
+        ?.querySelector<HTMLElement>(
+          `[data-grid-item-index="${idx}"] a[href], [data-grid-item-index="${idx}"] [tabindex]`,
+        );
+      item?.focus();
+    }, { sel: GRID, idx: mid });
+    await expect.poll(() => activeIndex(page)).toBe(mid);
+
+    // 从中间按 End 必须跳到整轨末项（而非「行内行尾」——一维轨道本就无行内概念）
+    await page.keyboard.press('End');
+    await expect.poll(() => activeIndex(page)).toBe(last, `从 ${mid} 按 End 应跳末项 ${last}`);
+
+    // 再按 Home 必须回到首项（非停在当前）
+    await page.keyboard.press('Home');
+    await expect.poll(() => activeIndex(page)).toBe(0, `从末项按 Home 应回首项 0`);
   });
 
   test('焦点可见：移动后有 outline 或 box-shadow', async ({ page }) => {

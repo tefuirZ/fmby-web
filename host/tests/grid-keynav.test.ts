@@ -92,6 +92,18 @@ test('nextGridIndex：单列（表格行列表）时 Home/End 为**跨行**语�
   assert.equal(nextGridIndex({ ...table, activeIndex: 4 }, 'end'), 4, '末项 End 停住');
 });
 
+test('nextGridIndex：单列单 item 时 Home=End=该项（边界不崩）', () => {
+  // 可证伪：Home/End 跨行语义在 itemCount=1 时不得越界/不得死键
+  // （此前若沿用行内 home=row*cols=current，结果仍是 0，但跨行语义须显式钉死）。
+  const single: GridKeyNavRequest = { activeIndex: 0, itemCount: 1, columns: 1, hasMore: false };
+  assert.equal(nextGridIndex(single, 'home'), 0, '单 item Home → 0');
+  assert.equal(nextGridIndex(single, 'end'), 0, '单 item End → 0');
+  // 中间项也能正确跳到首/末（不卡在当前）
+  const mid: GridKeyNavRequest = { activeIndex: 2, itemCount: 3, columns: 1, hasMore: false };
+  assert.equal(nextGridIndex(mid, 'home'), 0);
+  assert.equal(nextGridIndex(mid, 'end'), 2);
+});
+
 test('nextGridIndex：多列时 Home/End 仍是**行内**语义（不放宽既有断言）', () => {
   // 反向守卫：上面只改单列语义，二维网格的既有行内语义必须保持不变。
   const grid: GridKeyNavRequest = { activeIndex: 4, itemCount: 7, columns: 3, hasMore: false };
