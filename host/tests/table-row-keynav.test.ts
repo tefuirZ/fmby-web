@@ -1034,6 +1034,13 @@ test('接线实证（真实 MountTable）：↑↓/Home/End 移动行 + Enter �
       ['m-1'],
       'Enter 应打开当前行挂载详情（onOpenView）',
     );
+    // tableWrap 滚动区 a11y（第十批）：挂载点列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const mountTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="挂载点列表（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(mountTw, ['region', null, '挂载点列表（可横向滚动）'], '挂载点列表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -4385,6 +4392,13 @@ test('接线实证（真实 ProviderSearchPanel）：输入后晚挂载的候选
     assert.equal((await pick.textContent())?.trim(), '选用', '行内按钮文案应为选用');
     assert.equal(await pick.evaluate((b: any) => b.getAttribute('tabindex')), null,
       '行内按钮不得被 roving 改写 tabindex（保持原生 Tab 行为）');
+
+    // tableWrap 滚动区 a11y（第十批）：候选媒体表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const candTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="候选媒体（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(candTw, ['region', null, '候选媒体（可横向滚动）'], '候选媒体表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
