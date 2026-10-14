@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
 import styles from '../../styles/detail.module.css';
@@ -16,12 +17,20 @@ interface PersonCardProps {
  * **不拼 `/people/undefined`**（不产生坏链接）。
  */
 export function PersonCard({ person }: PersonCardProps) {
+  const [loadFailed, setLoadFailed] = useState(false);
   const initials = person.name.trim().slice(0, 1) || '人';
   const content = (
     <div className={styles.personCard}>
       <div className={styles.personAvatar}>
-        {person.thumbUrl ? (
-          <img className={styles.personAvatarImage} src={person.thumbUrl} alt={person.name} />
+        {person.thumbUrl && !loadFailed ? (
+          <img
+            className={styles.personAvatarImage}
+            src={person.thumbUrl}
+            alt={person.name}
+            onError={() => setLoadFailed(true)}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <span>{initials}</span>
         )}

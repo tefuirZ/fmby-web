@@ -12,6 +12,32 @@ interface SearchOverlayProps {
   onClose: () => void;
 }
 
+function SearchResultThumb({ title, posterUrl }: { title: string; posterUrl?: string | null }) {
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  if (posterUrl && !loadFailed) {
+    return (
+      <img
+        className={styles.resultThumb}
+        src={posterUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => setLoadFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={styles.resultThumbPlaceholder}
+      style={{ background: generatePlaceholderColor(title) }}
+    >
+      {title.charAt(0)}
+    </div>
+  );
+}
+
 /**
  * 全局搜索覆盖层
  *
@@ -143,21 +169,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
                       to={`/item/${item.id}`}
                       onClick={onClose}
                     >
-                      {item.posterUrl ? (
-                        <img
-                          className={styles.resultThumb}
-                          src={item.posterUrl}
-                          alt=""
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div
-                          className={styles.resultThumbPlaceholder}
-                          style={{ background: generatePlaceholderColor(item.title) }}
-                        >
-                          {item.title.charAt(0)}
-                        </div>
-                      )}
+                      <SearchResultThumb title={item.title} posterUrl={item.posterUrl} />
                       <div className={styles.resultBody}>
                         <div className={styles.resultTitle}>{item.title}</div>
                         <div className={styles.resultMeta}>

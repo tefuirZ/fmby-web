@@ -60,6 +60,7 @@ function HeroSlideThumb({
             alt={hero.item.title}
             onError={posterUrl ? onPosterError : onBackdropError}
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div

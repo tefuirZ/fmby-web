@@ -74,6 +74,7 @@ export function PersonDetailPage() {
     );
   }
 
+  const [loadFailed, setLoadFailed] = useState(false);
   const initials = person.name.trim().slice(0, 1) || '人';
 
   return (
@@ -85,11 +86,14 @@ export function PersonDetailPage() {
         <div className={detailStyles.peopleSectionBody}>
           <div className={detailStyles.personCard}>
             <div className={detailStyles.personAvatar}>
-              {person.posterUrl ? (
+              {person.posterUrl && !loadFailed ? (
                 <img
                   className={detailStyles.personAvatarImage}
                   src={`/api/assets/${person.posterUrl}`}
                   alt={person.name}
+                  onError={() => setLoadFailed(true)}
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <span>{initials}</span>

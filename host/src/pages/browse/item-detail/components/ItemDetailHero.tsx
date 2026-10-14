@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router';
 import type { ItemDetailResponse } from '@fmby/v2-shared/contracts/browse/item';
 import { usePosterUrl, useBackdropUrl, generatePlaceholderColor } from '@fmby/v2-shared/hooks/usePosterUrl';
@@ -18,7 +17,6 @@ interface ItemDetailHeroProps {
 export function ItemDetailHero({ item, posterBadges }: ItemDetailHeroProps) {
   const { url: backdrop } = useBackdropUrl(item.artwork);
   const { url: poster, onError: onPosterError } = usePosterUrl(item.artwork);
-  const [posterFailed, setPosterFailed] = useState(false);
   const playbackItemId = item.playbackTargetId ?? item.id;
 
   return (
@@ -30,15 +28,14 @@ export function ItemDetailHero({ item, posterBadges }: ItemDetailHeroProps) {
       <div className={detailStyles.detailLayout}>
         <div className={detailStyles.detailPosterColumn}>
           <div className={detailStyles.detailPosterWrap}>
-            {poster && !posterFailed ? (
+            {poster ? (
               <img
                 alt={item.title}
                 className={detailStyles.detailPoster}
                 src={poster}
-                onError={() => {
-                  onPosterError();
-                  setPosterFailed(true);
-                }}
+                onError={onPosterError}
+                loading="lazy"
+                decoding="async"
               />
             ) : (
               <div
