@@ -20,12 +20,19 @@ import {
   isCasAdminUnwired,
   type CasDriveConfig,
 } from '@fmby/v2-shared/contracts/manage/casAdmin';
-import { FeedbackState, InlineBanner } from '@fmby/v2-shared/ui';
+import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { CasCopyStateBadge } from './cas/CasCopyStateBadge';
+import { ReconcileTriggerButton, RetryCopyButton } from './cas/casWriteActions';
 import { casDriveKey, isDriveDirty, parsePriorityInput } from './cas/driveConfigEditing';
+import {
+  formatGeneratedAt,
+  resolveReconcileSectionState,
+  resolveReconcileView,
+  summarizeReconcile,
+} from './cas/reconcilePresentation';
 import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 
 export function ManageCasPage() {
@@ -101,6 +108,10 @@ export function ManageCasPage() {
           enabled={!unwired}
         />
       </ManageSectionCard>
+
+      {/* fmby-web#658：对账报告（契约/queryKey 早已就绪，此前页面未编排）。
+          未启用端口时区块**完全不渲染** —— 不请求、不显示成「0 条报告」的假空态。 */}
+      <ReconcileReportsSection unwired={unwired} />
     </>
   );
 }
@@ -238,13 +249,131 @@ function FanoutLookup({
           description={getErrorMessage(fanoutQuery.error)}
         />
       ) : (
-        (fanoutQuery.data?.drives ?? []).map((drive) => (
-          <CasCopyStateBadge
-            key={`${drive.driveId}:${drive.driveRef}`}
-            drive={drive}
-          />
-        ))
+        <table>
+          <thead>
+            <tr>
+              <th>盘 / 副本状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(fanoutQuery.data?.drives ?? []).map((drive) => (
+              <tr key={`${drive.driveId}:${drive.driveRef}`}>
+                <td>
+                  <CasCopyStateBadge drive={drive} />
+                </td>
+                <td>
+                  {/* 重试仅对「实体丢失 / 上游已删」有意义；健康盘不给无用按钮。 */}
+                  {drive.copyState === 'failed' || drive.copyState === 'tombstoned' ? (
+                    <RetryCopyButton contentId={contentId} driveId={drive.driveId} />
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
+  );
+}
+
+/** `.cas` 对账报告区（fmby-web#658；只读，状态由后端 identified/reconciled 派生，不折叠）。 */
+function ReconcileReportsSection({ unwired }: { unwired: boolean }) {
+  // ★tsc TS2552 修复（#658 收尾）：本组件的 onSuccess 用 `queryClient` 失效对账报告，
+  //   但组件内此前**未声明**（主组件那份不可跨组件引用）⇒ 触发对账成功后
+  //   ReferenceError。契约测试只断结构未覆盖此运行路径，由 tsc 抓出。
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: queryKeys.manage.cas.reconcile(),
+    queryFn: () => casAdminApi.reconcileReports(),
+    // 未装配时不发请求（与 fail-closed 一致）。
+    enabled: !unwired,
+  });
+
+  const trigger = useMutation({
+    mutationFn: () => casAdminApi.triggerReconcile(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.manage.cas.reconcile() });
+    },
+  });
+
+  const sectionState = resolveReconcileSectionState({
+    unwired,
+    isPending: query.isPending,
+    isError: query.isError,
+    count: (query.data ?? []).length,
+  });
+
+  // ★未装配 ⇒ **完全不渲染**（不是「0 条报告」）：把「服务没启用」
+  //   显示成「没有数据」是本页最危险的假空态。
+  if (sectionState === 'unwired') return null;
+
+  if (sectionState === 'loading') {
+    return (
+      <ManageSectionCard title="对账报告">
+        <FeedbackState variant="loading" title="载入对账报告…" description="正在读取 .cas 对账报告。" />
+      </ManageSectionCard>
+    );
+  }
+
+  if (sectionState === 'error') {
+    return (
+      <ManageSectionCard title="对账报告">
+        <FeedbackState
+          variant="error"
+          title="对账报告载入失败"
+          description={getErrorMessage(query.error)}
+        />
+        <ReconcileTriggerButton mutation={trigger} />
+      </ManageSectionCard>
+    );
+  }
+
+  const reports = query.data ?? [];
+  const summary = summarizeReconcile(reports);
+
+  return (
+    <ManageSectionCard
+      title="对账报告"
+      description="状态由后端 identified / reconciled 两字段派生：未识别 / 已识别·未对账 / 已对账。"
+    >
+      <ReconcileTriggerButton mutation={trigger} />
+      {sectionState === 'empty' ? (
+        // 空列表是**真状态**（端口装配了但无报告），与「未启用」区分开。
+        <p>暂无对账报告。</p>
+      ) : (
+        <>
+          <p>
+            共 {summary.total} 条 —— 已对账 {summary.reconciled} · 待处理 {summary.pending} · 未识别{' '}
+            {summary.unidentified}
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>报告</th>
+                <th>来源</th>
+                <th>状态</th>
+                <th>生成时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reports.map((r) => {
+                const view = resolveReconcileView(r);
+                return (
+                  <tr key={r.reportId}>
+                    <td>{r.reportId}</td>
+                    <td>{r.source}</td>
+                    <td>
+                      <StatusBadge label={view.label} variant={view.tone} />
+                    </td>
+                    <td>{formatGeneratedAt(r.generatedAtMs)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+    </ManageSectionCard>
   );
 }

@@ -130,6 +130,9 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
      * 活动行取值：① 焦点当前所在行（点击/程序化聚焦后仍正确 —— 网格 hook 曾踩过
      * 的 B-2：只信内部 ref 会导致「点第 5 行后按方向键回首行」）；② 否则沿用上次
      * 活动行（换页/筛选后尽量不丢位置）；③ 越界则回首行。
+     * ★M-3 注释精度（rv02 #24 评审，CAS 分支收尾移植）：Home/End 传 forceIndex
+     *   时 ref 也被写回为**跳转目标**（`activeIndexRef.current = current`）——
+     *   行为有意如此（跳转后失焦再回来从目标行起算），非「沿用上次活动行」。
      */
     const enforceRovingTabindex = (forceIndex?: number) => {
       const rows = ownRows();
@@ -235,6 +238,17 @@ export function useTableRowRoving({ tbodyRef, rowCount, onActivate }: UseTableRo
     return () => {
       observer.disconnect();
       tbody.removeEventListener('keydown', handleKeyDown);
+      // ★M-1 teardown（rv02 #24 评审，CAS 分支收尾移植）：与 enforceRovingTabindex
+      //   对称还原 —— 本 hook 在行上写过 tabindex（活动行 0、其余 -1），卸载时
+      //   清掉本域所有行的 roving tabindex，避免 React 卸载后 DOM 上残留
+      //   tabindex（曾聚焦的行残留非自然值，破坏 Tab 序 / 可访问性）。
+      //   ★只清本域（closest('tbody') === tbody，与 ownRows 同一归属判据）：
+      //     嵌套表的行归子 hook 的 cleanup 管，不越界清除。
+      tbody
+        .querySelectorAll<HTMLElement>(ROW_SELECTOR)
+        .forEach((r) => {
+          if (r.closest('tbody') === tbody) r.removeAttribute('tabindex');
+        });
     };
   }, [attachedTbody, rowCount, onActivate]);
 }

@@ -50,14 +50,100 @@ const UNKNOWN_STATE: { label: string; tone: CasCopyStateTone } = {
  */
 export const KNOWN_COPY_STATES = Object.keys(COPY_STATE_LABELS);
 
-/** 徽章文案。★未知 ⇒ 「状态未知」（不得谎称已复制）。 */
+/**
+ * 未知 / 契约未列出的 `copy_state` 的**统一**呈现（fail-closed）。
+ *
+ * ★为什么必须**带上原文码**（而不是一句「状态未知」）：
+ *   后端若新增第五个取值（或拼错、大小写漂移），只显示「状态未知」运维**无法上报
+ *   是哪个码**，排查链断在最前面。带上原文码 ⇒ 一眼可报、可粘给后端。
+ * ★绝不静默归入 `present`：那是最危险的谎言（把「不知道」说成「已复制」，
+ *   运维据此以为副本齐了，实际可能实体已丢失）。
+ *
+ * @param copyState 后端原样透出的 `copy_state`（可能为空/未列出）。
+ */
+export function formatUnknownCopyState(copyState: string): string {
+  // ★rv02 #25 M-1 收口：签名是 `string`（调用方 mapCasDriveStatus 已 `?? ''` 兑底），
+  //   此处不再防御性 `?? ''` —— 与类型签名保持一致，不写死代码。
+  const raw = copyState.trim();
+  // 空码：明确说「未提供」，不显示一对空括号（那看着像渲染 bug）。
+  return raw.length === 0 ? '未知状态（后端未提供状态码）' : `未知状态（${raw}）`;
+}
+
+/**
+ * 该 `copy_state` 是否属于契约已知的四态。
+ * 供调用方在需要时做「已知/未知」分支（展示层一律走 label/tone，不自行判断）。
+ */
+export function isKnownCopyState(copyState: string): boolean {
+  return Object.prototype.hasOwnProperty.call(COPY_STATE_LABELS, copyState);
+}
+
+/** 徽章文案。★未知 ⇒ 「未知状态（原文码）」（不得谎称已复制，且保留可上报的码）。 */
 export function resolveCopyStateLabel(copyState: string): string {
-  return (COPY_STATE_LABELS[copyState] ?? UNKNOWN_STATE).label;
+  return COPY_STATE_LABELS[copyState]?.label ?? formatUnknownCopyState(copyState);
 }
 
 /** 徽章色调。未知 ⇒ neutral（视觉上不与「成功」混淆）。 */
 export function resolveCopyStateTone(copyState: string): CasCopyStateTone {
-  return (COPY_STATE_LABELS[copyState] ?? UNKNOWN_STATE).tone;
+  return COPY_STATE_LABELS[copyState]?.tone ?? UNKNOWN_STATE.tone;
+}
+
+// ---------------------------------------------------------------------------
+// #671：失败原因（`reason_code` / `reason_detail`）
+//
+// wire 约定（rb01 → fe01）：`Option<String>` + skip_serializing_if ⇒ **无原因时 key 缺失**，
+//   故契约层已是 `null`。**不得**用 `?? ''` 渲染空串（会把「健康」画成「有原因但空白」）。
+// 命名族：`SCREAMING_SNAKE`，与全仓 `error_code` slug 一致。
+// ---------------------------------------------------------------------------
+
+/** 已知的 `reason_code` → 中文（与后端 #671 的取值集合逐一对齐，不凭空发明）。 */
+const REASON_CODE_LABELS: Record<string, string> = {
+  CAS_COPY_FAILED: '盘上实体丢失',
+  CAS_COPY_TOMBSTONED: '上游文件已删 / 墓碑化',
+};
+
+/** 已知的 `reason_code` 集合（供测试做集合级断言，防凭空发明/漏登记）。 */
+export const KNOWN_REASON_CODES = Object.keys(REASON_CODE_LABELS);
+
+/**
+ * 是否存在失败原因（严格区分「key 不存在」与「key 存在但为空」）。
+ *
+ * ★rb01 硬要求：这两个形态**不得混同**。
+ *   - `present=false`（key 不存在）：`pending`/`present` 的正常形态 ⇒ **无原因**；
+ *   - `present=true` 但码为空/空白：后端给了 key 却没给值 ⇒ 仍算「有原因位」，
+ *     但**不是**具体原因，展示层按 fail-closed 给「原因未提供」。
+ */
+export function hasFailureReason(
+  reasonCode: string | null,
+  present = true,
+): boolean {
+  if (!present) return false; // key 不存在 ⇒ 无原因（健康）
+  return typeof reasonCode === 'string' && reasonCode.trim().length > 0;
+}
+
+/**
+ * 原因码 → 展示文案（三态分明）。
+ *
+ * - key **不存在** ⇒ `''`（调用方据此**整行不渲染**，避免把健康画成「有原因但空白」）；
+ * - key 存在但**为空** ⇒ 「原因未提供（后端给出空值）」—— 不明说健康，也不编造原因；
+ * - 有码且**已知** ⇒ 中文；有码但**未知** ⇒ **显示原文码**（fail-closed，便于上报）。
+ */
+export function resolveReasonLabel(
+  reasonCode: string | null,
+  present = true,
+): string {
+  if (!present) return '';
+  if (typeof reasonCode !== 'string' || reasonCode.trim().length === 0) {
+    return '原因未提供（后端给出空值）';
+  }
+  const code = reasonCode.trim();
+  return REASON_CODE_LABELS[code] ?? `未知原因（${code}）`;
+}
+
+/** 明细文案；无明细 ⇒ 空串（由调用方决定不渲染，避免渲染出孤立空行）。 */
+export function resolveReasonDetail(reasonDetail: string | null): string {
+  if (typeof reasonDetail !== 'string') return '';
+  const text = reasonDetail.trim();
+  return text.length > 0 ? text : '';
 }
 
 /** 字节数格式化；`null`/非法/负值 ⇒ 「大小未知」（不伪造 0）。 */

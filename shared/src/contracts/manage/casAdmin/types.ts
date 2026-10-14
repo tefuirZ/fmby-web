@@ -48,21 +48,38 @@ export interface CasDriveStatus {
   sizeBytes: number | null;
   /** 从未核验为 `null`（**不是 0**，否则 UI 会显示 1970 年）。 */
   lastVerifiedAt: number | null;
+  /**
+   * 失败原因码（#671，wire `reason_code`）。
+   *
+   * ★「key 缺失」= **无原因**（后端 `Option::None` 时该 key **不出现在 JSON 里**），
+   *   故此处为 `null`。**不得**用 `?? ''` 渲染空串 —— 那会把「健康」画成
+   *   「有原因但空白」。
+   * ★取值集合（`SCREAMING_SNAKE`，与全仓 `error_code` slug 命名族一致）目前封闭为：
+   *   `CAS_COPY_FAILED`      —— 盘上实体丢失（`copy_state=failed`）
+   *   `CAS_COPY_TOMBSTONED`  —— 上游文件已删/墓碑化（`copy_state=tombstoned`）
+   *   未知新码按 fail-closed **显示原文码**（与 `copy_state` 未知码同纪律），
+   *   绝不静默归入「无原因」。
+   */
+  reasonCode: string | null;
+  /** 失败原因明细（#671，wire `reason_detail`）；同「key 缺失 = 无」。 */
+  reasonDetail: string | null;
+  /**
+   * ★`reason_code` 这个 **key 是否存在于响应里**（#671 硬要求）。
+   *
+   * 必须区分两件事（rb01 特别提醒，混同即假态）：
+   *   - key **不存在**（`Option::None` 不序列化，`pending`/`present` 的正常形态）
+   *     ⇒ `reasonCodePresent = false`，`reasonCode = null`；
+   *   - key **存在但为空/空白** ⇒ `reasonCodePresent = true`，`reasonCode = ''`。
+   * 前端**不得**用 `?? ''` 把前者也变成空串 —— 那会把「健康（无原因）」
+   *   与「后端给了 key 却是空值」混为一谈。
+   */
+  reasonCodePresent: boolean;
 }
 
 /// 前端域形态 · 一条内容的多盘扇出状态。
 export interface CasFanoutStatus {
   contentId: number;
   drives: CasDriveStatus[];
-}
-
-/// 前端域形态 · `.cas` 对账报告条目。
-export interface CasReconcileReport {
-  reportId: string;
-  source: string;
-  identified: boolean;
-  reconciled: boolean;
-  generatedAtMs: number;
 }
 
 /// wire 形态 · 盘配置（后端逐字）。
@@ -81,6 +98,12 @@ export interface RawCasDriveStatus {
   copy_state: string;
   size_bytes?: number | null;
   last_verified_at?: number | null;
+  /**
+   * #671 新增：`Option<String>` + `skip_serializing_if = "Option::is_none"`
+   * ⇒ 无原因时**该 key 不出现**（不是 `null` 字面量）。
+   */
+  reason_code?: string | null;
+  reason_detail?: string | null;
 }
 
 /** wire 形态 · 扇出状态。 */
@@ -96,4 +119,20 @@ export interface RawCasReconcileReport {
   identified: boolean;
   reconciled: boolean;
   generated_at_ms: number;
+}
+
+/**
+ * 域形态 · 对账报告条目。
+ *
+ * ★rv02 #25 Important-1 收口：`generatedAtMs` 改 `number | null` ——
+ *   后端 u64 毫秒理论恒有值，但缺省面（key 缺失/部分响应）可能无值；
+ *   契约层用 `null` 表达「没值」，**不用 0 伪装缺失**（M-2）。
+ *   展示层 `formatGeneratedAt` 对 null/非有限/≤0 一律「未生成」，不伪造 1970。
+ */
+export interface CasReconcileReport {
+  reportId: string;
+  source: string;
+  identified: boolean;
+  reconciled: boolean;
+  generatedAtMs: number | null;
 }

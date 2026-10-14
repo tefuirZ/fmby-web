@@ -102,8 +102,18 @@ test('④ 未知 copy_state 不得被当成「已复制」（行为断言）', (
     '已复制',
     '后端新增未知状态时绝不能显示「已复制」',
   );
-  assert.equal(resolveCopyStateLabel('weird-new-backend-state'), '状态未知');
-  assert.equal(resolveCopyStateLabel(''), '状态未知', '空状态也是未知，不得谎称已复制');
+  // ★fmby-web#658：未知码**必须带上原文码**（运维要能照着上报给后端），
+  //   只显示「状态未知」会让排查链断在最前面。
+  assert.equal(
+    resolveCopyStateLabel('weird-new-backend-state'),
+    '未知状态（weird-new-backend-state）',
+    '未知码须显示原文码，不得只给「状态未知」',
+  );
+  assert.equal(
+    resolveCopyStateLabel(''),
+    '未知状态（后端未提供状态码）',
+    '空码须明确说「未提供」，不得谎称已复制、也不得渲染空括号',
+  );
   // 色调同样不能撒谎：未知态若染成 success，用户会当成已复制。
   assert.equal(resolveCopyStateTone('weird-new-backend-state'), 'neutral', '未知态色调须 neutral');
   assert.notEqual(

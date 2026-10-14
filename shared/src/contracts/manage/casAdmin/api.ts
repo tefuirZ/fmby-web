@@ -45,6 +45,12 @@ export function mapCasDriveStatus(
     copyState: raw?.copy_state ?? "",
     sizeBytes: raw?.size_bytes ?? null,
     lastVerifiedAt: raw?.last_verified_at ?? null,
+    // #671：key 缺失 ⇒ null（**不是空串**）；存在但为空 ⇒ 空串。
+    // ★两者必须分开：用 `?? ''` 归一会把「健康（无原因）」与「给了 key 却是空值」
+    //   混同（rb01 特别提醒）。存在性单独落在 `reasonCodePresent`。
+    reasonCode: raw?.reason_code ?? null,
+    reasonDetail: raw?.reason_detail ?? null,
+    reasonCodePresent: raw != null && "reason_code" in raw,
   };
 }
 
@@ -65,7 +71,9 @@ export function mapCasReconcileReport(
     source: raw?.source ?? "",
     identified: raw?.identified ?? false,
     reconciled: raw?.reconciled ?? false,
-    generatedAtMs: raw?.generated_at_ms ?? 0,
+    // ★rv02 #25 M-2 收口：缺失 ⇒ `null`（「没值」），**不用 0 伪装缺失**；
+    //   展示层 formatGeneratedAt 对 null/≤0 一律「未生成」，不伪造 1970。
+    generatedAtMs: raw?.generated_at_ms ?? null,
   };
 }
 
@@ -104,6 +112,35 @@ export const casAdminApi = {
     const raw = await httpClient.get<RawCasReconcileReport[]>(RECONCILE_PATH);
     return (raw ?? []).map(mapCasReconcileReport);
   },
+
+  ///
+  /// `POST` —— 触发一次 `.cas` 对账（#671 写面，rb01 PR #678）。
+  ///
+  /// 端点：`POST /api/admin/cas/reconcile/trigger?confirmed=true`
+  /// 失败语义（**照后端，不猜**）：未装配/不可用 ⇒ **503**；能力不足 ⇒ 403；
+  /// 缺 `confirmed` ⇒ 400。一律由 `httpClient` 抛错，前端用 `getErrorMessage`
+  /// **透传后端原文**（不另造文案）。
+  /// 当前端调用前无需判断能力：403 即能力不足，交给错误文案呈现。
+  async triggerReconcile(): Promise<void> {
+    await httpClient.post<void>(`${RECONCILE_PATH}/trigger`, {
+      params: { confirmed: true },
+    });
+  },
+
+  ///
+  /// `POST` —— 重试某内容在某盘上的复制（#671 写面，rb01 同 PR）。
+  ///
+  /// 端点：`POST /api/admin/cas/fanout/{contentId}/drives/{driveId}/retry?confirmed=true`
+  /// 失败语义同上（503 未装配 / 403 能力不足 / 400 缺 confirmed）。
+  ///
+  /// ★rb01 本端点**尚未合入** ⇒ 前端接线但不伪装可用：未装配时按 503 显式报
+  ///   「端点未装配」（沿用既有 fail-closed 纪律）。
+  async retryFanoutCopy(contentId: number, driveId: number): Promise<void> {
+    await httpClient.post<void>(
+      `${FANOUT_PATH}/${contentId}/drives/${driveId}/retry`,
+      { params: { confirmed: true } },
+    );
+  },
 };
 
 // 错误面复用 `shared/src/errors` 既有口径（端口未装配 ⇒ 后端 503，由调用方对拍，
@@ -129,6 +166,33 @@ export { isApiError, getErrorMessage };
  * ★绝不能把业务 **404** 算成未装配 —— 404 意味着路由没接对，
  *   把它伪装成「服务未启用」会让接线错误长期隐身。
  */
+/**
+ * CAS 写操作（触发对账 / 重试复制）的失败分类（纯函数，可被直接断言）。
+ *
+ * 后端语义（#671，照后端、**不猜**）：
+ *   - 未装配 / 不可用 ⇒ **503**（不是 500）；
+ *   - 能力不足 ⇒ 403；
+ *   - 缺 `confirmed` ⇒ 400；
+ *   - 其余（含未知错误码）⇒ `other`，**错误码与原文一律保留**，由 UI 透传。
+ */
+export type CasWriteErrorKind = 'unwired' | 'forbidden' | 'bad_request' | 'other';
+
+export function classifyCasWriteError(error: unknown): CasWriteErrorKind {
+  if (isCasAdminUnwired(error)) return 'unwired';
+  if (!isApiError(error)) return 'other';
+  const code = error.code;
+  if (code === 'forbidden' || code === 'FORBIDDEN' || code === 'HTTP_403') return 'forbidden';
+  if (
+    code === 'validation' ||
+    code === 'VALIDATION' ||
+    code === 'bad_request' ||
+    code === 'HTTP_400'
+  ) {
+    return 'bad_request';
+  }
+  return 'other';
+}
+
 export function isCasAdminUnwired(error: unknown): boolean {
   if (!isApiError(error)) return false;
   const code = error.code;
