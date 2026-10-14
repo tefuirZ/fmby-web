@@ -303,7 +303,7 @@ export function ManageRuntimeLogsPage() {
           </span>
         </div>
 
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="运行日志（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>
