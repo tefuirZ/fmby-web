@@ -6,18 +6,12 @@ import { formatDateTime } from '@fmby/v2-shared/time';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import sharedStyles from '../../ManagePages.module.css';
 import { ManageSectionCard } from '../../components';
-import {
-  EM_DASH,
-  formatOptional,
-  formatResolution,
-  getArtworkKindLabel,
-  isWideArtwork,
-} from '../formatters';
+import { EM_DASH, formatOptional } from '../formatters';
 import styles from '../MediaItemDetail.module.css';
 import type { MediaItemMutations } from '../types';
-import { ArtImage } from './ArtImage';
 import { ArtworkUploadForm } from './ArtworkUploadForm';
 import { ArtworkOverridesGrid } from './ArtworkOverridesGrid';
+import { ScrapedArtworksGrid } from './ScrapedArtworksGrid';
 import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
 interface MediaItemArtworkSectionProps {
@@ -103,49 +97,7 @@ export function MediaItemArtworkSection({
         onRequestDelete={handleRequestDelete}
       />
 
-      <div className={sharedStyles.stackText}>
-        <span className={styles.kicker}>刮削图片</span>
-        {detail.scrapedArtworks.length === 0 ? (
-          <div className={sharedStyles.emptyInlineState}>
-            刮削源还没有返回可用的图片候选。
-          </div>
-        ) : (
-          <div className={styles.assetGrid}>
-            {detail.scrapedArtworks.map((artwork) => (
-              <div className={styles.assetCard} key={`${artwork.kind}-${artwork.url}`}>
-                <ArtImage
-                  alt={`刮削${getArtworkKindLabel(artwork.kind)}`}
-                  compact
-                  placeholder="图片无法加载"
-                  src={artwork.url}
-                  wide={isWideArtwork(artwork.kind)}
-                />
-                <div className={styles.assetBody}>
-                  <div className={styles.badgeRow}>
-                    <span className={sharedStyles.chip}>
-                      {getArtworkKindLabel(artwork.kind)}
-                    </span>
-                  </div>
-                  <span className={styles.assetMeta}>
-                    {formatResolution(artwork.width, artwork.height)} · 语言{' '}
-                    {formatOptional(artwork.language)}
-                  </span>
-                </div>
-                <div className={styles.assetActions}>
-                  <a
-                    className={sharedStyles.smallButton}
-                    href={artwork.url}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    查看原图
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <ScrapedArtworksGrid scrapedArtworks={detail.scrapedArtworks} />
 
       <div className={sharedStyles.stackText}>
         <span className={styles.kicker}>随文件资源</span>
