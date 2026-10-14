@@ -36,6 +36,7 @@ export function EpisodeRow({ episode }: EpisodeRowProps) {
               setLoadFailed(true);
             }}
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className={detailStyles.episodeCardFallback}>暂无剧照</div>
