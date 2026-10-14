@@ -134,7 +134,7 @@ export function ManageSessionsPage() {
           </label>
         }
       >
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="会话列表（可横向滚动）">
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="会话管理（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>
