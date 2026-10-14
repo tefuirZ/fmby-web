@@ -153,7 +153,7 @@ export function UserTable({
         </span>
       </div>
 
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap} role="region" aria-label="用户列表（可横向滚动）">
         <table className={styles.table}>
           <thead>
             <tr>
