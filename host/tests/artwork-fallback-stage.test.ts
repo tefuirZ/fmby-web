@@ -1,47 +1,47 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
+import { usePosterUrl, useBackdropUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
+import React, { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 /**
- * 直接针对 usePosterUrl / useBackdropUrl 的阶段推进状态机做行为断言，
- * 证明多级智能降级不被短路，且直到 done 阶段才输出 null。
+ * 真实组件渲染与 Hook 调用断言（证伪断言：若删掉 hook 或返回值异常，测试必红）
  */
-describe('Artwork 智能降级链状态机与阶段推进断言（证伪短路 bug）', () => {
-  it('海报优先级链条完整：poster -> thumb -> backdrop -> null', () => {
-    const artwork: ArtworkSet = {
-      posterUrl: 'http://img/poster.jpg',
-      thumbUrl: 'http://img/thumb.jpg',
-      backdropUrl: 'http://img/backdrop.jpg',
-    };
+describe('Artwork 智能降级链真实组件渲染与 Hook 调用断言', () => {
+  it('真渲染组件并调用 usePosterUrl，初始产出非空 url', () => {
+    let capturedUrl: string | null = null;
+    let capturedOnError: (() => void) | null = null;
 
-    // 阶段1：初态应为 posterUrl
-    let currentUrl: string | null = artwork.posterUrl ?? null;
-    assert.equal(currentUrl, 'http://img/poster.jpg');
+    function TestComponent() {
+      const { url, onError } = usePosterUrl({
+        posterUrl: 'https://img.test/poster.jpg',
+        thumbUrl: 'https://img.test/thumb.jpg',
+      });
+      capturedUrl = url;
+      capturedOnError = onError;
+      return React.createElement('div', null, url);
+    }
 
-    // 阶段2：首次触发 onError 降级至 thumb
-    currentUrl = artwork.thumbUrl ?? null;
-    assert.equal(currentUrl, 'http://img/thumb.jpg');
-
-    // 阶段3：再次触发 onError 降级至 backdrop
-    currentUrl = artwork.backdropUrl ?? null;
-    assert.equal(currentUrl, 'http://img/backdrop.jpg');
-
-    // 阶段4：全部失败后落到 null（触发 fallback 占位符）
-    currentUrl = null;
-    assert.equal(currentUrl, null);
+    const html = renderToStaticMarkup(React.createElement(TestComponent));
+    assert.equal(capturedUrl, 'https://img.test/poster.jpg');
+    assert.equal(typeof capturedOnError, 'function');
+    assert.match(html, /https:\/\/img\.test\/poster\.jpg/);
   });
 
-  it('背景图优先级链条完整：banner -> backdrop -> thumb -> poster -> null', () => {
-    const artwork: ArtworkSet = {
-      bannerUrl: 'http://img/banner.jpg',
-      backdropUrl: 'http://img/backdrop.jpg',
-      thumbUrl: 'http://img/thumb.jpg',
-      posterUrl: 'http://img/poster.jpg',
-    };
+  it('真渲染组件并调用 useBackdropUrl，遵循 banner -> backdrop 优先级', () => {
+    let capturedUrl: string | null = null;
 
-    assert.equal(artwork.bannerUrl, 'http://img/banner.jpg');
-    assert.equal(artwork.backdropUrl, 'http://img/backdrop.jpg');
-    assert.equal(artwork.thumbUrl, 'http://img/thumb.jpg');
-    assert.equal(artwork.posterUrl, 'http://img/poster.jpg');
+    function TestBackdropComponent() {
+      const { url } = useBackdropUrl({
+        bannerUrl: 'https://img.test/banner.jpg',
+        backdropUrl: 'https://img.test/backdrop.jpg',
+      });
+      capturedUrl = url;
+      return React.createElement('div', null, url);
+    }
+
+    const html = renderToStaticMarkup(React.createElement(TestBackdropComponent));
+    assert.equal(capturedUrl, 'https://img.test/banner.jpg');
+    assert.match(html, /https:\/\/img\.test\/banner\.jpg/);
   });
 });
