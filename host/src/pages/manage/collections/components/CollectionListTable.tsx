@@ -103,10 +103,16 @@ export function CollectionListTable({
               清空本页
             </button>
           </div>
-          {/* treegrid 语义：父子表均 role=treegrid；父行 aria-level=1 + aria-expanded
-              （可展开节点，aria-expanded 落在**行**上而非仅按钮，避免双重播报）；
-              子行 aria-level=2（见 CollectionMemberPanel）。展开行(colSpan)不给索引/层级，
-              它是容器非数据行。 */}
+          {/* treegrid 语义（rv02 评审返工）：父子各为**独立 treegrid**（A 方案：父子 roving 域
+              各自独立）⇒ **不并入单一 treegrid**（那会合并两个索引域、破坏 A 方案）。每张表是
+              自洽 treegrid、根级 aria-level 从 1 起；父子层级由 **DOM 嵌套**（子表在父展开行 <td> 内）
+              + 父行 aria-expanded 传达，**不靠跨表续接 aria-level**（子表 aria-level=2 会是孤儿层级，
+              spec 不合规）。
+              · 父行 aria-level=1 + aria-expanded（treegrid treeitem 承载展开态）；
+              · 展开按钮亦带 aria-expanded（disclosure 控件）—— 行覆盖 roving 聚焦、按钮覆盖
+                Tab 聚焦，两种焦点都不丢展开态反馈（rv02 ②）；
+              · 子行 aria-level=1（子表自己的根级，见 CollectionMemberPanel）。
+              · 展开行(colSpan)不给索引/层级：它是容器非数据行。 */}
           <table className={styles.table} role="treegrid">
             <thead>
               <tr>
@@ -161,6 +167,7 @@ export function CollectionListTable({
                         <button
                           type="button"
                           className={styles.smallButton}
+                          aria-expanded={expanded}
                           onClick={() => setExpandedId(expanded ? null : collection.id)}
                         >
                           {expanded ? '收起' : '成员'}

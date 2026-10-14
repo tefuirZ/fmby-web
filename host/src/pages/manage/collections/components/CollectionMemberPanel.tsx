@@ -70,6 +70,9 @@ export function CollectionMemberPanel({
   return (
     <div>
       <div className={styles.tableWrap}>
+        {/* 子表 = **独立 treegrid**，根级 aria-level 从 1 起（rv02 ①：不续接父表到 2，
+            那会是孤儿层级、spec 不合规）。父子层级由 DOM 嵌套（本表在父表展开行 <td> 内）
+            + 父行 aria-expanded 传达。见 CollectionListTable 顶部注释。 */}
         <table className={styles.table} role="treegrid">
           <thead>
             <tr>
@@ -86,7 +89,7 @@ export function CollectionMemberPanel({
           </thead>
           <tbody ref={tbodyRef}>
             {members.map((member, index) => (
-              <tr key={member.id} data-row-index={index} aria-level={2}>
+              <tr key={member.id} data-row-index={index} aria-level={1}>
                 <td>{member.titleSnapshot}</td>
                 <td>{member.mediaKind}</td>
                 <td>{member.yearSnapshot ?? '—'}</td>
