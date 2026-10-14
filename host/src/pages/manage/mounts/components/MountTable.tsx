@@ -4,7 +4,7 @@ import { Checkbox, StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, ManageSectionCard, getManageStatusVariant } from '../../components';
-import { PROVIDER_OPTIONS, type MountHealthStatus } from '../types';
+import type { MountHealthStatus } from '../types';
 import {
   canValidateMountType,
   formatMountReferenceSummary,
@@ -13,6 +13,7 @@ import {
 } from '../formUtils';
 import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 import { CredentialBadgeCell } from './CredentialBadgeCell';
+import { MountTableToolbar } from './MountTableToolbar';
 
 interface ValidateMutationShape {
   isPending: boolean;
@@ -108,59 +109,18 @@ export function MountTable({
 
   return (
     <ManageSectionCard title="来源列表" description="支持搜索、筛选、详情抽屉、校验连接和删除操作。">
-      <div className={styles.toolbar}>
-        <div className={styles.filterGroup}>
-          <label className={styles.label}>
-            搜索来源
-            <input
-              className={styles.searchInput}
-              placeholder="名称 / 根路径 / 类型 / 关联媒体库"
-              value={keyword}
-              onChange={(event) => onKeywordChange(event.target.value)}
-            />
-          </label>
-          <label className={styles.label}>
-            状态
-            <select
-              className={styles.select}
-              value={statusFilter}
-              onChange={(event) => onStatusFilterChange(event.target.value as 'all' | MountHealthStatus)}
-            >
-              <option value="all">全部状态</option>
-              <option value="healthy">正常</option>
-              <option value="attention">需关注</option>
-              <option value="critical">异常</option>
-            </select>
-          </label>
-          <label className={styles.label}>
-            类型
-            <select
-              className={styles.select}
-              value={typeFilter}
-              onChange={(event) => onTypeFilterChange(event.target.value as 'all' | ManageMountProviderType)}
-            >
-              <option value="all">全部类型</option>
-              {PROVIDER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className={styles.rowActions}>
-          <button className={styles.smallButton} type="button" onClick={onSelectAll}>
-            全选本页
-          </button>
-          <button className={styles.smallButton} type="button" onClick={onInvertVisible}>
-            反选
-          </button>
-          <button className={styles.smallButton} type="button" onClick={onClearVisible}>
-            清空本页
-          </button>
-          <span className={styles.tableHint}>当前结果：{filteredMounts.length} 条</span>
-        </div>
-      </div>
+      <MountTableToolbar
+        keyword={keyword}
+        statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        onKeywordChange={onKeywordChange}
+        onStatusFilterChange={onStatusFilterChange}
+        onTypeFilterChange={onTypeFilterChange}
+        onSelectAll={onSelectAll}
+        onClearVisible={onClearVisible}
+        onInvertVisible={onInvertVisible}
+        resultCount={filteredMounts.length}
+      />
 
       {mounts.length === 0 ? (
         renderEmptyState
