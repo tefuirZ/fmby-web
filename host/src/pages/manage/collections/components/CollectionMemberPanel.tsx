@@ -70,10 +70,14 @@ export function CollectionMemberPanel({
   return (
     <div>
       <div className={styles.tableWrap}>
-        {/* 子表 = **独立 treegrid**，根级 aria-level 从 1 起（rv02 ①：不续接父表到 2，
-            那会是孤儿层级、spec 不合规）。父子层级由 DOM 嵌套（本表在父表展开行 <td> 内）
-            + 父行 aria-expanded 传达。见 CollectionListTable 顶部注释。 */}
-        <table className={styles.table} role="treegrid">
+        {/* 子表**降级为普通 table**（rv02 Important-1 放行选项1）：去掉 role=treegrid 与 aria-level。
+            理由：父子是「父表 treegrid（可展开树）+ 子表数据明细表」的现实语义；子表若标
+            treegrid + aria-level，会因「独立 treegrid 内 level 无 level=1 祖先」成孤儿层级（r1 判据）。
+            去掉后子表是普通数据表，父子层级由**父行 aria-expanded** + **DOM 嵌套**（本表在父表
+            展开行 <td> 内）表达，spec 合规。加 aria-label 让 AT 播报表名。
+            roving 独立（A 方案）**不动**——用 data-row-index，不依赖 role（useTableRowRoving 不查 role）。
+            详见 CollectionListTable 顶部注释。 */}
+        <table className={styles.table} aria-label="合集成员明细">
           <thead>
             <tr>
               <th>成员</th>
@@ -89,7 +93,7 @@ export function CollectionMemberPanel({
           </thead>
           <tbody ref={tbodyRef}>
             {members.map((member, index) => (
-              <tr key={member.id} data-row-index={index} aria-level={1}>
+              <tr key={member.id} data-row-index={index}>
                 <td>{member.titleSnapshot}</td>
                 <td>{member.mediaKind}</td>
                 <td>{member.yearSnapshot ?? '—'}</td>

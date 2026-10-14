@@ -103,15 +103,16 @@ export function CollectionListTable({
               清空本页
             </button>
           </div>
-          {/* treegrid 语义（rv02 评审返工）：父子各为**独立 treegrid**（A 方案：父子 roving 域
-              各自独立）⇒ **不并入单一 treegrid**（那会合并两个索引域、破坏 A 方案）。每张表是
-              自洽 treegrid、根级 aria-level 从 1 起；父子层级由 **DOM 嵌套**（子表在父展开行 <td> 内）
-              + 父行 aria-expanded 传达，**不靠跨表续接 aria-level**（子表 aria-level=2 会是孤儿层级，
-              spec 不合规）。
-              · 父行 aria-level=1 + aria-expanded（treegrid treeitem 承载展开态）；
-              · 展开按钮亦带 aria-expanded（disclosure 控件）—— 行覆盖 roving 聚焦、按钮覆盖
-                Tab 聚焦，两种焦点都不丢展开态反馈（rv02 ②）；
-              · 子行 aria-level=1（子表自己的根级，见 CollectionMemberPanel）。
+          {/* treegrid 语义（rv01/rv02 评审返工后定稿）：
+              · 父表 role=treegrid，父数据行 aria-level=1 + aria-expanded（可展开父节点，
+                treegrid treeitem 承载展开态）；
+              · 展开按钮**亦带** aria-expanded（disclosure 控件）—— 行覆盖 roving 行焦点、
+                按钮覆盖 Tab 按钮焦点，两种焦点都不丢展开态反馈（rv02 Important-2，已修）；
+              · **子表降级为普通 table**（rv02 Important-1 放行选项1）：去掉 role=treegrid 与
+                aria-level，加 aria-label。父子是「父表可展开树 + 子表数据明细表」的现实语义；
+                子表标 treegrid + aria-level 会成孤儿层级（独立 treegrid 内无 level=1 祖先）。
+                父子层级由父行 aria-expanded + DOM 嵌套（子表在本行展开 <td> 内）表达，spec 合规。
+                roving 独立（A 方案）不动——用 data-row-index，不依赖 role。详见 CollectionMemberPanel 注释。
               · 展开行(colSpan)不给索引/层级：它是容器非数据行。 */}
           <table className={styles.table} role="treegrid">
             <thead>

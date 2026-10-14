@@ -5303,21 +5303,19 @@ test('接线实证（真实 ManageOperationsPage）：概览多表各自独立�
 /* ------------------------------------------------------------------ */
 
 /**
- * 嵌套表 treegrid ARIA（rv01/rv02 评审返工后定稿）。
+ * 父子表 ARIA（rv01/rv02 评审返工后定稿）。
  *
- * ## ARIA 语义选择（spec 依据，供 rv02 独立复审）
- * 本例是**标准嵌套 treegrid**：子表（成员表）物理嵌在父表（合集表）展开行的 <td> 内。
- * WAI-ARIA 规定 `aria-level` 是 **per-tree、root=1**：每棵树 root 行的 aria-level 必为 1。
- * - 父表：root 数据行 aria-level=1 + aria-expanded（可展开父节点）；
- * - 子表：作为**独立 treegrid**（尊重主代理已裁决的 A 方案——父子 roving 域各自独立、
- *   data-row-index 各从 0 起 ⇒ 不并入单一 treegrid），其 root 数据行 aria-level=1。
- * ⇒ 给子表行标 aria-level=2 会在「子表这棵独立树内」找不到 level=1 祖先 ⇒ **孤儿层级**，
- *   spec 不合规（r1 判据）。深度（子比父深一级）由 **DOM 结构嵌套**（子表在父展开行 <td> 内）
- *   + **父行 aria-expanded=true** 表达，这是 spec 合规的嵌套 treegrid 表达方式。
- * - aria-expanded **同时落在行与展开按钮**上：行覆盖 roving 行焦点、按钮覆盖 Tab 按钮焦点，
- *   两种焦点都不丢展开态反馈（rv02 ②）。
+ * ## 方案（rv02 Important-1 放行选项1 + Important-2）
+ * - **父表**（合集表）role=treegrid，父数据行 aria-level=1 + aria-expanded（可展开父节点）。
+ * - **子表**（成员表，嵌在父表展开行 <td> 内）**降级为普通 table**：去掉 role=treegrid 与
+ *   aria-level，加 aria-label。理由：子表若标 treegrid + aria-level，会因「独立 treegrid 内
+ *   无 level=1 祖先」成孤儿层级（r1 判据）。父子是「父表可展开树 + 子表数据明细表」的现实语义。
+ *   父子层级由 **父行 aria-expanded** + **DOM 嵌套**（子表在父展开行 <td> 内）表达，spec 合规。
+ * - **roving 独立（A 方案）不动**：用 data-row-index 漫游，与 role 无关（useTableRowRoving 不查 role）。
+ * - **aria-expanded 同时落在行与展开按钮**上（Important-2 已修）：行覆盖 roving 行焦点、按钮覆盖
+ *   Tab 按钮焦点，两种焦点都不丢展开态反馈。
  */
-test('嵌套表 treegrid ARIA：父子各自独立 treegrid（根级 aria-level=1）+ 行/按钮 aria-expanded', async (t) => {
+test('父子表 ARIA：父表 treegrid + 子表降级普通 table + 行/按钮 aria-expanded', async (t) => {
   const h = await mountPageProbe(
     t,
     'fe02-treegrid-',
@@ -5358,26 +5356,26 @@ test('嵌套表 treegrid ARIA：父子各自独立 treegrid（根级 aria-level=
       { timeout: 20000 },
     );
 
-    // ③ 子表 role=treegrid；父子各自 root level=1（per-tree，spec 合规）。
-    assert.equal(
-      await page.evaluate(() => document.querySelectorAll('tbody')[1]?.closest('table')?.getAttribute('role')),
-      'treegrid',
-      '子成员表应为 role=treegrid',
-    );
-    // ③a 显式验证「父子嵌套」关系：子表 DOM 上是父表展开行 <td> 的后代（嵌套 treegrid，
-    // 而非两张并列平级表）—— 层级深度靠此结构嵌套 + 父行 aria-expanded 表达（rv01①：关系要正确）。
-    const nestedInParent = await page.evaluate(() => {
-      const childTable = document.querySelectorAll('tbody')[1]?.closest('table');
-      const parentTable = document.querySelectorAll('tbody')[0]?.closest('table');
-      return childTable != null && parentTable != null && parentTable.contains(childTable);
+    // ③ 子表**降级为普通 table**（rv02 Important-1 放行选项1）：**不是** treegrid、行**无** aria-level，
+    // 但带 aria-label（让 AT 播报表名）。roving 独立（A 方案）仍生效（用 data-row-index，与 role 无关）。
+    const childTable = await page.evaluate(() => {
+      const el = document.querySelectorAll('tbody')[1]?.closest('table');
+      return el ? { role: el.getAttribute('role'), label: el.getAttribute('aria-label') } : null;
     });
-    assert.equal(nestedInParent, true, '子表应物理嵌套在父表内（嵌套 treegrid，非并列平级表）');
+    assert.notEqual(childTable?.role, 'treegrid', '子成员表应降级为普通 table（非 treegrid，避免孤儿层级）');
+    assert.ok(childTable?.label, '子成员表应带 aria-label（rv02 建议：普通 table + aria-label）');
     const childLevel = await page.evaluate(() =>
       document.querySelectorAll('tbody')[1]?.querySelector('tr[data-row-index="0"]')?.getAttribute('aria-level'),
     );
-    // ③b 父子 level 关系：父行 root=1（①已断言）+ 子表 root=1 ⇒ 「两棵独立树各自 root=1」的
-    // spec 合规关系；深度由 DOM 嵌套（③a）+ 父行 aria-expanded（④）表达，非跨表续接 level=2。
-    assert.equal(childLevel, '1', '子数据行 aria-level 应为 1（子表独立 treegrid 的 per-tree root，非孤儿 level 2）');
+    assert.equal(childLevel, null, '子数据行不应带 aria-level（子表非 treegrid，无 per-tree level 语义）');
+    // ③a 显式验证「父子嵌套」关系：子表 DOM 上是父表展开行 <td> 的后代（父 treegrid 的可展开行
+    // 内含子数据表，而非两张并列平级表）—— 层级深度靠此结构嵌套 + 父行 aria-expanded 表达。
+    const nestedInParent = await page.evaluate(() => {
+      const child = document.querySelectorAll('tbody')[1]?.closest('table');
+      const parent = document.querySelectorAll('tbody')[0]?.closest('table');
+      return child != null && parent != null && parent.contains(child);
+    });
+    assert.equal(nestedInParent, true, '子表应物理嵌套在父表内（父可展开行内含子数据表，非并列平级表）');
 
     // ④ 展开态：父行 aria-expanded=true。
     const parentExpanded = await page.evaluate(() =>
