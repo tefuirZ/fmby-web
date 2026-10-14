@@ -3684,6 +3684,13 @@ test('ManageMediaReviewsPage 待审项表：真实 Tab 步数 + 唯一停靠点 
     await page.keyboard.press('Home');
     assert.equal(await focusedRowIn(page, 0), 0, 'Home → 首行');
 
+    // tableWrap 滚动区 a11y（第十三批）：媒体审核待审项 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const mrTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="媒体审核待审项（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(mrTw, ['region', null, '媒体审核待审项（可横向滚动）'], '媒体审核待审项 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -4485,6 +4492,13 @@ test('接线实证（真实 ManageRuntimeLogsPage）：行停靠点唯一 + 行�
     await page.keyboard.press('Home');
     assert.equal(await focusedRowIn(page, 1), 0, '归档表 Home → 首行');
     assert.equal(await focusedRowIn(page, 0), null, '焦点须在归档表，不得串到日志表');
+
+    // tableWrap 滚动区 a11y（第十三批）：运行日志 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const rlTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="运行日志（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(rlTw, ['region', null, '运行日志（可横向滚动）'], '运行日志 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -5304,6 +5318,13 @@ test('接线实证（真实 ManageEventsPage）：主事件表 + 嵌套时间线
       3,
       '时间线表应渲染 3 行（与 fixture 一致）',
     );
+
+    // tableWrap 滚动区 a11y（第十三批）：事件列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const eventsTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="事件列表（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(eventsTw, ['region', null, '事件列表（可横向滚动）'], '事件列表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
