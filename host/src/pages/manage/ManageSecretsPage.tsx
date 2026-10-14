@@ -7,6 +7,7 @@ import {
 } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
+import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
@@ -35,26 +36,8 @@ function sourceVariant(source: SecretSourceKind) {
 
 /** 可覆盖白名单键（与后端 SecretsConfig::apply_override 一一对应；
  * env-only 的 bangumi 键不在覆盖面——文件覆盖对该键无效果，不提供误导入口）。 */
-// ★G-13（#642，w11 查证）：本表曾与后端 `SecretsConfig::apply_override`
-// （crates/fmby-v2-bridges/src/config/secrets.rs）白名单**互差 2 项**——
-// 前端多 `providers.hash_service.api_key`（后端不认 ⇒ 一改就 400）、
-// 前端缺 `providers.subtitle.token`（后端认但前端不给入口 ⇒ 网页改不动）。
-// 现已按**后端白名单为准**对齐（11 项，顺序与后端 `apply_override` 一致）。
-// ⚠ 过渡态：BE-3 落地后本表应改为渲染 `SecretsStatusDto.overridable_keys`
-// （单一真源），届时删除本常量（见 #642 缺口清单 G-13 验收判据）。
-const OVERRIDABLE_KEYS: string[] = [
-  'providers.tmdb.api_key',
-  'providers.douban.api_key',
-  'providers.onedrive.client_id',
-  'providers.scrape_server.api_key',
-  'providers.mediasvc.api_key',
-  'providers.mediasvc.token',
-  'providers.subtitle.token',
-  'providers.telegram.bot_token',
-  'providers.ai.endpoint',
-  'providers.ai.api_key',
-  'providers.ai.model_name',
-];
+// ★G-13 / FE-1（#642）：原硬编码 OVERRIDABLE_KEYS 常量已彻底删除。
+// 可写键完全由后端 `SecretsStatusDto.overridable_keys` 及 entries 元数据驱动（单一真源）。
 
 export function ManageSecretsPage() {
   const queryClient = useQueryClient();
@@ -76,6 +59,19 @@ export function ManageSecretsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const entries = statusQuery.data?.entries ?? [];
+  const overridableKeys = useMemo(() => {
+    // 优先取后端单一真源 overridableKeys 或从 entries 中过滤 overridable/白名单键
+    if (statusQuery.data?.overridableKeys && statusQuery.data.overridableKeys.length > 0) {
+      return statusQuery.data.overridableKeys;
+    }
+    const fromEntries = entries
+      .filter((e) => e.overridable !== false)
+      .map((e) => e.key);
+    if (fromEntries.length > 0) {
+      return fromEntries;
+    }
+    return entries.map((e) => e.key);
+  }, [statusQuery.data?.overridableKeys, entries]);
 
   const entryBySource = useMemo(() => {
     const map = new Map<string, SecretSourceKind>();
@@ -238,11 +234,15 @@ export function ManageSecretsPage() {
               }}
             >
               <option value="">选择要覆盖的密钥…</option>
-              {OVERRIDABLE_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
+              {overridableKeys.map((key) => {
+                const entry = entries.find((e) => e.key === key);
+                const label = entry?.label ? `${entry.label} (${key})` : key;
+                return (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
           </div>
           <div className={styles.fieldGroup}>
@@ -274,37 +274,36 @@ export function ManageSecretsPage() {
         </div>
 
         <div className={styles.buttonRow}>
-          {confirming ? (
-            <>
-              <button
-                className={styles.dangerButton}
-                type="button"
-                disabled={submitDisabled}
-                onClick={() => overrideMutation.mutate()}
-              >
-                确认写入磁盘
-              </button>
-              <button
-                className={styles.ghostButton}
-                type="button"
-                onClick={() => setConfirming(false)}
-              >
-                取消
-              </button>
-            </>
-          ) : (
-            <button
-              className={styles.primaryButton}
-              type="button"
-              disabled={submitDisabled}
-              onClick={() => setConfirming(true)}
-            >
-              写入覆盖
-            </button>
-          )}
+          <button
+            className={styles.primaryButton}
+            type="button"
+            disabled={submitDisabled}
+            onClick={() => setConfirming(true)}
+          >
+            写入覆盖
+          </button>
         </div>
 
-        {error ? <p className={styles.fieldErrorText}>{error}</p> : null}
+        <SensitiveActionDialog
+          open={confirming}
+          actionKey="manage.secrets.override"
+          title="确认覆盖密钥"
+          description={`即将写入或修改密钥覆盖配置：${selectedKey}。该改动将持久化至 secrets 本地配置文件，需在服务重启后生效。`}
+          impact={[
+            removeMode ? `将清除该密钥的文件覆盖，恢复回落到环境变量或内置默认` : `将使用新值覆盖原有配置，写盘后在页面上不回显敏感明文`,
+            `需要重启进程使新配置生效`,
+          ]}
+          pending={overrideMutation.isPending}
+          errorMessage={error ?? undefined}
+          onOpenChange={(open) => {
+            if (!open) {
+              setConfirming(false);
+            }
+          }}
+          onConfirm={() => overrideMutation.mutate()}
+        />
+
+        {error && !confirming ? <p className={styles.fieldErrorText}>{error}</p> : null}
 
         {result ? (
           <div className={styles.inlineMeta}>
