@@ -123,7 +123,7 @@ export function ProviderDiagnosticsCard({ provider, displayName }: ProviderDiagn
             <strong>{result.summary.title}</strong>：{result.summary.message}
           </div>
 
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap} role="region" aria-label="自检步骤（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>

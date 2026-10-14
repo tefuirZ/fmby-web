@@ -3573,6 +3573,13 @@ test('ProviderDiagnosticsCard 自检步骤表：真按钮触发后真实 Tab 步
     assert.equal(await focusedRowIn(page, 0), 2, 'End → 末行');
     assert.deepEqual(await rovingStopsIn(page, 0), ['2'], '停靠点必须跟随焦点');
 
+    // tableWrap 滚动区 a11y（第九批）：自检步骤表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const pdTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="自检步骤（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(pdTw, ['region', null, '自检步骤（可横向滚动）'], '自检步骤表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -4504,6 +4511,13 @@ test('接线实证（真实 AuthProvidersSection）：行停靠点唯一 + 行�
     // checkbox 原生 Space 切换，roving 不应插手。
     await page.keyboard.press('Space');
     assert.equal(await box.isChecked(), false, 'Space 应切换 checkbox 原生状态');
+
+    // tableWrap 滚动区 a11y（第九批）：认证提供方表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const apTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="认证提供方（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(apTw, ['region', null, '认证提供方（可横向滚动）'], '认证提供方表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
