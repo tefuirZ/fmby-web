@@ -736,6 +736,13 @@ test('接线实证（真实 UserTable）：↑↓/Home/End 在行间移动，漫
     await page.keyboard.press('Home');
     assert.equal(await focusedRow(page), 0, 'Home → 当前页首行');
 
+    // tableWrap 滚动区 a11y（最后一批）：用户列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const userTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="用户列表（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(userTw, ['region', null, '用户列表（可横向滚动）'], '用户列表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -1192,6 +1199,13 @@ test('接线实证（真实 TaskCenterList）：↑↓/Home/End 移动行 + Ente
       ['probe:t-1'],
       'Enter 应选中当前行任务（setSelectedTask），与行内「详情」按钮同语义',
     );
+    // tableWrap 滚动区 a11y（最后一批）：任务列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const tcTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="任务列表（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(tcTw, ['region', null, '任务列表（可横向滚动）'], '任务列表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -1890,6 +1904,13 @@ test('接线实证（真实 RegistrationCodeDetailTable）：↑↓/Home/End 漫
     assert.equal(await focusedRow(page), 2, 'End → 末行');
     await page.keyboard.press('Home');
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    // tableWrap 滚动区 a11y（最后一批）：注册码详情 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const rcTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="注册码详情（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(rcTw, ['region', null, '注册码详情（可横向滚动）'], '注册码详情 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -2114,6 +2135,13 @@ test('接线实证（Yun139ProfilesSection）：↑↓/Home/End 漫游（第四�
     assert.equal(await focusedRow(page), 2, 'End → 末行');
     await page.keyboard.press('Home');
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    // tableWrap 滚动区 a11y（最后一批）：云 139 配置 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const yunTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="云 139 配置（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(yunTw, ['region', null, '云 139 配置（可横向滚动）'], '云 139 配置 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -2202,6 +2230,13 @@ test('接线实证（RewardsLedgerSection）：只读账本表 ↑↓/Home/End �
     assert.equal(await focusedRow(page), 2, 'End → 末行');
     await page.keyboard.press('Home');
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    // tableWrap 滚动区 a11y（最后一批）：奖励账本表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const ledgerTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="奖励账本（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(ledgerTw, ['region', null, '奖励账本（可横向滚动）'], '奖励账本表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
