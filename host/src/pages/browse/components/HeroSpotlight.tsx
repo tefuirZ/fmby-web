@@ -34,6 +34,7 @@ function HeroSlideThumb({
   const { url: posterUrl, onError: onPosterError } = usePosterUrl(hero.item.artwork);
   const { url: backdropUrl, onError: onBackdropError } = useBackdropUrl(hero.item.artwork);
   const image = hero.item.availabilityNotice ? undefined : (posterUrl ?? backdropUrl);
+  const [loadFailed, setLoadFailed] = useState(false);
   const ref = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -53,13 +54,21 @@ function HeroSlideThumb({
       title={hero.item.title}
     >
       <div className={heroStyles.heroFilmThumbMedia}>
-        {image ? (
+        {image && !loadFailed ? (
           <img
             className={heroStyles.heroFilmThumbImg}
             src={image}
             alt={hero.item.title}
-            onError={posterUrl ? onPosterError : onBackdropError}
+            onError={() => {
+              if (posterUrl) {
+                onPosterError();
+              } else {
+                onBackdropError();
+              }
+              setLoadFailed(true);
+            }}
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div
