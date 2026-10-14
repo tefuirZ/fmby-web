@@ -3,15 +3,11 @@ import { Link } from 'react-router';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { formatRelativeTime } from '@fmby/v2-shared/time';
 import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
-import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 import { MediaProgressBar } from './MediaProgressBar';
 import { buildMediaMeta, buildCardProgressLabel, resolvePlayableTargetId } from './utils';
+import { useBackdropUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
 import cardStyles from '../styles/cards.module.css';
 import sharedStyles from '../styles/shared.module.css';
-
-function pickWideArtworkUrl(artwork: ArtworkSet): string | null {
-  return artwork.bannerUrl ?? artwork.backdropUrl ?? artwork.thumbUrl ?? null;
-}
 
 export function WideMediaCard({
   item,
@@ -20,7 +16,8 @@ export function WideMediaCard({
   item: MediaCardSummary;
   primaryLabel?: string;
 }) {
-  const image = item.availabilityNotice ? undefined : pickWideArtworkUrl(item.artwork);
+  const { url, onError } = useBackdropUrl(item.artwork);
+  const image = item.availabilityNotice ? undefined : url;
   const progressLabel = buildCardProgressLabel(item);
   const playbackTargetId = resolvePlayableTargetId(item);
 
@@ -35,7 +32,7 @@ export function WideMediaCard({
         aria-label={item.title}
       >
         {image ? (
-          <img alt="" className={cardStyles.wideThumb} src={image} loading="lazy" decoding="async" />
+          <img alt="" className={cardStyles.wideThumb} src={image} loading="lazy" decoding="async" onError={onError} />
         ) : (
           <div className={cardStyles.imageFallback} aria-hidden="true">暂无封面</div>
         )}
