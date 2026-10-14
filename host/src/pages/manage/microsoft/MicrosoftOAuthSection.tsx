@@ -290,7 +290,7 @@ export function MicrosoftOAuthSection() {
           </div>
 
           {drives.length > 0 ? (
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="OneDrive 网盘（可横向滚动）">
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -313,7 +313,7 @@ export function MicrosoftOAuthSection() {
           ) : null}
 
           {sites.length > 0 ? (
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="SharePoint 站点（可横向滚动）">
               <table className={styles.table}>
                 <thead>
                   <tr>
