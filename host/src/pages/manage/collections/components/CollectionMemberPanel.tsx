@@ -69,7 +69,7 @@ export function CollectionMemberPanel({
 
   return (
     <div>
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap} role="region" aria-label="合集成员明细（可横向滚动）">
         {/* 子表**降级为普通 table**（rv02 Important-1 放行选项1）：去掉 role=treegrid 与 aria-level。
             理由：父子是「父表 treegrid（可展开树）+ 子表数据明细表」的现实语义；子表若标
             treegrid + aria-level，会因「独立 treegrid 内 level 无 level=1 祖先」成孤儿层级（r1 判据）。

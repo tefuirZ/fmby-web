@@ -104,7 +104,7 @@ export function Yun139ProfilesSection() {
       {profiles.length === 0 ? (
         <div className={styles.emptyInlineState}>还没有任何 139 凭据档案。</div>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap} role="region" aria-label="云 139 配置（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>

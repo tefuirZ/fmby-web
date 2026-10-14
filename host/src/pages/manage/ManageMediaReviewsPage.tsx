@@ -195,7 +195,7 @@ export function ManageMediaReviewsPage() {
           <span className={styles.tableHint}>结果：{items.length} 个工单</span>
         </div>
 
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="媒体审核待审项（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>

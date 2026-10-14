@@ -153,7 +153,7 @@ export function ManageEventsPage() {
           <span className={styles.tableHint}>结果：{events.length} 条</span>
         </div>
 
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="事件列表（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>

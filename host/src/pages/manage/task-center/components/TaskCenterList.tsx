@@ -46,7 +46,7 @@ export function TaskCenterList({
         {isFetching ? ' · 正在刷新' : ''}
       </div>
 
-      <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+      <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="任务列表（可横向滚动）">
         <table className={styles.table}>
           <thead>
             <tr>

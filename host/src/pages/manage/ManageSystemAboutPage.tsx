@@ -145,7 +145,7 @@ export function ManageSystemAboutPage() {
       </ManageSectionCard>
 
       <ManageSectionCard title="运行时" description="编译目标与启用的能力面。">
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="运行时信息（可横向滚动）">
           <table className={styles.table}>
             <tbody ref={runtimeTbodyRef}>
               {RUNTIME_ROWS.map((row, index) => (
@@ -160,7 +160,7 @@ export function ManageSystemAboutPage() {
       </ManageSectionCard>
 
       <ManageSectionCard title="运行依赖" description="PATH 探测（-version 首行）。">
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="依赖清单（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>
@@ -181,7 +181,7 @@ export function ManageSystemAboutPage() {
       </ManageSectionCard>
 
       <ManageSectionCard title="链接" description="源码与分发入口。">
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`}>
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="相关链接（可横向滚动）">
           <table className={styles.table}>
             <tbody ref={linksTbodyRef}>
               {LINK_ROWS.map((row, index) => (

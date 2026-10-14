@@ -281,7 +281,7 @@ function PreviewResultCard({ preview }: { preview: UpstreamMappingPreviewResult 
       {preview.items.length === 0 ? (
         <div className={styles.emptyInlineState}>没有匹配到任何类目。</div>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap} role="region" aria-label="映射预览结果（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>
