@@ -4622,6 +4622,20 @@ test('接线实证（真实 UpstreamSourceListSection）：查询表 + 局域网
     });
     assert.equal(landed.inDisc, false, 'Tab 离开发现表后不应回环停在发现表内');
 
+    // tableWrap 滚动区 a11y（第四批）：本区 2 处 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const slTw = await page.evaluate(() => {
+      const grab = (label: string) => {
+        const el = document.querySelector(`div[aria-label="${label}"]`);
+        return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+      };
+      return {
+        disc: grab('局域网发现（可横向滚动）'),
+        sources: grab('上游源列表（可横向滚动）'),
+      };
+    });
+    assert.deepEqual(slTw.disc, ['region', null, '局域网发现（可横向滚动）'], '局域网发现表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(slTw.sources, ['region', null, '上游源列表（可横向滚动）'], '上游源列表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -4917,6 +4931,15 @@ test('接线实证（真实 UpstreamBindingsSection）：类目表头语义 + 3 
       null,
       '行内 select 不得被 roving 改写 tabindex',
     );
+
+    // tableWrap 滚动区 a11y（第四批）：已发现类目表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const bdTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="已发现类目（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(bdTw, ['region', null, '已发现类目（可横向滚动）'], '已发现类目表 tableWrap 应为 role=region + aria-label');
+    // 注：类目绑定表（行276，bindingsQuery 有数据才渲染）本场景未渲染（该源暂无绑定 empty 态）；
+    // 其 tableWrap aria-label 已随实现补齐，待 bindingsQuery 有数据场景再断言。
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
