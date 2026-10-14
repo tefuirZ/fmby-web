@@ -18,6 +18,8 @@ export function AdaptiveWideBackdrop({
           aria-hidden="true"
           className={heroStyles.heroBackgroundImage}
           onError={onError}
+          loading="lazy"
+          decoding="async"
         />
       </div>
     </div>
