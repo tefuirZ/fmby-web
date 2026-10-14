@@ -20,7 +20,7 @@ export function CinemaHeroBackdrop({ item, active }: { item: MediaCardSummary; a
   return (
     <div className={styles.backdropSlide} data-active={active ? 'true' : 'false'} aria-hidden="true">
       {url ? (
-        <img className={styles.backdropImage} src={url} alt="" onError={onError} />
+        <img className={styles.backdropImage} src={url} alt="" onError={onError} loading="lazy" decoding="async" />
       ) : (
         <div className={styles.backdropAmbient} style={{ background: generatePlaceholderColor(item.title) }} />
       )}
