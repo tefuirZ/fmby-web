@@ -4,32 +4,22 @@ import { manageApi, type RuntimeLogLevel, type RuntimeLogRecord } from '@fmby/v2
 import { queryKeys } from '@fmby/v2-shared/query';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
-import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from './longtail-shared/ManageShared.module.css';
 import {
-  EmptyTableRow,
   ManagePageHeader,
   ManageSectionCard,
-  getManageStatusVariant,
 } from './longtail-shared/components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
-import {
-  LEVEL_OPTIONS,
-  METHOD_OPTIONS,
-  PAGE_SIZE_OPTIONS,
-  type RuntimeLogPageSize,
-} from './runtime-logs/shared';
+import { METHOD_OPTIONS, type RuntimeLogPageSize } from './runtime-logs/shared';
 import {
   RuntimeLogMobileCard,
   buildTargetOptions,
-  formatLevelLabel,
-  lookupFieldValue,
-  parseRuntimeLogPageSize,
 } from './runtime-logs/components';
 import { RuntimeLogDetailDialog } from './runtime-logs/RuntimeLogDetailDialog';
+import { RuntimeLogFilterPanel } from './runtime-logs/RuntimeLogFilterPanel';
+import { RuntimeLogsDesktopTable } from './runtime-logs/RuntimeLogsDesktopTable';
 import { RuntimeLogArchivesSection } from './runtime-logs/RuntimeLogArchivesSection';
 import { useLogViewsRoving } from './runtime-logs/useLogViewsRoving';
-import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildRuntimeLogView,
 } from './runtimeLogPresentation';
@@ -122,6 +112,19 @@ export function ManageRuntimeLogsPage() {
   const items = data?.items ?? [];
   const logViews = items.map(buildRuntimeLogView);
   const selectedLogView = selectedLog ? buildRuntimeLogView(selectedLog) : null;
+  const handleResetFilters = () => {
+    setLevel('all');
+    setMethod('all');
+    setPageSize(200);
+    setTarget('');
+    setPathFilter('');
+    setClientFilter('');
+    setIpFilter('');
+    setUserFilter('');
+    setRequestIdFilter('');
+    setSearch('');
+  };
+
   const categoryOptions = buildTargetOptions(data?.availableTargets ?? [], target);
 
   return (
@@ -157,223 +160,40 @@ export function ManageRuntimeLogsPage() {
         title="日志查询"
         description="过滤条件直接走后端查询，不是只在前端拿当前列表假筛。只要日志还在最近滚动文件范围里，筛选后也会继续实时刷新。"
       >
-        <div className={styles.runtimeLogFilterGrid}>
-          <label className={styles.label}>
-            级别
-            <select
-              className={styles.select}
-              value={level}
-              onChange={(event) =>
-                setLevel(event.target.value as 'all' | RuntimeLogLevel)
-              }
-            >
-              {LEVEL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.label}>
-            展示条数
-            <select
-              className={styles.select}
-              value={String(pageSize)}
-              onChange={(event) => {
-                setPageSize(parseRuntimeLogPageSize(event.target.value));
-              }}
-            >
-              {PAGE_SIZE_OPTIONS.map((option) => (
-                <option key={option.value} value={String(option.value)}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.label}>
-            类别
-            <select
-              className={styles.select}
-              value={target}
-              onChange={(event) => setTarget(event.target.value)}
-            >
-              <option value="">全部类别</option>
-              {categoryOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.label}>
-            请求方式
-            <select
-              className={styles.select}
-              value={method}
-              onChange={(event) =>
-                setMethod(event.target.value as (typeof METHOD_OPTIONS)[number]['value'])
-              }
-            >
-              {METHOD_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.label}>
-            请求路径
-            <input
-              className={styles.searchInput}
-              value={pathFilter}
-              onChange={(event) => setPathFilter(event.target.value)}
-              placeholder="/emby/Items / /api/manage/runtime-logs"
-            />
-          </label>
-          <label className={styles.label}>
-            客户端
-            <input
-              className={styles.searchInput}
-              value={clientFilter}
-              onChange={(event) => setClientFilter(event.target.value)}
-              placeholder="Hills / Chrome / Infuse / Emby"
-            />
-          </label>
-          <label className={styles.label}>
-            IP 地址
-            <input
-              className={styles.searchInput}
-              value={ipFilter}
-              onChange={(event) => setIpFilter(event.target.value)}
-              placeholder="127.0.0.1 / 192.168 / 10.0"
-            />
-          </label>
-          <label className={styles.label}>
-            用户
-            <input
-              className={styles.searchInput}
-              value={userFilter}
-              onChange={(event) => setUserFilter(event.target.value)}
-              placeholder="显示名 / 用户名 / 用户 ID"
-            />
-          </label>
-          <label className={styles.label}>
-            请求 ID
-            <input
-              className={styles.searchInput}
-              value={requestIdFilter}
-              onChange={(event) => setRequestIdFilter(event.target.value)}
-              placeholder="request_id / traceId"
-            />
-          </label>
-          <label className={styles.label}>
-            关键词
-            <input
-              className={styles.searchInput}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="错误文本 / 来源 ID / 任意关键字"
-            />
-          </label>
-        </div>
-        <div className={styles.runtimeLogFilterActions}>
-          <div className={styles.rowActions}>
-            <button
-              className={styles.smallButton}
-              type="button"
-              onClick={() => {
-                setLevel('all');
-                setMethod('all');
-                setPageSize(200);
-                setTarget('');
-                setPathFilter('');
-                setClientFilter('');
-                setIpFilter('');
-                setUserFilter('');
-                setRequestIdFilter('');
-                setSearch('');
-              }}
-            >
-              清空筛选
-            </button>
-          </div>
-          <span className={styles.tableHint}>
-            匹配 {data?.total ?? 0} 条
-            {pageSize === 'all' ? ' · 当前展示全部' : ` · 当前展示前 ${items.length} 条`}
-          </span>
-        </div>
+        <RuntimeLogFilterPanel
+          search={search}
+          setSearch={setSearch}
+          target={target}
+          setTarget={setTarget}
+          level={level}
+          setLevel={setLevel}
+          method={method}
+          setMethod={setMethod}
+          pathFilter={pathFilter}
+          setPathFilter={setPathFilter}
+          clientFilter={clientFilter}
+          setClientFilter={setClientFilter}
+          ipFilter={ipFilter}
+          setIpFilter={setIpFilter}
+          userFilter={userFilter}
+          setUserFilter={setUserFilter}
+          requestIdFilter={requestIdFilter}
+          setRequestIdFilter={setRequestIdFilter}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          categoryOptions={categoryOptions}
+          onReset={handleResetFilters}
+          matchedTotal={data?.total ?? 0}
+          shownCount={items.length}
+          isShowAll={pageSize === 'all'}
+        />
 
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="运行日志（可横向滚动）">
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>级别</th>
-                <th>类别</th>
-                <th>概览</th>
-                <th>结果</th>
-                <th>客户端 / 用户</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody ref={logViewsTbodyRef}>
-              {items.length === 0 ? (
-                <EmptyTableRow
-                  colSpan={7}
-                  title="没有匹配的运行日志"
-                  description="如果刚启动服务还没打出文件日志，先操作几次再回来刷。"
-                />
-              ) : (
-                logViews.map((view, index) => (
-                  <tr key={view.record.id} data-row-index={index}>
-                    <td>{formatDateTime(view.record.timestamp)}</td>
-                    <td>
-                      <StatusBadge
-                        label={formatLevelLabel(view.record.level)}
-                        variant={getManageStatusVariant(view.record.level)}
-                      />
-                    </td>
-                    <td>
-                      <div className={styles.stackText}>
-                        <span className={styles.primaryText}>{view.targetLabel}</span>
-                        <span className={styles.mutedText}>{view.record.target ?? '—'}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.logOverviewCell}>
-                        <span className={styles.logHeadline}>{view.headline}</span>
-                        <span className={styles.logSubline}>{view.eventLabel}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.stackText}>
-                        <span className={styles.primaryText}>{view.resultLabel}</span>
-                        <span className={styles.mutedText}>
-                          {lookupFieldValue(view, 'request_id') ?? '无请求 ID'}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.stackText}>
-                        <span className={styles.primaryText}>{view.actorLabel}</span>
-                        <span className={styles.mutedText}>{view.requestLabel}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        className={styles.secondaryButton}
-                        type="button"
-                        onClick={() => setSelectedLog(view.record)}
-                      >
-                        查看详情
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <RuntimeLogsDesktopTable
+          logViews={logViews}
+          hasItems={items.length > 0}
+          tbodyRef={logViewsTbodyRef}
+          onDetail={setSelectedLog}
+        />
 
         <div className={`${styles.mobileOnly} ${styles.mobileCardList}`}>
           {logViews.length === 0 ? (
