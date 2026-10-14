@@ -63,7 +63,9 @@ export function MediaItemListTable({
   });
 
   return (
-    <div className={`${sharedStyles.tableWrap} ${styles.desktopTable}`}>
+    /* sharedStyles.tableWrap = overflow-x:auto 滚动区（.table min-width:640px）⇒ 同口径补 role=region+aria-label；
+       roving 表不加 tabIndex=0（容器可聚焦会成双停靠点，PR #29 已实测）。 */
+    <div className={`${sharedStyles.tableWrap} ${styles.desktopTable}`} role="region" aria-label="媒体资源列表（可横向滚动）">
       <table className={sharedStyles.table}>
         <thead>
           <tr>

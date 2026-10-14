@@ -73,7 +73,11 @@ export function ProviderSearchPanel({
       ) : candidates.length === 0 ? (
         <span className={styles.tableHint}>{query.trim() ? '没有匹配的候选。' : '输入关键词以搜索候选。'}</span>
       ) : (
-        <div className={styles.tableWrap} role="region" aria-label="候选媒体（可横向滚动）">
+        <div
+          className={styles.tableWrap}
+          role="region"
+          aria-label="候选媒体（可横向滚动）"
+        >
           <table className={styles.table}>
             <thead>
               <tr>

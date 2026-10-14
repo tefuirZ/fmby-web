@@ -172,7 +172,11 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
             还没有已发现的类目，先点「发现」从上游拉取。
           </div>
         ) : (
-          <div className={styles.tableWrap} role="region" aria-label="已发现类目（可横向滚动）">
+          <div
+            className={styles.tableWrap}
+            role="region"
+            aria-label="类目与绑定（可横向滚动）"
+          >
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -273,7 +277,11 @@ export function UpstreamBindingsOverview({ sourceId }: { sourceId: string }) {
       ) : (bindingsQuery.data?.items ?? []).length === 0 ? (
         <div className={styles.emptyInlineState}>该源暂无绑定。</div>
       ) : (
-        <div className={styles.tableWrap} role="region" aria-label="类目绑定（可横向滚动）">
+        <div
+          className={styles.tableWrap}
+          role="region"
+          aria-label="当前生效绑定（可横向滚动）"
+        >
           <table className={styles.table}>
             <thead>
               <tr>

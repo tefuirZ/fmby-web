@@ -116,7 +116,11 @@ export function AiInterventionThreadList({
           {threads.length === 0 ? '暂无 AI 干预线程。' : '没有匹配的线程。'}
         </div>
       ) : (
-        <div className={styles.tableWrap} role="region" aria-label="干预线程（可横向滚动）">
+        <div
+          className={styles.tableWrap}
+          role="region"
+          aria-label="AI 干预线程（可横向滚动）"
+        >
           <table className={styles.table}>
             <thead>
               <tr>
