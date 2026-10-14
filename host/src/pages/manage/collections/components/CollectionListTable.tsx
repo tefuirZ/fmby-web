@@ -91,7 +91,7 @@ export function CollectionListTable({
           还没有任何收藏合集，先从右上角新建一个。
         </div>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap} role="region" aria-label="合集列表（可横向滚动）">
           <div className={styles.rowActions} style={{ marginBottom: 8 }}>
             <button className={styles.smallButton} type="button" onClick={selection.selectAll}>
               全选

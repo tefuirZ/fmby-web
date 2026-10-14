@@ -5388,6 +5388,22 @@ test('父子表 ARIA：父表 treegrid + 子表降级普通 table + 行/按钮 a
     );
     assert.equal(btnExpanded, 'true', '展开态展开按钮 aria-expanded 应为 true');
 
+    // ⑤ tableWrap 滚动区 a11y（rv01 遗留 tableWrap scope 第一批）：父/子表的 tableWrap 均补
+    // role=region + aria-label（**不加 tabIndex=0**——本表有 roving，行是唯一 Tab 停靠点；容器再加
+    // tabIndex=0 会成双停靠点、让 Tab 先停到 tableWrap div 而破坏 roving 停靠点断言，实测回归）。
+    // CSS 已证 .tableWrap 全是 overflow-x:auto 滚动容器 ⇒ 全补 role+aria-label；tabIndex=0 仅
+    // 非 roving 只读表补（横向滚动区需键盘可达、无 roving 冲突）。aria-label 按表语义自拟（待审）。
+    const wraps = await page.evaluate(() => {
+      const list = document.querySelector('div[aria-label="合集列表（可横向滚动）"]');
+      const member = document.querySelector('div[aria-label="合集成员明细（可横向滚动）"]');
+      return {
+        list: list ? [list.getAttribute('role'), list.getAttribute('tabindex'), list.getAttribute('aria-label')] : null,
+        member: member ? [member.getAttribute('role'), member.getAttribute('tabindex'), member.getAttribute('aria-label')] : null,
+      };
+    });
+    assert.deepEqual(wraps.list, ['region', null, '合集列表（可横向滚动）'], '合集列表 tableWrap 应为 role=region + aria-label（roving 表不加 tabIndex=0）');
+    assert.deepEqual(wraps.member, ['region', null, '合集成员明细（可横向滚动）'], '合集成员明细 tableWrap 应为 role=region + aria-label（roving 表不加 tabIndex=0）');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
