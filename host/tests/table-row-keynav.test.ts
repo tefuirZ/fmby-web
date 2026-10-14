@@ -3704,6 +3704,23 @@ test('接线实证（ManageSystemAboutPage）：三张表各自独立漫游，�
     await page.keyboard.press('Home');
     assert.equal(await focusedRowIn(page, 2), 0, '链接表 Home → 首行');
 
+    // tableWrap 滚动区 a11y（第二批）：3 张表 tableWrap 补 role=region + aria-label
+    // （roving 表不加 tabIndex=0，避免双停靠点破坏 roving 停靠点，见第一批实测）。desktopOnly 类保留。
+    const tw = await page.evaluate(() => {
+      const grab = (label: string) => {
+        const el = document.querySelector(`div[aria-label="${label}"]`);
+        return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+      };
+      return {
+        runtime: grab('运行时信息（可横向滚动）'),
+        deps: grab('依赖清单（可横向滚动）'),
+        links: grab('相关链接（可横向滚动）'),
+      };
+    });
+    assert.deepEqual(tw.runtime, ['region', null, '运行时信息（可横向滚动）'], '运行时信息表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(tw.deps, ['region', null, '依赖清单（可横向滚动）'], '依赖表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(tw.links, ['region', null, '相关链接（可横向滚动）'], '链接表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
