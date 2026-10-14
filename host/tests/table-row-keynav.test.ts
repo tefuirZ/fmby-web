@@ -2898,6 +2898,13 @@ test('接线实证（AiInterventionThreadList）：真实 Tab 起步 + ↑↓/Ho
     await page.keyboard.press('Enter');
     const sel = await page.evaluate(() => (window as any).__selections);
     assert.deepEqual(sel, ['media-0'], 'Enter 应选中**焦点所在行**的媒体项（且只一次）');
+    // tableWrap 滚动区 a11y（第十一批）：干预线程表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const threadTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="干预线程（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(threadTw, ['region', null, '干预线程（可横向滚动）'], '干预线程表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -3389,6 +3396,13 @@ test('AiInterventionDetailPanel runs 表：真实 Tab 步数 + 唯一停靠点 +
     // 只读表：Enter 不得凭空造出语义，也不得把焦点挪走
     await page.keyboard.press('Enter');
     assert.equal(await focusedRowIn(page, 0), 0, '只读表 Enter 不得挪走焦点');
+
+    // tableWrap 滚动区 a11y（第十一批）：干预运行记录表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const runsTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="干预运行记录（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(runsTw, ['region', null, '干预运行记录（可横向滚动）'], '干预运行记录表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
