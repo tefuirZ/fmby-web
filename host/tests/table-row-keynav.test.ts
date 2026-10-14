@@ -597,6 +597,13 @@ test('接线实证（真实 LibraryTable）：↑↓ 在行间移动 + Enter 开
     const opened = await page.evaluate(() => (globalThis as any).__opened ?? []);
     assert.deepEqual(opened, ['lib-2'], 'Enter 应打开当前行的详情');
 
+    // tableWrap 滚动区 a11y（第八批）：媒体库列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const libTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="媒体库列表（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(libTw, ['region', null, '媒体库列表（可横向滚动）'], '媒体库列表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -1325,6 +1332,13 @@ test('接线实证（真实 ManageSessionsPage）：↑↓/Home/End 移动行（
     assert.equal(await focusedRow(page), 2, 'End → 末行');
     await page.keyboard.press('Home');
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    // tableWrap 滚动区 a11y（第八批）：会话列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const sessTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="会话列表（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(sessTw, ['region', null, '会话列表（可横向滚动）'], '会话列表 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
@@ -1543,6 +1557,13 @@ test('接线实证（真实 ManageAuditLogsPage）：↑↓/Home/End 移动行�
     assert.equal(await focusedRow(page), 2, 'End → 末行');
     await page.keyboard.press('Home');
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
+    // tableWrap 滚动区 a11y（第八批）：审计日志 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    const auditTw = await page.evaluate(() => {
+      const el = document.querySelector('div[aria-label="审计日志（可横向滚动）"]');
+      return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+    });
+    assert.deepEqual(auditTw, ['region', null, '审计日志（可横向滚动）'], '审计日志 tableWrap 应为 role=region + aria-label');
+
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
     await h.close();
