@@ -4,27 +4,22 @@ import { manageApi, type RuntimeLogLevel, type RuntimeLogRecord } from '@fmby/v2
 import { queryKeys } from '@fmby/v2-shared/query';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
-import { StatusBadge } from '@fmby/v2-shared/ui';
 import styles from './longtail-shared/ManageShared.module.css';
 import {
-  EmptyTableRow,
   ManagePageHeader,
   ManageSectionCard,
-  getManageStatusVariant,
 } from './longtail-shared/components';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { METHOD_OPTIONS, type RuntimeLogPageSize } from './runtime-logs/shared';
 import {
   RuntimeLogMobileCard,
   buildTargetOptions,
-  formatLevelLabel,
-  lookupFieldValue,
 } from './runtime-logs/components';
 import { RuntimeLogDetailDialog } from './runtime-logs/RuntimeLogDetailDialog';
 import { RuntimeLogFilterPanel } from './runtime-logs/RuntimeLogFilterPanel';
+import { RuntimeLogsDesktopTable } from './runtime-logs/RuntimeLogsDesktopTable';
 import { RuntimeLogArchivesSection } from './runtime-logs/RuntimeLogArchivesSection';
 import { useLogViewsRoving } from './runtime-logs/useLogViewsRoving';
-import { formatDateTime } from '@fmby/v2-shared/time';
 import {
   buildRuntimeLogView,
 } from './runtimeLogPresentation';
@@ -193,77 +188,12 @@ export function ManageRuntimeLogsPage() {
           isShowAll={pageSize === 'all'}
         />
 
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="运行日志（可横向滚动）">
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>级别</th>
-                <th>类别</th>
-                <th>概览</th>
-                <th>结果</th>
-                <th>客户端 / 用户</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody ref={logViewsTbodyRef}>
-              {items.length === 0 ? (
-                <EmptyTableRow
-                  colSpan={7}
-                  title="没有匹配的运行日志"
-                  description="如果刚启动服务还没打出文件日志，先操作几次再回来刷。"
-                />
-              ) : (
-                logViews.map((view, index) => (
-                  <tr key={view.record.id} data-row-index={index}>
-                    <td>{formatDateTime(view.record.timestamp)}</td>
-                    <td>
-                      <StatusBadge
-                        label={formatLevelLabel(view.record.level)}
-                        variant={getManageStatusVariant(view.record.level)}
-                      />
-                    </td>
-                    <td>
-                      <div className={styles.stackText}>
-                        <span className={styles.primaryText}>{view.targetLabel}</span>
-                        <span className={styles.mutedText}>{view.record.target ?? '—'}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.logOverviewCell}>
-                        <span className={styles.logHeadline}>{view.headline}</span>
-                        <span className={styles.logSubline}>{view.eventLabel}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.stackText}>
-                        <span className={styles.primaryText}>{view.resultLabel}</span>
-                        <span className={styles.mutedText}>
-                          {lookupFieldValue(view, 'request_id') ?? '无请求 ID'}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.stackText}>
-                        <span className={styles.primaryText}>{view.actorLabel}</span>
-                        <span className={styles.mutedText}>{view.requestLabel}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        className={styles.secondaryButton}
-                        type="button"
-                        onClick={() => setSelectedLog(view.record)}
-                      >
-                        查看详情
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <RuntimeLogsDesktopTable
+          logViews={logViews}
+          hasItems={items.length > 0}
+          tbodyRef={logViewsTbodyRef}
+          onDetail={setSelectedLog}
+        />
 
         <div className={`${styles.mobileOnly} ${styles.mobileCardList}`}>
           {logViews.length === 0 ? (
