@@ -120,7 +120,7 @@ export function AuthProvidersSection() {
       {items.length === 0 ? (
         <div className={styles.emptyInlineState}>后端尚未返回任何登录提供方配置。</div>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap} role="region" aria-label="认证提供方（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>
