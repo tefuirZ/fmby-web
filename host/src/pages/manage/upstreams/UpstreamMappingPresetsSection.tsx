@@ -175,7 +175,7 @@ export function UpstreamMappingPresetsSection({ sourceId }: { sourceId: string }
         {presets.length === 0 ? (
           <div className={styles.emptyInlineState}>还没有任何映射预设，先从右上角新建一个。</div>
         ) : (
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap} role="region" aria-label="映射预设（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>
