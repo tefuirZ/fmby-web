@@ -175,6 +175,8 @@ export function ManageSecretsPage() {
                 <th className={styles.nowrap}>密钥</th>
                 <th className={styles.nowrap}>生效来源</th>
                 <th>是否已配置</th>
+                <th className={styles.nowrap}>名称</th>
+                <th className={styles.nowrap}>可自检</th>
               </tr>
             </thead>
             <tbody ref={tbodyRef}>
@@ -194,6 +196,8 @@ export function ManageSecretsPage() {
                       <span className={styles.mutedText}>未配置</span>
                     )}
                   </td>
+                  <td>{entry.label ?? '—'}</td>
+                  <td className={styles.mono}>{entry.testableService ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
