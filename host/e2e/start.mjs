@@ -35,6 +35,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createServer, preview } from 'vite';
 import { resolveBinary, describeSearchPaths } from './binaryResolver.mjs';
+import { distFreshness } from './distFreshness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // host/e2e → host → 前端仓根
@@ -243,12 +244,23 @@ if (useDevServer) {
   });
   await vite.listen();
 } else {
-  if (!existsSync(distIndex)) {
-    console.log('[real-server] host/dist 缺失，先执行 vite build …');
+  // ★「缺失 **或陈旧**」才 build：原先只在缺失时 build ⇒ 改完源码没重建时会**静默**
+  //   服务旧产物，e2e 验证的是过期前端（极难归因）。判据与 scripts/check-e2e.mjs 同源。
+  const freshness = distFreshness(distIndex, join(webRepoRoot, 'host'), webRepoRoot);
+  if (freshness.missing || freshness.stale) {
+    console.log(
+      freshness.stale
+        ? `[real-server] host/dist 比源码旧（dist ${new Date(freshness.distMtimeMs).toISOString()} < src ${new Date(freshness.srcMtimeMs).toISOString()}），先执行 vite build …`
+        : '[real-server] host/dist 缺失，先执行 vite build …',
+    );
     const built = await new Promise((resolve) => {
       const p = spawn(
         process.execPath,
-        [join(webRepoRoot, 'host', 'node_modules', '.bin', 'vite'), 'build'],
+        // ★用 vite 的 **JS 入口**（`vite/bin/vite.js`），而不是 `.bin/vite`：后者是
+        //   `#!/bin/sh` 包装脚本，经 `process.execPath`（node）执行会 SyntaxError
+        //   （实测 `missing ) after argument list`）⇒ 「dist 缺失才 build」这条路径
+        //   此前**从未被真正走过**（dist 一直在时被跳过）。
+        [join(webRepoRoot, 'host', 'node_modules', 'vite', 'bin', 'vite.js'), 'build'],
         { cwd: join(webRepoRoot, 'host'), stdio: 'inherit', env: process.env },
       );
       p.once('exit', (code) => resolve(code ?? 1));
