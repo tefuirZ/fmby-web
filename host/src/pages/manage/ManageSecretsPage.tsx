@@ -7,7 +7,6 @@ import {
 } from '@fmby/v2-shared/contracts/manage/peripherals';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
-import { SensitiveActionDialog } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from './longtail-shared/ManageShared.module.css';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
@@ -54,7 +53,6 @@ export function ManageSecretsPage() {
   const [selectedKey, setSelectedKey] = useState('');
   const [value, setValue] = useState('');
   const [removeMode, setRemoveMode] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<SecretsOverrideResultRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,14 +91,12 @@ export function ManageSecretsPage() {
     onSuccess: (data) => {
       setResult(data);
       setError(null);
-      setConfirming(false);
       setValue('');
       setRemoveMode(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.manage.secrets.status() });
     },
     onError: (err: unknown) => {
       setError(getErrorMessage(err));
-      setConfirming(false);
     },
   });
 
@@ -278,32 +274,13 @@ export function ManageSecretsPage() {
             className={styles.primaryButton}
             type="button"
             disabled={submitDisabled}
-            onClick={() => setConfirming(true)}
+            onClick={() => overrideMutation.mutate()}
           >
             写入覆盖
           </button>
         </div>
 
-        <SensitiveActionDialog
-          open={confirming}
-          actionKey="manage.secrets.override"
-          title="确认覆盖密钥"
-          description={`即将写入或修改密钥覆盖配置：${selectedKey}。该改动将持久化至 secrets 本地配置文件，需在服务重启后生效。`}
-          impact={[
-            removeMode ? `将清除该密钥的文件覆盖，恢复回落到环境变量或内置默认` : `将使用新值覆盖原有配置，写盘后在页面上不回显敏感明文`,
-            `需要重启进程使新配置生效`,
-          ]}
-          pending={overrideMutation.isPending}
-          errorMessage={error ?? undefined}
-          onOpenChange={(open) => {
-            if (!open) {
-              setConfirming(false);
-            }
-          }}
-          onConfirm={() => overrideMutation.mutate()}
-        />
-
-        {error && !confirming ? <p className={styles.fieldErrorText}>{error}</p> : null}
+        {error ? <p className={styles.fieldErrorText}>{error}</p> : null}
 
         {result ? (
           <div className={styles.inlineMeta}>
