@@ -275,7 +275,7 @@ export function ManageOperationsPage() {
         {loadRows.length === 0 ? (
           <div className={styles.emptyInlineState}>当前无数据源负载观测。</div>
         ) : (
-          <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="数据源负载（可横向滚动）">
+          <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="挂载负载（可横向滚动）">
             <table className={styles.table}>
               <thead>
                 <tr>

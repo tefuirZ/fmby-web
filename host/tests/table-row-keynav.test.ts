@@ -788,12 +788,12 @@ test('接线实证（真实 UserTable）：↑↓/Home/End 在行间移动，漫
     await page.keyboard.press('Home');
     assert.equal(await focusedRow(page), 0, 'Home → 当前页首行');
 
-    // tableWrap 滚动区 a11y（最后一批）：用户列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
+    // tableWrap 滚动区 a11y（最后一批）：账号列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const userTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="用户列表（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="账号列表（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(userTw, ['region', null, '用户列表（可横向滚动）'], '用户列表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(userTw, ['region', null, '账号列表（可横向滚动）'], '用户列表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -1095,10 +1095,10 @@ test('接线实证（真实 MountTable）：↑↓/Home/End 移动行 + Enter �
     );
     // tableWrap 滚动区 a11y（第十批）：挂载点列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const mountTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="挂载点列表（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="来源列表（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(mountTw, ['region', null, '挂载点列表（可横向滚动）'], '挂载点列表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(mountTw, ['region', null, '来源列表（可横向滚动）'], '挂载点列表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -1407,10 +1407,10 @@ test('接线实证（真实 ManageSessionsPage）：↑↓/Home/End 移动行（
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
     // tableWrap 滚动区 a11y（第八批）：会话列表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const sessTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="会话列表（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="会话管理（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(sessTw, ['region', null, '会话列表（可横向滚动）'], '会话列表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(sessTw, ['region', null, '会话管理（可横向滚动）'], '会话列表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -1632,10 +1632,10 @@ test('接线实证（真实 ManageAuditLogsPage）：↑↓/Home/End 移动行�
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
     // tableWrap 滚动区 a11y（第八批）：审计日志 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const auditTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="审计日志（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="操作记录（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(auditTw, ['region', null, '审计日志（可横向滚动）'], '审计日志 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(auditTw, ['region', null, '操作记录（可横向滚动）'], '审计日志 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -2189,10 +2189,10 @@ test('接线实证（Yun139ProfilesSection）：↑↓/Home/End 漫游（第四�
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
     // tableWrap 滚动区 a11y（最后一批）：云 139 配置 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const yunTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="云 139 配置（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="凭据档案（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(yunTw, ['region', null, '云 139 配置（可横向滚动）'], '云 139 配置 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(yunTw, ['region', null, '凭据档案（可横向滚动）'], '云 139 配置 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -2284,10 +2284,10 @@ test('接线实证（RewardsLedgerSection）：只读账本表 ↑↓/Home/End �
     assert.equal(await focusedRow(page), 0, 'Home → 首行');
     // tableWrap 滚动区 a11y（最后一批）：奖励账本表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const ledgerTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="奖励账本（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="积分流水（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(ledgerTw, ['region', null, '奖励账本（可横向滚动）'], '奖励账本表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(ledgerTw, ['region', null, '积分流水（可横向滚动）'], '奖励账本表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -2694,12 +2694,12 @@ test('接线实证（MicrosoftOAuthSection）：两张只读表各自独立漫�
         return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
       };
       return {
-        drives: grab('OneDrive 网盘（可横向滚动）'),
-        sites: grab('SharePoint 站点（可横向滚动）'),
+        drives: grab('OneDrive 网盘列表（可横向滚动）'),
+        sites: grab('SharePoint 站点列表（可横向滚动）'),
       };
     });
-    assert.deepEqual(moTw.drives, ['region', null, 'OneDrive 网盘（可横向滚动）'], 'OneDrive 网盘表 tableWrap 应为 role=region + aria-label');
-    assert.deepEqual(moTw.sites, ['region', null, 'SharePoint 站点（可横向滚动）'], 'SharePoint 站点表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(moTw.drives, ['region', null, 'OneDrive 网盘列表（可横向滚动）'], 'OneDrive 网盘表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(moTw.sites, ['region', null, 'SharePoint 站点列表（可横向滚动）'], 'SharePoint 站点表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -2994,10 +2994,10 @@ test('接线实证（AiInterventionThreadList）：真实 Tab 起步 + ↑↓/Ho
     assert.deepEqual(sel, ['media-0'], 'Enter 应选中**焦点所在行**的媒体项（且只一次）');
     // tableWrap 滚动区 a11y（第十一批）：干预线程表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const threadTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="干预线程（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="AI 干预线程（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(threadTw, ['region', null, '干预线程（可横向滚动）'], '干预线程表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(threadTw, ['region', null, 'AI 干预线程（可横向滚动）'], '干预线程表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -3773,10 +3773,10 @@ test('ManageMediaReviewsPage 待审项表：真实 Tab 步数 + 唯一停靠点 
 
     // tableWrap 滚动区 a11y（第十三批）：媒体审核待审项 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const mrTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="媒体审核待审项（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="审核队列（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(mrTw, ['region', null, '媒体审核待审项（可横向滚动）'], '媒体审核待审项 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(mrTw, ['region', null, '审核队列（可横向滚动）'], '媒体审核待审项 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -3892,14 +3892,14 @@ test('接线实证（ManageSystemAboutPage）：三张表各自独立漫游，�
         return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
       };
       return {
-        runtime: grab('运行时信息（可横向滚动）'),
-        deps: grab('依赖清单（可横向滚动）'),
-        links: grab('相关链接（可横向滚动）'),
+        runtime: grab('运行时（可横向滚动）'),
+        deps: grab('运行依赖（可横向滚动）'),
+        links: grab('链接（可横向滚动）'),
       };
     });
-    assert.deepEqual(tw.runtime, ['region', null, '运行时信息（可横向滚动）'], '运行时信息表 tableWrap 应为 role=region + aria-label');
-    assert.deepEqual(tw.deps, ['region', null, '依赖清单（可横向滚动）'], '依赖表 tableWrap 应为 role=region + aria-label');
-    assert.deepEqual(tw.links, ['region', null, '相关链接（可横向滚动）'], '链接表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(tw.runtime, ['region', null, '运行时（可横向滚动）'], '运行时信息表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(tw.deps, ['region', null, '运行依赖（可横向滚动）'], '依赖表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(tw.links, ['region', null, '链接（可横向滚动）'], '链接表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -4650,10 +4650,10 @@ test('接线实证（真实 AuthProvidersSection）：行停靠点唯一 + 行�
 
     // tableWrap 滚动区 a11y（第九批）：认证提供方表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const apTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="认证提供方（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="提供方配置（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(apTw, ['region', null, '认证提供方（可横向滚动）'], '认证提供方表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(apTw, ['region', null, '提供方配置（可横向滚动）'], '认证提供方表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -4830,11 +4830,11 @@ test('接线实证（真实 UpstreamSourceListSection）：查询表 + 局域网
         return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
       };
       return {
-        disc: grab('局域网发现（可横向滚动）'),
+        disc: grab('局域网发现结果（可横向滚动）'),
         sources: grab('上游源列表（可横向滚动）'),
       };
     });
-    assert.deepEqual(slTw.disc, ['region', null, '局域网发现（可横向滚动）'], '局域网发现表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(slTw.disc, ['region', null, '局域网发现结果（可横向滚动）'], '局域网发现表 tableWrap 应为 role=region + aria-label');
     assert.deepEqual(slTw.sources, ['region', null, '上游源列表（可横向滚动）'], '上游源列表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
@@ -5030,10 +5030,10 @@ test('接线实证（真实 UpstreamMappingWizardSection）：真按钮触发后
 
     // tableWrap 滚动区 a11y（第十二批）：映射预览结果表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const previewTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="映射预览结果（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="预览结果（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(previewTw, ['region', null, '映射预览结果（可横向滚动）'], '映射预览结果表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(previewTw, ['region', null, '预览结果（可横向滚动）'], '映射预览结果表 tableWrap 应为 role=region + aria-label');
 
     assert.deepEqual(h.errors, [], '探针不得抛错');
   } finally {
@@ -5142,10 +5142,10 @@ test('接线实证（真实 UpstreamBindingsSection）：类目表头语义 + 3 
 
     // tableWrap 滚动区 a11y（第四批）：已发现类目表 tableWrap 补 role=region + aria-label（roving 表无 tabIndex）。
     const bdTw = await page.evaluate(() => {
-      const el = document.querySelector('div[aria-label="已发现类目（可横向滚动）"]');
+      const el = document.querySelector('div[aria-label="类目与绑定（可横向滚动）"]');
       return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
     });
-    assert.deepEqual(bdTw, ['region', null, '已发现类目（可横向滚动）'], '已发现类目表 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(bdTw, ['region', null, '类目与绑定（可横向滚动）'], '已发现类目表 tableWrap 应为 role=region + aria-label');
     // 注：类目绑定表（行276，bindingsQuery 有数据才渲染）本场景未渲染（该源暂无绑定 empty 态）；
     // 其 tableWrap aria-label 已随实现补齐，待 bindingsQuery 有数据场景再断言。
 
@@ -5609,19 +5609,30 @@ test('接线实证（真实 ManageOperationsPage）：概览多表各自独立�
         const el = document.querySelector(`div[aria-label="${label}"]`);
         return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
       };
+      // TrendTable 的 aria-label 是模板串（title 由调用方给：媒体增长/用户注册/播放趋势）
+      // ⇒ 不能按全等匹配，用「以（可横向滚动）结尾」抓第一张趋势表，并回读其真实 label。
+      const grabTrend = () => {
+        const el = document.querySelector('div[aria-label$="（可横向滚动）"][aria-label*="增长"]');
+        return el ? [el.getAttribute('role'), el.getAttribute('tabindex'), el.getAttribute('aria-label')] : null;
+      };
       return {
-        content: grab('内容列表（可横向滚动）'),
-        plays: grab('用户播放统计（可横向滚动）'),
-        tasks: grab('任务与活动（可横向滚动）'),
-        mounts: grab('挂载会话（可横向滚动）'),
-        trend: grab('趋势（可横向滚动）'),
+        content: grab('热播榜（可横向滚动）'),
+        plays: grab('活跃用户榜（可横向滚动）'),
+        tasks: grab('活跃快照（可横向滚动）'),
+        // 命名对齐 ManageSectionCard title「数据源负载」的卡片——但 OperationsGapSections
+        // 已占用同名「数据源负载」，同页两处同名会让读屏器无法区分 ⇒ 本表用「挂载负载」。
+        mounts: grab('挂载负载（可横向滚动）'),
+        trend: grabTrend(),
       };
     });
-    assert.deepEqual(opsTw.content, ['region', null, '内容列表（可横向滚动）'], '内容列表 tableWrap 应为 role=region + aria-label');
-    assert.deepEqual(opsTw.plays, ['region', null, '用户播放统计（可横向滚动）'], '用户播放统计 tableWrap 应为 role=region + aria-label');
-    assert.deepEqual(opsTw.tasks, ['region', null, '任务与活动（可横向滚动）'], '任务与活动 tableWrap 应为 role=region + aria-label');
-    assert.deepEqual(opsTw.mounts, ['region', null, '挂载会话（可横向滚动）'], '挂载会话 tableWrap 应为 role=region + aria-label');
-    assert.deepEqual(opsTw.trend, ['region', null, '趋势（可横向滚动）'], '趋势 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.content, ['region', null, '热播榜（可横向滚动）'], '热播榜 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.plays, ['region', null, '活跃用户榜（可横向滚动）'], '活跃用户榜 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.tasks, ['region', null, '活跃快照（可横向滚动）'], '活跃快照 tableWrap 应为 role=region + aria-label');
+    assert.deepEqual(opsTw.mounts, ['region', null, '挂载负载（可横向滚动）'], '挂载负载 tableWrap 应为 role=region + aria-label');
+    // 趋势表 label 由 props.title 决定 ⇒ 断言「真实值 + role + 无 tabindex」三件套。
+    assert.equal(opsTw.trend?.[0], 'region', '趋势表 tableWrap 应为 role=region');
+    assert.equal(opsTw.trend?.[1], null, '趋势表（roving）不得带 tabindex');
+    assert.equal(opsTw.trend?.[2], '媒体增长（可横向滚动）', '趋势表 label 应取 props.title');
 
     assert.deepEqual(h.errors, [], '探针不得抛错（WS 回落 REST 不应产生 pageerror）');
   } finally {

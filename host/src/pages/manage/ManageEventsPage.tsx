@@ -154,7 +154,14 @@ export function ManageEventsPage() {
         </div>
 
         <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="事件列表（可横向滚动）">
-          <table className={styles.table}>
+          {/* treegrid 语义（照 CollectionListTable 定稿，rv01/rv02 评审后）：
+              · 父表 role=treegrid，父数据行 aria-level=1 + aria-expanded（可展开父节点）；
+              · 展开按钮亦带 aria-expanded（disclosure 控件）——行覆盖 roving 行焦点、
+                按钮覆盖 Tab 按钮焦点，两种焦点都不丢展开态反馈；
+              · 子表（时间线/审计记录）保持普通 table + aria-label，父子层级由
+                父行 aria-expanded + DOM 嵌套（子表在父展开行 <td> 内）表达。
+              · roving 独立（A 方案）不动——用 data-row-index，不依赖 role。 */}
+          <table className={styles.table} role="treegrid">
             <thead>
               <tr>
                 <th>时间</th>
