@@ -68,18 +68,57 @@ test('FE1-2 getSecretsStatus 客户端正确透传后端下发的 overridableKey
     assert.equal(status.entries[0].key, 'providers.tmdb.api_key');
     assert.equal(status.entries[0].label, 'TMDB API Key');
     assert.equal(status.entries[0].testableService, 'tmdb');
-    assert.equal(status.entries[0].overridable, true);
-    assert.equal(status.entries[1].overridable, false);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test('FE1-3 自证断言：若 overridableKeys 为空时，正确从 entries 回落过滤可覆盖项', () => {
-  const entries = [
-    { key: 'key1', source: 'secrets_file' as const, configured: true, overridable: true },
-    { key: 'key2', source: 'builtin' as const, configured: false, overridable: false },
-  ];
-  const derived = entries.filter((e) => e.overridable !== false).map((e) => e.key);
-  assert.deepEqual(derived, ['key1'], '回落算法应排除 overridable === false 的只读键');
+// FE1-3 已删（REWORK-FE1 必修 1）：原测试自造 overridable:true/false 数据测 filter，
+// 真实后端 SecretStatusEntryDto 无 overridable 字段 ⇒ 真实数据下 filter 恒真（一个都滤不掉）。
+// 假绿（证明的是「给自造数据算法能工作」，对生产行为零证明力）。
+// fail-closed 真源验证由 FE1-4 变异测试覆盖（overridable_keys 置空/置真下拉随之变化）。
+
+test('FE1-4 变异验证：可写键只认后端 overridable_keys 单一真源，随真源变化（fail-closed）', async () => {
+  // REWORK-FE1 必修 2：ManageSecretsPage fallback 恒真（e.overridable !== false 恒 true
+  // ⇒ 不可覆盖键漏进可写下拉）。改为只认后端 overridable_keys 单一真源，缺失=空列表 fail-closed。
+  // 变异验证：把 overridable_keys 置空/置真各跑一遍，证明下拉随真源变化。
+  const { resolveOverridableKeys } = await import('../src/pages/manage/overridableKeys');
+
+  // 真源置真：下拉只有 overridable_keys 里的键
+  const statusWithKeys = {
+    entries: [
+      { key: 'providers.tmdb.api_key', source: 'env' as const, configured: true },
+      { key: 'telegram.webhook_secret', source: 'builtin' as const, configured: false },
+    ],
+    overridesFile: '/etc/fmby/secrets.local.toml',
+    microsoftEditions: ['Global', 'China21Vianet'],
+    overridableKeys: ['providers.tmdb.api_key'],
+  };
+  assert.deepEqual(
+    resolveOverridableKeys(statusWithKeys),
+    ['providers.tmdb.api_key'],
+    '置真：下拉只有 overridable_keys 里的键（不可覆盖键 telegram.webhook_secret 不漏进下拉）',
+  );
+
+  // 真源置空：下拉空（fail-closed，不可覆盖键不漏进）
+  const statusEmptyKeys = {
+    ...statusWithKeys,
+    overridableKeys: [],
+  };
+  assert.deepEqual(
+    resolveOverridableKeys(statusEmptyKeys),
+    [],
+    '置空：下拉空（fail-closed，不回落 entries 推导）',
+  );
+
+  // 真源缺失：下拉空（fail-closed）
+  const statusNoKeys = {
+    ...statusWithKeys,
+    overridableKeys: undefined,
+  };
+  assert.deepEqual(
+    resolveOverridableKeys(statusNoKeys),
+    [],
+    '缺失：下拉空（fail-closed，不回落 entries 推导）',
+  );
 });

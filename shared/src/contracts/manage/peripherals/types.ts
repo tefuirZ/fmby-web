@@ -429,8 +429,6 @@ export interface SecretStatusEntryRecord {
    * 对齐后端 SecretStatusEntryDto.testable_service（BE-3b #777）：service 名非布尔，
    * 前端拿到即直接填 POST /api/manage/secrets/test 的 body.service，无需本地映射表。 */
   testableService?: string | null;
-  /** 是否允许通过文件覆盖写入。 */
-  overridable?: boolean;
 }
 
 /** 密钥链状态总览。 */

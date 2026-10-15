@@ -365,7 +365,6 @@ interface RawSecretStatusEntry {
   configured: boolean;
   label?: string;
   testable_service?: string | null;
-  overridable?: boolean;
 }
 
 interface RawSecretsStatus {
@@ -388,7 +387,6 @@ function fromSecretEntry(r: RawSecretStatusEntry): SecretStatusEntryRecord {
     configured: r.configured,
     label: r.label,
     testableService: r.testable_service ?? null,
-    overridable: r.overridable,
   };
 }
 

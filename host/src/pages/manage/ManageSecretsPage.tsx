@@ -5,6 +5,7 @@ import {
   type SecretSourceKind,
   type SecretsOverrideResultRecord,
 } from '@fmby/v2-shared/contracts/manage/peripherals';
+import { resolveOverridableKeys } from './overridableKeys';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -36,7 +37,7 @@ function sourceVariant(source: SecretSourceKind) {
 /** 可覆盖白名单键（与后端 SecretsConfig::apply_override 一一对应；
  * env-only 的 bangumi 键不在覆盖面——文件覆盖对该键无效果，不提供误导入口）。 */
 // ★G-13 / FE-1（#642）：原硬编码 OVERRIDABLE_KEYS 常量已彻底删除。
-// 可写键完全由后端 `SecretsStatusDto.overridable_keys` 及 entries 元数据驱动（单一真源）。
+// 可写键完全由后端 `SecretsStatusDto.overridable_keys` 单一真源驱动（见 ./overridableKeys）。
 
 export function ManageSecretsPage() {
   const queryClient = useQueryClient();
@@ -57,19 +58,10 @@ export function ManageSecretsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const entries = statusQuery.data?.entries ?? [];
-  const overridableKeys = useMemo(() => {
-    // 优先取后端单一真源 overridableKeys 或从 entries 中过滤 overridable/白名单键
-    if (statusQuery.data?.overridableKeys && statusQuery.data.overridableKeys.length > 0) {
-      return statusQuery.data.overridableKeys;
-    }
-    const fromEntries = entries
-      .filter((e) => e.overridable !== false)
-      .map((e) => e.key);
-    if (fromEntries.length > 0) {
-      return fromEntries;
-    }
-    return entries.map((e) => e.key);
-  }, [statusQuery.data?.overridableKeys, entries]);
+  const overridableKeys = useMemo(
+    () => resolveOverridableKeys(statusQuery.data),
+    [statusQuery.data],
+  );
 
   const entryBySource = useMemo(() => {
     const map = new Map<string, SecretSourceKind>();
