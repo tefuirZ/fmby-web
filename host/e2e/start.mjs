@@ -29,7 +29,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -47,7 +47,44 @@ const backendPort = Number(process.env.FMBY_E2E_BACKEND_PORT ?? 18099);
 // 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让）。
 const webPort = Number(process.env.FMBY_E2E_WEB_PORT ?? 5180);
 const webOrigin = `http://127.0.0.1:${webPort}`;
+// ★LEAK 自愈（GATE-FIX-LEAK 同旨：本仓 /tmp 已积 230+ 个 fmby-e2e-real-*、~2.3G）：
+//   本启动器每次跑都会 mkdtemp 一个 workDir（含 seed DB + data，~20M），而 playwrght
+//   收尾对 webServer 是**硬杀**（SIGKILL）⇒ 本文件的 SIGINT/SIGTERM 处理器根本不执行
+//   ⇒ workDir 每次都残留。SIGKILL 不可捕获，故改为**启动期按 PID 存活自愈**：
+//   把 pid 写进 workDir/.fmby-e2e-pid，启动时删掉那些「标记 pid 已死」的旧 workDir
+//   （绝不碰活跃 run）。稳态 ≈ 1 个目录。
+const PID_MARKER = '.fmby-e2e-pid';
+function pruneStaleWorkDirs() {
+  let removed = 0;
+  try {
+    for (const name of readdirSync(tmpdir())) {
+      if (!name.startsWith('fmby-e2e-real-')) continue;
+      const dir = join(tmpdir(), name);
+      let alive = false;
+      try {
+        const pid = Number(readFileSync(join(dir, PID_MARKER), 'utf8').trim());
+        alive = Number.isInteger(pid) && pid > 0 && existsSync(`/proc/${pid}`);
+      } catch {
+        alive = false; // 无标记/不可读 ⇒ 视为僵死
+      }
+      if (alive) continue;
+      try {
+        rmSync(dir, { recursive: true, force: true });
+        removed += 1;
+      } catch {
+        /* 无权限等：忽略 */
+      }
+    }
+  } catch {
+    /* tmpdir 不可读：忽略（自愈是 best-effort） */
+  }
+  if (removed > 0) {
+    console.log(`[real-server] 清理 ${removed} 个僵死 e2e workDir（/tmp/fmby-e2e-real-*）`);
+  }
+}
+pruneStaleWorkDirs();
 const workDir = mkdtempSync(join(tmpdir(), 'fmby-e2e-real-'));
+writeFileSync(join(workDir, PID_MARKER), String(process.pid), 'utf8');
 const dbPath = join(workDir, 'e2e.db');
 const dataDir = join(workDir, 'data');
 
