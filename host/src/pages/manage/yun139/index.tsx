@@ -18,6 +18,7 @@ import { Yun139ProfilesSection } from './Yun139ProfilesSection';
 import { Yun139AccountPoolsSection } from './Yun139AccountPoolsSection';
 import { Yun139PoolLeaseSection } from './Yun139PoolLeaseSection';
 import { Yun139QrLoginSection } from './Yun139QrLoginSection';
+import { Yun139TransferSection } from './Yun139TransferSection';
 
 export function ManageYun139Page() {
   return (
@@ -32,6 +33,7 @@ export function ManageYun139Page() {
       <Yun139ProfilesSection />
       <Yun139AccountPoolsSection />
       <Yun139PoolLeaseSection />
+      <Yun139TransferSection />
     </div>
   );
 }

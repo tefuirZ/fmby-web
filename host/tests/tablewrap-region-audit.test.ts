@@ -159,7 +159,7 @@ test('FE-WEB-UI-A③：带 tabIndex=0 的滚动区必须是显式名单内且非
   assert.deepEqual(offenders, [], `名单外新增 tabIndex 滚动区：\n${offenders.join('\n')}`);
 });
 
-test('FE-WEB-UI-A④：aria-label 名单（53 处，改一个就要同步改这里）', () => {
+test('FE-WEB-UI-A④：aria-label 名单（54 处，改一个就要同步改这里）', () => {
   // 为什么用名单而非「与同文件 title= 模糊匹配」：本仓大量表格位于详情面板 /
   // 跨文件卡片内（CollectionMemberPanel / AiInterventionDetailPanel /
   // RegistrationCodeDetailTable …），其语义名**有意**比所在卡片标题更精确
@@ -221,6 +221,7 @@ test('FE-WEB-UI-A④：aria-label 名单（53 处，改一个就要同步改这�
     ['src/pages/manage/upstreams/UpstreamSyncJobsSection.tsx', '自动同步作业'],
     ['src/pages/manage/users/components/UserTable.tsx', '账号列表'],
     ['src/pages/manage/yun139/Yun139ProfilesSection.tsx', '凭据档案'],
+    ['src/pages/manage/yun139/Yun139TransferSection.tsx', '转存记录'],
   ];
   // 实测全量（与名单逐一比对，双向）
   const actual: Array<[string, string]> = [];

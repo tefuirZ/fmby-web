@@ -235,3 +235,75 @@ export interface Yun139AddAccountPoolMemberInput {
   profileId: string;
   weight?: number;
 }
+
+// ---------------------------------------------------------------------------
+// YUN139-TRANSFERS-W1F：分享转存记录（#658 前端 CAS 编排剩余项 ③ 转存/离线入口）
+// 端点真源：crates/fmby-v2-http/src/routes/yun139_accounts.rs（3 transfer 端点，全 MANAGE_MOUNT）
+// DTO：crates/fmby-v2-http/src/state/yun139_accounts.rs（Yun139TransferRecordDto 逐字对位）
+// wire：响应 snake_case（后端无 serde rename）；请求 accept snake_case（alias）。
+//
+// ★诚实登记（非缺陷）：V2 无转存编排引擎，prepare 仅落 PENDING 记录
+//   （target_file_id / transfer_task_id 留空），不真发起转存。前端据实呈现状态，不伪造「已转存」。
+// ★形态差异（V1 URL vs V2 ID）：V1 是「提交 URL/ed2k/磁力直提」，V2 是 ID-based
+//   （需 share_entry_id + source_file_id 来自浏览分享项的内部 ID）。前端据实收 ID。
+// ---------------------------------------------------------------------------
+
+/** 分享转存记录（V1 Yun139TransferRecordDto 逐字对位，29 字段，wire snake_case）。 */
+export interface Yun139TransferRecord {
+  id: string;
+  shareMountId: string;
+  shareEntryId: string;
+  credentialProfileId: string | null;
+  sourceFileId: string;
+  sourceRelativePath: string;
+  sourceName: string;
+  destinationParentFileId: string;
+  destinationBasePath: string;
+  targetRelativePath: string;
+  targetFileId: string | null;
+  targetFileName: string | null;
+  /** 目标文件发现状态（pending / found / missing 等，原样透传，不本地改词）。 */
+  targetFileDiscoveryStatus: string;
+  targetRecycleItemId: string | null;
+  retentionDays: number;
+  purgeRecycleBin: boolean;
+  /** 转存记录状态（pending / ...，原样透传）。V2 仅落记录，不真发起转存。 */
+  status: string;
+  transferTaskId: string | null;
+  trashOperationId: string | null;
+  purgeOperationId: string | null;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  lastSuccessfulPlayedAt: string | null;
+  expiresAt: string | null;
+  recycleVerifiedAt: string | null;
+  lastErrorKind: string | null;
+  lastErrorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 准备转存入参（V1 Yun139PrepareTransferRequest 对位；sourceSize 可省）。 */
+export interface Yun139PrepareTransferInput {
+  shareEntryId: string;
+  sourceFileId: string;
+  sourceRelativePath: string;
+  sourceName: string;
+  sourceSize?: number;
+}
+
+/** 回写播放成功入参（V1 Yun139PlaybackSuccessRequest 对位；playedAt 可省）。 */
+export interface Yun139PlaybackSuccessInput {
+  playedAt?: string;
+}
+
+/** 转存记录列表响应。 */
+export interface Yun139TransferRecordsResult {
+  mountId: string;
+  items: Yun139TransferRecord[];
+}
+
+/** 单条转存记录响应。 */
+export interface Yun139TransferRecordResult {
+  transfer: Yun139TransferRecord;
+}
