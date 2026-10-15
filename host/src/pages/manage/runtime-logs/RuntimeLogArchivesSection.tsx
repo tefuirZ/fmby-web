@@ -73,12 +73,11 @@ export function RuntimeLogArchivesSection() {
         </div>
       ) : (
         <div
-          // P0-1（fe01）：可横向滚动区域须可被键盘访问（axe
-          // `scrollable-region-focusable`，serious）——照 FE-OPT-03 A-2 范式
-          // （ProbeTaskTable / ManageSecretsPage）：tabIndex=0 可聚焦 +
+          // FE34-FOLLOWUP：可横向滚动区域须可被键盘访问（axe
+          // `scrollable-region-focusable`，serious）——本表是 roving 表（行 roving
+          // 可聚焦，scrollable-region-focusable 由 roving 满足，div 无需额外聚焦属性），
           // role=region + aria-label 供读屏器宣告。
           className={styles.tableScroll}
-          tabIndex={0}
           role="region"
           aria-label="日志归档列表（可横向滚动）"
         >
