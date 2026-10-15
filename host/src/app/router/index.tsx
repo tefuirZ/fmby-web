@@ -528,6 +528,16 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                // #658 第 2 页：CAS 发布编排（选源→选盘→扇出→进度/失败原因）。
+                // 「发起扇出」写面后端无端点（admin_cas.rs 只有读面+单盘配置写）⇒ 页面
+                // fixme（按钮禁用+待后端提示），选源依赖 w02 list 端点（未就绪显式提示）。
+                path: 'cas/publish',
+                lazy: async () => {
+                  const { CasPublishOrchestrationPage } = await import('@/pages/manage/CasPublishOrchestrationPage');
+                  return { Component: CasPublishOrchestrationPage };
+                },
+              },
+              {
                 path: 'telegram-bot',
                 element: <ManageLegacyRedirect to="/manage/site/telegram" />,
               },
