@@ -168,3 +168,22 @@ export function formatVerifiedAt(ms: number | null): string {
   }
   return new Date(ms).toLocaleString();
 }
+
+/**
+ * #658 ④ 徽章：建 `driveRef → priority` 映射（盘优先级真源）。
+ *
+ * ★数据来源：`CasDriveConfig.priority` 来自后端 `GET /admin/cas/drives` **配置端点**
+ *   （`CasDriveConfigDto`）。内容列表项 `CasContentDriveCopy` **本身不带 priority**
+ *   ⇒ 前端按 `drive_ref` 关联配置与副本，**不在内容端点臆造优先级**。
+ * ★fail-closed：未在配置里登记的盘 ⇒ `map.get(driveRef)` 返回 `undefined`，
+ *   前端显示「—」，**不默认 0 / 不编造优先级**。
+ */
+export function buildDrivePriorityMap(
+  configs: { driveRef: string; priority: number }[],
+): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const c of configs) {
+    map.set(c.driveRef, c.priority);
+  }
+  return map;
+}
