@@ -28,6 +28,11 @@ import type {
   Yun139UpdateAccountPoolInput,
   Yun139AccountPoolMember,
   Yun139AddAccountPoolMemberInput,
+  Yun139TransferRecord,
+  Yun139PrepareTransferInput,
+  Yun139PlaybackSuccessInput,
+  Yun139TransferRecordsResult,
+  Yun139TransferRecordResult,
 } from './types';
 
 interface RawQrLoginResponse {
@@ -374,6 +379,56 @@ export const yun139Api = {
     return raw.ok;
   },
 
+  // -------------------------------------------------------------------------
+  // 分享转存记录（YUN139-TRANSFERS-W1F，#658 前端 CAS 编排剩余项 ③ 转存/离线入口）
+  // 端点真源：crates/fmby-v2-http/src/routes/yun139_accounts.rs（3 transfer 端点，全 MANAGE_MOUNT）
+  // ★V2 无转存编排引擎 ⇒ prepare 仅落 PENDING 记录（target_* 留空），不真发起转存
+  //   （诚实降级，前端据实呈现 status/target_file_discovery_status，不伪造「已转存」）。
+  // -------------------------------------------------------------------------
+
+  /** GET share-mounts/{mount_id}/transfers — 转存记录列表。 */
+  async listTransfers(mountId: string): Promise<Yun139TransferRecordsResult> {
+    const raw = await httpClient.get<RawYun139TransferRecordsResponse>(
+      `${BASE}/share-mounts/${encodeURIComponent(mountId)}/transfers`,
+    );
+    return { mountId: raw.mount_id, items: (raw.items ?? []).map(fromTransferRecord) };
+  },
+
+  /**
+   * POST share-mounts/{mount_id}/transfers/prepare — 准备转存（落一条 PENDING 记录）。
+   * ★`sourceSize` 可省 ⇒ 省略时**不发送**，不臆造缺省。
+   */
+  async prepareTransfer(
+    mountId: string,
+    input: Yun139PrepareTransferInput,
+  ): Promise<Yun139TransferRecordResult> {
+    const body: Record<string, unknown> = {
+      share_entry_id: input.shareEntryId,
+      source_file_id: input.sourceFileId,
+      source_relative_path: input.sourceRelativePath,
+      source_name: input.sourceName,
+    };
+    if (input.sourceSize !== undefined) body.source_size = input.sourceSize;
+    const raw = await httpClient.post<RawYun139TransferRecordResponse>(
+      `${BASE}/share-mounts/${encodeURIComponent(mountId)}/transfers/prepare`,
+      { body },
+    );
+    return { transfer: fromTransferRecord(raw.transfer) };
+  },
+
+  /** POST transfers/{record_id}/playback-success — 回写播放成功（playedAt 可省）。 */
+  async reportPlaybackSuccess(
+    recordId: string,
+    input: Yun139PlaybackSuccessInput = {},
+  ): Promise<Yun139TransferRecordResult> {
+    const body: Record<string, unknown> = {};
+    if (input.playedAt !== undefined) body.played_at = input.playedAt;
+    const raw = await httpClient.post<RawYun139TransferRecordResponse>(
+      `${BASE}/transfers/${encodeURIComponent(recordId)}/playback-success`,
+      { body },
+    );
+    return { transfer: fromTransferRecord(raw.transfer) };
+  },
 };
 
 interface RawYun139LeaseResponse {
@@ -454,6 +509,86 @@ function fromMember(r: RawMember): Yun139AccountPoolMember {
     lastUsedAt: r.last_used_at ?? null,
     failCount: r.fail_count,
     cooldownUntil: r.cooldown_until ?? null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// 分享转存记录 raw 形状 + 映射（YUN139-TRANSFERS-W1F）
+// 后端 Yun139TransferRecordDto 逐字对位（29 字段，wire snake_case，无 serde rename）。
+// ───────────────────────────────────────────────────────────────────────────
+
+interface RawYun139TransferRecord {
+  id: string;
+  share_mount_id: string;
+  share_entry_id: string;
+  credential_profile_id: string | null;
+  source_file_id: string;
+  source_relative_path: string;
+  source_name: string;
+  destination_parent_file_id: string;
+  destination_base_path: string;
+  target_relative_path: string;
+  target_file_id: string | null;
+  target_file_name: string | null;
+  target_file_discovery_status: string;
+  target_recycle_item_id: string | null;
+  retention_days: number;
+  purge_recycle_bin: boolean;
+  status: string;
+  transfer_task_id: string | null;
+  trash_operation_id: string | null;
+  purge_operation_id: string | null;
+  attempt_count: number;
+  next_retry_at: string | null;
+  last_successful_played_at: string | null;
+  expires_at: string | null;
+  recycle_verified_at: string | null;
+  last_error_kind: string | null;
+  last_error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface RawYun139TransferRecordsResponse {
+  mount_id: string;
+  items: RawYun139TransferRecord[];
+}
+
+interface RawYun139TransferRecordResponse {
+  transfer: RawYun139TransferRecord;
+}
+
+function fromTransferRecord(r: RawYun139TransferRecord): Yun139TransferRecord {
+  return {
+    id: r.id,
+    shareMountId: r.share_mount_id,
+    shareEntryId: r.share_entry_id,
+    credentialProfileId: r.credential_profile_id,
+    sourceFileId: r.source_file_id,
+    sourceRelativePath: r.source_relative_path,
+    sourceName: r.source_name,
+    destinationParentFileId: r.destination_parent_file_id,
+    destinationBasePath: r.destination_base_path,
+    targetRelativePath: r.target_relative_path,
+    targetFileId: r.target_file_id,
+    targetFileName: r.target_file_name,
+    targetFileDiscoveryStatus: r.target_file_discovery_status,
+    targetRecycleItemId: r.target_recycle_item_id,
+    retentionDays: r.retention_days,
+    purgeRecycleBin: r.purge_recycle_bin,
+    status: r.status,
+    transferTaskId: r.transfer_task_id,
+    trashOperationId: r.trash_operation_id,
+    purgeOperationId: r.purge_operation_id,
+    attemptCount: r.attempt_count,
+    nextRetryAt: r.next_retry_at,
+    lastSuccessfulPlayedAt: r.last_successful_played_at,
+    expiresAt: r.expires_at,
+    recycleVerifiedAt: r.recycle_verified_at,
+    lastErrorKind: r.last_error_kind,
+    lastErrorMessage: r.last_error_message,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

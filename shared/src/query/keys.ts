@@ -186,6 +186,11 @@ export const queryKeys = {
         poolId
           ? (['manage', 'yun139', 'pools', poolId, 'members'] as const)
           : (['manage', 'yun139', 'pools', 'members'] as const),
+      // YUN139-TRANSFERS-W1F：分享转存记录（按 share-mount 维度）
+      transfers: (mountId?: string) =>
+        mountId
+          ? (['manage', 'yun139', 'transfers', mountId] as const)
+          : (['manage', 'yun139', 'transfers'] as const),
     },
 
     microsoft: {
