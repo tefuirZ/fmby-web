@@ -20,7 +20,11 @@
  *   ② `dist/theme.manifest.json` 存在且 JSON 合法；
  *   ③ 两者 `id` / `version` 一致（构建只是拷贝源 manifest，不一致=漂移）；
  *   ④ 构建入口 `dist/index.js` 存在（主题 vite 配置的 `fileName`）；
- *   ⑤ manifest 声明的 `tokens.cssFile` + `extraCssFiles` 在 dist 内**都存在**。
+ *   ⑤ manifest 声明的 `tokens.cssFile` + `extraCssFiles` 在 dist 内**都存在**；
+ *   ⑥ **携带布局**（REWORK-FE57）：`host/dist/themes/<id>/dist/**` 也必须在场 —— 发行物
+ *      （`release.yml` 的 `zip host/dist` / `Dockerfile` 的 `COPY host/dist /app/web`）只带
+ *      `host/dist`，主题不搬进去就**带不走**；而播种器要的 `$FMBY_DEFAULT_THEME_DIR/<id>/dist/**`
+ *      正是该布局。`host/dist` 不存在时（只跑了 `pnpm build:themes`）跳过 ⑥ 并注明。
  *
  * 用法：
  *   node scripts/check-theme-dist.mjs            # 只断言现有 dist
@@ -113,6 +117,29 @@ function checkTheme(name) {
   return failures;
 }
 
+/**
+ * ⑥ 携带布局断言：`host/dist/themes/<id>/dist/theme.manifest.json` 必须在场
+ * （+ 其 manifest 声明的 tokens css）。
+ * @returns {string[]} 失败描述（`host/dist` 不存在 ⇒ 空数组，由调用方注明跳过）
+ */
+function checkStaged(name, hostDistExists) {
+  if (!hostDistExists) return [];
+  const staged = path.join(REPO_ROOT, 'host', 'dist', 'themes', name, 'dist');
+  const manifestPath = path.join(staged, 'theme.manifest.json');
+  if (!fs.existsSync(manifestPath)) {
+    return [
+      `${name}: 发行物携带布局缺 host/dist/themes/${name}/dist/theme.manifest.json` +
+        `（跑整个 \`pnpm build\`；只跑 build:themes 不会搬进 web root）`,
+    ];
+  }
+  const stagedManifest = readJson(manifestPath);
+  const cssFile = stagedManifest?.tokens?.cssFile ?? 'tokens.css';
+  if (!fs.existsSync(path.join(staged, cssFile))) {
+    return [`${name}: 携带布局里缺 host/dist/themes/${name}/dist/${cssFile}`];
+  }
+  return [];
+}
+
 function main() {
   if (DO_BUILD) {
     console.log('[构建] pnpm build:themes …');
@@ -125,14 +152,24 @@ function main() {
     process.exit(1);
   }
 
-  const failures = themes.flatMap(checkTheme);
+  const hostDistExists = fs.existsSync(path.join(REPO_ROOT, 'host', 'dist'));
+  if (!hostDistExists) {
+    console.log('[跳过] host/dist 不存在 ⇒ 不做 ⑥ 携带布局断言（只跑了 build:themes 时属正常）。');
+  }
+  const failures = [
+    ...themes.flatMap(checkTheme),
+    ...themes.flatMap((name) => checkStaged(name, hostDistExists)),
+  ];
   console.log('');
   if (failures.length) {
     for (const f of failures) console.error(`[FAIL] ${f}`);
     console.error(`[FAIL] 主题发行产物门禁未通过（${failures.length} 项）。`);
     process.exit(1);
   }
-  console.log(`[PASS] ${themes.length} 个主题的发行产物齐备且与源 manifest 一致。`);
+  console.log(
+    `[PASS] ${themes.length} 个主题的发行产物齐备且与源 manifest 一致` +
+      (hostDistExists ? '，并已搬进 host/dist/themes/（可随发行物带走）。' : '。'),
+  );
 }
 
 main();
