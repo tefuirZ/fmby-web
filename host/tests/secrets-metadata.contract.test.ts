@@ -40,7 +40,7 @@ test('FE1-2 getSecretsStatus 客户端正确透传后端下发的 overridableKey
                 source: 'env',
                 configured: true,
                 label: 'TMDB API Key',
-                testable: true,
+                testable_service: 'tmdb',
                 overridable: true,
               },
               {
@@ -48,7 +48,7 @@ test('FE1-2 getSecretsStatus 客户端正确透传后端下发的 overridableKey
                 source: 'builtin',
                 configured: false,
                 label: 'OneDrive Client Secret',
-                testable: false,
+                testable_service: null,
                 overridable: false,
               },
             ],
@@ -67,7 +67,7 @@ test('FE1-2 getSecretsStatus 客户端正确透传后端下发的 overridableKey
     assert.equal(status.entries.length, 2);
     assert.equal(status.entries[0].key, 'providers.tmdb.api_key');
     assert.equal(status.entries[0].label, 'TMDB API Key');
-    assert.equal(status.entries[0].testable, true);
+    assert.equal(status.entries[0].testableService, 'tmdb');
     assert.equal(status.entries[0].overridable, true);
     assert.equal(status.entries[1].overridable, false);
   } finally {

@@ -364,7 +364,7 @@ interface RawSecretStatusEntry {
   source: string;
   configured: boolean;
   label?: string;
-  testable?: boolean;
+  testable_service?: string | null;
   overridable?: boolean;
 }
 
@@ -387,7 +387,7 @@ function fromSecretEntry(r: RawSecretStatusEntry): SecretStatusEntryRecord {
     source: r.source as SecretSourceKind,
     configured: r.configured,
     label: r.label,
-    testable: r.testable,
+    testableService: r.testable_service ?? null,
     overridable: r.overridable,
   };
 }
