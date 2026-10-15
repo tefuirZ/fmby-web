@@ -34,6 +34,7 @@ import {
   summarizeReconcile,
 } from './cas/reconcilePresentation';
 import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
+import styles from './longtail-shared/ManageShared.module.css';
 
 export function ManageCasPage() {
   const queryClient = useQueryClient();
@@ -156,7 +157,8 @@ function DriveConfigTable({
     // ★审计 FE-UI-ACCEPTANCE-AUDIT §5-C1：本页 3 张表原为**裸 table 元素**——
     // 无容器 region、无表名，是全仓唯一无任何 a11y 标注的表。此处按所在
     // ManageSectionCard 标题补可访问名（读屏器不再只播报无名的「表」）。
-    <table aria-label="盘配置（CAS 矩阵）">
+    <div className={styles.tableWrap} role="region" aria-label="盘配置（CAS 矩阵）（可横向滚动）">
+      <table className={styles.table}>
       <thead>
         <tr>
           <th>盘</th>
@@ -210,6 +212,7 @@ function DriveConfigTable({
         })}
       </tbody>
     </table>
+    </div>
   );
 }
 
@@ -252,7 +255,8 @@ function FanoutLookup({
           description={getErrorMessage(fanoutQuery.error)}
         />
       ) : (
-        <table aria-label="扇出状态">
+        <div className={styles.tableWrap} role="region" aria-label="扇出状态（可横向滚动）">
+          <table className={styles.table}>
           <thead>
             <tr>
               <th>盘 / 副本状态</th>
@@ -275,6 +279,7 @@ function FanoutLookup({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );
@@ -350,7 +355,8 @@ function ReconcileReportsSection({ unwired }: { unwired: boolean }) {
             共 {summary.total} 条 —— 已对账 {summary.reconciled} · 待处理 {summary.pending} · 未识别{' '}
             {summary.unidentified}
           </p>
-          <table aria-label="对账报告">
+          <div className={styles.tableWrap} role="region" aria-label="对账报告（可横向滚动）">
+            <table className={styles.table}>
             <thead>
               <tr>
                 <th>报告</th>
@@ -375,6 +381,7 @@ function ReconcileReportsSection({ unwired }: { unwired: boolean }) {
               })}
             </tbody>
           </table>
+          </div>
         </>
       )}
     </ManageSectionCard>

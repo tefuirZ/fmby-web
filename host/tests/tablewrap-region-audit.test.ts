@@ -159,7 +159,7 @@ test('FE-WEB-UI-A③：带 tabIndex=0 的滚动区必须是显式名单内且非
   assert.deepEqual(offenders, [], `名单外新增 tabIndex 滚动区：\n${offenders.join('\n')}`);
 });
 
-test('FE-WEB-UI-A④：aria-label 名单（54 处，改一个就要同步改这里）', () => {
+test('FE-WEB-UI-A④：aria-label 名单（57 处，改一个就要同步改这里）', () => {
   // 为什么用名单而非「与同文件 title= 模糊匹配」：本仓大量表格位于详情面板 /
   // 跨文件卡片内（CollectionMemberPanel / AiInterventionDetailPanel /
   // RegistrationCodeDetailTable …），其语义名**有意**比所在卡片标题更精确
@@ -172,6 +172,9 @@ test('FE-WEB-UI-A④：aria-label 名单（54 处，改一个就要同步改这�
     ['src/pages/manage/CasPublishOrchestrationPage.tsx', '选源内容'],
     ['src/pages/manage/CasPublishOrchestrationPage.tsx', '扇出进度与失败原因'],
     ['src/pages/manage/runtime-logs/RuntimeLogArchivesSection.tsx', '日志归档列表'],
+    ['src/pages/manage/ManageCasPage.tsx', '盘配置（CAS 矩阵）'],
+    ['src/pages/manage/ManageCasPage.tsx', '扇出状态'],
+    ['src/pages/manage/ManageCasPage.tsx', '对账报告'],
     ['src/pages/manage/ManageAuditLogsPage.tsx', '操作记录'],
     ['src/pages/manage/ManageEventsPage.tsx', '事件列表'],
     ['src/pages/manage/ManageMediaReviewsPage.tsx', '审核队列'],
