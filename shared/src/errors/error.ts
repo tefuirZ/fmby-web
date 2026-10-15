@@ -52,6 +52,24 @@ export function isNotFound(error: unknown): boolean {
   return (error as { status?: unknown }).status === 404;
 }
 
+/**
+ * 403 Forbidden 判定（FE-LICENSE-GATED-MODULES ②）。
+ *
+ * 按 `code`（forbidden / HTTP_403）或运行时 `status === 403` 判定。
+ * ★许可门（license_gate）未激活 ⇒ 付费端点 403（`AppError::Forbidden` → code `forbidden`）。
+ *   gated 模块收到 403 时按「未授权/需要授权」语义呈现，**不**弹「你没有权限」
+ *   （后者让人以为账号坏；实为实例许可未激活，去许可管理激活即可）。
+ * ★注意：403 亦可来自能力门（如 MANAGE_MOUNT 缺）——文案须同时覆盖两种可能，不断言账号坏。
+ */
+export function isForbiddenError(error: unknown): boolean {
+  if (!isApiError(error)) return false;
+  const { code } = error;
+  if (code === 'forbidden' || code === 'HTTP_403') {
+    return true;
+  }
+  return (error as { status?: unknown }).status === 403;
+}
+
 export function isBackendErrorBody(value: unknown): value is BackendErrorBody {
   return (
     typeof value === 'object' &&
