@@ -147,7 +147,13 @@ let assembled = assembleThemes();
 if (assembled === 0) {
   console.log('[real-server] themes/*/dist 缺失，先执行 pnpm build:themes …');
   const built = await new Promise((resolve) => {
-    const p = spawn(join(webRepoRoot, 'node_modules', '.bin', 'pnpm'), ['build:themes'], {
+    // ★pnpm 解析：仓根 `node_modules/.bin/pnpm` 在本项目**不存在**（pnpm 由独立安装提供，
+    //   如 `~/.npm-global/bin/pnpm`）⇒ 直接 spawn 该路径会 ENOENT ⇒ 本文件紧接着
+    //   `exit(1)`，**全栈起不来**（fresh worktree 必现；themes dist 已在时该分支被跳过而掩盖）。
+    //   照既有写法回退 PATH：仓内有则用仓内，否则用 `pnpm`（不改其它机制）。
+    const localPnpm = join(webRepoRoot, 'node_modules', '.bin', 'pnpm');
+    const pnpmBin = existsSync(localPnpm) ? localPnpm : 'pnpm';
+    const p = spawn(pnpmBin, ['build:themes'], {
       cwd: webRepoRoot,
       stdio: 'inherit',
       env: process.env,
