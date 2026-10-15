@@ -152,11 +152,24 @@ export interface CasContentDriveCopy {
   copyState: string;
 }
 
+/// 前端域形态 · 内容指纹（sha256/md5 两族可空——至少其一才是入库级去重键；size 必填）。
+export interface CasContentFingerprint {
+  sha256: string | null;
+  md5: string | null;
+  sizeBytes: number;
+}
+
+/// 前端域形态 · 还原租约引用（holder=会话 id 或物化路径；expiresAt=TTL 到期 ms）。
+export interface CasContentLeaseRef {
+  holder: string;
+  expiresAt: number;
+}
+
 /// 前端域形态 · CAS 内容列表一行（真值视图：内容 → 盘副本 / 本地实体 / lease 状态）。
 export interface CasContentSummary {
   contentId: number;
-  /** 内容指纹（内容寻址键）。 */
-  fingerprint: string;
+  /** 内容指纹（sha256/md5 去重键两族 + 字节数；与后端 `CasContentFingerprintDto` 对齐）。 */
+  fingerprint: CasContentFingerprint;
   /** 关联媒体项 id（无关联为 `null`，**不用 0 伪装**）。 */
   mediaItemId: number | null;
   /** 已落盘副本（每盘一条）。 */
@@ -164,10 +177,11 @@ export interface CasContentSummary {
   /** 是否有本地实体。 */
   hasLocalEntity: boolean;
   /**
-   * lease 状态（后端开放字符串或结构化投影，原样透出不折叠；无 lease 为 `null`）。
-   * ★未知值显示原文，绝不默认成「无 lease / 已释放」——那会伪造对账关键态。
+   * 还原租约引用（后端最新一条非 Reaped；无 lease/全已回收为 `null`）。
+   * ★结构化二字段（holder/expiresAt），不是状态串——与后端 `CasContentLeaseRefDto` 对齐；
+   *   过期与否按此刻判断，不折叠成「无 lease」（防伪造对账关键态）。
    */
-  lease: string | null;
+  lease: CasContentLeaseRef | null;
   /** 最近更新时间（ms；无值为 `null`，**不用 0 伪装**，否则 UI 显示 1970 年）。 */
   updatedAt: number | null;
 }
@@ -179,13 +193,26 @@ export interface RawCasContentDriveCopy {
   copy_state: string;
 }
 
+/// wire 形态 · 内容指纹（与后端 DTO 逐字段对齐）。
+export interface RawCasContentFingerprint {
+  sha256?: string | null;
+  md5?: string | null;
+  size_bytes: number;
+}
+
+/// wire 形态 · 还原租约引用。
+export interface RawCasContentLeaseRef {
+  holder: string;
+  expires_at: number;
+}
+
 /// wire 形态 · CAS 内容列表一行。
 export interface RawCasContentSummary {
   content_id: number;
-  fingerprint: string;
+  fingerprint: RawCasContentFingerprint;
   media_item_id?: number | null;
   drives?: RawCasContentDriveCopy[];
   has_local_entity?: boolean;
-  lease?: string | null;
+  lease?: RawCasContentLeaseRef | null;
   updated_at?: number | null;
 }

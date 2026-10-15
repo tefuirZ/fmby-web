@@ -98,7 +98,10 @@ export function CasContentListPage() {
                     <tr key={item.contentId}>
                       <td>{item.contentId}</td>
                       <td>
-                        <span className={styles.mono}>{item.fingerprint}</span>
+                        <span className={styles.mono}>
+                          {item.fingerprint.sha256 ?? item.fingerprint.md5 ?? '—'}
+                          {` · ${item.fingerprint.sizeBytes}B`}
+                        </span>
                       </td>
                       <td>{item.mediaItemId ?? '—'}</td>
                       <td>
@@ -110,7 +113,13 @@ export function CasContentListPage() {
                         ) : null}
                       </td>
                       <td>{item.hasLocalEntity ? '有' : '无'}</td>
-                      <td>{item.lease ?? '—'}</td>
+                      <td>
+                        {item.lease
+                          ? `${item.lease.holder} · ${formatDateTime(
+                              new Date(item.lease.expiresAt).toISOString(),
+                            )}`
+                          : '—'}
+                      </td>
                       <td>{item.updatedAt ? formatDateTime(new Date(item.updatedAt).toISOString()) : '—'}</td>
                       <td>
                         <button

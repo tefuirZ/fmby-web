@@ -2,12 +2,16 @@ import { httpClient } from "@fmby/v2-shared/api/client";
 import { isApiError, getErrorMessage } from "@fmby/v2-shared/errors";
 import type {
   CasContentDriveCopy,
+  CasContentFingerprint,
+  CasContentLeaseRef,
   CasContentSummary,
   CasDriveConfig,
   CasDriveStatus,
   CasFanoutStatus,
   CasReconcileReport,
   RawCasContentDriveCopy,
+  RawCasContentFingerprint,
+  RawCasContentLeaseRef,
   RawCasContentSummary,
   RawCasDriveConfig,
   RawCasDriveStatus,
@@ -98,16 +102,33 @@ export function mapCasContentDriveCopy(
 ///
 /// ★不伪造事实（照 `mapCasDriveStatus` 纪律）：`mediaItemId`/`lease`/`updatedAt`
 ///   缺省 ⇒ `null`（不用 0/空串伪装）；`drives` 缺省 ⇒ 空数组（「无盘副本」是真实态）。
-export function mapCasContentSummary(
+export function mapCasContentFingerprint(
+  raw: RawCasContentFingerprint | undefined | null,
+): CasContentFingerprint {
+  return {
+    sha256: raw?.sha256 ?? null,
+    md5: raw?.md5 ?? null,
+    sizeBytes: raw?.size_bytes ?? 0,
+  };
+}
+
+function mapCasContentLeaseRef(
+  raw: RawCasContentLeaseRef | undefined | null,
+): CasContentLeaseRef | null {
+  if (!raw) return null;
+  return { holder: raw.holder, expiresAt: raw.expires_at };
+}
+
+function mapCasContentSummary(
   raw: Partial<RawCasContentSummary> | null | undefined,
 ): CasContentSummary {
   return {
     contentId: raw?.content_id ?? 0,
-    fingerprint: raw?.fingerprint ?? "",
+    fingerprint: mapCasContentFingerprint(raw?.fingerprint),
     mediaItemId: raw?.media_item_id ?? null,
     drives: (raw?.drives ?? []).map(mapCasContentDriveCopy),
     hasLocalEntity: raw?.has_local_entity ?? false,
-    lease: raw?.lease ?? null,
+    lease: mapCasContentLeaseRef(raw?.lease),
     updatedAt: raw?.updated_at ?? null,
   };
 }
