@@ -1,10 +1,14 @@
 import { httpClient } from "@fmby/v2-shared/api/client";
 import { isApiError, getErrorMessage } from "@fmby/v2-shared/errors";
 import type {
+  CasContentDriveCopy,
+  CasContentSummary,
   CasDriveConfig,
   CasDriveStatus,
   CasFanoutStatus,
   CasReconcileReport,
+  RawCasContentDriveCopy,
+  RawCasContentSummary,
   RawCasDriveConfig,
   RawCasDriveStatus,
   RawCasFanoutStatus,
@@ -16,6 +20,8 @@ import type {
 const DRIVES_PATH = "/api/admin/cas/drives";
 const FANOUT_PATH = "/api/admin/cas/fanout";
 const RECONCILE_PATH = "/api/admin/cas/reconcile";
+// #658-CONTENT-LIST：CAS 内容列表（w02 后端 CAS-CONTENT-LIST-API 补）。
+const CONTENTS_PATH = "/api/admin/cas/contents";
 
 /// snake_case → camelCase。
 export function mapCasDriveConfig(
@@ -77,6 +83,35 @@ export function mapCasReconcileReport(
   };
 }
 
+/// 内容在某盘上的副本（列表页简化）→ 域形态。`copyState` 原样透出不折叠。
+export function mapCasContentDriveCopy(
+  raw: Partial<RawCasContentDriveCopy> | null | undefined,
+): CasContentDriveCopy {
+  return {
+    driveRef: raw?.drive_ref ?? "",
+    providerType: raw?.provider_type ?? "",
+    copyState: raw?.copy_state ?? "",
+  };
+}
+
+/// CAS 内容列表一行 → 域形态。
+///
+/// ★不伪造事实（照 `mapCasDriveStatus` 纪律）：`mediaItemId`/`lease`/`updatedAt`
+///   缺省 ⇒ `null`（不用 0/空串伪装）；`drives` 缺省 ⇒ 空数组（「无盘副本」是真实态）。
+export function mapCasContentSummary(
+  raw: Partial<RawCasContentSummary> | null | undefined,
+): CasContentSummary {
+  return {
+    contentId: raw?.content_id ?? 0,
+    fingerprint: raw?.fingerprint ?? "",
+    mediaItemId: raw?.media_item_id ?? null,
+    drives: (raw?.drives ?? []).map(mapCasContentDriveCopy),
+    hasLocalEntity: raw?.has_local_entity ?? false,
+    lease: raw?.lease ?? null,
+    updatedAt: raw?.updated_at ?? null,
+  };
+}
+
 /// camelCase → wire（★不得把域形态直接发给后端：后端是 snake_case 且不认多余字段）。
 function toRaw(config: CasDriveConfig): RawCasDriveConfig {
   return {
@@ -111,6 +146,26 @@ export const casAdminApi = {
   async reconcileReports(): Promise<CasReconcileReport[]> {
     const raw = await httpClient.get<RawCasReconcileReport[]>(RECONCILE_PATH);
     return (raw ?? []).map(mapCasReconcileReport);
+  },
+
+  ///
+  /// `GET` —— CAS 内容列表（#658-CONTENT-LIST，w02 后端 CAS-CONTENT-LIST-API 补）。
+  ///
+  /// ★数据面未就绪（w02 端点未合 / 端口未装配）⇒ 返回 `{ items: [], unwired: true }`，
+  ///   **不造假数据**；页面据 `unwired` 显式提示「数据面未就绪」。
+  /// ★w02 端点未合时该路由不存在 ⇒ 404 `not_found`，归为「数据面未就绪」而非接线错误
+  ///   （列表端点 404 = 端点不存在，不是业务 404）。
+  /// ★其余错误（403 能力不足等）⇒ 抛错，交页面 error 态透传后端原文。
+  async listCasContents(): Promise<{ items: CasContentSummary[]; unwired: boolean }> {
+    try {
+      const raw = await httpClient.get<RawCasContentSummary[]>(CONTENTS_PATH);
+      return { items: (raw ?? []).map(mapCasContentSummary), unwired: false };
+    } catch (err) {
+      if (isCasAdminUnwired(err) || isNotFound(err)) {
+        return { items: [], unwired: true };
+      }
+      throw err;
+    }
   },
 
   ///
@@ -210,4 +265,21 @@ export function isCasAdminUnwired(error: unknown): boolean {
   }
   const status = (error as { status?: unknown }).status;
   return status === 500 || status === 501 || status === 503;
+}
+
+/**
+ * CAS 内容列表端点「未就绪」判定（#658-CONTENT-LIST）。
+ *
+ * w02 后端 `GET /admin/cas/contents` 未合时该路由**不存在** ⇒ httpClient 抛 404
+ * `not_found`。列表端点 404 = 端点不存在（w02 未合），**不是**业务资源 404
+ * （列表端点不返回业务 404，成功即返回数组）⇒ 归为「数据面未就绪」，页面据
+ * 此显式提示，**不**当接线错误、**不**造假数据。
+ */
+export function isNotFound(error: unknown): boolean {
+  if (!isApiError(error)) return false;
+  const code = error.code;
+  if (code === "not_found" || code === "NOT_FOUND" || code === "HTTP_404") {
+    return true;
+  }
+  return (error as { status?: unknown }).status === 404;
 }
