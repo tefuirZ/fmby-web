@@ -119,6 +119,9 @@ async function buildProbe(overridableKeysLiteral: string): Promise<string | null
         },
       },
     });
+  } catch (error) {
+    await rm(work, { recursive: true, force: true });
+    throw error;
   } finally {
     await rm(entryFile, { force: true });
   }
@@ -136,8 +139,9 @@ async function selectOptionsFor(
   const bundle = await buildProbe(overridableKeysLiteral);
   if (!bundle) throw new Error('build skipped');
   const dir = join(bundle, '..');
-  const page = await browser.newPage();
+  let page: import('@playwright/test').Page | undefined;
   try {
+    page = await browser.newPage();
     await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
     await page.addScriptTag({ path: bundle });
     await page.waitForFunction(
@@ -152,7 +156,7 @@ async function selectOptionsFor(
     );
     return values.filter((v) => v !== '');
   } finally {
-    await page.close();
+    await page?.close();
     await rm(dir, { recursive: true, force: true });
   }
 }
