@@ -105,6 +105,8 @@ export const queryKeys = {
       // 扇出状态按 contentId 分键：不同内容的扇出互不覆盖。
       fanout: (contentId: number) => ['manage', 'cas', 'fanout', contentId] as const,
       reconcile: () => ['manage', 'cas', 'reconcile'] as const,
+      // #658-CONTENT-LIST：CAS 内容列表（w02 端点）。
+      contents: () => ['manage', 'cas', 'contents'] as const,
     },
     taskCenter: {
       all: () => ['manage', 'task-center'] as const,
