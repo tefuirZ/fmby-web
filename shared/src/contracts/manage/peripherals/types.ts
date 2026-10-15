@@ -417,12 +417,18 @@ export interface RewardsEventConfigWriteInput {
 /** 密钥来源层（三层链 env > secrets 文件 > 内置 > 未配置；P2-09 延伸）。 */
 export type SecretSourceKind = 'env' | 'secrets_file' | 'builtin' | 'unset';
 
-/** 单键状态（零明文：只有来源层与是否已配置，无值）。 */
+/** 单键状态（零明文：包含元数据，无敏感值）。 */
 export interface SecretStatusEntryRecord {
   /** 白名单键（TOML 路径形态，如 `providers.tmdb.api_key`）。 */
   key: string;
   source: SecretSourceKind;
   configured: boolean;
+  /** 可读显示名称（来自后端元数据）。 */
+  label?: string;
+  /** 连通性自检的 service wire 值；null/undefined = 无探测器（不渲染测试按钮）。
+   * 对齐后端 SecretStatusEntryDto.testable_service（BE-3b #777）：service 名非布尔，
+   * 前端拿到即直接填 POST /api/manage/secrets/test 的 body.service，无需本地映射表。 */
+  testableService?: string | null;
 }
 
 /** 密钥链状态总览。 */
@@ -432,6 +438,8 @@ export interface SecretsStatusRecord {
   overridesFile: string;
   /** 微软双版本内置自建应用凭据形态（Global / China21Vianet）。 */
   microsoftEditions: string[];
+  /** 允许覆盖写入的键集合单一真源（来自后端元数据）。 */
+  overridableKeys?: string[];
 }
 
 /** 覆盖写入输入：`value = undefined` 表示删除该键覆盖（恢复下层回退）。 */

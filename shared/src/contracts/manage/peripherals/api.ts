@@ -363,12 +363,15 @@ interface RawSecretStatusEntry {
   key: string;
   source: string;
   configured: boolean;
+  label?: string;
+  testable_service?: string | null;
 }
 
 interface RawSecretsStatus {
   entries: RawSecretStatusEntry[];
   overrides_file: string;
   microsoft_editions: string[];
+  overridable_keys?: string[];
 }
 
 interface RawSecretsOverrideResponse {
@@ -382,6 +385,8 @@ function fromSecretEntry(r: RawSecretStatusEntry): SecretStatusEntryRecord {
     key: r.key,
     source: r.source as SecretSourceKind,
     configured: r.configured,
+    label: r.label,
+    testableService: r.testable_service ?? null,
   };
 }
 
@@ -866,13 +871,14 @@ export const peripheralsApi = {
     return fromRewardsConfig(raw);
   },
 
-  /** P2-09 延伸：密钥链状态（零明文——各键当前生效来源层）。 */
+  /** P2-09 延伸：密钥链状态（零明文——各键当前生效来源层与元数据）。 */
   async getSecretsStatus(): Promise<SecretsStatusRecord> {
     const raw = await httpClient.get<RawSecretsStatus>("/api/manage/secrets/status");
     return {
       entries: raw.entries.map(fromSecretEntry),
       overridesFile: raw.overrides_file,
       microsoftEditions: raw.microsoft_editions,
+      overridableKeys: raw.overridable_keys,
     };
   },
 
