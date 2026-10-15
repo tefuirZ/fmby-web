@@ -248,3 +248,42 @@ test('FE-WEB-UI-A④：aria-label 名单（53 处，改一个就要同步改这�
   assert.deepEqual(extra, [], `代码有、名单没有（新增未登记命名）：\n${extra.join('\n')}`);
   assert.equal(actual.length, EXPECTED.length, `总数不符：实测 ${actual.length} / 名单 ${EXPECTED.length}`);
 });
+
+test('FE-WEB-UI-A⑤：每个 <table> 都必须有可访问名（自身 aria-label 或所属 region 容器）', () => {
+  // 背景（FE-UI-ACCEPTANCE-AUDIT §5-C1）：全仓 58 张表中，`ManageCasPage` 3 张曾是
+  // **裸表** —— 无容器 region、无表名 ⇒ 读屏器只播报无名的「表」。本契约把它钉死。
+  //
+  // 判定：表自身带 aria-label/aria-labelledby；或存在一个**前置**且其间无其它
+  // `<table>` 的 .tableWrap/.tableScroll 容器带 aria-label（视为其所属容器）。
+  // 该「其间无其它表」条件同时排除「容器自带表之后又跟一张裸表」的漏判。
+  const offenders: string[] = [];
+  let total = 0;
+  for (const file of tsxFiles) {
+    const src = readFileSync(file, 'utf8');
+    const labeledWrappers = tableWrapTags(src)
+      // label 可为双引号字面量或模板串（如 TrendTable 的 `aria-label={`${title}…`}`）。
+      .filter((t) => /aria-label=(?:"[^"]+"|\{`[^`]+`\})/.test(t.tag))
+      .map((t) => t.line);
+    const tables: Array<{ line: number; tag: string }> = [];
+    let idx = src.indexOf('<table');
+    while (idx >= 0) {
+      const end = src.indexOf('>', idx);
+      if (end < 0) break;
+      tables.push({ line: src.slice(0, idx).split('\n').length, tag: src.slice(idx, end + 1) });
+      idx = src.indexOf('<table', end);
+    }
+    total += tables.length;
+    for (const t of tables) {
+      if (/aria-label=|aria-labelledby=/.test(t.tag)) continue;
+      const enclosing = labeledWrappers
+        .filter((w) => w <= t.line)
+        .sort((a, b) => b - a)
+        .find((w) => !tables.some((o) => o.line > w && o.line < t.line));
+      if (enclosing === undefined) {
+        offenders.push(`${relative(HOST_ROOT, file)}:${t.line} ${t.tag.slice(0, 70)}`);
+      }
+    }
+  }
+  assert.ok(total > 0, '未扫到任何 <table> —— 扫描器失效（可证伪守卫）');
+  assert.deepEqual(offenders, [], `无名 <table>（既无自身 aria-label，也不在具名 region 内）：\n${offenders.join('\n')}`);
+});
