@@ -40,7 +40,7 @@ export const queryKeys = {
     home: () => ['browse', 'home'] as const,
     libraries: () => ['browse', 'libraries'] as const,
     librariesHome: () => ['browse', 'libraries', 'home'] as const,
-    library: (id: string) => ['browse', 'library', id] as const,
+    library: (id: string, mediaType?: string) => ['browse', 'library', id, mediaType ?? null] as const,
     // FE-USER-COLLECTIONS-BROWSE：用户面合集详情。
     collection: (id: string) => ['browse', 'collection', id] as const,
     // FE-USER-COLLECTIONS-LIST-PAGE-2：用户面合集列表（分页 + 检索）。

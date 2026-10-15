@@ -84,12 +84,15 @@ export function useLibraryDetail(options: UseLibraryDetailOptions): LibraryDetai
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const libraryQuery = useInfiniteQuery({
-    queryKey: queryKeys.browse.library(libraryId ?? ''),
+    queryKey: queryKeys.browse.library(libraryId ?? '', mediaType),
     initialPageParam: undefined as string | undefined,
+    // LIBRARY-FILTER-E2E：mediaType 真发后端 query（防「前端空壳」——此前纯本地 filter，
+    // 请求 query 不含 mediaType，切换类型的结果变化是前端做的）。'all' → undefined 不发。
     queryFn: ({ pageParam }) =>
       browseApi.getLibraryDetail(libraryId ?? '', {
         cursor: pageParam,
         pageSize: LIBRARY_PAGE_SIZE,
+        mediaType: mediaType === 'all' ? undefined : mediaType,
       }),
     enabled: Boolean(libraryId),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -128,10 +131,9 @@ export function useLibraryDetail(options: UseLibraryDetailOptions): LibraryDetai
   const loadedItems = useMemo(() => pages.flatMap((page) => page.items), [pages]);
 
   const items = useMemo(() => {
+    // LIBRARY-FILTER-E2E：mediaType 走后端 query（后端过滤），此处不再本地 filter；
+    // resolution/watched 仍本地 filter（本卡范围聚焦「类型筛选」= mediaType）。
     const nextItems = [...loadedItems].filter((item) => {
-      if (mediaType !== 'all' && item.kind !== mediaType) {
-        return false;
-      }
       if (resolution !== 'all' && item.resolutionLabel !== resolution) {
         return false;
       }
@@ -155,7 +157,7 @@ export function useLibraryDetail(options: UseLibraryDetailOptions): LibraryDetai
     });
 
     return nextItems;
-  }, [loadedItems, mediaType, resolution, watched, sort]);
+  }, [loadedItems, resolution, watched, sort]);
 
   const state: ViewState = deriveViewState(
     {
