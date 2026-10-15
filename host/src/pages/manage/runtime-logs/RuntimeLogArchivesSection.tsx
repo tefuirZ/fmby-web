@@ -73,11 +73,14 @@ export function RuntimeLogArchivesSection() {
         </div>
       ) : (
         <div
-          // FE34-FOLLOWUP：可横向滚动区域须可被键盘访问（axe
-          // `scrollable-region-focusable`，serious）——本表是 roving 表（行 roving
-          // 可聚焦，scrollable-region-focusable 由 roving 满足，div 无需额外聚焦属性），
-          // role=region + aria-label 供读屏器宣告。
+          // 可横向滚动区域须可被键盘访问（axe `scrollable-region-focusable`，serious）。
+          // 原注释「本表是 roving 表 ⇒ 由 roving 满足、div 无需聚焦属性」**空表时被证伪**：
+          // 归档为空渲染 `EmptyTableRow` ⇒ 滚动区内**零可聚焦后代**，375 视口下本容器
+          // 仍可横向滚动 ⇒ axe 报 serious（`a11y.spec.ts` 运行日志页 mobile-chrome 实测命中，
+          // 目标 `._tableScroll_*`）。`tabIndex={0}` 使容器自身可聚焦——与既有先例同形
+          // （`ProbeTaskTable.tsx`、`ManageSecretsPage.tsx` 的 FE-OPT-03）。
           className={styles.tableScroll}
+          tabIndex={0}
           role="region"
           aria-label="日志归档列表（可横向滚动）"
         >
