@@ -21,6 +21,8 @@ V1 `web-gallery/tests/e2e/library-detail-filters.smoke.spec.ts`：断言「切�
 2. **② 切换媒体类型=movie** ⇒ 请求 query 含 `mediaType=movie`（前端真发，非空壳）。
 3. **③ 结果真的变化**：后端响应 items **只含 movie**（不含 series/season/episode）。
    - 防「前端空壳」：前端把 mediaType 塞进 query，但结果变化是本地 filter 补的，或后端丢弃 mediaType 不过滤。
+   - **M1（w06 评审）**：③用 `page.waitForResponse` 等带 `mediaType=movie` 的**确定性响应**再取 body（防 `page.on('response')` 异步 `json()` push 乱序的竞态窗口假绿）。
+   - **M2（w06 评审）**：切换类型会**重置分页**（`queryKey` 含 mediaType ⇒ 回第一页）——这是后端过滤的必然结果（换筛选条件 = 新查询 = 从第一页起），**非 bug**。
 
 ## 红原文（当前后端未修，已核验·稳定复现）
 当前 V2 后端 `browse_library_detail` handler（`crates/fmby-v2-http/src/routes/browse.rs:132`）：
