@@ -39,7 +39,26 @@ export const MAIN_REPO_ROOT =
 /** 平台可执行后缀。 */
 export const EXE_SUFFIX = process.platform === 'win32' ? '.exe' : '';
 
-export const PROFILES = ['release', 'debug'];
+/**
+ * 按 profile 探测二进制的**优先级**：e2e 优先 **debug**（见下）。
+ *
+ * ★为什么 e2e 优先 debug（而非 release）：F-09 守卫
+ *   （`fmby-v2-bridges/src/database.rs` 的 `default_admin_seed_allowed`）规定——
+ *   发布构建（制品）**默认拒绝**内置默认口令种子（`admin`），需显式
+ *   `FMBY_ALLOW_DEFAULT_ADMIN_SEED=1` 才允许；而该守卫文档**自己写明**：
+ *   「调试构建（cargo test / 开发）→ 允许（**测试夹具与 e2e/perf seed 工具
+ *     依赖**）；发布构建 → 默认拒绝」。
+ *   ⇒ **e2e 的既定形态就是 debug 构建**；若优先取 release 制品，
+ *   `fmby-e2e-seed` 会在 seed 阶段被 F-09 拒（实测：`E2E admin seed failed:
+ *   拒绝在发布构建中执行内置默认口令种子（F-09 防御）`）⇒ server 起不来
+ *   ⇒ 全量 e2e 假红。
+ *   ⇒ 本表把 debug 提前；**release 仍作回退**（仅当无 debug 产物时才用，
+ *     此时需自行 opt-in 种子，见上）。
+ *   ★等价地也可不改这里、改在 start.mjs 设 `FMBY_ALLOW_DEFAULT_ADMIN_SEED=1`，
+ *     但那会经 `spawn(serverBin, {env: process.env})` 把该安全 opt-in 灌进
+ *     **server 进程**的 env（超出 seed 工具范围）⇒ 选本方案更小、且零安全面。
+ */
+export const PROFILES = ['debug', 'release'];
 
 /** 构建产物根目录候选（按优先级）。 */
 export function targetDirCandidates() {
