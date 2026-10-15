@@ -3,6 +3,7 @@ import { AppShell } from '@/app/layouts/AppShell';
 import { BrowseLayout } from '@/app/layouts/BrowseLayout';
 import { ManageLayout } from '@/app/layouts/ManageLayout';
 import { AuthGuard } from '@/app/guards/AuthGuard';
+import { InstallModeGuard } from '@/app/guards/InstallModeGuard';
 import { CapabilityGuard } from '@/app/guards/CapabilityGuard';
 import { SettingsLayout } from '@/pages/settings';
 import { PAN115_IMGHOST_ENABLED } from '@/featureFlags';
@@ -101,9 +102,11 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     hydrateFallbackElement: <RouteHydrateFallback />,
     element: (
-      <AuthGuard>
-        <AppShell />
-      </AuthGuard>
+      <InstallModeGuard>
+        <AuthGuard>
+          <AppShell />
+        </AuthGuard>
+      </InstallModeGuard>
     ),
     children: [
       {

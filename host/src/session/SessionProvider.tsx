@@ -20,6 +20,8 @@ import {
   subscribeAuthFailure,
 } from '@fmby/v2-shared/errors/authFailure';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
+import { isNotFound } from '@fmby/v2-shared/errors';
+import { isInstallModeInProgress } from '@/pages/install/installStatus';
 import { logger } from '@fmby/v2-shared/utils/logger';
 
 interface SessionProviderProps {
@@ -28,6 +30,20 @@ interface SessionProviderProps {
 
 const RESTORE_RETRY_BASE_MS = 1_500;
 const RESTORE_RETRY_MAX_MS = 10_000;
+
+/**
+ * 当前是否安装模式进行中（INSTALL-FIRST-ROUND-UX B）。
+ *
+ * 安装模式进程不挂 `/auth/me` ⇒ 该端点 404 是**预期**，不是网络波动。
+ * 拉不到 install/status（已安装实例 404 / 网络错）⇒ 返回 false（交回正常会话逻辑）。
+ */
+async function isInstallModeActive(): Promise<boolean> {
+  try {
+    return isInstallModeInProgress(await authApi.getInstallStatus());
+  } catch {
+    return false;
+  }
+}
 
 function computeRestoreRetryDelay(attempt: number) {
   return Math.min(
@@ -129,6 +145,15 @@ export function SessionProvider({ children }: SessionProviderProps) {
         }
       } catch (error) {
         if (cancelled) return;
+
+        // INSTALL-FIRST-ROUND-UX B：安装模式进程不挂 /auth/me ⇒ 404 是预期，非网络波动。
+        // 命中 404 且 /api/install/status 报安装中 ⇒ 静默清会话（不设 restoreError、不排重试），
+        // 交给 InstallModeGuard 重定向 /install；否则此处会陷入 404 重试风暴 + 误导的
+        // 「网络波动，正在重试恢复会话」横幅。横幅只在下方真网络错误 / 5xx 路径出现。
+        if (isNotFound(error) && (await isInstallModeActive())) {
+          if (!cancelled) clearSession();
+          return;
+        }
 
         if (isSessionInvalidationError(error)) {
           clearSession();

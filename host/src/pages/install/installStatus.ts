@@ -6,6 +6,30 @@
  * （见 `tests/install-status.test.ts`）。组件侧只负责把这行字放进横幅。
  */
 
+import type { InstallStatusResponse } from '@fmby/v2-shared/contracts/auth';
+
+/** 安装「进行中」状态集合（需重定向 /install）。completed / unknown 不算。 */
+const INSTALL_IN_PROGRESS_STATES = new Set([
+  'needs_database',
+  'configured',
+  'needs_admin',
+]);
+
+/**
+ * 是否处于安装进行中（INSTALL-FIRST-ROUND-UX A/B）。
+ *
+ * 安装模式进程形态下 `/api/install/status` 带 `state` 字段
+ * （needs_database / configured / needs_admin / completed）。
+ * 只有「进行中」三态为 true ⇒ 路由守卫重定向 /install、SessionProvider 静默清会话。
+ * completed（已安装）/ 无 state（主应用形态或 status 404 已安装）/ 未知 ⇒ false（进主应用）。
+ */
+export function isInstallModeInProgress(
+  status: InstallStatusResponse | undefined,
+): boolean {
+  const state = status?.state;
+  return typeof state === 'string' && INSTALL_IN_PROGRESS_STATES.has(state);
+}
+
 /** 只取需要的两个字段，避免把 `ApiError` 的具体形状写死。 */
 interface StatusErrorShape {
   /** 归一为小写；取不到 ⇒ 空串。 */

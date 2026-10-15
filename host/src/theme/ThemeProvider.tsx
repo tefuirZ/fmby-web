@@ -161,7 +161,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         if (cancelled) {
           return;
         }
-        logger.error('初始主题激活失败，保持 host 默认形象', error);
+        // INSTALL-FIRST-ROUND-UX C：主题 manifest 404（如安装模式进程不服务 /themes/）
+        // 是预期降级，行为已保持 host 默认形象（styles/defaults.css）⇒ 只去噪，不 console.error
+        // （否则安装模式首屏 console 被主题 404 刷屏）。debug 仅开发态留痕。
+        logger.debug('初始主题未激活，保持 host 默认形象', error);
         setStatus('error');
       });
 
@@ -190,7 +193,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setStatus('active');
       persistThemeId(manifestId);
     } catch (error: unknown) {
-      logger.error(`切换主题 ${id} 失败`, error);
+      // INSTALL-FIRST-ROUND-UX C：主题 manifest 加载失败同样是预期降级（已回落），
+      // 去噪为 warn（非 error），不再刷 console.error。
+      logger.warn(`切换主题 ${id} 未生效，已回落`, error);
       // 回落：重新激活上一个主题的 tokens；再失败则回到默认形象（无假加载动画）
       if (previousId && previousId in THEME_REGISTRY) {
         try {

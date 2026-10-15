@@ -36,6 +36,22 @@ export function isApiError(error: unknown): error is ApiError {
   );
 }
 
+/**
+ * 404 Not Found 判定（INSTALL-FIRST-ROUND-UX B）。
+ *
+ * 按 `code`（not_found / NOT_FOUND / HTTP_404）或运行时 `status === 404` 判定。
+ * ★安装模式进程不挂主应用路由 ⇒ `/auth/me` 必然 404（预期而非网络波动）；
+ *   SessionProvider 据此与 install/status 联合判定「静默清会话」，不误报 recovering 重试风暴。
+ */
+export function isNotFound(error: unknown): boolean {
+  if (!isApiError(error)) return false;
+  const { code } = error;
+  if (code === 'not_found' || code === 'NOT_FOUND' || code === 'HTTP_404') {
+    return true;
+  }
+  return (error as { status?: unknown }).status === 404;
+}
+
 export function isBackendErrorBody(value: unknown): value is BackendErrorBody {
   return (
     typeof value === 'object' &&
