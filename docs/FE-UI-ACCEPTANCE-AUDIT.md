@@ -102,7 +102,8 @@
 **结论**：58 张全部接线可用（37 个文件接 `useTableRowRoving` 行漫游；其余为只读/静态表，按既定裁定不给 Enter 语义）。容器 `role="region"`+`aria-label` 覆盖 55/58。
 
 **缺口**：
-1. **`manage/ManageCasPage.tsx` 3 张裸表**（`:156` 盘配置 / `:252` 扇出状态 / `:350` 对账报告）——**既无容器 region、也无 `<table>` 自身名、也无 `tableWrap`**（无横向滚动保护）。是全仓唯一无任何标注的表。**建议另卡**（补 region+label+tableWrap，与其余 55 张对齐）。
+1. ~~**`manage/ManageCasPage.tsx` 3 张裸表**~~ —— **✅ 本轮已修**（`:159` / `:255` / `:353` 补 `aria-label`，名取所在卡片标题；并加契约 ⑤ 守卫，见 §7）。
+   *残留*：这 3 张仍无 `.tableWrap` 包裹（无横向滚动保护）——a11y **名**的缺口已闭合，**窄视口溢出保护**仍缺，建议另卡（属视觉/响应式，需浏览器实测）。
 2. **52 张表「表本身无可访问名」**：本仓范式把名字放在外层 `.tableWrap` 的 `role=region aria-label`，`<table>` 无 `caption`/`aria-label` ⇒ AT 会播报「表」但无名称。属**既定范式**（PR #29/#34/#44 有意如此），记录为已知边界，非缺陷。
 
 ### 3.2 表单 —— 21 个 `<form>`
@@ -267,9 +268,9 @@
 
 **B3 说明**：该测试把 entry 写到 `HOST_ROOT/tests/__probeFe02Dom-entry.tsx`（`search-overlay-focus.test.ts:91`）。仓库既有先例 `table-row-keynav.test.ts` 用「entry 落 tmpdir + node_modules 绝对路径 import」绕开，但本测试未采用 ⇒ **经 sanctioned runner 跑 `pnpm test` 必红**。修它需照先例改 entry 模板（非平凡），**建议另卡**。
 
-### C. 存量缺口（未修，建议另卡）
+### C. 存量缺口（部分本轮已修）
 
-1. **`ManageCasPage.tsx:156/252/350` 三张裸表**：无容器 region / 无表名 / 无 `tableWrap`（无横向滚动保护）——全仓唯一。
+1. ~~**`ManageCasPage.tsx` 三张裸表无任何 a11y 标注**~~ → **✅ 本轮已修**（补 `aria-label` + 契约 ⑤）。残留：三表仍无 `.tableWrap`（窄视口横向溢出保护），建议另卡。
 2. **52 张表「表本身无名」**：名字只在外层 region（既定范式，非缺陷，记已知边界）。
 3. **`react-hook-form`+`zod` 未被使用**（仅 1 文件）：20 个表单手写校验，风格不统一。
 4. **B3 的 EACCES**（见上）。
@@ -361,6 +362,7 @@ run 3: PASS | ECONNREFUSED 0
 |---|---|
 | `fix(typecheck)` | A1 `casAdmin/api.ts` 给 `mapCasContentSummary` 加 `export`；A2 `CasPublishOrchestrationPage.tsx:113` 按惯例渲染指纹去重键 |
 | `fix(test)` | B1 `a11y-static-contract.test.ts` 锚点 91→117；B2 `theme-skins.test.ts` 预填 key 补 `'all'` |
+| `fix(a11y)` | C1：`ManageCasPage` 3 张裸表补 `aria-label`（取所在卡片标题）+ 契约 ⑤（全仓 `<table>` 须有名） |
 | `docs` | 本审计报告 |
 
 **验证**：`pnpm typecheck` EXIT=0（4 包全 Done）；host 单测 **684/684 全绿**；两测试文件 9/9。
