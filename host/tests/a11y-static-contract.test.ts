@@ -51,7 +51,9 @@ const UNLABELED_INPUTS: Array<{ file: string; line: number; want: string }> = [
   },
   {
     file: 'host/src/pages/browse/SearchOverlay.tsx',
-    line: 91,
+    // ★行号漂移修正：原写 91，但该文件增长后 91 行成了 document.addEventListener，
+    // 真正的 <input> 在 117（实测 `aria-label="搜索电影、剧集"`）。断言值 '搜索' 仍匹配。
+    line: 117,
     want: '搜索',
   },
   {

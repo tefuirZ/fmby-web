@@ -63,7 +63,10 @@ function renderBrowseLibrary(options: {
     defaultOptions: { queries: { retry: false } },
   });
   if (options.presetCache !== undefined) {
-    queryClient.setQueryData(['browse', 'library', '42'], {
+    // ★key 漂移修正：`queryKeys.browse.library(id, mediaType)` 现为 4 段
+    // `['browse','library',id,mediaType ?? null]`（LIBRARY-FILTER-E2E 起 mediaType 进 key）。
+    // provider 传 mediaType:'all' ⇒ 预填必须带第 4 段，否则缓存未命中、恒 loading。
+    queryClient.setQueryData(['browse', 'library', '42', 'all'], {
       pages: [options.presetCache],
       pageParams: [undefined],
     });

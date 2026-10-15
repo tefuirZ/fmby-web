@@ -119,7 +119,7 @@ function mapCasContentLeaseRef(
   return { holder: raw.holder, expiresAt: raw.expires_at };
 }
 
-function mapCasContentSummary(
+export function mapCasContentSummary(
   raw: Partial<RawCasContentSummary> | null | undefined,
 ): CasContentSummary {
   return {

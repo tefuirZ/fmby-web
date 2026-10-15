@@ -110,7 +110,13 @@ export function CasPublishOrchestrationPage() {
                       />
                     </td>
                     <td>{item.contentId}</td>
-                    <td><span className={styles.mono}>{item.fingerprint}</span></td>
+                    <td>
+                      {/* 指纹是对象（sha256/md5/sizeBytes）⇒ 不能直接当 ReactNode 渲染。
+                          照 CasContentListPage 惯例取去重键（sha256 优先，其次 md5）。 */}
+                      <span className={styles.mono}>
+                        {item.fingerprint.sha256 ?? item.fingerprint.md5 ?? '—'}
+                      </span>
+                    </td>
                     <td>{item.mediaItemId ?? '—'}</td>
                     <td>{item.drives.length} 盘</td>
                   </tr>
