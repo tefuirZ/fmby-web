@@ -136,3 +136,56 @@ export interface CasReconcileReport {
   reconciled: boolean;
   generatedAtMs: number | null;
 }
+
+// ===== #658-CONTENT-LIST：CAS 内容列表（第 1 页）=====
+// 配对 w02 后端 `GET /admin/cas/contents`（CAS-CONTENT-LIST-API）。
+// DTO 形状由主代理冻结（照后端 CAS 真值表 cas_content/cas_content_drive/cas_restore）。
+
+/// 前端域形态 · 一条内容在某盘上的副本（列表页简化视图，无 size/reason 明细）。
+export interface CasContentDriveCopy {
+  driveRef: string;
+  providerType: string;
+  /**
+   * 后端 `CopyState` 枚举的字符串投影（封闭取值 `pending`/`present`/`failed`/`tombstoned`），
+   * 原样透出、不折叠成布尔（同 `CasDriveStatus.copyState` 纪律）。
+   */
+  copyState: string;
+}
+
+/// 前端域形态 · CAS 内容列表一行（真值视图：内容 → 盘副本 / 本地实体 / lease 状态）。
+export interface CasContentSummary {
+  contentId: number;
+  /** 内容指纹（内容寻址键）。 */
+  fingerprint: string;
+  /** 关联媒体项 id（无关联为 `null`，**不用 0 伪装**）。 */
+  mediaItemId: number | null;
+  /** 已落盘副本（每盘一条）。 */
+  drives: CasContentDriveCopy[];
+  /** 是否有本地实体。 */
+  hasLocalEntity: boolean;
+  /**
+   * lease 状态（后端开放字符串或结构化投影，原样透出不折叠；无 lease 为 `null`）。
+   * ★未知值显示原文，绝不默认成「无 lease / 已释放」——那会伪造对账关键态。
+   */
+  lease: string | null;
+  /** 最近更新时间（ms；无值为 `null`，**不用 0 伪装**，否则 UI 显示 1970 年）。 */
+  updatedAt: number | null;
+}
+
+/// wire 形态 · 内容在某盘上的副本。
+export interface RawCasContentDriveCopy {
+  drive_ref: string;
+  provider_type: string;
+  copy_state: string;
+}
+
+/// wire 形态 · CAS 内容列表一行。
+export interface RawCasContentSummary {
+  content_id: number;
+  fingerprint: string;
+  media_item_id?: number | null;
+  drives?: RawCasContentDriveCopy[];
+  has_local_entity?: boolean;
+  lease?: string | null;
+  updated_at?: number | null;
+}

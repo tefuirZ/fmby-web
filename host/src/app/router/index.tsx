@@ -519,6 +519,15 @@ export const router = createBrowserRouter([
                 },
               },
               {
+                // #658-CONTENT-LIST：CAS 内容列表（第 1 页）。配对 w02 后端
+                // CAS-CONTENT-LIST-API；端点未合时页面显式提示数据面未就绪。
+                path: 'cas/contents',
+                lazy: async () => {
+                  const { CasContentListPage } = await import('@/pages/manage/CasContentListPage');
+                  return { Component: CasContentListPage };
+                },
+              },
+              {
                 path: 'telegram-bot',
                 element: <ManageLegacyRedirect to="/manage/site/telegram" />,
               },
