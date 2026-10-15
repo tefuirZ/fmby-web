@@ -25,7 +25,7 @@ export function RemoteAssetsTable({ remoteAssets }: RemoteAssetsTableProps) {
           挂载点上没有发现与这条资源同名的图片或附属文件。
         </div>
       ) : (
-        <div className={sharedStyles.tableWrap}>
+        <div className={sharedStyles.tableWrap} role="region" aria-label="随文件资源（可横向滚动）">
           <table className={sharedStyles.table}>
             <thead>
               <tr>
