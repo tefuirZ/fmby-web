@@ -48,10 +48,12 @@ function tableWrapTags(src: string): Array<{ line: number; tag: string }> {
   const tags: Array<{ line: number; tag: string }> = [];
   let idx = src.indexOf('<div');
   while (idx >= 0) {
-    const end = src.indexOf('>', idx);
+    let end = src.indexOf('>', idx);
+    // w11：跳过 => 的 >（箭头函数属性 onClick={() => ...} 会把 tag 截断在 => 处 ⇒ 漏扫）
+    while (end >= 0 && src[end - 1] === '=') end = src.indexOf('>', end + 1);
     if (end < 0) break;
     const tag = src.slice(idx, end + 1);
-    if (/tableWrap/.test(tag)) {
+    if (/tableWrap|tableScroll/.test(tag)) { // w11：.tableScroll 是 .tableWrap 同款横向滚动区别名（堵别名声逃逸）
       tags.push({ line: src.slice(0, idx).split('\n').length, tag });
     }
     idx = src.indexOf('<div', end);
@@ -157,7 +159,7 @@ test('FE-WEB-UI-A③：带 tabIndex=0 的滚动区必须是显式名单内且非
   assert.deepEqual(offenders, [], `名单外新增 tabIndex 滚动区：\n${offenders.join('\n')}`);
 });
 
-test('FE-WEB-UI-A④：aria-label 名单（49 处，改一个就要同步改这里）', () => {
+test('FE-WEB-UI-A④：aria-label 名单（51 处，改一个就要同步改这里）', () => {
   // 为什么用名单而非「与同文件 title= 模糊匹配」：本仓大量表格位于详情面板 /
   // 跨文件卡片内（CollectionMemberPanel / AiInterventionDetailPanel /
   // RegistrationCodeDetailTable …），其语义名**有意**比所在卡片标题更精确
@@ -166,6 +168,8 @@ test('FE-WEB-UI-A④：aria-label 名单（49 处，改一个就要同步改这�
   // 名单的契约价值在**反向**：任何人新增/改名一处 tableWrap，本测试立刻红，
   // 迫使同步评审命名 —— 这比宽松匹配更能防「再加一个没人核过的名字」。
   const EXPECTED: Array<[string, string]> = [
+    ['src/pages/manage/CasContentListPage.tsx', 'CAS 内容列表'],
+    ['src/pages/manage/runtime-logs/RuntimeLogArchivesSection.tsx', '日志归档列表'],
     ['src/pages/manage/ManageAuditLogsPage.tsx', '操作记录'],
     ['src/pages/manage/ManageEventsPage.tsx', '事件列表'],
     ['src/pages/manage/ManageMediaReviewsPage.tsx', '审核队列'],
@@ -174,7 +178,7 @@ test('FE-WEB-UI-A④：aria-label 名单（49 处，改一个就要同步改这�
     ['src/pages/manage/ManageOperationsPage.tsx', '活跃快照'],
     ['src/pages/manage/ManageOperationsPage.tsx', '活跃用户榜'],
     ['src/pages/manage/ManageOperationsPage.tsx', '热播榜'],
-    ['src/pages/manage/ManageRuntimeLogsPage.tsx', '运行日志'],
+    ['src/pages/manage/runtime-logs/RuntimeLogsDesktopTable.tsx', '运行日志'],
     ['src/pages/manage/ManageSecretsPage.tsx', '密钥链状态列表'],
     ['src/pages/manage/ManageSessionsPage.tsx', '会话管理'],
     ['src/pages/manage/ManageSystemAboutPage.tsx', '运行依赖'],
@@ -185,14 +189,14 @@ test('FE-WEB-UI-A④：aria-label 名单（49 处，改一个就要同步改这�
     ['src/pages/manage/collections/components/CollectionListTable.tsx', '合集列表'],
     ['src/pages/manage/collections/components/CollectionMemberPanel.tsx', '合集成员明细'],
     ['src/pages/manage/libraries/components/LibraryTable.tsx', '媒体库列表'],
-    ['src/pages/manage/media-item-detail/components/MediaItemArtworkSection.tsx', '随文件资源'],
+    ['src/pages/manage/media-item-detail/components/RemoteAssetsTable.tsx', '随文件资源'],
     ['src/pages/manage/media-items/components/MediaItemListTable.tsx', '媒体资源列表'],
     ['src/pages/manage/media-reviews/components.tsx', '候选媒体'],
     ['src/pages/manage/microsoft/MicrosoftAccountsSection.tsx', '已授权账号'],
     ['src/pages/manage/microsoft/MicrosoftAccountsSection.tsx', '应用凭据配置状态'],
     ['src/pages/manage/microsoft/MicrosoftOAuthSection.tsx', 'OneDrive 网盘列表'],
     ['src/pages/manage/microsoft/MicrosoftOAuthSection.tsx', 'SharePoint 站点列表'],
-    ['src/pages/manage/mounts/components/MountTable.tsx', '来源列表'],
+    ['src/pages/manage/mounts/components/MountTableDesktopTable.tsx', '挂载点列表'],
     ['src/pages/manage/naming-rules/ai-intervention/components/AiInterventionDetailPanel.tsx', '干预运行记录'],
     ['src/pages/manage/naming-rules/ai-intervention/components/AiInterventionThreadList.tsx', 'AI 干预线程'],
     ['src/pages/manage/operations/OperationsGapSections.tsx', '播放记录'],
@@ -218,9 +222,11 @@ test('FE-WEB-UI-A④：aria-label 名单（49 处，改一个就要同步改这�
   ];
   // 实测全量（与名单逐一比对，双向）
   const actual: Array<[string, string]> = [];
+  let total = 0; // w11：数所有 tableWrap（不限 aria-label 后缀），堵「新增不带后缀」漏进 actual
   for (const file of tsxFiles) {
     const src = readFileSync(file, 'utf8');
     for (const { tag } of tableWrapTags(src)) {
+      total += 1;
       const lm = tag.match(/aria-label=(?:"([^"]*)"|\{`([^`]*)`\})/);
       if (!lm) continue;
       const label = lm[1] ?? lm[2] ?? '';
@@ -228,6 +234,9 @@ test('FE-WEB-UI-A④：aria-label 名单（49 处，改一个就要同步改这�
       actual.push([relative(HOST_ROOT, file), label.slice(0, -SCROLL_SUFFIX.length)]);
     }
   }
+  // w11 补：总数断言 —— 新增 tableWrap 不带「（可横向滚动）」后缀会漏进 actual，
+  // 但 total 仍会计数 ⇒ 与名单不符即红（堵该逃逸）
+  assert.equal(total, EXPECTED.length, `tableWrap 总数不符（新增未带后缀会漏扫）：实测 ${total} / 名单 ${EXPECTED.length}`);
   const key = (pair: [string, string]) => `${pair[0]}::${pair[1]}`;
   const expKeys = new Set(EXPECTED.map(key));
   const actKeys = new Set(actual.map(key));
