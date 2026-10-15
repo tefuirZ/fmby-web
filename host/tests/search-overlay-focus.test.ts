@@ -19,15 +19,31 @@ import { pathToFileURL } from 'node:url';
 const HOST_ROOT = join(import.meta.dirname, '..');
 
 /**
+ * node_modules 的**绝对路径**（照 table-row-keynav.test.ts 先例）。
+ *
+ * ★为什么必须绝对路径而不是裸标识符：本探针的 entry 要落到 `os.tmpdir()`
+ * （见 getHarness）——仓库树 `host/` 是 root:755，而 `pnpm test` 经 fmby-queue
+ * **降权到 tefuir**，写入 `host/tests/` 必 EACCES（实测：`pnpm test` 对全部席位
+ * 恒红，直跑才绿）。entry 一旦落 /tmp，Rollup 就解析不到裸标识符
+ * （"failed to resolve import react"）⇒ 改用 node_modules 下绝对路径绕开解析链。
+ */
+const NM = join(HOST_ROOT, 'node_modules');
+const nmUrl = (rel: string) => pathToFileURL(join(NM, rel)).href;
+const NM_REACT = nmUrl('react/index.js');
+const NM_REACT_DOM_CLIENT = nmUrl('react-dom/client.js');
+const NM_REACT_ROUTER = nmUrl('react-router/dist/development/index.mjs');
+const NM_RQ = nmUrl('@tanstack/react-query/build/modern/index.js');
+
+/**
  * 探针：复刻 TopBar 的真实接线（触发按钮 + 受控 SearchOverlay），
  * 用 id 标记以便断言「焦点是否回到触发按钮」。测试态 provider 只补齐被测组件
  * 的依赖（react-query / router），不复刻整个 App。
  */
 const PROBE_ENTRY = `
-import { createElement, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router';
+import { createElement, useState } from '${NM_REACT}';
+import { createRoot } from '${NM_REACT_DOM_CLIENT}';
+import { QueryClient, QueryClientProvider } from '${NM_RQ}';
+import { MemoryRouter } from '${NM_REACT_ROUTER}';
 import { SearchOverlay } from '${pathToFileURL(join(HOST_ROOT, 'src/pages/browse/SearchOverlay.tsx')).href}';
 import { PlaybackSidebar } from '${pathToFileURL(join(HOST_ROOT, 'src/pages/browse/play/PlaybackSidebar.tsx')).href}';
 
@@ -82,7 +98,12 @@ async function getHarness(t: any): Promise<Harness> {
     throw SKIP;
   }
   const work = await mkdtemp(join(tmpdir(), 'fe02-dom-'));
-  const entryFile = join(HOST_ROOT, 'tests', '__probeFe02Dom-entry.tsx');
+  // ★entry 落 work（tmpdir）而非 `host/tests/`：后者 root:755，fmby-queue 降权后
+  // 写不进 ⇒ EACCES（`pnpm test` 对全部席位恒红）。tmpdir 可写且不污染仓库树。
+  const entryFile = join(work, '__probeFe02Dom-entry.tsx');
+  // ★outDir 必须与 entry 分开：`emptyOutDir: true` 会在 build 开始前清空 outDir，
+  // 若 entry 也在 outDir 内会被先删掉。
+  const outDir = join(work, 'dist');
   await writeFile(entryFile, PROBE_ENTRY, 'utf8');
   try {
     await (
@@ -100,7 +121,7 @@ async function getHarness(t: any): Promise<Harness> {
         },
       },
       build: {
-        outDir: work,
+        outDir,
         emptyOutDir: true,
         minify: false,
         lib: { entry: entryFile, formats: ['iife'], name: 'Fe02Dom', fileName: () => 'probe.js' },
@@ -116,7 +137,7 @@ async function getHarness(t: any): Promise<Harness> {
   const errors: string[] = [];
   page.on('pageerror', (e: Error) => errors.push(String(e)));
   await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
-  await page.addScriptTag({ path: join(work, 'probe.js') });
+  await page.addScriptTag({ path: join(outDir, 'probe.js') });
   await page.waitForSelector('#trigger');
   harness = {
     page,
