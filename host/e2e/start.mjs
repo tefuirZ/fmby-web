@@ -179,6 +179,51 @@ backend.on('exit', (code) => {
   process.exit(code ?? 1);
 });
 
+// 前端实例句柄（在 ③ 里赋值）；提前声明，供 stop() 与「后端就绪门」安全引用。
+let vite;
+
+let stopping = false;
+async function stop(exitCode = 0) {
+  if (stopping) return;
+  stopping = true;
+  // vite 可能尚未创建（后端就绪门在 ③ 之前失败时）⇒ 守卫，避免 TDZ/undefined。
+  await Promise.allSettled(vite ? [vite.close()] : []);
+  backend.kill('SIGTERM');
+  rmSync(workDir, { recursive: true, force: true });
+  process.exit(exitCode);
+}
+
+process.on('SIGINT', () => void stop());
+process.on('SIGTERM', () => void stop());
+
+// ---- ★等 server 就绪，再起前端（/api/auth/entry/status 应 200）----
+// 顺序很关键：playwright 的 webServer 就绪信号是**前端 url**（5180）。若先起前端，
+// 5180 一旦可连 playwright 即开跑，而此时后端可能仍在启动窗口 ⇒ **首个 project**
+// （chromium）加载登录页时 `/api/auth/entry/status` 代理失败 ⇒ 页面进
+// `entryQuery.isError`（「无法连接到服务器」、该态无输入框）；后跑的 project
+// （mobile-chrome）后端已就绪 ⇒ 稳定通过 ⇒ **表现成 flaky**（实测：同 dist 下
+// chromium 30.1s 超时 / mobile 406ms 通过；重跑双双通过）。
+// ⇒ 把就绪门**提到起前端之前**：5180 可连时后端必已 200。
+const readyUrl = `http://127.0.0.1:${backendPort}/api/auth/entry/status`;
+let ready = false;
+for (let i = 0; i < 100; i++) {
+  try {
+    const resp = await fetch(readyUrl);
+    if (resp.ok) {
+      console.log(`[real-server] ready at ${process.env.FMBY_BACKEND}`);
+      ready = true;
+      break;
+    }
+  } catch {
+    // not ready yet
+  }
+  await new Promise((r) => setTimeout(r, 200));
+}
+if (!ready) {
+  console.error('[real-server] backend did not become ready in time');
+  await stop(1);
+}
+
 // ---- ③ 起前端（默认服务**已构建产物** host/dist，对齐卡面真实栈口径）----
 // 卡面：「主仓二进制 + 前端 host/dist（已构建）」。dev server 会开 React
 // StrictMode 双调用（仅 dev），在 VideoPlayer 的异步挂载上暴露竞态
@@ -187,7 +232,6 @@ backend.on('exit', (code) => {
 const useDevServer = process.env.FMBY_E2E_DEV === '1';
 const distIndex = join(webRepoRoot, 'host', 'dist', 'index.html');
 
-let vite;
 if (useDevServer) {
   vite = await createServer({
     root: join(webRepoRoot, 'host'),
@@ -224,36 +268,3 @@ if (useDevServer) {
   });
 }
 
-let stopping = false;
-async function stop(exitCode = 0) {
-  if (stopping) return;
-  stopping = true;
-  await Promise.allSettled([vite.close()]);
-  backend.kill('SIGTERM');
-  rmSync(workDir, { recursive: true, force: true });
-  process.exit(exitCode);
-}
-
-process.on('SIGINT', () => void stop());
-process.on('SIGTERM', () => void stop());
-
-// ---- 等 server 就绪（/api/auth/entry/status 应 200）----
-const readyUrl = `http://127.0.0.1:${backendPort}/api/auth/entry/status`;
-let ready = false;
-for (let i = 0; i < 100; i++) {
-  try {
-    const resp = await fetch(readyUrl);
-    if (resp.ok) {
-      console.log(`[real-server] ready at ${process.env.FMBY_BACKEND}`);
-      ready = true;
-      break;
-    }
-  } catch {
-    // not ready yet
-  }
-  await new Promise((r) => setTimeout(r, 200));
-}
-if (!ready) {
-  console.error('[real-server] backend did not become ready in time');
-  await stop(1);
-}
