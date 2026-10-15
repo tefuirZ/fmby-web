@@ -120,7 +120,11 @@ export function LibraryTable({
       ) : (
         <>
           <div className={styles.desktopOnly}>
-            <div className={styles.tableWrap} role="region" aria-label="媒体库列表（可横向滚动）">
+            <div
+              className={styles.tableWrap}
+              role="region"
+              aria-label="媒体库列表（可横向滚动）"
+            >
               <table className={styles.table}>
                 <thead>
                   <tr>

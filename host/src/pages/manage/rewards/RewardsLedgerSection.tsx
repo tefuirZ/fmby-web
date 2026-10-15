@@ -75,7 +75,11 @@ export function RewardsLedgerSection({
       ) : ledger.length === 0 ? (
         <div className={styles.emptyInlineState}>该用户还没有任何积分流水。</div>
       ) : (
-        <div className={styles.tableWrap} role="region" aria-label="奖励账本（可横向滚动）">
+        <div
+          className={styles.tableWrap}
+          role="region"
+          aria-label="积分流水（可横向滚动）"
+        >
           <table className={styles.table}>
             <thead>
               <tr>

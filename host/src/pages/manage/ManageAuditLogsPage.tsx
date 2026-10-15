@@ -103,7 +103,7 @@ export function ManageAuditLogsPage() {
           <span className={styles.tableHint}>结果：{filteredItems.length} 条</span>
         </div>
 
-        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="审计日志（可横向滚动）">
+        <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="操作记录（可横向滚动）">
           <table className={styles.table}>
             <thead>
               <tr>

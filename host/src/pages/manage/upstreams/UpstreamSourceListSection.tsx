@@ -146,7 +146,11 @@ export function UpstreamSourceListSection() {
           title={`局域网发现结果（${discoveryMutation.data.items.length}）`}
           description="UDP 广播真实发现，无需凭据；地址可直接填进新建表单。"
         >
-          <div className={styles.tableWrap} role="region" aria-label="局域网发现（可横向滚动）">
+          <div
+            className={styles.tableWrap}
+            role="region"
+            aria-label="局域网发现结果（可横向滚动）"
+          >
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -210,7 +214,11 @@ export function UpstreamSourceListSection() {
         {sources.length === 0 ? (
           <div className={styles.emptyInlineState}>还没有任何上游源，先从右上角新建一个。</div>
         ) : (
-          <div className={styles.tableWrap} role="region" aria-label="上游源列表（可横向滚动）">
+          <div
+            className={styles.tableWrap}
+            role="region"
+            aria-label="上游源列表（可横向滚动）"
+          >
             <table className={styles.table}>
               <thead>
                 <tr>
