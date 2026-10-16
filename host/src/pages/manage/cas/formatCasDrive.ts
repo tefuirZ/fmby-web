@@ -219,3 +219,42 @@ export function resolveSourceKindLabel(kind: string | null | undefined): string 
 export function resolveSourceKindTone(kind: string | null | undefined): 'success' | 'neutral' {
   return kind === 'rapid_upload' ? 'success' : 'neutral';
 }
+
+/**
+ * #862 · #658 ⑤「删除安全可见」：把「当前在挡的那一闸」稳定码翻成人话。
+ *
+ * 取值与后端逐一对齐（`CasContentListItemDto.deferred_gate` 注释 + `CasDeferredGateDto`）：
+ *   `none`（无租约/可回收）· `session_open`（闸① 会话未关闭）· `lease_active`（闸② TTL 未到）
+ *   · `grace`（闸③ 宽限期未满）· `reaped`（已回收，终态）。
+ * 纪律同族：**未知码原样透出**、**缺失/空串显 `—`**（不编造状态）。
+ */
+export function resolveDeferredGateLabel(gate: string | null | undefined): string {
+  switch (gate) {
+    case 'none':
+      return '可回收（无闸在挡）';
+    case 'session_open':
+      return '闸① 播放会话未关闭';
+    case 'lease_active':
+      return '闸② 租约 TTL 未到';
+    case 'grace':
+      return '闸③ 宽限期未满';
+    case 'reaped':
+      return '已回收（终态）';
+    case null:
+    case undefined:
+    case '':
+      return '—';
+    default:
+      return gate;
+  }
+}
+
+/** 宽限期剩余 → 人话（仅当在挡的闸是 `grace` 时展示；其余场景后端恒 0，不显示）。 */
+export function formatGraceRemaining(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || ms <= 0) return '—';
+  const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return h > 0 ? `${h}h${m}m` : m > 0 ? `${m}m${s}s` : `${s}s`;
+}
