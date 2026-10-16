@@ -16,16 +16,18 @@ import styles from './longtail-shared/ManageShared.module.css';
  *   - 后端 CAS 管理面现有 4 端点全是读面 + 单盘配置写（GET/PUT drives、
  *     GET fanout/{content_id}、GET reconcile）——**无「发起扇出」写端点**。
  *   - 「扇出已存在内容的重试」= #671 写面 `retryFanoutCopy`（rb01 PR #678，503 unwired）。
- *   - 「选源内容」= w02 CAS-CONTENT-LIST-API 的 `listCasContents`（待落地，unwired）。
+ *   - 「选源内容」= `listCasContents`（后端读面**已实现**并挂进生产 router：
+ *     `crates/fmby-v2-http/src/routes/admin_cas.rs` 的 `cas_list_contents`）。
  *   ⇒ 「发起扇出」核心写面后端**完全没有** ⇒ 本页 fixme（按钮禁用 + 显式提示待后端），
  *     **不得**调用不存在的端点、**不得**伪造扇出成功。
- * ★选源数据面未就绪（w02 list 端点未合）⇒ `listCasContents` 返回空 + `unwired`
- *   ⇒ 本页显式提示「数据面未就绪」，**不造假数据**（照 #40 纪律）。
+ * ★`unwired:true` 的**真语义**（#78 核后端所得）：不是「端点没做」，而是**本实例**没给出数据
+ *   （CAS 端口未装配 ⇒ 503，或后端版本过旧、无该路由 ⇒ 404）⇒ 文案照此说，
+ *   并与「后端返回空列表」分两态呈现（照 #40 纪律不造假数据）。
  * ★失败原因 reason_code/reason_detail 原样透出（#671）：key 缺失 = 无原因，
  *   存在但空 = 空值，两者**分开**显示，不折叠成布尔。
  */
 export function CasPublishOrchestrationPage() {
-  // 选源内容（w02 list 端点，未就绪 unwired）。
+  // 选源内容（读面已实现；本实例不可用时 unwired=true，原因见下方横幅）。
   const contentsQuery = useQuery({
     queryKey: queryKeys.manage.cas.contents(),
     queryFn: () => casAdminApi.listCasContents(),
@@ -66,11 +68,12 @@ export function CasPublishOrchestrationPage() {
         description="选源内容 → 选目标盘 → 发起扇出 → 进度与失败原因（#658 第 2 页；发起扇出写面待后端接线）。"
       />
 
+      {/* 两态分开（#78 G5）：数据面不可用 ≠ 实例里没有内容。 */}
       {unwired ? (
         <InlineBanner
           variant="warning"
-          title="CAS 内容列表数据面未就绪"
-          description="后端列表端点（w02 CAS-CONTENT-LIST-API）尚未接线，无法选源内容。"
+          title="CAS 内容数据面在本实例不可用"
+          description="后端未返回 CAS 内容数据：本实例 CAS 端口未装配（503），或该路由不存在（404，多见于旧版本后端）⇒ 暂时无法选源内容。列表端点在 fmby-v2 已实现（admin_cas.rs 的 cas_list_contents）⇒ 请核对后端版本与 CAS 端口装配。"
         />
       ) : null}
 
@@ -83,8 +86,12 @@ export function CasPublishOrchestrationPage() {
         ) : contents.length === 0 ? (
           <FeedbackState
             variant="empty"
-            title={unwired ? '数据面未就绪' : '暂无 CAS 内容'}
-            description={unwired ? '等待后端列表端点（w02）接线后展示。' : '当前没有 CAS 内容记录。'}
+            title={unwired ? '数据面不可用（非空列表）' : '暂无 CAS 内容'}
+            description={
+              unwired
+                ? '本页没能从后端取到 CAS 内容数据，**不等于**「实例里没有内容」——原因见上方提示。'
+                : '后端返回空列表：当前实例确实没有 CAS 内容记录。'
+            }
           />
         ) : (
           <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="选源内容（可横向滚动）">

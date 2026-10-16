@@ -522,8 +522,9 @@ export const router = createBrowserRouter([
                 },
               },
               {
-                // #658-CONTENT-LIST：CAS 内容列表（第 1 页）。配对 w02 后端
-                // CAS-CONTENT-LIST-API；端点未合时页面显式提示数据面未就绪。
+                // #658-CONTENT-LIST：CAS 内容列表（第 1 页）。后端读面已实现
+                // （v2 `admin_cas.rs::cas_list_contents`）；本实例取不到数据（端口未装配 503 /
+                // 旧版本无该路由 404）时，页面显式提示「数据面不可用」，与「真空列表」分两态。
                 path: 'cas/contents',
                 lazy: async () => {
                   const { CasContentListPage } = await import('@/pages/manage/CasContentListPage');

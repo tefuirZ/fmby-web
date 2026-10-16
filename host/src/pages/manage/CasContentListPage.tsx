@@ -21,8 +21,12 @@ import styles from './longtail-shared/ManageShared.module.css';
  * CAS 内容列表页（#658-CONTENT-LIST 第 1 页）：内容寻址存储真值视图
  * —— 每条内容 → 已落哪些盘 / 是否有本地实体 / lease 状态。
  *
- * ★数据面未就绪（w02 后端 CAS-CONTENT-LIST-API 端点未合）⇒ `listCasContents`
- *   返回空列表 + `unwired` 标记 ⇒ 本页显式提示「数据面未就绪」，**不造假数据**。
+ * ★`unwired` 的**真语义**（#78 同期核后端所得，别再写成「后端没做」）：列表端点在
+ *   fmby-v2 已实现并入生产 router（`crates/fmby-v2-http/src/routes/admin_cas.rs`
+ *   的 `cas_list_contents`），所以 `listCasContents` 返回 `unwired:true` 只有两种原因
+ *   —— ① 该实例的 CAS 端口未装配（`service(&state)` ⇒ 503）；② 后端版本过旧、
+ *   该路由不存在（404）。两种都不是「功能未实现」⇒ 文案照此说，**不造假数据**，
+ *   也不把「数据面不可用」与「后端返回空列表」混成同一句话（分开两态见下）。
  * ★copy_state 徽章复用 `formatCasDrive` 纯函数（`resolveCopyStateLabel/Tone`），
  *   未知值显示原文码，绝不默认「已复制」（防伪造对账关键态）。
  */
@@ -68,11 +72,13 @@ export function CasContentListPage() {
         description="内容寻址存储真值视图：每条内容已落哪些盘、是否有本地实体、lease 状态（#658 第 1 页；发布编排/分享转存另卡）。"
       />
 
+      {/* 两态分开（#78 G5）：①「数据面不可用」= 本实例没给出数据（端口未装配 / 路由 404），
+          ②「暂无 CAS 内容」= 后端正常返回空列表。混成一句会让运维以为功能没做。 */}
       {unwired ? (
         <InlineBanner
           variant="warning"
-          title="CAS 内容列表数据面未就绪"
-          description="后端列表端点（w02 CAS-CONTENT-LIST-API）尚未接线，下方为占位空列表，不含任何数据。"
+          title="CAS 内容数据面在本实例不可用"
+          description="后端未返回 CAS 内容数据：本实例 CAS 端口未装配（503），或该路由不存在（404，多见于旧版本后端）。列表端点在 fmby-v2 已实现（admin_cas.rs 的 cas_list_contents）⇒ 请核对后端版本与 CAS 端口装配后刷新本页。"
         />
       ) : null}
 
@@ -91,8 +97,12 @@ export function CasContentListPage() {
         ) : items.length === 0 ? (
           <FeedbackState
             variant="empty"
-            title={unwired ? '数据面未就绪' : '暂无 CAS 内容'}
-            description={unwired ? '等待后端列表端点（w02）接线后展示。' : '当前没有 CAS 内容记录。'}
+            title={unwired ? '数据面不可用（非空列表）' : '暂无 CAS 内容'}
+            description={
+              unwired
+                ? '本页没能从后端取到 CAS 内容数据，**不等于**「实例里没有内容」——原因见上方提示。'
+                : '后端返回空列表：当前实例确实没有 CAS 内容记录。'
+            }
           />
         ) : (
           <div className={`${styles.tableWrap} ${styles.desktopOnly}`} role="region" aria-label="CAS 内容列表（可横向滚动）">
