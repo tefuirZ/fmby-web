@@ -271,14 +271,11 @@ test.after(async () => {
 });
 
 /**
- * React 受控输入必须走原生 setter + `input` 事件，否则 `onChange` 不触发。
- * 浏览器侧无法把函数当参数传 ⇒ 这段 setter 写法在两个 filler 里各出现一次
- * （`ponytail:` 不为两行代码造 `new Function` 的间接层）。
- */
-
-/**
  * 填管理员：按「legend 含『管理员』的小节」定位 ③ 段，段内取可写用户名框 + 两个口令框。
  * 定位写法与断言写法分开 ⇒ fe02 改属性/改文案不影响驱动。
+ * ★React 受控输入必须走原生 value setter + `input` 事件，直接赋 `el.value` 不触发 onChange；
+ *   浏览器侧函数不能当参数传 ⇒ 这段 setter 写法在下面两个 filler 里各写一遍
+ *   （`ponytail:` 不为两行代码造 `new Function` 那种间接层）。
  */
 async function fillAdmin(page: any) {
   const done = await page.evaluate(
@@ -356,7 +353,7 @@ async function clickButton(page: any, re: RegExp) {
   assert.ok(clicked, `页面上应有文案匹配 ${re} 的按钮，实际没有`);
 }
 
-/** 每条用例都要走一遍的驱动：进到第 3 步（③ 管理员表单在场）并填好管理员。 */
+/** 每条用例各开一页：装好探针页（停在第 1 步），并收集页面运行时异常。 */
 async function openAdminStep(h: Harness) {
   const page = await h.browser.newPage();
   const problems: string[] = [];
