@@ -10,6 +10,7 @@ import { FeedbackState, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import type {
   AiInterventionSkillKey,
+  AiInterventionSuggestRecord,
   AiInterventionThreadDetailRecord,
 } from '@fmby/v2-shared/contracts/manage/aiInterventions';
 import {
@@ -32,11 +33,15 @@ interface AiInterventionDetailPanelProps {
   sendPending: boolean;
   closePending: boolean;
   applyPending: boolean;
+  suggestPending: boolean;
+  suggestion: AiInterventionSuggestRecord | undefined;
+  suggestError: unknown;
   actionError: unknown;
   onOpen: (skillKey?: AiInterventionSkillKey) => void;
   onSend: (sessionId: string, message: string) => void;
   onClose: (sessionId: string) => void;
   onApply: (sessionId: string) => void;
+  onSuggest: () => void;
   onDismissError: () => void;
 }
 
@@ -49,11 +54,15 @@ export function AiInterventionDetailPanel({
   sendPending,
   closePending,
   applyPending,
+  suggestPending,
+  suggestion,
+  suggestError,
   actionError,
   onOpen,
   onSend,
   onClose,
   onApply,
+  onSuggest,
   onDismissError,
 }: AiInterventionDetailPanelProps) {
   const [skillKey, setSkillKey] = useState<AiInterventionSkillKey>('naming_cleanup');
@@ -155,7 +164,42 @@ export function AiInterventionDetailPanel({
         >
           {applyPending ? '应用中…' : '应用最近结果'}
         </button>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          disabled={busy || suggestPending}
+          onClick={() => onSuggest()}
+        >
+          {suggestPending ? '获取中…' : '获取 AI 建议'}
+        </button>
       </div>
+
+      {/* FE-AI-RESIDUAL ①：`suggest`（A2 只读）此前无 UI 入口 —— 只读建议就地呈现，不改任何数据。 */}
+      {suggestError ? (
+        <div className={styles.dangerPanel}>AI 建议获取失败：{getErrorMessage(suggestError)}</div>
+      ) : null}
+      {suggestion ? (
+        <div className={styles.stackText}>
+          <strong>AI 建议（只读，未落库）</strong>
+          <span className={styles.mutedText}>
+            建议标题：{suggestion.suggestedTitle || '—'}
+            {suggestion.suggestedYear !== null ? ` · 年份 ${suggestion.suggestedYear}` : ''}
+            {suggestion.suggestedSeason !== null ? ` · 季 ${suggestion.suggestedSeason}` : ''}
+            {suggestion.suggestedEpisode !== null ? ` · 集 ${suggestion.suggestedEpisode}` : ''}
+            {` · 置信度 ${suggestion.confidence.toFixed(2)}`}
+            {` · ${suggestion.wouldAutoBind ? '达标即自动绑定' : '不会自动绑定'}`}
+          </span>
+          {suggestion.externalId ? (
+            <span className={styles.mutedText}>
+              外部标识：{suggestion.externalId.provider} / {suggestion.externalId.kind} /{' '}
+              {suggestion.externalId.value}
+            </span>
+          ) : null}
+          {suggestion.reasoning ? (
+            <span className={styles.mutedText}>依据：{suggestion.reasoning}</span>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className={styles.stackText}>
         <strong>会话消息（{messages.length}）</strong>
