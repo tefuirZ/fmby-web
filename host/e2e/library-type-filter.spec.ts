@@ -20,11 +20,11 @@ test.describe('Library detail type filter E2E (LIBRARY-FILTER-E2E)', () => {
     await login(page);
   });
 
-  // 等待 w01 的 LIBRARY-TYPE-FILTER-PARITY 后端落地（LibraryDetailQuery 加 media_type +
-  // handler 传给 service.get_library_detail 过滤 + rebuild）后去掉 fixme 复跑并贴原文。
-  // 当前后端丢弃 mediaType（响应含全部 kind）⇒ 断言③红 ⇒ 标 fixme 防 main e2e 套件变红。
-  // 红/绿由后端 binary 决定而非 spec 缺陷，fixme 表达环境前置是对的。
-  test.fixme('切换媒体类型 ⇒ 请求 query 含 mediaType 且后端响应真的只返回该类型（防前端空壳）', async ({ page }) => {
+  // 后端前置**已落地**（#638 类型筛选对等补齐）：fmby-v2 main 的 `LibraryDetailQuery` 现有
+  // `#[serde(rename = "mediaType", alias = "media_type")]` 且 handler 把 media_type 下传给
+  // service ⇒ 原 fixme 的理由（「后端丢弃 mediaType ⇒ ③ 必红」）已过期。
+  // ★断言一字未弱化：③ 仍要求响应 items 非空且**全部**为 movie；若红即真缺陷，报主代理开卡。
+  test('切换媒体类型 ⇒ 请求 query 含 mediaType 且后端响应真的只返回该类型（防前端空壳）', async ({ page }) => {
     // 库详情筛选 select 在 host 默认页（LibraryDetailPage）；darkroom 主题走
     // LibrarySkin（卡墙，不渲染筛选 toolbar）⇒ 切 template 主题（无 browse.library
     // skin）回落 host 默认页，才有「媒体类型筛选」select。
@@ -41,22 +41,39 @@ test.describe('Library detail type filter E2E (LIBRARY-FILTER-E2E)', () => {
       }
     });
 
+    // ★FE-E2E-924：等待必须**在触发动作之前武装**。原实现先 goto、再 `await
+    //   page.waitForResponse(...)` —— 而该响应此刻早已落地 ⇒ waitForResponse 等一个
+    //   不会再来的响应 ⇒ 30s 超时（撤 fixme 后第一次真跑即暴露；非产品缺陷，是 spec 竞态）。
+    //   注意：这跟当初为「防异步 push 乱序假绿」而改用 waitForResponse 是同一处的两面 ——
+    //   武装时机错了就从「假绿」翻成「假红」，两种都不是真验证。
+    const baselineRespPromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/browse/libraries/1') &&
+        resp.request().method() === 'GET' &&
+        !resp.url().includes('mediaType'),
+      { timeout: 30_000 },
+    );
+
     await page.goto('/libraries/1', { waitUntil: 'domcontentloaded' });
     await expect(page.getByText('星际穿越', { exact: true }).first()).toBeVisible();
     await expect.poll(() => requests.length).toBeGreaterThanOrEqual(1);
 
     // ① baseline：请求 query 不含 mediaType；响应含混合 kind（库 1：movie+series+season+episode）。
     expect(new URL(requests[0]).searchParams.get('mediaType')).toBeNull();
-    const baselineResp = await page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/api/browse/libraries/1') &&
-        resp.request().method() === 'GET' &&
-        !resp.url().includes('mediaType'),
-    );
+    const baselineResp = await baselineRespPromise;
     const baselineKinds = ((await baselineResp.json()).items || []).map(
       (i: { kind?: string }) => i.kind,
     );
     expect(baselineKinds).toContain('series');
+
+    // ②/③ 一并提前武装（同上一条理由）：武装 → 切类型 → await。
+    const movieRespPromise = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/browse/libraries/1') &&
+        resp.url().includes('mediaType=movie') &&
+        resp.request().method() === 'GET',
+      { timeout: 30_000 },
+    );
 
     // 切换媒体类型 = movie（queryKey 含 mediaType ⇒ 分页回第一页 = 后端过滤的必然结果，非 bug）。
     const before = requests.length;
@@ -67,13 +84,8 @@ test.describe('Library detail type filter E2E (LIBRARY-FILTER-E2E)', () => {
     expect(new URL(requests[requests.length - 1]).searchParams.get('mediaType')).toBe('movie');
 
     // ③ 结果真的变化：等带 mediaType=movie 的响应，断言 items 只含 movie。
-    // waitForResponse 等确定性响应（M1：防 page.on('response') 异步 json push 乱序的竞态窗口假绿）。
-    const movieResp = await page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/api/browse/libraries/1') &&
-        resp.url().includes('mediaType=movie') &&
-        resp.request().method() === 'GET',
-    );
+    //     仍是「确定性响应」口径（不是 page.on('response') 数组末位），只是改成动作前武装。
+    const movieResp = await movieRespPromise;
     const movieKinds = ((await movieResp.json()).items || []).map(
       (i: { kind?: string }) => i.kind,
     );
