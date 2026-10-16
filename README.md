@@ -63,5 +63,12 @@ FMBY v2 多主题前端。分层架构与主题协议见契约仓
 
 ```bash
 pnpm install
-pnpm frontend:verify   # 全链九步门禁（typecheck/build/test/size/dupes/contracts/theme-budget/theme-parity/e2e）
+pnpm verify   # 全链门禁（步骤以 package.json 的 `verify` 为准；含 e2e-gate）
 ```
+
+> **发行契约（REWORK-FE57）**：`pnpm build`（= `pnpm --filter @fmby/v2-host build`）除产出
+> `host/dist/` 外，还会构建主题并把产物**舞台化**到 `host/dist/themes/<id>/dist/**`
+> （`scripts/stage-theme-dist.mjs`）。这是**发行物携带主题的唯一途径** ——
+> 下游打包只取 `host/dist`（主仓 `release.yml` 的 zip、`Dockerfile` 的
+> `COPY /web/host/dist /app/web`），主题不在其中就带不走，装好的实例会每页 404
+> `/themes/<id>/theme.manifest.json`。`pnpm theme-dist` 会断言该布局（`host/dist` 存在时）。

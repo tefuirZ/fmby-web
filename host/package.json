@@ -6,7 +6,7 @@
   "description": "FMBY v2 宿主壳：路由、会话、页面域骨架、主题分发（不承载共享契约；契约见 @fmby/v2-shared）。",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.app.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.app.json --noEmit && vite build --configLoader runner && pnpm -w run build:themes && node ../scripts/stage-theme-dist.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "test": "node --import ./tests/register-aliases.mjs --test tests/*.test.ts",

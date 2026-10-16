@@ -11,7 +11,6 @@ import type { InstallStatusResponse } from '@fmby/v2-shared/contracts/auth';
 /** 安装「进行中」状态集合（需重定向 /install）。completed / unknown 不算。 */
 const INSTALL_IN_PROGRESS_STATES = new Set([
   'needs_database',
-  'configured',
   'needs_admin',
 ]);
 
@@ -20,8 +19,9 @@ const INSTALL_IN_PROGRESS_STATES = new Set([
  *
  * 安装模式进程形态下 `/api/install/status` 带 `state` 字段
  * （needs_database / configured / needs_admin / completed）。
- * 只有「进行中」三态为 true ⇒ 路由守卫重定向 /install、SessionProvider 静默清会话。
- * completed（已安装）/ 无 state（主应用形态或 status 404 已安装）/ 未知 ⇒ false（进主应用）。
+ * 只有「需要数据库」或「需要建管理员」两态为 true ⇒ 路由守卫重定向 /install、
+ * SessionProvider 静默清会话；`configured`（管理员已建、DB 已配、主应用可用）
+ * 和 `completed`/未知均不重定向，放行主应用。/ 无 state（主应用形态或 status 404 已安装）/ 未知 ⇒ false（进主应用）。
  */
 export function isInstallModeInProgress(
   status: InstallStatusResponse | undefined,
