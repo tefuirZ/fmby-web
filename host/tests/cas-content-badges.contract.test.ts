@@ -54,29 +54,40 @@ test('② CasContentListPage 拉取 drives 配置并按 drive_ref join 优先级
   assert.match(src, /drives 配置|admin\/cas\/drives|drive_ref/, '须注明 priority 数据来源与关联键');
 });
 
-test('③ CasContentListPage lease 展示显式标注为 TTL 闸（三闸之一）+ fixme 完整三闸', async () => {
+test('③ CasContentListPage lease 标注 TTL 闸 + **三闸已接线**（原 fixme 已随 fmby-v2 #862 合入而收敛）', async () => {
   const { readFile } = await import('node:fs/promises');
   const src = await readFile(
     new URL('../src/pages/manage/CasContentListPage.tsx', import.meta.url),
     'utf8',
   );
-  // 必须显式标注这是三闸之一的 TTL 闸，别让用户以为这就是完整延迟视图
+  // 仍必须显式标注 lease 是「闸② TTL」，别让用户以为这一列就是完整延迟视图
   assert.match(src, /TTL/, 'lease 列须标注 TTL 闸');
-  assert.match(src, /三闸|三闸之一/, '须标注这是延迟删除三闸之一（非完整视图）');
-  // fixme：完整三闸 / 哪闸在挡 / 宽限期剩余 待后端补 DTO（fmby-v2 #862）
-  assert.match(src, /fixme|待后端|#862|三闸状态/, '须留 fixme 指完整三闸/宽限期待后端补');
+  assert.match(src, /三闸/, '须标注这是延迟删除三闸之一（非完整视图）');
+  // ★本条已随 fmby-v2 #862（`CasContentListItemDto.deferred_gate` / `grace_remaining_ms` +
+  //   `CasFanoutStatusDto.deferred` 逐闸明细）合入而**由 fixme 收敛为真接线**：
+  //   不再接受「待后端补」这类占位，必须真的消费真字段。
+  assert.ok(
+    !/fixme|待后端补|后端无 DTO/.test(src),
+    '三闸字段后端已合（#862）⇒ 不得再留「待后端补」fixme（占位会掩盖真值）',
+  );
+  assert.match(src, /resolveDeferredGateLabel\(item\.deferredGate\)/, '必须消费 deferred_gate 真字段');
+  assert.match(src, /formatGraceRemaining\(item\.graceRemainingMs\)/, '必须消费 grace_remaining_ms 真字段');
 });
 
-test('④ CasContentListPage 不伪造秒传来源徽章（无后端字段，fmby-v2 #861）', async () => {
+test('④ CasContentListPage 的「秒传来源」徽章必须**来自真字段**（fmby-v2 #861 已合）', async () => {
   const { readFile } = await import('node:fs/promises');
   const src = await readFile(
     new URL('../src/pages/manage/CasContentListPage.tsx', import.meta.url),
     'utf8',
   );
-  // 不得凭空造「秒传来源」徽章（后端 SourceKind 无 RapidUpload 变体 + source_kind 未进 DTO）
-  assert.equal(
-    src.includes('秒传来源') && !/秒传来源[^\n]*(?:无|未|待|#861|fixme)/.test(src),
-    false,
-    '若出现「秒传来源」须注明无后端字段（#861），不得当真实徽章渲染',
+  // ★本条已**由否定式守卫翻成正向钉**：原样断言「不许出现秒传来源徽章」是因为当时
+  //   后端 `SourceKind` 无 `RapidUpload` 变体、`source_kind` 未进 DTO（#861 未合）。
+  //   #861 合入后（其 DTO 注释**点名**本消费面），正确的不变量是：
+  //   **必须**从真字段渲染，且**缺失显示 —**（不编造来源）。
+  assert.match(src, /秒传来源/, '必须渲染「秒传来源」列（字段已合）');
+  assert.match(src, /resolveSourceKindLabel\(item\.sourceKind\)/, '必须消费 sourceKind 真字段');
+  assert.ok(
+    !/秒传来源[^\n]*(?:无后端字段|#861|未进 DTO)/.test(src),
+    '不得再把这列标注成「后端无字段」（#861 已合）',
   );
 });

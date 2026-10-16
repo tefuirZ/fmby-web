@@ -70,6 +70,16 @@ export function mapCasFanoutStatus(
   return {
     contentId: raw?.content_id ?? 0,
     drives: (raw?.drives ?? []).map(mapCasDriveStatus),
+    // #862：三闸明细（后端未给 ⇒ null，UI 不编造）。
+    deferred: raw?.deferred
+      ? {
+          blockingGate: raw.deferred.blocking_gate ?? '',
+          sessionClosed: raw.deferred.session_closed ?? false,
+          leaseExpired: raw.deferred.lease_expired ?? false,
+          graceElapsed: raw.deferred.grace_elapsed ?? false,
+          graceRemainingMs: raw.deferred.grace_remaining_ms ?? 0,
+        }
+      : null,
   };
 }
 
@@ -128,6 +138,11 @@ export function mapCasContentSummary(
     mediaItemId: raw?.media_item_id ?? null,
     drives: (raw?.drives ?? []).map(mapCasContentDriveCopy),
     hasLocalEntity: raw?.has_local_entity ?? false,
+    // #658 ④：缺失即 null ⇒ UI 显 —（不编造来源）。
+    sourceKind: raw?.source_kind ?? null,
+    // #862 · #658 ⑤：三闸「当前在挡那一闸」+ 宽限期剩余；缺失即 null ⇒ UI 显 —。
+    deferredGate: raw?.deferred_gate ?? null,
+    graceRemainingMs: raw?.grace_remaining_ms ?? null,
     lease: mapCasContentLeaseRef(raw?.lease),
     updatedAt: raw?.updated_at ?? null,
   };

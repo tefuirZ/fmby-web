@@ -187,3 +187,74 @@ export function buildDrivePriorityMap(
   }
   return map;
 }
+/**
+ * #658 ④「秒传来源」徽章（后端 `CasContentListItemDto.source_kind`，domain 单一真源
+ * `SourceKind::as_str` 的稳定线格式：`publish`/`share`/`offline`/`scan`/`rapid_upload`）。
+ *
+ * 纪律同族：**未知码原样透出**（不猜、不折叠）、**缺失显示 `—`**（不编造）。
+ * `rapid_upload` = 秒传命中（后端 #861 起单独暴露该来源）。
+ */
+export function resolveSourceKindLabel(kind: string | null | undefined): string {
+  switch (kind) {
+    case 'rapid_upload':
+      return '秒传命中';
+    case 'publish':
+      return '发布入库';
+    case 'share':
+      return '分享转存';
+    case 'offline':
+      return '离线下载';
+    case 'scan':
+      return '扫描入库';
+    case null:
+    case undefined:
+    case '':
+      return '—';
+    default:
+      return kind;
+  }
+}
+
+/** 秒传来源徽章色调：仅 `rapid_upload`（秒传命中）用成功色，其余中性。 */
+export function resolveSourceKindTone(kind: string | null | undefined): 'success' | 'neutral' {
+  return kind === 'rapid_upload' ? 'success' : 'neutral';
+}
+
+/**
+ * #862 · #658 ⑤「删除安全可见」：把「当前在挡的那一闸」稳定码翻成人话。
+ *
+ * 取值与后端逐一对齐（`CasContentListItemDto.deferred_gate` 注释 + `CasDeferredGateDto`）：
+ *   `none`（无租约/可回收）· `session_open`（闸① 会话未关闭）· `lease_active`（闸② TTL 未到）
+ *   · `grace`（闸③ 宽限期未满）· `reaped`（已回收，终态）。
+ * 纪律同族：**未知码原样透出**、**缺失/空串显 `—`**（不编造状态）。
+ */
+export function resolveDeferredGateLabel(gate: string | null | undefined): string {
+  switch (gate) {
+    case 'none':
+      return '可回收（无闸在挡）';
+    case 'session_open':
+      return '闸① 播放会话未关闭';
+    case 'lease_active':
+      return '闸② 租约 TTL 未到';
+    case 'grace':
+      return '闸③ 宽限期未满';
+    case 'reaped':
+      return '已回收（终态）';
+    case null:
+    case undefined:
+    case '':
+      return '—';
+    default:
+      return gate;
+  }
+}
+
+/** 宽限期剩余 → 人话（仅当在挡的闸是 `grace` 时展示；其余场景后端恒 0，不显示）。 */
+export function formatGraceRemaining(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || ms <= 0) return '—';
+  const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return h > 0 ? `${h}h${m}m` : m > 0 ? `${m}m${s}s` : `${s}s`;
+}

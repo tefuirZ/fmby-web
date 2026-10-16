@@ -6,7 +6,15 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
-import { resolveCopyStateLabel, resolveCopyStateTone, buildDrivePriorityMap } from './cas/formatCasDrive';
+import {
+  resolveCopyStateLabel,
+  resolveCopyStateTone,
+  resolveSourceKindLabel,
+  resolveSourceKindTone,
+  resolveDeferredGateLabel,
+  formatGraceRemaining,
+  buildDrivePriorityMap,
+} from './cas/formatCasDrive';
 import styles from './longtail-shared/ManageShared.module.css';
 
 /**
@@ -96,10 +104,15 @@ export function CasContentListPage() {
                   <th>媒体项</th>
                   <th>盘副本</th>
                   <th>本地实体</th>
-                  {/* #658 ⑤：lease 仅 RestoreLease TTL 闸部分投影；完整「三闸状态/哪闸在挡/
-                      宽限期剩余」后端无 DTO（fmby-v2 #862）⇒ 显式标注为三闸之一，别让用户
-                      以为这就是完整延迟删除视图。fixme: 待后端补三闸状态 DTO 后补全。 */}
-                  <th>Lease（TTL 闸·三闸之一）</th>
+                  {/* #658 ④：秒传来源（后端 CasContentListItemDto.source_kind，注释点名供本徽章消费
+                      ⇒ rapid_upload = 秒传命中）；缺失显 —，未知码原样透出，不编造。 */}
+                  <th>秒传来源</th>
+                  {/* #658 ⑤（已接线）：lease 是「闸② TTL」的引用；**在挡的那一闸 + 宽限期剩余**
+                      由后端 `CasContentListItemDto.deferred_gate` / `grace_remaining_ms` 提供
+                      （#862 已合，本列消费）；三闸**逐闸明细**（会话/租约/宽限各一布尔）在
+                      「发布编排」页的扇出面（`CasFanoutStatusDto.deferred`）。 */}
+                  <th>Lease（闸② TTL）</th>
+                  <th>删除安全（在挡的闸）</th>
                   <th>更新时间</th>
                   <th>操作</th>
                 </tr>
@@ -127,11 +140,23 @@ export function CasContentListPage() {
                       </td>
                       <td>{item.hasLocalEntity ? '有' : '无'}</td>
                       <td>
+                        <StatusBadge
+                          label={resolveSourceKindLabel(item.sourceKind)}
+                          variant={resolveSourceKindTone(item.sourceKind)}
+                        />
+                      </td>
+                      <td>
                         {item.lease
                           ? `${item.lease.holder} · TTL 到期 ${formatDateTime(
                               new Date(item.lease.expiresAt).toISOString(),
                             )}`
                           : '—'}
+                      </td>
+                      <td>
+                        {item.deferredGate ? resolveDeferredGateLabel(item.deferredGate) : '—'}
+                        {item.deferredGate === 'grace'
+                          ? `（还剩 ${formatGraceRemaining(item.graceRemainingMs)}）`
+                          : ''}
                       </td>
                       <td>{item.updatedAt ? formatDateTime(new Date(item.updatedAt).toISOString()) : '—'}</td>
                       <td>
@@ -146,7 +171,7 @@ export function CasContentListPage() {
                     </tr>,
                     isExpanded ? (
                       <tr key={`${item.contentId}-detail`}>
-                        <td colSpan={8}>
+                        <td colSpan={10}>
                           {item.drives.length === 0 ? (
                             <span className={styles.mutedText}>该内容尚无盘副本。</span>
                           ) : (

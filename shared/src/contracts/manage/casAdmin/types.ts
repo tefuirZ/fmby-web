@@ -77,9 +77,25 @@ export interface CasDriveStatus {
 }
 
 /// 前端域形态 · 一条内容的多盘扇出状态。
+/** #862 · #658 ⑤：延迟删除三闸**逐闸明细**（backend `CasDeferredGateDto`；详版走 fanout 单查面）。 */
+export interface CasDeferredGate {
+  /** 当前**在挡**的闸：`none`/`session_open`/`lease_active`/`grace`/`reaped`。 */
+  blockingGate: string;
+  /** 闸①：播放会话是否已关闭。 */
+  sessionClosed: boolean;
+  /** 闸②：TTL 是否已到（`now >= expires_at`）。 */
+  leaseExpired: boolean;
+  /** 闸③：宽限期是否已满（`now >= expires_at + grace`）。 */
+  graceElapsed: boolean;
+  /** 宽限期剩余（ms，`>=0`）。 */
+  graceRemainingMs: number;
+}
+
 export interface CasFanoutStatus {
   contentId: number;
   drives: CasDriveStatus[];
+  /** 三闸明细；后端未给（老版本/未装配）⇒ `null`，UI 不编造。 */
+  deferred: CasDeferredGate | null;
 }
 
 /// wire 形态 · 盘配置（后端逐字）。
@@ -107,9 +123,17 @@ export interface RawCasDriveStatus {
 }
 
 /** wire 形态 · 扇出状态。 */
+export interface RawCasDeferredGate {
+  blocking_gate: string;
+  session_closed: boolean;
+  lease_expired: boolean;
+  grace_elapsed: boolean;
+  grace_remaining_ms: number;
+}
 export interface RawCasFanoutStatus {
   content_id: number;
   drives: RawCasDriveStatus[];
+  deferred?: RawCasDeferredGate | null;
 }
 
 /** wire 形态 · 对账报告条目。 */
@@ -177,6 +201,20 @@ export interface CasContentSummary {
   /** 是否有本地实体。 */
   hasLocalEntity: boolean;
   /**
+   * #658 ④「秒传来源」：`cas_content.source_kind`（domain 单一真源 `SourceKind::as_str`；
+   * 后端 `CasContentListItemDto.source_kind` 明写供本徽章消费，`rapid_upload` = 秒传命中）。
+   * 数据缺失 ⇒ `null` ⇒ UI 显 `—`，**不编造**。
+   */
+  sourceKind: string | null;
+  /**
+   * #862 · #658 ⑤「删除安全可见」：延迟删除三闸中**当前在挡的那一闸**（稳定码
+   * `none`/`session_open`/`lease_active`/`grace`/`reaped`，后端 `CasContentListItemDto.deferred_gate`）。
+   * 让用户看懂「删了但没真删」是被哪一闸挡着。数据缺失 ⇒ `null` ⇒ UI 显 `—`。
+   */
+  deferredGate: string | null;
+  /** #862：宽限期剩余（ms，`>=0`；无关/已过/已回收为 0）。缺失 ⇒ `null`。 */
+  graceRemainingMs: number | null;
+  /**
    * 还原租约引用（后端最新一条非 Reaped；无 lease/全已回收为 `null`）。
    * ★结构化二字段（holder/expiresAt），不是状态串——与后端 `CasContentLeaseRefDto` 对齐；
    *   过期与否按此刻判断，不折叠成「无 lease」（防伪造对账关键态）。
@@ -213,6 +251,9 @@ export interface RawCasContentSummary {
   media_item_id?: number | null;
   drives?: RawCasContentDriveCopy[];
   has_local_entity?: boolean;
+  source_kind?: string;
+  deferred_gate?: string;
+  grace_remaining_ms?: number;
   lease?: RawCasContentLeaseRef | null;
   updated_at?: number | null;
 }
