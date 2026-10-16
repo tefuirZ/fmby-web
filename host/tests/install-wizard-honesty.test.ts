@@ -127,32 +127,28 @@ test('③ 探活仍须标注「只探活，不写配置」（探活本身确实�
 
 // ★rb01 I4：原本这两条合并成一条 OR（/fmby-install\.lock|重启/）⇒ 只要含 lock 就绿，
 //   **放过了 C1**（当时缺的正是重启指引）。拆开后两条都得成立。
-test('④a 完成后须说明会落安装锁（complete 语义）', () => {
+test('④a 完成段文案不得出现实现术语（SIMPLIFY-INSTALL-WIZARD：用户骂的"花里胡哨"）', () => {
+  // 用户裁定文案砍短、删术语；后端契约亦不得说重启。原「落 fmby-install.lock」等已清。
   const src = renderedInstall('');
-  assert.equal(
-    /fmby-install\.lock/.test(src),
-    true,
-    '完成步骤须说明落 fmby-install.lock',
-  );
+  for (const term of ['fmby-install.lock', '落盘', '原子', '哈希', '连接池', '装配', '热加载']) {
+    assert.equal(src.includes(term), false, `完成段文案不得含术语「${term}」`);
+  }
 });
 
-test('④b 完成后须给出重启指引（安装模式进程不挂主应用路由）', () => {
+test('④b 向导文案不得出现"重启"（后端契约 complete→restart_required:false，前端不得说重启）', () => {
+  // install_flow/mod.rs:753-761 complete 返 restart_required:false，后端自注"前端不得说重启"。
   const src = renderedInstall('');
-  assert.equal(
-    /重启/.test(src),
-    true,
-    'complete 落锁后须重启、由主应用接管 —— 与 ④a 分列，避免 OR 互相掩盖',
-  );
+  assert.equal(/重启/.test(src), false, '向导文案不得出现"重启"字样（与后端 restart_required:false 契约一致）');
 });
 
-test('⑤ complete 必须走精确确认串（防误触，后端强校验）', () => {
-  // 确认串的**比较**现在在完成面板里（完成区已从编排页抽出）。
-  const src = renderedInstall('');
-  // 前端必须有「输入确认串才启用完成按钮」的闸门
+test('⑤ complete 无用户确认门（SIMPLIFY-INSTALL-WIZARD：用户裁定"无需确认"）', () => {
+  // 用户裁定删掉「输入 complete-install 以确认」门；confirm_action 仍由前端程序化发送（后端强校验），
+  // 但不再要求用户手输确认串。完成面板不得再有 confirmValue !== confirmAction 闸门。
+  const panel = renderedInstall(''); // renderedAll：含 InstallCompletionPanel 源码
   assert.equal(
-    /confirmValue\s*!==\s*confirmAction/.test(src),
-    true,
-    'complete 按钮必须校验输入 === 精确确认串（防误触）',
+    /confirmValue\s*!==\s*confirmAction/.test(panel),
+    false,
+    '完成面板不得再有「输入确认串才启用」闸门（用户裁定无需确认）',
   );
 });
 
@@ -295,9 +291,11 @@ test('⑮ 用户名不得加 ASCII-only 白名单（中文等 Unicode 必须可�
  * 此前两组件无条件写「不需重启」，且完成态 UI 上 restart_required 出现 0 次。
  */
 
-test('⑯ 完成态必须显式展示 restart_required（后端返回值，此前 UI 上完全缺失）', () => {
+test('⑯ 完成态不得向用户展示 restart_required / 重启（后端返 false，说了反困惑）', () => {
+  // 后端 complete → restart_required:false ⇒ 前端完成态不展示该字段、不说重启（用户裁定简单点）。
   const page = rendered(INSTALL_PAGE);
-  assert.match(page, /restart_required/, '完成态须展示后端的 restart_required，不能只写在注释里');
+  assert.equal(/restart_required/.test(page), false, '完成态 UI 不得展示 restart_required（false 时说反困惑）');
+  assert.equal(/重启/.test(page), false, '完成态 UI 不得出现"重启"');
 });
 
 test('⑰ 提到「热加载」的组件必须同时限定「落锁后须重启」', () => {

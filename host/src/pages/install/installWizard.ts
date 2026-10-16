@@ -1,9 +1,9 @@
 /**
- * 安装向导的**三步编排**（fmby-v2 #640 卡面：① 数据库+缓存 ② 服务器配置 ③ 管理员配置）。
+ * 安装向导的**两步编排**（SIMPLIFY-INSTALL-WIZARD：用户裁定「简单点」）。
  *
- * ★措辞口径（rb01 N1）：结构三步，但**第 ② 步是核对页、不收集任何输入**
- *   （V2 apply 无 server 字段）⇒ 对外说「两步填写 + 一步核对」，不说「三步填写」，
- *   否则用户会以为第 ② 步也要填。
+ * V2 后端 apply 只收 database / cache / admin 三组，无独立「服务器配置」写入面
+ * ⇒ 原第 ②「服务器配置」核对页并入管理员步（生效值核对在输账号密码那一步显示一次），
+ *    向导收敛为**两步填写**：① 数据库 / 缓存 → ② 管理员（含生效值核对）。
  *
  * 只做门控与翻页，**不重写任何判定**：
  *   - 口令强度/二次确认 → `passwordPolicy.ts`
@@ -14,11 +14,10 @@
 import { confirmPasswordProblem } from './passwordPolicy';
 import { pgFieldsProblem, type PgFields } from './pgConnection';
 
-export type WizardStepId = 'database' | 'server' | 'admin';
+export type WizardStepId = 'database' | 'admin';
 
 export interface WizardStepMeta {
   id: WizardStepId;
-  /** 步骤标题。第 ② 步实为**核对页**（不收集输入，见 stepProblem 的 server 分支）。 */
   title: string;
   /** 序号文案，1 起。 */
   index: number;
@@ -26,8 +25,7 @@ export interface WizardStepMeta {
 
 export const WIZARD_STEPS: readonly WizardStepMeta[] = [
   { id: 'database', title: '数据库 / 缓存', index: 1 },
-  { id: 'server', title: '服务器配置', index: 2 },
-  { id: 'admin', title: '管理员配置', index: 3 },
+  { id: 'admin', title: '管理员', index: 2 },
 ];
 
 /** 向导收集的全部值（与 `InstallApplyRequest` 的三组一一对应）。 */
@@ -64,8 +62,6 @@ export function stepProblem(step: WizardStepId, values: WizardValues): string | 
       }
       return null;
     }
-    case 'server':
-      return null;
     case 'admin': {
       if (values.adminUsername.trim().length === 0) return '请填写管理员用户名';
       if (values.adminPassword.length === 0) return '请先设置管理员密码';

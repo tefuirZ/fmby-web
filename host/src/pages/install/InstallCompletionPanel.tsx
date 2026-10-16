@@ -1,14 +1,12 @@
 /**
- * 安装完成页（fmby-v2 #640 用户裁定 ④ + complete 防误触）。
+ * 安装完成段（SIMPLIFY-INSTALL-WIZARD：用户裁定「无需确认」+「简单点」）。
  *
- * 需求原文：完成页展示管理员账号和密码，密码**默认隐藏**，提供显示/隐藏切换。
+ * 需求：apply 成功（管理员已建、自动登录）后进入本段，展示管理员账号/密码一次，
+ *   密码默认隐藏 + 显示切换；**无「输入 complete-install 确认」门**（用户裁定删）。
  *
- * ★诚实边界：这里展示的口令是**用户刚在本页输入的那个明文**（组件 state），
- *   不是后端回传 —— `InstallApplyResponse` 只平铺 `id` / `username`，
- *   **不含 password**（见 `shared/src/contracts/auth/api.ts` 与
- *   `install_flow.rs:596` 的管理员回执）。所以：
- *   · 刷新页面后本面板不再有口令（state 丢失）⇒ 如实提示「请立即保存」；
- *   · 后端**永远不回落**明文口令 ⇒ 本面板是唯一一次能看到它的地方。
+ * ★诚实边界：这里展示的口令是**用户刚在本页输入的那个明文**（state），不是后端回传 ——
+ *   `InstallApplyResponse` 只平铺 id / username，不含 password。刷新后 state 丢失
+ *   ⇒ 如实提示「请立即保存」；后端永远不回落明文 ⇒ 本段是唯一一次能看到它的地方。
  */
 
 import { useState } from 'react';
@@ -22,10 +20,6 @@ export interface InstallCompletionPanelProps {
   username: string;
   /** 用户输入的明文口令；空串表示本页已刷新、明文不可再取。 */
   password: string;
-  /** 后端防误触的精确确认串（`complete-install`）。 */
-  confirmAction: string;
-  confirmValue: string;
-  onConfirmChange: (value: string) => void;
   /** complete 请求 pending（用于按钮态与文案）。 */
   completing: boolean;
   onComplete: () => void;
@@ -34,9 +28,6 @@ export interface InstallCompletionPanelProps {
 export function InstallCompletionPanel({
   username,
   password,
-  confirmAction,
-  confirmValue,
-  onConfirmChange,
   completing,
   onComplete,
 }: InstallCompletionPanelProps) {
@@ -45,7 +36,7 @@ export function InstallCompletionPanel({
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(`${username}\n${password}`);
+      await navigator.clipboard.writeText(username + '\n' + password);
       setCopied(true);
     } catch {
       // 剪贴板被拒（无安全上下文 / 用户拒绝）⇒ 不谎报成功，留在「可手动选中」状态。
@@ -55,16 +46,8 @@ export function InstallCompletionPanel({
 
   return (
     <fieldset className={styles.fieldset}>
-      <legend className={styles.legend}>④ 完成安装</legend>
-      <p className={styles.noticeBanner}>
-        最后一步会落盘安装锁（<code>fmby-install.lock</code>），此后主应用接管。
-        需要手动输入 <code>{confirmAction}</code> 以防误触。
-      </p>
-
-      <p className={styles.successBanner}>
-        管理员账号已创建。请**立即保存**下面这组凭据 —— 服务端只存哈希，
-        明文口令离开本页即不可再取。
-      </p>
+      <legend className={styles.legend}>完成</legend>
+      <p className={styles.noticeBanner}>管理员账号已建好。请立即保存下面这组凭据。</p>
 
       <label className={styles.fieldGroup}>
         管理员账号
@@ -95,23 +78,13 @@ export function InstallCompletionPanel({
         </button>
       ) : null}
 
-      <label className={styles.fieldGroup}>
-        输入 {confirmAction} 以确认
-        <input
-          className={styles.input}
-          value={confirmValue}
-          onChange={(e) => onConfirmChange(e.target.value)}
-          placeholder={confirmAction}
-          autoComplete="off"
-        />
-      </label>
       <button
         className={styles.submitButton}
         type="button"
-        disabled={completing || confirmValue !== confirmAction}
+        disabled={completing}
         onClick={onComplete}
       >
-        {completing ? '提交中…' : '标记安装完成'}
+        {completing ? '提交中…' : '完成安装'}
       </button>
     </fieldset>
   );

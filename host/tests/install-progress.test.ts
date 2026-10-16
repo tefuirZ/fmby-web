@@ -44,10 +44,13 @@ test('③ complete（落锁）pending 同样走过渡页 —— 落锁后主应�
   );
 });
 
-test('④ 文案须交代「热加载 / 不需重启」（卡面动态配置语义）', () => {
+test('④ 过渡页文案砍短、无术语、不提重启（SIMPLIFY-INSTALL-WIZARD）', () => {
+  // 用户裁定文案砍短删术语；后端契约 restart_required:false 不得说重启。
   const src = read(OVERLAY);
-  assert.match(src, /热加载/);
-  assert.match(src, /不[需需]要?重启|无需重启|不用重启/, '须说明动态配置不需重启进程');
+  for (const term of ['热加载', '落盘', '原子', '连接池', '装配', 'schema']) {
+    assert.equal(src.includes(term), false, `过渡页文案不得含术语「${term}」`);
+  }
+  assert.equal(/重启/.test(src), false, '过渡页文案不得出现"重启"');
 });
 
 test('⑤ 诚实边界：apply 是单请求，不得伪装成「分步进度条」', () => {
