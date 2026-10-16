@@ -72,6 +72,14 @@ import { resolveSourceKindLabel, resolveDeferredGateLabel } from '../src/pages/m
 //   与「宽限期到期后的状态流转」需要**后端测试钩子**（造 `restore_lease` 行 ⇒ 需 CAS-only 内容 +
 //   还原端口，现仅 139 凭据可实现）—— 与 ④ 的正腿同一物理限制，解锁后把 ⑤ 扩写为真链路。
 
+// ## FE-ASSET-NULL-COMPACT-ROUND2：把「能证」补得更硬（可选 SQL 夹具）
+//
+// 上文 ⑤ 的「不能证」里写着：逐闸**真数据**需后端测试钩子。后续查清：`deferred_gate` 只由
+// 「活跃还原租约」派生（`bridges/cas_admin.rs:384` + `DEFAULT_RESTORE_GRACE_MS=10min`），
+// 而租约表就是普通表 ⇒ **纯 SQL 可造**。故 `start.mjs` 增**可选**夹具（`FMBY_E2E_CAS_SEED=1`，
+// **默认关**）：990001 = 哈希族/media_item_id 全 NULL；990002 = 会话已关 + TTL 已过 60s + 未满宽限
+// ⇒ `blocking_gate='grace'`（剩余可知）。本文件的 ⑥ 在开启时断言这两行；**关时显式 skip 并说明**。
+
 test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
 test.describe('CAS 编排面 —— 真实后端（fmby-web#8 判据 2 可观测段）', () => {
@@ -212,7 +220,10 @@ test.describe('CAS 编排面 —— 真实后端（fmby-web#8 判据 2 可观测
     //   依据见文件头。解锁后此处改写为真链路断言，不留静默 skip。
     expect(casCalls).toHaveLength(0);
   });
-  test('⑤ 「删除安全」真值面：列表列与扇出三闸明细都从后端真字段来（⑤ 的运行时验证）', async ({ page }) => {
+  test('⑤ 「删除安全」真值面：列表列与扇出三闸明细都从后端真字段来（⑤ 的运行时验证）', async ({
+    page,
+    isMobile,
+  }) => {
     // ── (1) 内容列表页：新列在场 + 行数 == 接口条数 + 逐行文案 == 真字段映射 ───────────
     const contentsPending = page.waitForResponse(
       (r) => r.url().includes('/api/admin/cas/contents'),
@@ -232,8 +243,9 @@ test.describe('CAS 编排面 —— 真实后端（fmby-web#8 判据 2 可观测
       await expect(page.getByText('暂无 CAS 内容')).toBeVisible();
       // 空态下**不得**凭空画出任何单元格（防 UI 自己造行）
       await expect(dataRows).toHaveCount(0);
-    } else {
-      // 有行才谈列：表头必须在场（去掉 #65 的列 ⇒ 变红），且行数 == 接口条数
+    } else if (!isMobile) {
+      // 有行才谈列；且**只在桌面 project** —— 该表容器带 `desktopOnly`
+      // （`CasContentListPage.tsx:98`），窄视口按设计隐藏 ⇒ 列级断言在 mobile 无意义。
       await expect(page.getByRole('columnheader', { name: '秒传来源' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: '删除安全（在挡的闸）' })).toBeVisible();
       await expect(dataRows).toHaveCount(items.length);
@@ -270,5 +282,68 @@ test.describe('CAS 编排面 —— 真实后端（fmby-web#8 判据 2 可观测
     if (blockingGate === 'grace') {
       await expect(detail).toContainText('还剩');
     }
+  });
+  /**
+   * ⑥ 真数据版「缺失显 — 不编造」+「宽限期在挡」端到端验证（FE-ASSET-NULL-COMPACT-ROUND2）。
+   *
+   * 数据来自 `start.mjs` 的**可选** SQL 夹具（默认关）：990001 = 哈希族/media_item_id 全 NULL；
+   * 990002 = 会话已关 + TTL 已过 60s + 未满 10 分钟宽限 ⇒ `blocking_gate='grace'`（剩余已知）。
+   * 关时本用例**显式 skip 并说明**（不静默跳过，也不为凑绿放宽）。
+   */
+  test('⑥ SQL 夹具真行：NULL 字段显 — 不崩不空白；grace 在挡显「还剩 X」', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(
+      process.env.FMBY_E2E_CAS_SEED !== '1',
+      '未开夹具：本用例需 FMBY_E2E_CAS_SEED=1（见 host/e2e/start.mjs 注释；默认关以免污染既有用例）',
+    );
+
+    const contentsPending = page.waitForResponse(
+      (r) => r.url().includes('/api/admin/cas/contents'),
+      { timeout: 15_000 },
+    );
+    await page.goto('/manage/site/cas/contents');
+    expect((await contentsPending).status()).toBe(200);
+
+    // 列序（本页表头）：0 内容 ID / 1 指纹 / 2 媒体项 / 3 盘副本 / 4 本地实体 /
+    //                    5 秒传来源 / 6 Lease（闸② TTL） / 7 删除安全（在挡的闸） / 8 更新时间 / 9 操作
+    // ★列表表格带 `desktopOnly`（`CasContentListPage.tsx:98`）⇒ 列/行级断言只在桌面 project；
+    //   窄视口下该表按设计隐藏，「不崩不空白」由桌面断言 + 栅格布局本身保证。
+    test.skip(isMobile, '列表表格为 desktopOnly（窄视口隐藏）；本用例的行级断言在桌面 project 验');
+    const rowOf = (contentId: string) =>
+      page.locator('table tbody tr').filter({ has: page.getByText(contentId, { exact: true }) });
+
+    // ① NULL/缺失行：不得崩、不得空白。★注意 `source_kind` 是 **NOT NULL**（本夹具给 'scan'），
+    //    真正为 NULL 的是**指纹族与 media_item_id** ⇒ 「缺失显 — 不编造」在这两列上验：
+    //      指纹列 = 「— · <size>B」（sha256/md5 皆 NULL）；媒体项列 = 「—」（media_item_id NULL）。
+    const nullRow = rowOf('990001');
+    await expect(nullRow).toHaveCount(1);
+    await expect(nullRow.locator('td').nth(1)).toContainText('—');
+    await expect(nullRow.locator('td').nth(2)).toHaveText('—');
+    // 顺带：来源列在**注入的真数据**上也走真映射（scan ⇒ 扫描入库），不是空白也不是原始码
+    await expect(nullRow.locator('td').nth(5)).toHaveText(resolveSourceKindLabel('scan'));
+
+    // ② grace 在挡行：显式「闸③ 宽限期未满」+「还剩 X」（文案由同族助手决定）
+    const graceRow = rowOf('990002');
+    await expect(graceRow).toHaveCount(1);
+    const gateCell = graceRow.locator('td').nth(7);
+    await expect(gateCell).toContainText(resolveDeferredGateLabel('grace'));
+    await expect(gateCell).toContainText(/还剩 \d+m\d+s/);
+
+    // ③ 扇出面同样给逐闸明细（同一 DTO），在挡的闸与列表一致
+    const fanoutPending = page.waitForResponse(
+      (r) => r.url().includes('/api/admin/cas/fanout'),
+      { timeout: 15_000 },
+    );
+    await page.goto('/manage/site/cas');
+    await page.getByRole('textbox', { name: '内容 ID' }).fill('990002');
+    expect((await fanoutPending).status()).toBe(200);
+    const detail = page.getByTestId('cas-deferred-gate-detail');
+    await expect(detail).toBeVisible();
+    await expect(detail).toContainText(resolveDeferredGateLabel('grace'));
+    await expect(detail).toContainText('闸① 会话已关闭：是');
+    await expect(detail).toContainText('闸② TTL 已到：是');
+    await expect(detail).toContainText('闸③ 宽限期已满：否');
   });
 });
