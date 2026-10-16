@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useNavigate } from 'react-router';
 import type { ManageMountProviderType } from '@fmby/v2-shared/contracts/manage';
 import { ManageSectionCard } from '../../../../components';
-import { PROVIDER_OPTIONS } from '../../../types';
+import { CLOUD_SOURCE_LINKS, CLOUD_SOURCE_VALUE_PREFIX, PROVIDER_OPTIONS } from '../../../types';
 import type { MountFormState, MountFormErrors } from '../../../types';
 import { getProviderHint, getRootPathPlaceholder, getRootPathReadonlyHint } from '../../../formUtils';
 import { renderFieldError } from '../../../formRenderers';
@@ -28,6 +29,7 @@ export function BasicInfoSection({
   supportsDirectoryBrowser,
   onProviderTypeChange,
 }: BasicInfoSectionProps) {
+  const navigate = useNavigate();
   return (
     <ManageSectionCard
       title="基本信息"
@@ -61,12 +63,27 @@ export function BasicInfoSection({
               <select
                 className={styles.select}
                 value={formState.providerType}
-                onChange={(event) => onProviderTypeChange(event.target.value as ManageMountProviderType)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  // FE-SOURCE-TYPES-CONSOLIDATE：本组是**入口**而非挂载类型 ⇒ 选中即进入各自原页面
+                  // （路由切走会自然卸载本抽屉）；付费守卫由目标页面承担，这里不复制、不绕过。
+                  if (value.startsWith(CLOUD_SOURCE_VALUE_PREFIX)) {
+                    const target = CLOUD_SOURCE_LINKS.find((link) => link.value === value);
+                    if (target) navigate(target.to);
+                    return;
+                  }
+                  onProviderTypeChange(value as ManageMountProviderType);
+                }}
                 disabled={isSaving}
               >
                 {PROVIDER_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
+                <optgroup label="云盘账号（付费功能；未授权时进入后提示授权）">
+                  {CLOUD_SOURCE_LINKS.map((link) => (
+                    <option key={link.value} value={link.value}>{link.label}</option>
+                  ))}
+                </optgroup>
               </select>
             )}
           </label>

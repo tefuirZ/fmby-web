@@ -4,13 +4,10 @@ import {
   Activity,
   BarChart3,
   CalendarCheck,
-  Cloud,
-  Database,
   Code,
   Globe,
   FileText,
   Film,
-  Files,
   FolderHeart,
   HardDrive,
   Info,
@@ -57,10 +54,9 @@ const manageNavTree: ManageNavNode[] = [
     children: [
       { id: 'media-items', label: '媒体条目', icon: Film, to: '/manage/media/items' },
       { id: 'media-libraries', label: '媒体库', icon: Library, to: '/manage/media/libraries' },
+      // FE-SOURCE-TYPES-CONSOLIDATE：云盘凭据（139 / 微软 / 115 分享）**不再单列侧栏**——
+      // 它们已并入「添加媒体来源」的类型下拉（选后进入各自原页面）；页面本身仍在，只改入口组织。
       { id: 'media-mounts', label: '媒体来源', icon: HardDrive, to: '/manage/media/mounts' },
-      { id: 'media-yun139', label: '139 云盘凭据', icon: Database, to: '/manage/media/yun139' },
-      { id: 'media-microsoft', label: '微软账号与 OAuth', icon: Cloud, to: '/manage/media/microsoft' },
-      { id: 'media-pan115-share', label: '115 分享与同步', icon: Files, to: '/manage/media/pan115-share' },
       { id: 'media-probe-tasks', label: '媒体信息检测', icon: Search, to: '/manage/media/probe-tasks' },
       { id: 'media-naming-scrape', label: '命名与刮削', icon: SlidersHorizontal, to: '/manage/media/naming-scrape' },
       { id: 'media-collections', label: '收藏合集', icon: FolderHeart, to: '/manage/collections' },

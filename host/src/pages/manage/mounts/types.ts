@@ -87,6 +87,27 @@ export interface PendingMountDeleteState {
   sidecarAssetCount: number;
 }
 
+/**
+ * FE-SOURCE-TYPES-CONSOLIDATE：**云盘账号**类数据源的入口。
+ *
+ * 用户裁定（原话）：「139、微软网盘等**不要在侧边栏**，应该**全部集成到"添加数据源"的数据源类型下拉选择**中」。
+ * 故这些入口从侧栏收起，改为「添加媒体来源」抽屉「来源类型」下拉里的**独立一组**。
+ *
+ * 为什么单列一组、且**不是** `ManageMountProviderType`：它们**不是挂载类型** ——
+ * 139 / 微软 / 115 分享 各有自己的页面与流程（凭据 / OAuth / 分享同步），
+ * 选中后应**进入原流程**（页面未删，仅入口组织变化）。混进挂载类型会误导表单状态机。
+ * 未授权实例上的「需要授权」语义**完全沿用原页面**（`ManagePaidFeatureGuard`）——
+ * 本组只负责把用户送到那里，绝不绕过付费守卫。
+ */
+export const CLOUD_SOURCE_LINKS: Array<{ value: string; label: string; to: string }> = [
+  { value: '__cloud:yun139', label: '139 云盘', to: '/manage/media/yun139' },
+  { value: '__cloud:microsoft', label: '微软账号（OneDrive / SharePoint）', to: '/manage/media/microsoft' },
+  { value: '__cloud:pan115-share', label: '115 分享与同步', to: '/manage/media/pan115-share' },
+];
+
+/** 导航型条目的 value 前缀（与 `PROVIDER_OPTIONS` 的值域互不相交）。 */
+export const CLOUD_SOURCE_VALUE_PREFIX = '__cloud:';
+
 export const PROVIDER_OPTIONS: Array<{ value: ManageMountProviderType; label: string }> = [
   { value: 'local', label: 'Local' },
   { value: 'webdav', label: 'WebDAV' },
