@@ -22,7 +22,7 @@ export interface ServerConfigSummaryProps {
 export function ServerConfigSummary({ values }: ServerConfigSummaryProps) {
   return (
     <fieldset className={styles.fieldset}>
-      <legend className={styles.legend}>服务器配置（生效值核对）</legend>
+      <legend className={styles.legend}>配置核对</legend>
       <dl className={styles.fieldGroup}>
         <div className={styles.fieldGroup}>
           <dt className={styles.label}>数据库</dt>
@@ -37,13 +37,9 @@ export function ServerConfigSummary({ values }: ServerConfigSummaryProps) {
           <dd className={styles.input}>{values.adminUsername.trim() || '（第 ③ 步填写）'}</dd>
         </div>
       </dl>
-      <p className={styles.noticeBanner}>
-        以上为将要写入的生效值。应用安装是<strong>一次收全</strong>（探测 → 只写非默认项 →
-        建库 → 建管理员），配置由后端<strong>热加载</strong> —— 指<strong>填写阶段</strong>不需重启；
-        <strong>complete 落锁后仍须重启</strong>，由主应用接管（安装模式进程不挂主应用路由）。
-      </p>
+      <p className={styles.noticeBanner}>以上是将要使用的配置。请核对无误后再填写管理员账号。</p>
       <p className={styles.fieldHint}>
-        V2 安装接口不接收额外的服务器参数；如需改监听地址等，请在安装完成后到管理面配置。
+        如需改监听地址等高级项，请在安装完成后到管理面配置。
       </p>
     </fieldset>
   );

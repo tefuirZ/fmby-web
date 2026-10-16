@@ -98,7 +98,6 @@ export function InstallPage() {
 
   const [step, setStep] = useState<WizardStepId>('database');
   const [values, setValues] = useState<WizardValues>(INITIAL_VALUES);
-  const [completeConfirm, setCompleteConfirm] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const patch = (changes: Partial<WizardValues>) =>
@@ -155,6 +154,8 @@ export function InstallPage() {
     },
   });
   const complete = useMutation({
+    // SIMPLIFY-INSTALL-WIZARD：删掉「用户手输 complete-install 确认」门，但后端仍校验
+    // confirm_action 契约 ⇒ 前端**程序化发送**常量（不再让用户打字确认）。
     mutationFn: () => authApi.completeInstall({ confirm_action: INSTALL_COMPLETE_CONFIRM_ACTION }),
     onSuccess: () => {
       void status.refetch();
@@ -189,9 +190,11 @@ export function InstallPage() {
       <main className={styles.card}>
         <h1 className={styles.brand}>FMBY</h1>
         <p className={styles.subtitle}>
-          安装向导 · 两步填写 + 一步核对
+          安装向导 · 两步填写
           <br />
-          当前状态：{STATE_HEADLINE[state]}
+          {apply.isSuccess
+            ? '管理员已创建，请完成最后一步。'
+            : `当前状态：${STATE_HEADLINE[state]}`}
         </p>
 
         {status.error && state !== 'completed' ? (
@@ -208,7 +211,7 @@ export function InstallPage() {
 
         {apply.isSuccess ? (
           <div className={styles.successBanner} role="status">
-            安装已应用：数据库已初始化，管理员已创建并自动登录。
+            数据库已初始化，管理员账号已创建。
           </div>
         ) : null}
 
@@ -216,12 +219,7 @@ export function InstallPage() {
           <>
             <div className={styles.noticeBanner} role="status">
               <strong className={styles.noticeTitle}>安装已完成</strong>
-              安装锁已落盘。
-              <strong>
-                restart_required =
-                {String(complete.data?.restart_required ?? true)}
-              </strong>
-              ：为 true 时须重启服务，由主应用接管后再登录（安装模式进程不挂主应用路由）。
+              可以开始使用了。
             </div>
             <button
               className={styles.submitButton}
@@ -231,6 +229,15 @@ export function InstallPage() {
               前往首页
             </button>
           </>
+        ) : apply.isSuccess ? (
+          // SIMPLIFY-INSTALL-WIZARD：apply 成功后**收起填写表单**，只显示完成段（线性推进，
+          // 不再表单③ + 完成段④ 重复渲染、不再两套编号）。
+          <InstallCompletionPanel
+            username={values.adminUsername.trim()}
+            password={values.adminPassword}
+            completing={complete.isPending}
+            onComplete={() => complete.mutate()}
+          />
         ) : (
           <form
             className={styles.form}
@@ -282,19 +289,22 @@ export function InstallPage() {
               />
             ) : null}
 
-            {step === 'server' ? <ServerConfigSummary values={values} /> : null}
-
             {step === 'admin' ? (
-              <AdminFieldset
-                username={values.adminUsername}
-                password={values.adminPassword}
-                confirm={values.adminConfirm}
-                displayName={values.adminDisplayName}
-                onUsernameChange={(v) => patch({ adminUsername: v })}
-                onPasswordChange={(v) => patch({ adminPassword: v })}
-                onConfirmChange={(v) => patch({ adminConfirm: v })}
-                onDisplayNameChange={(v) => patch({ adminDisplayName: v })}
-              />
+              <>
+                {/* SIMPLIFY-INSTALL-WIZARD：生效值核对从原独立「服务器配置」步并入管理员步，
+                    在输账号密码那一步显示一次（原来离输账号太远）。 */}
+                <ServerConfigSummary values={values} />
+                <AdminFieldset
+                  username={values.adminUsername}
+                  password={values.adminPassword}
+                  confirm={values.adminConfirm}
+                  displayName={values.adminDisplayName}
+                  onUsernameChange={(v) => patch({ adminUsername: v })}
+                  onPasswordChange={(v) => patch({ adminPassword: v })}
+                  onConfirmChange={(v) => patch({ adminConfirm: v })}
+                  onDisplayNameChange={(v) => patch({ adminDisplayName: v })}
+                />
+              </>
             ) : null}
 
             {pageProblem && step !== 'admin' ? (
@@ -337,18 +347,6 @@ export function InstallPage() {
                 </button>
               )}
             </div>
-
-            {apply.isSuccess ? (
-              <InstallCompletionPanel
-                username={values.adminUsername.trim()}
-                password={values.adminPassword}
-                confirmAction={INSTALL_COMPLETE_CONFIRM_ACTION}
-                confirmValue={completeConfirm}
-                onConfirmChange={setCompleteConfirm}
-                completing={complete.isPending}
-                onComplete={() => complete.mutate()}
-              />
-            ) : null}
           </form>
         )}
 
