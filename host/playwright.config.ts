@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { resolveServerBinary, describeSearchPaths } from './e2e/binaryResolver.mjs';
 
 /**
@@ -14,9 +16,23 @@ import { resolveServerBinary, describeSearchPaths } from './e2e/binaryResolver.m
  *   3. `<主仓>/target/{release,debug}/...`。
  */
 
-// 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让，
-// 与 e2e/start.mjs 同源口径）。
-const webOrigin = `http://127.0.0.1:${Number(process.env.FMBY_E2E_WEB_PORT ?? 5180)}`;
+// 前端/后端服务端口。
+//
+// ★默认端口必须**不撞**（web #52 连续三次判红的真因，验证线原文）：
+//   Error: http://127.0.0.1:5180 is already used, make sure that nothing is running on
+//          the port/url or set reuseExistingServer:true in config.webServer.
+//   端口默认写死 5180/18099、且 `reuseExistingServer: false` ⇒ 只要机器上**任一**别的
+//   e2e 运行（别的 worktree/别的席位，用默认口）还在监听，本次就起不来 ⇒
+//   `check-e2e.mjs` 报「playwright 非零退出但 0 条失败」（**一条用例都没跑**）⇒ 假红。
+//   故**未显式指定时**自动各挑一个空闲端口，并**写回 process.env**：
+//   config 与其子进程（`e2e/start.mjs`）同读这对 env ⇒ 前后端一致。
+//   显式设了 `FMBY_E2E_WEB_PORT`/`FMBY_E2E_BACKEND_PORT` 时**一律尊重**（并行/隔离场景仍可控）。
+const pickFreePort = (): number =>
+  Number(execFileSync(process.execPath, [fileURLToPath(new URL('./e2e/freePort.mjs', import.meta.url))], { encoding: 'utf8' }).trim());
+if (!process.env.FMBY_E2E_WEB_PORT) process.env.FMBY_E2E_WEB_PORT = String(pickFreePort());
+if (!process.env.FMBY_E2E_BACKEND_PORT) process.env.FMBY_E2E_BACKEND_PORT = String(pickFreePort());
+const webOrigin = `http://127.0.0.1:${Number(process.env.FMBY_E2E_WEB_PORT)}`;
+
 
 /**
  * 服务端二进制是否存在 —— **走共享 resolver**（rv01 PR #15 阻断项 ①）。

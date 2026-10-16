@@ -29,12 +29,13 @@
  */
 
 import { spawn } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createServer, preview } from 'vite';
 import { resolveBinary, describeSearchPaths } from './binaryResolver.mjs';
+import { distFreshness } from './distFreshness.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // host/e2e → host → 前端仓根
@@ -46,7 +47,44 @@ const backendPort = Number(process.env.FMBY_E2E_BACKEND_PORT ?? 18099);
 // 前端服务端口（默认 5180；多 worktree 并行时用 FMBY_E2E_WEB_PORT 避让）。
 const webPort = Number(process.env.FMBY_E2E_WEB_PORT ?? 5180);
 const webOrigin = `http://127.0.0.1:${webPort}`;
+// ★LEAK 自愈（GATE-FIX-LEAK 同旨：本仓 /tmp 已积 230+ 个 fmby-e2e-real-*、~2.3G）：
+//   本启动器每次跑都会 mkdtemp 一个 workDir（含 seed DB + data，~20M），而 playwrght
+//   收尾对 webServer 是**硬杀**（SIGKILL）⇒ 本文件的 SIGINT/SIGTERM 处理器根本不执行
+//   ⇒ workDir 每次都残留。SIGKILL 不可捕获，故改为**启动期按 PID 存活自愈**：
+//   把 pid 写进 workDir/.fmby-e2e-pid，启动时删掉那些「标记 pid 已死」的旧 workDir
+//   （绝不碰活跃 run）。稳态 ≈ 1 个目录。
+const PID_MARKER = '.fmby-e2e-pid';
+function pruneStaleWorkDirs() {
+  let removed = 0;
+  try {
+    for (const name of readdirSync(tmpdir())) {
+      if (!name.startsWith('fmby-e2e-real-')) continue;
+      const dir = join(tmpdir(), name);
+      let alive = false;
+      try {
+        const pid = Number(readFileSync(join(dir, PID_MARKER), 'utf8').trim());
+        alive = Number.isInteger(pid) && pid > 0 && existsSync(`/proc/${pid}`);
+      } catch {
+        alive = false; // 无标记/不可读 ⇒ 视为僵死
+      }
+      if (alive) continue;
+      try {
+        rmSync(dir, { recursive: true, force: true });
+        removed += 1;
+      } catch {
+        /* 无权限等：忽略 */
+      }
+    }
+  } catch {
+    /* tmpdir 不可读：忽略（自愈是 best-effort） */
+  }
+  if (removed > 0) {
+    console.log(`[real-server] 清理 ${removed} 个僵死 e2e workDir（/tmp/fmby-e2e-real-*）`);
+  }
+}
+pruneStaleWorkDirs();
 const workDir = mkdtempSync(join(tmpdir(), 'fmby-e2e-real-'));
+writeFileSync(join(workDir, PID_MARKER), String(process.pid), 'utf8');
 const dbPath = join(workDir, 'e2e.db');
 const dataDir = join(workDir, 'data');
 
@@ -147,10 +185,27 @@ let assembled = assembleThemes();
 if (assembled === 0) {
   console.log('[real-server] themes/*/dist 缺失，先执行 pnpm build:themes …');
   const built = await new Promise((resolve) => {
-    const p = spawn(join(webRepoRoot, 'node_modules', '.bin', 'pnpm'), ['build:themes'], {
+    // ★pnpm 解析：仓根 `node_modules/.bin/pnpm` 在本项目**不存在**（pnpm 由独立安装提供，
+    //   如 `~/.npm-global/bin/pnpm`）⇒ 直接 spawn 该路径会 ENOENT ⇒ 本文件紧接着
+    //   `exit(1)`，**全栈起不来**（fresh worktree 必现；themes dist 已在时该分支被跳过而掩盖）。
+    //   照既有写法回退 PATH：仓内有则用仓内，否则用 `pnpm`（不改其它机制）。
+    const localPnpm = join(webRepoRoot, 'node_modules', '.bin', 'pnpm');
+    const pnpmBin = existsSync(localPnpm) ? localPnpm : 'pnpm';
+    // ★REWORK-FE57 后续（实测两轮）：**全新检出差 `themes/*/dist` 时这里必挂** ——
+    //   本机 `pnpm` 经 fmby-shim 进「重活串行闸」，**无逃生阀直接拒跑**（实测原文：
+    //   「原因：本机 4 核；重活并发会挤爆编译队列…确需本机跑重活：FMBY_QUEUE_ALLOW_HEAVY_LOCAL=1」
+    //   ⇒ `pnpm build:themes 失败` ⇒ webServer exit 1 ⇒ playwright 非零退出而**0 条用例失败**，
+    //   正是检验线报的 `[FAIL] playwright 非零退出（exit=1）但 json 报告里 0 条失败`）。
+    //   只给逃生阀还不够（实测第二轮）：**队列还要排槽** —— 另一席的长 e2e 运行持槽时，
+    //   本前置构建排在后面 ⇒ webServer 等到 playwright 的 180s 上限（`Timed out waiting 180000ms`）。
+    //   故此处用 `FMBY_QUEUE_DISABLE=1`：**不进队、直接执行**。
+    //   依据（为什么要破例）：这是 e2e **自身的前置**，且只是两个主题的 lib 打包
+    //   （实测 ~0.3s/主题，非重活）；闸的用意是防「并发重活挤爆 4 核」，不是让测试 harness
+    //   在干净检出上永远起不来。作用域仅**这一个子进程**（不改全局 env、不动闸的其它判据）。
+    const p = spawn(pnpmBin, ['build:themes'], {
       cwd: webRepoRoot,
       stdio: 'inherit',
-      env: process.env,
+      env: { ...process.env, FMBY_QUEUE_DISABLE: '1' },
     });
     p.once('exit', (code) => resolve(code ?? 1));
   });
@@ -173,56 +228,15 @@ backend.on('exit', (code) => {
   process.exit(code ?? 1);
 });
 
-// ---- ③ 起前端（默认服务**已构建产物** host/dist，对齐卡面真实栈口径）----
-// 卡面：「主仓二进制 + 前端 host/dist（已构建）」。dev server 会开 React
-// StrictMode 双调用（仅 dev），在 VideoPlayer 的异步挂载上暴露竞态
-// （实测：dev 下播放页 <video> 不挂载；产物构建无此双调用 → 正常挂载）。
-// 产物不存在时先 build；`FMBY_E2E_DEV=1` 可回落到 dev server（调试用）。
-const useDevServer = process.env.FMBY_E2E_DEV === '1';
-const distIndex = join(webRepoRoot, 'host', 'dist', 'index.html');
-
+// 前端实例句柄（在 ③ 里赋值）；提前声明，供 stop() 与「后端就绪门」安全引用。
 let vite;
-if (useDevServer) {
-  vite = await createServer({
-    root: join(webRepoRoot, 'host'),
-    server: {
-      host: '127.0.0.1',
-      port: webPort,
-      strictPort: true,
-    },
-  });
-  await vite.listen();
-} else {
-  if (!existsSync(distIndex)) {
-    console.log('[real-server] host/dist 缺失，先执行 vite build …');
-    const built = await new Promise((resolve) => {
-      const p = spawn(
-        process.execPath,
-        [join(webRepoRoot, 'host', 'node_modules', '.bin', 'vite'), 'build'],
-        { cwd: join(webRepoRoot, 'host'), stdio: 'inherit', env: process.env },
-      );
-      p.once('exit', (code) => resolve(code ?? 1));
-    });
-    if (built !== 0 || !existsSync(distIndex)) {
-      console.error('[real-server] vite build 失败或产物仍缺失');
-      await stop(1);
-    }
-  }
-  vite = await preview({
-    root: join(webRepoRoot, 'host'),
-    preview: {
-      host: '127.0.0.1',
-      port: webPort,
-      strictPort: true,
-    },
-  });
-}
 
 let stopping = false;
 async function stop(exitCode = 0) {
   if (stopping) return;
   stopping = true;
-  await Promise.allSettled([vite.close()]);
+  // vite 可能尚未创建（后端就绪门在 ③ 之前失败时）⇒ 守卫，避免 TDZ/undefined。
+  await Promise.allSettled(vite ? [vite.close()] : []);
   backend.kill('SIGTERM');
   rmSync(workDir, { recursive: true, force: true });
   process.exit(exitCode);
@@ -231,7 +245,14 @@ async function stop(exitCode = 0) {
 process.on('SIGINT', () => void stop());
 process.on('SIGTERM', () => void stop());
 
-// ---- 等 server 就绪（/api/auth/entry/status 应 200）----
+// ---- ★等 server 就绪，再起前端（/api/auth/entry/status 应 200）----
+// 顺序很关键：playwright 的 webServer 就绪信号是**前端 url**（5180）。若先起前端，
+// 5180 一旦可连 playwright 即开跑，而此时后端可能仍在启动窗口 ⇒ **首个 project**
+// （chromium）加载登录页时 `/api/auth/entry/status` 代理失败 ⇒ 页面进
+// `entryQuery.isError`（「无法连接到服务器」、该态无输入框）；后跑的 project
+// （mobile-chrome）后端已就绪 ⇒ 稳定通过 ⇒ **表现成 flaky**（实测：同 dist 下
+// chromium 30.1s 超时 / mobile 406ms 通过；重跑双双通过）。
+// ⇒ 把就绪门**提到起前端之前**：5180 可连时后端必已 200。
 const readyUrl = `http://127.0.0.1:${backendPort}/api/auth/entry/status`;
 let ready = false;
 for (let i = 0; i < 100; i++) {
@@ -251,3 +272,59 @@ if (!ready) {
   console.error('[real-server] backend did not become ready in time');
   await stop(1);
 }
+
+// ---- ③ 起前端（默认服务**已构建产物** host/dist，对齐卡面真实栈口径）----
+// 卡面：「主仓二进制 + 前端 host/dist（已构建）」。dev server 会开 React
+// StrictMode 双调用（仅 dev），在 VideoPlayer 的异步挂载上暴露竞态
+// （实测：dev 下播放页 <video> 不挂载；产物构建无此双调用 → 正常挂载）。
+// 产物不存在时先 build；`FMBY_E2E_DEV=1` 可回落到 dev server（调试用）。
+const useDevServer = process.env.FMBY_E2E_DEV === '1';
+const distIndex = join(webRepoRoot, 'host', 'dist', 'index.html');
+
+if (useDevServer) {
+  vite = await createServer({
+    root: join(webRepoRoot, 'host'),
+    server: {
+      host: '127.0.0.1',
+      port: webPort,
+      strictPort: true,
+    },
+  });
+  await vite.listen();
+} else {
+  // ★「缺失 **或陈旧**」才 build：原先只在缺失时 build ⇒ 改完源码没重建时会**静默**
+  //   服务旧产物，e2e 验证的是过期前端（极难归因）。判据与 scripts/check-e2e.mjs 同源。
+  const freshness = distFreshness(distIndex, join(webRepoRoot, 'host'), webRepoRoot);
+  if (freshness.missing || freshness.stale) {
+    console.log(
+      freshness.stale
+        ? `[real-server] host/dist 比源码旧（dist ${new Date(freshness.distMtimeMs).toISOString()} < src ${new Date(freshness.srcMtimeMs).toISOString()}），先执行 vite build …`
+        : '[real-server] host/dist 缺失，先执行 vite build …',
+    );
+    const built = await new Promise((resolve) => {
+      const p = spawn(
+        process.execPath,
+        // ★用 vite 的 **JS 入口**（`vite/bin/vite.js`），而不是 `.bin/vite`：后者是
+        //   `#!/bin/sh` 包装脚本，经 `process.execPath`（node）执行会 SyntaxError
+        //   （实测 `missing ) after argument list`）⇒ 「dist 缺失才 build」这条路径
+        //   此前**从未被真正走过**（dist 一直在时被跳过）。
+        [join(webRepoRoot, 'host', 'node_modules', 'vite', 'bin', 'vite.js'), 'build'],
+        { cwd: join(webRepoRoot, 'host'), stdio: 'inherit', env: process.env },
+      );
+      p.once('exit', (code) => resolve(code ?? 1));
+    });
+    if (built !== 0 || !existsSync(distIndex)) {
+      console.error('[real-server] vite build 失败或产物仍缺失');
+      await stop(1);
+    }
+  }
+  vite = await preview({
+    root: join(webRepoRoot, 'host'),
+    preview: {
+      host: '127.0.0.1',
+      port: webPort,
+      strictPort: true,
+    },
+  });
+}
+
