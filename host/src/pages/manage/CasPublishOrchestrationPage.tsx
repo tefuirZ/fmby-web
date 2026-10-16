@@ -5,9 +5,8 @@ import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
-import { resolveCopyStateLabel,
-  resolveDeferredGateLabel,
-  formatGraceRemaining, resolveCopyStateTone } from './cas/formatCasDrive';
+import { resolveCopyStateLabel, resolveCopyStateTone } from './cas/formatCasDrive';
+import { CasDeferredGateDetail } from './cas/CasDeferredGateDetail';
 import styles from './longtail-shared/ManageShared.module.css';
 
 /**
@@ -187,27 +186,13 @@ export function CasPublishOrchestrationPage() {
                 </tr>
               </thead>
               <tbody>
-                {(fanoutQuery.data?.deferred ? (
+                {fanoutQuery.data?.deferred ? (
                   <tr>
-                    {/* #862 · #658 ⑤：延迟删除三闸**逐闸明细**（哪一闸在挡 + 各闸状态 + 宽限期剩余）。 */}
                     <td colSpan={4}>
-                      <div className={styles.stackText}>
-                        <strong>删除安全（延迟删除三闸）</strong>
-                        <span>
-                          当前在挡：{resolveDeferredGateLabel(fanoutQuery.data.deferred.blockingGate)}
-                          {fanoutQuery.data.deferred.blockingGate === 'grace'
-                            ? `（还剩 ${formatGraceRemaining(fanoutQuery.data.deferred.graceRemainingMs)}）`
-                            : ''}
-                        </span>
-                        <span className={styles.mutedText}>
-                          闸① 会话已关闭：{fanoutQuery.data.deferred.sessionClosed ? '是' : '否'} · 闸② TTL 已到：
-                          {fanoutQuery.data.deferred.leaseExpired ? '是' : '否'} · 闸③ 宽限期已满：
-                          {fanoutQuery.data.deferred.graceElapsed ? '是' : '否'}
-                        </span>
-                      </div>
+                      <CasDeferredGateDetail deferred={fanoutQuery.data.deferred} />
                     </td>
                   </tr>
-                ) : null)}
+                ) : null}
                 {(fanoutQuery.data?.drives ?? []).map((drive) => (
                   <tr key={`${drive.driveId}:${drive.driveRef}`}>
                     <td>{drive.driveRef}</td>

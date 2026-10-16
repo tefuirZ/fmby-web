@@ -25,6 +25,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { CasCopyStateBadge } from './cas/CasCopyStateBadge';
+import { CasDeferredGateDetail } from './cas/CasDeferredGateDetail';
 import { ReconcileTriggerButton, RetryCopyButton } from './cas/casWriteActions';
 import { casDriveKey, isDriveDirty, parsePriorityInput } from './cas/driveConfigEditing';
 import {
@@ -244,6 +245,11 @@ function FanoutLookup({
           inputMode="numeric"
         />
       </label>
+      {/* #862 · #658 ⑤：扇出查询成功即渲染三闸明细（`CasFanoutStatusDto.deferred` DTO 必含）——
+          放在此处而非「发布编排页」：真栈零 CAS 内容时后者选不到源 ⇒ 不可达。 */}
+      {fanoutQuery.isSuccess && fanoutQuery.data ? (
+        <CasDeferredGateDetail deferred={fanoutQuery.data.deferred} />
+      ) : null}
       {!valid ? (
         <p>输入内容 ID 后查询其多盘副本状态。</p>
       ) : fanoutQuery.isPending ? (

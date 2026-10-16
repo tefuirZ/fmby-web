@@ -1,0 +1,14 @@
+/* #862 · #658 ⑤ 三闸明细展示件（两处复用）。仅本件样式，不引全局。 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+
+.muted {
+  color: var(--text-secondary);
+}

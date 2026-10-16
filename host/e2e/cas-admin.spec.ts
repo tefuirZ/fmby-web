@@ -5,6 +5,7 @@ import {
   E2E_ENABLED,
   E2E_SKIP_REASON,
 } from './fixtures/helpers';
+import { resolveSourceKindLabel, resolveDeferredGateLabel } from '../src/pages/manage/cas/formatCasDrive';
 
 // fmby-web#8 判据 2：e2e 覆盖「发布 → CAS-only → 播放」。
 //
@@ -54,6 +55,22 @@ import {
 // 徽章矩阵（copy_state 四态 + 未知兜底、size/时间 null 不伪造）由
 // `host/tests/cas-admin-page.contract.test.ts` 以行为断言覆盖：真实栈造不出 drive 行
 // （同上 1/2 条），浏览器层无从渲染 ⇒ 不在 e2e 里重复写恒不成立的字符串检查。
+
+// ## FE-658-E2E-GRACE（⑤ 的运行时验证）—— **能证什么、不能证什么（如实标注）**
+//
+// 当次实测（本席真栈，二进制用 /data/fmby-build/local-target/debug/ 覆盖）：
+//   `GET /api/admin/cas/contents` ⇒ **200 + `[]`** —— 真栈**零 CAS 内容**（同文件 ④ 的证据 1/2：
+//   seed 不种、且无任何 HTTP 写点可造）。⇒ 「列表某行显示在挡的闸 / grace 显还剩 X」
+//   这类**逐行**断言在真数据上**物理不可写**，本文件**不**用假数据凑绿。
+// 可写且非真空的是**两条真栈可达的链路**（本次新增用例 ⑤）：
+//   1) 「内容列表」页：新列的表头在场 + **行数 == 接口 `items.length`** + 每行单元格 ==
+//      该行真字段经同一族助手映射的结果（今天 items=[] ⇒ 行数断言仍承重：UI 多画一行即红）；
+//   2) 「编排页」扇出面：`CasFanoutStatusDto.deferred` **DTO 必含** ⇒ 查询成功后
+//      「删除安全（延迟删除三闸）」明细必须可见，且「当前在挡」文案 == 后端码经
+//      `resolveDeferredGateLabel` 的结果。
+// **登记（交主代理开卡）**：逐闸**真数据**（`deferred_gate != none` / `grace_remaining_ms > 0`）
+//   与「宽限期到期后的状态流转」需要**后端测试钩子**（造 `restore_lease` 行 ⇒ 需 CAS-only 内容 +
+//   还原端口，现仅 139 凭据可实现）—— 与 ④ 的正腿同一物理限制，解锁后把 ⑤ 扩写为真链路。
 
 test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
@@ -194,5 +211,64 @@ test.describe('CAS 编排面 —— 真实后端（fmby-web#8 判据 2 可观测
     // ★这不是「CAS-only 正腿」：正腿（播放字节取自 CAS 副本）在无 139 凭据时物理不可证，
     //   依据见文件头。解锁后此处改写为真链路断言，不留静默 skip。
     expect(casCalls).toHaveLength(0);
+  });
+  test('⑤ 「删除安全」真值面：列表列与扇出三闸明细都从后端真字段来（⑤ 的运行时验证）', async ({ page }) => {
+    // ── (1) 内容列表页：新列在场 + 行数 == 接口条数 + 逐行文案 == 真字段映射 ───────────
+    const contentsPending = page.waitForResponse(
+      (r) => r.url().includes('/api/admin/cas/contents'),
+      { timeout: 15_000 },
+    );
+    await page.goto('/manage/site/cas/contents');
+    const contentsResponse = await contentsPending;
+    expect(contentsResponse.status()).toBe(200);
+    const items = (await contentsResponse.json()) as Array<Record<string, unknown>>;
+    expect(Array.isArray(items)).toBe(true);
+
+    // ★按**真数据**分支（同本文件既有范式：① 的 drives 200/5xx、② 的 rows 0/n）：
+    //   真栈今天 `items = []`（seed 不种、无 HTTP 写点，见文件头证据）⇒ 页面渲染**空态**、
+    //   根本没有表格 ⇒「表头在场」此时不成立。断言之必须与真状态一致，**不得为凑绿放宽**。
+    const dataRows = page.locator('table tbody tr').filter({ has: page.locator('td') });
+    if (items.length === 0) {
+      await expect(page.getByText('暂无 CAS 内容')).toBeVisible();
+      // 空态下**不得**凭空画出任何单元格（防 UI 自己造行）
+      await expect(dataRows).toHaveCount(0);
+    } else {
+      // 有行才谈列：表头必须在场（去掉 #65 的列 ⇒ 变红），且行数 == 接口条数
+      await expect(page.getByRole('columnheader', { name: '秒传来源' })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: '删除安全（在挡的闸）' })).toBeVisible();
+      await expect(dataRows).toHaveCount(items.length);
+      // 逐行：单元格文案必须等于「该行真字段经同一族助手映射」的结果（不是任意字符串）
+      for (let i = 0; i < items.length; i += 1) {
+        const raw = items[i] as { source_kind?: string; deferred_gate?: string };
+        const row = dataRows.nth(i);
+        await expect(
+          row.getByRole('cell', { name: resolveSourceKindLabel(raw.source_kind ?? null) }),
+        ).toBeVisible();
+        await expect(
+          row.getByRole('cell', { name: resolveDeferredGateLabel(raw.deferred_gate ?? null) }),
+        ).toBeVisible();
+      }
+    }
+
+    // ── (2) 编排页扇出面：`deferred` DTO 必含 ⇒ 三闸明细必须可见且文案与后端码一致 ──────
+    const fanoutPending = page.waitForResponse(
+      (r) => r.url().includes('/api/admin/cas/fanout'),
+      { timeout: 15_000 },
+    );
+    await page.goto('/manage/site/cas');
+    await page.getByRole('textbox', { name: '内容 ID' }).fill('1');
+    const fanoutResponse = await fanoutPending;
+    expect(fanoutResponse.status()).toBe(200);
+    const fanoutBody = (await fanoutResponse.json()) as { deferred?: { blocking_gate?: string } | null };
+
+    const detail = page.getByTestId('cas-deferred-gate-detail');
+    await expect(detail).toBeVisible();
+    await expect(detail).toContainText('删除安全（延迟删除三闸）');
+    // 后端一定会给 blocking_gate（DTO 非 Option）⇒ 文案必须与码映射一致
+    const blockingGate = fanoutBody.deferred?.blocking_gate ?? null;
+    await expect(detail).toContainText(resolveDeferredGateLabel(blockingGate));
+    if (blockingGate === 'grace') {
+      await expect(detail).toContainText('还剩');
+    }
   });
 });
