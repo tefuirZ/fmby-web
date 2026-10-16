@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { casAdminApi } from '@fmby/v2-shared/contracts/manage/casAdmin';
 import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
@@ -6,7 +6,7 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
-import { resolveCopyStateLabel, resolveCopyStateTone } from './cas/formatCasDrive';
+import { resolveCopyStateLabel, resolveCopyStateTone, buildDrivePriorityMap } from './cas/formatCasDrive';
 import styles from './longtail-shared/ManageShared.module.css';
 
 /**
@@ -23,6 +23,16 @@ export function CasContentListPage() {
     queryKey: queryKeys.manage.cas.contents(),
     queryFn: () => casAdminApi.listCasContents(),
   });
+  // #658 ④ 徽章：盘优先级真源 = drives 配置端点（GET /admin/cas/drives）；
+  // 内容副本 CasContentDriveCopy 不带 priority ⇒ 按 drive_ref 关联。
+  const drivesQuery = useQuery({
+    queryKey: queryKeys.manage.cas.drives(),
+    queryFn: () => casAdminApi.listDriveConfigs(),
+  });
+  const priorityMap = useMemo(
+    () => buildDrivePriorityMap(drivesQuery.data ?? []),
+    [drivesQuery.data],
+  );
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   const unwired = contentsQuery.data?.unwired ?? false;
@@ -86,7 +96,10 @@ export function CasContentListPage() {
                   <th>媒体项</th>
                   <th>盘副本</th>
                   <th>本地实体</th>
-                  <th>Lease</th>
+                  {/* #658 ⑤：lease 仅 RestoreLease TTL 闸部分投影；完整「三闸状态/哪闸在挡/
+                      宽限期剩余」后端无 DTO（fmby-v2 #862）⇒ 显式标注为三闸之一，别让用户
+                      以为这就是完整延迟删除视图。fixme: 待后端补三闸状态 DTO 后补全。 */}
+                  <th>Lease（TTL 闸·三闸之一）</th>
                   <th>更新时间</th>
                   <th>操作</th>
                 </tr>
@@ -115,7 +128,7 @@ export function CasContentListPage() {
                       <td>{item.hasLocalEntity ? '有' : '无'}</td>
                       <td>
                         {item.lease
-                          ? `${item.lease.holder} · ${formatDateTime(
+                          ? `${item.lease.holder} · TTL 到期 ${formatDateTime(
                               new Date(item.lease.expiresAt).toISOString(),
                             )}`
                           : '—'}
@@ -146,6 +159,12 @@ export function CasContentListPage() {
                                   />
                                   <span className={styles.primaryText}>{drive.driveRef}</span>
                                   <span className={styles.mutedText}>{drive.providerType}</span>
+                                  {/* #658 ④：盘优先级来自 drives 配置端点，按 drive_ref 关联；
+                                      未登记 ⇒ undefined ⇒ 显示「—」不编造。 */}
+                                  <span className={styles.mutedText}>
+                                    优先级{' '}
+                                    {priorityMap.get(drive.driveRef) ?? '—'}
+                                  </span>
                                 </div>
                               ))}
                             </div>
