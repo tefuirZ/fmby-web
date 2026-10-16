@@ -258,3 +258,60 @@ export function formatGraceRemaining(ms: number | null | undefined): string {
   const s = totalSeconds % 60;
   return h > 0 ? `${h}h${m}m` : m > 0 ? `${m}m${s}s` : `${s}s`;
 }
+
+/**
+ * #658 G2（FIX-CAS-G1+G2）· `has_local_entity` 的**三态**裁决：未知 / 无 / 有。
+ *
+ * ★为什么必须三态而不是 `hasLocalEntity ? '有' : '无'`：后端
+ *   `crates/fmby-v2-contracts/src/dto/cas_admin.rs` 的 `CasContentListItemDto::has_local_entity`
+ *   注释明写 —— `cas_content.media_item_id` **当前无任何生产写入口**（#373 接线前**恒 `false`**）。
+ *   把「后端还没算这个值」渲染成「无本地实体」= 把**未知**当**假事实**播报，
+ *   用户会据此以为内容没有本地副本（进而误判对账/误删）。本模块的存在理由就是
+ *   「徽章会不会对用户撒谎」⇒ 三态在此裁决，页面只渲染。
+ *
+ * 接线后怎么办：后端 #373 真正填充 `media_item_id` 后，把下面的
+ * `LOCAL_ENTITY_FIELD_WIRED` 翻成 `true`（一处）⇒ `false` 才开始表达「无」。
+ * 这是**刻意的显式开关**，不是遗留 TODO：默认未知，永不默认成「无」。
+ */
+export const LOCAL_ENTITY_FIELD_WIRED = false;
+
+export type LocalEntityState = 'unknown' | 'none' | 'present';
+
+/** 三态归一：字段缺失/`null` ⇒ 未知；`false` ⇒ 未接线时未知、接线后才算「无」；`true` ⇒ 有。 */
+export function resolveLocalEntityState(
+  hasLocalEntity: boolean | null | undefined,
+  wired: boolean = LOCAL_ENTITY_FIELD_WIRED,
+): LocalEntityState {
+  if (hasLocalEntity === null || hasLocalEntity === undefined) return 'unknown';
+  if (hasLocalEntity) return 'present';
+  return wired ? 'none' : 'unknown';
+}
+
+/** 三态文案：未知必须自带「未接线」原因，避免被读成事实结论。 */
+export function resolveLocalEntityLabel(state: LocalEntityState): string {
+  switch (state) {
+    case 'present':
+      return '有';
+    case 'none':
+      return '无';
+    case 'unknown':
+    default:
+      return '未知（后端未接线）';
+  }
+}
+
+/** 色调：未知用 warning（要引起注意，不能与「无」同色）；有=success；无=neutral。 */
+export function resolveLocalEntityTone(
+  state: LocalEntityState,
+): 'success' | 'warning' | 'neutral' {
+  switch (state) {
+    case 'present':
+      return 'success';
+    case 'none':
+      return 'neutral';
+    case 'unknown':
+    default:
+      return 'warning';
+  }
+}
+

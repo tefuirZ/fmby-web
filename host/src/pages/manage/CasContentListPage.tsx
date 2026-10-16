@@ -14,6 +14,9 @@ import {
   resolveDeferredGateLabel,
   formatGraceRemaining,
   buildDrivePriorityMap,
+  resolveLocalEntityLabel,
+  resolveLocalEntityState,
+  resolveLocalEntityTone,
 } from './cas/formatCasDrive';
 import styles from './longtail-shared/ManageShared.module.css';
 
@@ -103,6 +106,9 @@ export function CasContentListPage() {
                   <th>指纹</th>
                   <th>媒体项</th>
                   <th>盘副本</th>
+                  {/* #658 G2：本列在 `media_item_id` 接线（后端 #373）前恒为「未知」，
+                      故用徽章三态而非「有/无」二元 —— 详见 formatCasDrive.ts 的
+                      `LOCAL_ENTITY_FIELD_WIRED`。 */}
                   <th>本地实体</th>
                   {/* #658 ④：秒传来源（后端 CasContentListItemDto.source_kind，注释点名供本徽章消费
                       ⇒ rapid_upload = 秒传命中）；缺失显 —，未知码原样透出，不编造。 */}
@@ -120,6 +126,9 @@ export function CasContentListPage() {
               <tbody>
                 {items.map((item) => {
                   const isExpanded = expanded.has(item.contentId);
+                  // #658 G2：本地实体是**三态**（未知/无/有）——后端 has_local_entity 在 #373
+                  // 接线前恒 false，故未接线期一律显「未知（后端未接线）」，不默认成「无」。
+                  const localEntityState = resolveLocalEntityState(item.hasLocalEntity);
                   return [
                     <tr key={item.contentId}>
                       <td>{item.contentId}</td>
@@ -138,7 +147,12 @@ export function CasContentListPage() {
                           <StatusBadge label="已复制" variant="success" />
                         ) : null}
                       </td>
-                      <td>{item.hasLocalEntity ? '有' : '无'}</td>
+                      <td>
+                        <StatusBadge
+                          label={resolveLocalEntityLabel(localEntityState)}
+                          variant={resolveLocalEntityTone(localEntityState)}
+                        />
+                      </td>
                       <td>
                         <StatusBadge
                           label={resolveSourceKindLabel(item.sourceKind)}
