@@ -48,3 +48,37 @@ test('① suggest（A2 只读）必须有真实 UI 入口：hook 调用 → 面�
     'suggest 是只读建议，不得像写操作那样 invalidateAll（否则每次点都全量重取）',
   );
 });
+
+test('② 任务中心详情必须有「AI 介入概览」段，且数据源是 AI 端点（V2 任务 DTO 无该字段）', async () => {
+  const drawer = await readSrc('pages/manage/task-center/components/TaskCenterDetailDrawer.tsx');
+
+  assert.match(
+    drawer,
+    /AI 介入概览/,
+    '任务详情必须有「AI 介入概览」段（V1 对位 TaskCenterDetailDrawer.tsx:205）',
+  );
+  assert.match(
+    drawer,
+    /useAiInterventionThreadQuery/,
+    '该段必须复用既有 AI 干预查询 hook（复用而非新造抽象）',
+  );
+  // ★有意偏离（V1 读 detail.aiIntervention；V2 任务 DTO 无该字段）：
+  //   数据源改走既有 AI 端点，以任务条目的 mediaItemId 定位。
+  assert.match(
+    drawer,
+    /mediaItemId/,
+    '必须用任务条目的 mediaItemId 定位（V2 任务 DTO 只给 id，不给 ai 上下文）',
+  );
+  // 没有 mediaItemId 的条目不得硬渲染空壳（同 V1 `if (!context) return null`）
+  assert.match(
+    drawer,
+    /if \(!mediaItemId\)[\s\S]{0,80}?return null/,
+    '无 mediaItemId 时必须提前返回 null（不渲染空壳段）',
+  );
+  // 段落必须真的被挂进渲染树（否则组件写了也不用 = 死代码）
+  assert.match(
+    drawer,
+    /<TaskCenterAiInterventionSection\s+mediaItemId=/,
+    '段落组件必须在抽屉渲染树里被实际使用',
+  );
+});
