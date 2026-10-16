@@ -102,7 +102,7 @@ export const PROBE_FAILURE_LABEL: Record<ProbeFailureKind, string> = {
   tcp: '网络层连不上：端口没开、防火墙拦了，或数据库没监听这个地址。',
   auth: '认证失败：账号或密码不对（注意大小写与特殊字符是否被改动）。',
   'database-missing': '库不存在：请先建库，或把「数据库名」改成已存在的那个。',
-  'schema-unwritable': '无写权限：该账号对 schema（默认 public）没有建表权限，安装要写盘。',
+  'schema-unwritable': '无法写入：该账号对数据库（默认 public）不能建表，安装需要写入数据。',
   unknown: '后端未给出可识别的原因，原始报错如下。',
 };
 

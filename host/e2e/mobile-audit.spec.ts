@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect, type Page } from '@playwright/test';
@@ -65,6 +65,61 @@ const DEVICES = [
   { key: 'desktop-1280', width: 1280, height: 800 },
 ];
 
+/**
+ * FE-E2E-924：25 页 × 1 例 = 单例约 8 分钟，被 `test.setTimeout(240_000)` 自身砍断
+ * （2026-10-16 实测：`sweep phone-375` 在 240s 处 timeout，跑到第 ~12 页）。
+ * ⇒ 按 5 页一组拆例（**不靠抬高超时**：600s 只是把 25 页的耦合失败窗口拉长，
+ *   一次崩溃仍丢全部 25 页结果；拆组后每组 5 页、失败可 `--last-failed` 单组重试，
+ *   且逐页结果仍完整落进同一张表）。断言强度不变：并集仍是 25 页。
+ */
+const GROUP_SIZE = 5;
+const PAGE_GROUPS: Array<{ key: string; pages: typeof PAGES }> = [];
+for (let i = 0; i < PAGES.length; i += GROUP_SIZE) {
+  const slice = PAGES.slice(i, i + GROUP_SIZE);
+  PAGE_GROUPS.push({ key: `p${i + 1}-${i + slice.length}`, pages: slice });
+}
+
+/** 逐页实测结果（落仓内报告；截图全量集仍按 evidence-policy 走 gitignored 的 full/）。 */
+type SweepRow = {
+  device: string; group: string; page: string; path: string;
+  gotoMs: number; shotMs: number; overflowPx: number; culprit: string;
+};
+const SWEEP_ROWS: SweepRow[] = [];
+const REPORT_DIR = join(REPO_ROOT, 'docs', 'evidence', 'e2e-full-table');
+
+function writeSweepReport(deviceKeys: string[]) {
+  mkdirSync(REPORT_DIR, { recursive: true });
+  const byDevice = deviceKeys.map((d) => {
+    const rows = SWEEP_ROWS.filter((r) => r.device === d);
+    const totalMs = rows.reduce((a, r) => a + r.gotoMs + r.shotMs, 0);
+    const bad = rows.filter((r) => r.overflowPx > 4);
+    const lines = [
+      `### device \`${d}\`｜${rows.length} 页 / ${rows.length ? Math.ceil(rows.length / GROUP_SIZE) : 0} 组｜累计 ${(totalMs / 1000).toFixed(1)}s｜溢出>4px：**${bad.length}**`,
+      '',
+      '| 组 | 页面 | path | goto+网络空闲(ms) | 截图(ms) | 溢出(px) | 越界元素 |',
+      '|---|---|---|---|---|---|---|',
+    ];
+    for (const r of rows) {
+      lines.push(
+        `| ${r.group} | ${r.page} | \`${r.path}\` | ${r.gotoMs} | ${r.shotMs} | ${r.overflowPx}${r.overflowPx > 4 ? ' ⚠' : ''} | ${r.culprit || '—'} |`,
+      );
+    }
+    return lines.join('\n');
+  });
+  const header = [
+    '# mobile-audit 全表逐页实测（FE-E2E-924）',
+    '',
+    `生成：\`host/e2e/mobile-audit.spec.ts\` 的 responsive sweep（每组 ${GROUP_SIZE} 页，共 ${PAGES.length} 页 × ${DEVICES.length} 设备）。`,
+    '',
+    '- 报告**入库**；截图全量集仍写 `docs/evidence/fe-opt-02/full/`（`.gitignore` 已含，见 `docs/evidence-policy.md` R1/R2）。',
+    '- `溢出(px)` 仅 phone-375 档采集（tablet/desktop 恒 0/—，非漏测：横向溢出的核心断言在手机档）。',
+    '',
+  ].join('\n');
+  const file = join(REPORT_DIR, 'mobile-audit-sweep.md');
+  writeFileSync(file, header + byDevice.join('\n\n') + '\n', 'utf8');
+  console.log(`[audit] 全表报告已写：docs/evidence/e2e-full-table/${'mobile-audit-sweep.md'}（${SWEEP_ROWS.length} 行）`);
+}
+
 async function goToStable(page: Page, path: string) {
   await page.goto(path);
   // 主内容区出现且网络空闲（数据面加载完）——截图口径一致。
@@ -76,19 +131,26 @@ async function goToStable(page: Page, path: string) {
 /** ① 三断点全页截图 + 横向溢出审计（手机 <640 档是核心断言）。 */
 test.describe('responsive sweep', () => {
   for (const device of DEVICES) {
-    test(`sweep ${device.key}`, async ({ page }) => {
-      test.setTimeout(240_000);
+    for (const group of PAGE_GROUPS) {
+      test(`sweep ${device.key} ${group.key}`, async ({ page }) => {
+        test.setTimeout(240_000);
       await page.setViewportSize({ width: device.width, height: device.height });
       await resetBackend();
       await login(page);
       mkdirSync(`${SHOTS}/${device.key}`, { recursive: true });
       const overflowPages: string[] = [];
-      for (const item of PAGES) {
+      for (const item of group.pages) {
+        const t0 = Date.now();
         await goToStable(page, item.path);
+        const gotoMs = Date.now() - t0;
+        const t1 = Date.now();
         await page.screenshot({
           path: `${SHOTS}/${device.key}/${item.name}.png`,
           fullPage: true,
         });
+        const shotMs = Date.now() - t1;
+        let overflowPx = 0;
+        let culprit = '';
         if (device.key === 'phone-375') {
           // 手机档：文档不得横向溢出（表格区允许内部滚动，不算文档溢出）。
           const overflow = await page.evaluate(() => {
@@ -117,8 +179,14 @@ test.describe('responsive sweep', () => {
             }
             return { over, culprit };
           });
+          overflowPx = overflow.over;
+          culprit = overflow.culprit;
           if (overflow.over > 2) overflowPages.push(`${item.name} (+${overflow.over}px ${overflow.culprit})`);
         }
+        SWEEP_ROWS.push({
+          device: device.key, group: group.key, page: item.name, path: item.path,
+          gotoMs, shotMs, overflowPx, culprit,
+        });
       }
       if (device.key === 'phone-375') {
         // FE-OPT-02 诊断：home 页顶栏元素的 media query 命中状态
@@ -138,10 +206,16 @@ test.describe('responsive sweep', () => {
         console.log(`[audit] phone horizontal overflow pages: ${overflowPages.length ? overflowPages.join(', ') : 'none'}`);
         // 归档审计结果供 handoff 引用（断言宽容：>4px 视为真溢出，1-4px 是滚动条噪声）。
         const serious = overflowPages.filter((s) => Number(s.match(/\+(\d+)px/)?.[1] ?? 0) > 4);
-        expect(serious, `横向溢出页（>4px）：${serious.join(', ')}`).toHaveLength(0);
+        expect(serious, `横向溢出页（>4px）【${group.key}】：${serious.join(', ')}`).toHaveLength(0);
       }
-    });
+      });
+    }
   }
+});
+
+/** 全部组跑完后把逐页实测落成仓内报告（workers=1 ⇒ 本文件串行，表是完整的）。 */
+test.afterAll(() => {
+  writeSweepReport(DEVICES.map((d) => d.key));
 });
 
 /** ② 触控目标 ≥44px（--touch-min 纪律；mobile viewport 实测关键交互元素）。 */
