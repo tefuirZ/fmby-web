@@ -15,7 +15,7 @@ import {
   resolveDriveWriteAffordance,
 } from './driveConfigEditing';
 
-function DriveConfigTable({
+export function DriveConfigTable({
   configs,
   onSave,
   saving,
