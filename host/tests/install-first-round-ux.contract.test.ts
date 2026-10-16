@@ -44,14 +44,14 @@ test('①b isNotFound — 非 404（401/403/500/网络错/非 ApiError）一律 
 // 纯函数：isInstallModeInProgress（A/B 的安装模式判定）
 // ───────────────────────────────────────────────────────────────────────────
 
-test('② isInstallModeInProgress — 安装中状态（needs_database/configured/needs_admin）⇒ true', () => {
+test('② isInstallModeInProgress — 安装中状态（needs_database/needs_admin）⇒ true', () => {
   assert.equal(isInstallModeInProgress({ state: 'needs_database' }), true);
-  assert.equal(isInstallModeInProgress({ state: 'configured' }), true);
   assert.equal(isInstallModeInProgress({ state: 'needs_admin' }), true);
 });
 
 test('②b isInstallModeInProgress — completed / 无 state / 未知态 ⇒ false（已安装⇒进主应用）', () => {
   assert.equal(isInstallModeInProgress({ state: 'completed' }), false);
+  assert.equal(isInstallModeInProgress({ state: 'configured' }), false);
   assert.equal(isInstallModeInProgress({}), false);
   assert.equal(isInstallModeInProgress(undefined), false);
   assert.equal(isInstallModeInProgress({ state: 'some_future_state' }), false);
