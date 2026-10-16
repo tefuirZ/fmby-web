@@ -68,13 +68,25 @@
 /* 站名退化为宽字距小字：是一枚标记，不是招牌 */
 .brand {
   font-size: 13.5px;
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibibold);
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
   text-decoration: none;
   color: #ffffff;
   padding-right: var(--space-2);
   transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+/* FE-ASSET-FALLBACK-TAPTARGETS ②：站点 logo 链接原约 64×22，触屏点击目标不足。
+   触屏下把盒撑到 --touch-min（44 高）——文字仍 13.5px、视觉零变化，
+   但 boundingBox 可直接量到 ≥44（比 ::before 伪元素扩展更易验证）。
+   桌面（pointer:fine）不适用，零影响。 */
+@media (hover: none) and (pointer: coarse) {
+  .brand {
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 .brand:hover {
