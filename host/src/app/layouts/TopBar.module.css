@@ -68,7 +68,7 @@
 /* 站名退化为宽字距小字：是一枚标记，不是招牌 */
 .brand {
   font-size: 13.5px;
-  font-weight: var(--font-weight-semibibold);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
   text-decoration: none;
