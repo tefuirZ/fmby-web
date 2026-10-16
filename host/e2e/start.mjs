@@ -191,10 +191,21 @@ if (assembled === 0) {
     //   照既有写法回退 PATH：仓内有则用仓内，否则用 `pnpm`（不改其它机制）。
     const localPnpm = join(webRepoRoot, 'node_modules', '.bin', 'pnpm');
     const pnpmBin = existsSync(localPnpm) ? localPnpm : 'pnpm';
+    // ★REWORK-FE57 后续（实测两轮）：**全新检出差 `themes/*/dist` 时这里必挂** ——
+    //   本机 `pnpm` 经 fmby-shim 进「重活串行闸」，**无逃生阀直接拒跑**（实测原文：
+    //   「原因：本机 4 核；重活并发会挤爆编译队列…确需本机跑重活：FMBY_QUEUE_ALLOW_HEAVY_LOCAL=1」
+    //   ⇒ `pnpm build:themes 失败` ⇒ webServer exit 1 ⇒ playwright 非零退出而**0 条用例失败**，
+    //   正是检验线报的 `[FAIL] playwright 非零退出（exit=1）但 json 报告里 0 条失败`）。
+    //   只给逃生阀还不够（实测第二轮）：**队列还要排槽** —— 另一席的长 e2e 运行持槽时，
+    //   本前置构建排在后面 ⇒ webServer 等到 playwright 的 180s 上限（`Timed out waiting 180000ms`）。
+    //   故此处用 `FMBY_QUEUE_DISABLE=1`：**不进队、直接执行**。
+    //   依据（为什么要破例）：这是 e2e **自身的前置**，且只是两个主题的 lib 打包
+    //   （实测 ~0.3s/主题，非重活）；闸的用意是防「并发重活挤爆 4 核」，不是让测试 harness
+    //   在干净检出上永远起不来。作用域仅**这一个子进程**（不改全局 env、不动闸的其它判据）。
     const p = spawn(pnpmBin, ['build:themes'], {
       cwd: webRepoRoot,
       stdio: 'inherit',
-      env: process.env,
+      env: { ...process.env, FMBY_QUEUE_DISABLE: '1' },
     });
     p.once('exit', (code) => resolve(code ?? 1));
   });
