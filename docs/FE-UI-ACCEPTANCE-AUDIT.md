@@ -258,22 +258,22 @@
 
 两处均属 #658 CAS 新代码，**阻塞全部前端 typecheck**。修法：A1 加 `export`（与其余 `mapCas*` 同构）；A2 照 `CasContentListPage.tsx:102` 惯例取 `sha256 ?? md5 ?? '—'`。
 
-### B. 测试陈旧 / 基建（本轮已修 3，另 1 未修）
+### B. 测试陈旧 / 基建（4 项全部已修）
 
 | # | 测试 | 判定 | 处置 |
 |---|---|---|---|
 | B1 | `a11y-static-contract.test.ts` → `SearchOverlay.tsx:91` | **测试陈旧**（行号漂移：91 行现为 `document.addEventListener`，真正 `<input>` 在 **117** 且**已有** `aria-label="搜索电影、剧集"`）⇒ 产品无缺口 | ✅ 已修行号 91→117 |
 | B2 | `theme-skins.test.ts` ready/empty（2 条） | **测试陈旧**（预填 query key `['browse','library','42']` 缺第 4 段 `mediaType`；现 key = `['browse','library',id,mediaType ?? null]`）⇒ 缓存未命中恒 loading，产品态机正常 | ✅ 已修 key 补 `'all'` |
-| B3 | `search-overlay-focus.test.ts`（PlaybackSidebar Esc / SearchOverlay 焦点归还） | **环境（基建）**：探针 entry 用 **bare specifier**（`import from 'react'`）故必须写入仓库树 `host/tests/`；而 `pnpm test` 经 fmby-queue **降权到 tefuir**，仓库树 root:755 ⇒ **EACCES**。直跑（不降权）全绿 | ⚠️ **未修**，见下 |
+| B3 | `search-overlay-focus.test.ts`（PlaybackSidebar Esc / SearchOverlay 焦点归还） | **环境（基建）**：探针 entry 原用 **bare specifier**（`import from 'react'`）故只能写入仓库树 `host/tests/`；而 `pnpm test` 经 fmby-queue **降权到 tefuir**，仓库树 root:755 ⇒ **EACCES**。直跑（不降权）全绿 | ✅ 已修（#47：entry 落 `os.tmpdir()`，照 `table-row-keynav.test.ts` 先例） |
 
-**B3 说明**：该测试把 entry 写到 `HOST_ROOT/tests/__probeFe02Dom-entry.tsx`（`search-overlay-focus.test.ts:91`）。仓库既有先例 `table-row-keynav.test.ts` 用「entry 落 tmpdir + node_modules 绝对路径 import」绕开，但本测试未采用 ⇒ **经 sanctioned runner 跑 `pnpm test` 必红**。修它需照先例改 entry 模板（非平凡），**建议另卡**。
+**B3 后续收敛（2026-10-16 回填）**：该测试原把 entry 写到 `HOST_ROOT/tests/__probeFe02Dom-entry.tsx` ⇒ 经 fmby-queue 降权后写不进 root:755 仓库树、`pnpm test` 对**全部席位**恒红。**已修（#47 已合）**：entry 改落 `mkdtemp(join(os.tmpdir(), 'fe02-dom-'))`，`react`/源码全走**绝对路径** import（注释 `search-overlay-focus.test.ts:101-103` 记录原因），并在收尾 `rm` 整棵 work（同卡另修 `/tmp` 泄漏）。复跑 `pnpm test` 不再 EACCES。
 
 ### C. 存量缺口（部分本轮已修）
 
-1. ~~**`ManageCasPage.tsx` 三张裸表无任何 a11y 标注**~~ → **✅ 本轮已修**（补 `aria-label` + 契约 ⑤）。残留：三表仍无 `.tableWrap`（窄视口横向溢出保护），建议另卡。
+1. ~~**`ManageCasPage.tsx` 三张裸表无任何 a11y 标注**~~ → **✅ 本轮已修**（补 `aria-label` + 契约 ⑤）。~~残留：三表仍无 `.tableWrap`~~ → **后续已修（#49 已合）**：三表补 `.tableWrap` 横向滚动区（窄视口不再溢出文档）。
 2. **52 张表「表本身无名」**：名字只在外层 region（既定范式，非缺陷，记已知边界）。
 3. **`react-hook-form`+`zod` 未被使用**（仅 1 文件）：20 个表单手写校验，风格不统一。
-4. **B3 的 EACCES**（见上）。
+4. ~~**B3 的 EACCES**（见上）~~ → **已修（#47 已合）**，见 §5.B 的 B3 后续收敛。
 
 ### D. 设计如此（待后端，不造假 —— 非缺陷）
 
