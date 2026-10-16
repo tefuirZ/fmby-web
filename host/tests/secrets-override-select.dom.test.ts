@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const HOST_ROOT = join(import.meta.dirname, '..');
@@ -135,7 +135,8 @@ async function selectOptionsFor(
 ): Promise<string[]> {
   const bundle = await buildProbe(overridableKeysLiteral);
   if (!bundle) throw new Error('build skipped');
-  const dir = join(bundle, '..');
+  const outDir = dirname(bundle); // …/<work>/dist
+  const work = dirname(outDir); // mkdtemp 的 fe45-select-*（须整棵清理）
   const page = await browser.newPage();
   try {
     await page.setContent('<!doctype html><html><body><div id="root"></div></body></html>');
@@ -153,7 +154,9 @@ async function selectOptionsFor(
     return values.filter((v) => v !== '');
   } finally {
     await page.close();
-    await rm(dir, { recursive: true, force: true });
+    // ★清理**整棵** work（含 outDir）——此前 `rm(join(bundle,'..'))` 只删到 outDir，
+    //   work（`fe45-select-*`）本体残留 ⇒ /tmp 累积（实测 25 条）。见 LEAK 注释。
+    await rm(work, { recursive: true, force: true });
   }
 }
 
