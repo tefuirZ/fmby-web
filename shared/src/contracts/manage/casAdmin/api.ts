@@ -220,12 +220,14 @@ export const casAdminApi = {
   },
 
   ///
-  /// `GET` —— CAS 内容列表（#658-CONTENT-LIST，w02 后端 CAS-CONTENT-LIST-API 补）。
+  /// `GET` —— CAS 内容列表（#658-CONTENT-LIST）。
   ///
-  /// ★数据面未就绪（w02 端点未合 / 端口未装配）⇒ 返回 `{ items: [], unwired: true }`，
-  ///   **不造假数据**；页面据 `unwired` 显式提示「数据面未就绪」。
-  /// ★w02 端点未合时该路由不存在 ⇒ 404 `not_found`，归为「数据面未就绪」而非接线错误
-  ///   （列表端点 404 = 端点不存在，不是业务 404）。
+  /// ★后端读面**已实现**并挂进生产 router（fmby-v2
+  ///   `crates/fmby-v2-http/src/routes/admin_cas.rs` 的 `cas_list_contents`）
+  ///   ⇒ `unwired` 的含义是**本实例**没给出数据，不是「端点没做」。
+  /// ★CAS 端口未装配 ⇒ 503/501（`isCasAdminUnwired`）；后端版本过旧、路由不存在 ⇒ 404
+  ///   （列表端点 404 = 该路由不存在，不是业务资源 404）——两者都归 `unwired:true`，
+  ///   返回 `{ items: [], unwired: true }`，**不造假数据**；页面据此显式提示。
   /// ★其余错误（403 能力不足等）⇒ 抛错，交页面 error 态透传后端原文。
   async listCasContents(): Promise<{
     items: CasContentSummary[];

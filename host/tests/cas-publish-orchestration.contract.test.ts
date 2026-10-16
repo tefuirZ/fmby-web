@@ -6,12 +6,13 @@
 //   - 后端 CAS 管理面现有 4 端点全是读面 + 单盘配置写（GET/PUT drives、
 //     GET fanout/{content_id}、GET reconcile）——**无「发起扇出」写端点**。
 //   - 「扇出已存在内容的重试」= #671 写面 retryFanoutCopy（rb01 PR #678，503 unwired）。
-//   - 「选源内容」= w02 CAS-CONTENT-LIST-API 的 listCasContents（待落地，unwired）。
+//   - 「选源内容」= listCasContents（后端读面**已实现**：v2 `admin_cas.rs::cas_list_contents`）。
+//     ⇒ `unwired:true` = **本实例**没给出数据（端口未装配 503 / 版本过旧 404），不是「端点没做」。
 //   ⇒ 「发起扇出」核心写面后端**完全没有** ⇒ 本页 fixme（按钮禁用 + 显式提示待后端），
 //     **不得**调用不存在的端点、**不得**伪造扇出成功。
 //
 // 纪律（承 #40 / cas-admin-page 契约层）：
-//   1. 数据面未就绪（w02 list 端点未合 / 端口未装配）⇒ fail-closed 空态 + 显式提示，
+//   1. 数据面不可用（本实例 CAS 端口未装配 / 路由 404）⇒ fail-closed 空态 + 显式提示，
 //      **不造假数据**；
 //   2. copy_state 是后端开放字符串 ⇒ 原样透出不折叠（复用 formatCasDrive 纯函数）；
 //   3. 失败原因 reason_code/reason_detail 原样透出（#671），未知码显示原文不静默归「无」。
@@ -47,17 +48,19 @@ test('② 页面走 queryKeys.cas.*（不得内联字符串键 —— F-27 同�
   );
 });
 
-test('③ 选源内容走 listCasContents + 数据面未就绪 fail-closed 空态（不造假数据）', () => {
+test('③ 选源内容走 listCasContents + 数据面不可用 fail-closed 空态（不造假数据）', () => {
   const page = read(PAGE);
-  assert.ok(page.includes('listCasContents'), '选源内容须走 listCasContents（w02 端点）');
+  assert.ok(page.includes('listCasContents'), '选源内容须走 listCasContents');
   assert.ok(
     page.includes('unwired'),
-    '须据 listCasContents 的 unwired 标记区分「数据面未就绪」与「真空」',
+    '须据 listCasContents 的 unwired 标记区分「数据面不可用」与「真空列表」',
   );
-  // ★fail-closed：w02 端点未合 ⇒ 显式提示数据面未就绪，不渲染成「0 条内容」的假空态。
+  // ★fail-closed：本实例取不到数据 ⇒ 显式提示「数据面不可用」，不渲染成「0 条内容」的假空态。
+  // ★#78 文案更正：旧判据里的「尚未接线 / 等待后端」是**对后端的错误断言**（端点早已实现），
+  //   所以判据同步换成如实表述；行为要求不变（仍须显式提示、仍须与真空分两态）。
   assert.ok(
-    /数据面未就绪|尚未接线|等待后端/.test(page),
-    '数据面未就绪须显式提示（不伪装成正常空列表）',
+    /数据面不可用|数据面在本实例不可用/.test(page),
+    '数据面不可用须显式提示（不伪装成正常空列表，也不谎称「后端没做」）',
   );
 });
 
