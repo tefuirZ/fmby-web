@@ -14,6 +14,7 @@ import type { UseMutationResult } from '@tanstack/react-query';
 import { casAdminApi } from '@fmby/v2-shared/contracts/manage/casAdmin';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
+import styles from '../longtail-shared/ManageShared.module.css';
 
 /**
  * 触发一次 `.cas` 对账（`POST /api/admin/cas/reconcile/trigger?confirmed=true`）。
@@ -27,7 +28,7 @@ export function ReconcileTriggerButton({
 }) {
   return (
     <div>
-      <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+      <button type="button" className={styles.casHitBtn} disabled={mutation.isPending} onClick={() => mutation.mutate()}>
         {mutation.isPending ? '触发中…' : '触发对账'}
       </button>
       {mutation.isSuccess ? <span>已触发对账（报告稍后刷新）</span> : null}
@@ -63,7 +64,7 @@ export function RetryCopyButton({
 
   return (
     <div>
-      <button type="button" disabled={retry.isPending} onClick={() => retry.mutate()}>
+      <button type="button" className={styles.casHitBtn} disabled={retry.isPending} onClick={() => retry.mutate()}>
         {retry.isPending ? '重试中…' : '重试复制'}
       </button>
       {retry.isSuccess ? <span>已触发重试</span> : null}

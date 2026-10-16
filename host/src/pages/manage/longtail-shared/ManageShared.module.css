@@ -1095,3 +1095,41 @@
   align-items: center;
   gap: 8px;
 }
+
+/*
+ * FE-CAS-DENSE-TAP-TARGETS：CAS 密集表格控件触屏扩热区。
+ * 难点 = 密集表格里补触达区不能撑开行高/改变表格密度。
+ * 解法 = position:absolute 的 ::after 隐形热区（绝对定位不参与布局流）——
+ *   视觉尺寸、行高、密度全部零变化，仅触屏（hover:none + pointer:coarse）下
+ *   把可点区域扩到 --touch-min（44）。桌面（pointer:fine）不匹配，零影响。
+ * .casHitBtn：按钮——以按钮为中心、通栏、44 高的隐形热带。
+ * .casHitCheck：包住 <input type=checkbox> 的 <label>（input 无伪元素）——
+ *   以 checkbox 为中心、44×44 隐形热区；点热区即经 label 切换 checkbox。
+ */
+@media (hover: none) and (pointer: coarse) {
+  .casHitBtn {
+    position: relative;
+  }
+  .casHitBtn::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: var(--touch-min);
+  }
+  .casHitCheck {
+    position: relative;
+    display: inline-flex;
+  }
+  .casHitCheck::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--touch-min);
+    height: var(--touch-min);
+  }
+}
