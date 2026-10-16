@@ -193,6 +193,15 @@ async function openAndRead(t: any, variant: Variant) {
   );
   const text = (await page.evaluate(() => document.body.innerText || '')) as string;
   await page.close();
+  // ★通用护栏（w11 非作者核验时实测抓到，main 上当刻即中）：FeedbackState/InlineBanner
+  //   都是 `<p>{description}</p>` **纯文本渲染**，不解析 markdown ⇒ 文案里写 `**加粗**`
+  //   会原样吐给用户一对星号。这不是排版偏好，是「把标记符号当内容显示」。
+  //   四态共用：任何一态出现字面 `**` 即红。
+  assert.ok(
+    !text.includes('**'),
+    `页面文案不得含字面 markdown 粗体标记（FeedbackState/InlineBanner 纯文本渲染，` +
+      `** 会被当内容原样吐出）。实际片段：${text.slice(-400)}`,
+  );
   return { text, errors };
 }
 

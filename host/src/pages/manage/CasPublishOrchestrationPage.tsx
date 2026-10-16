@@ -89,7 +89,7 @@ export function CasPublishOrchestrationPage() {
             title={unwired ? '数据面不可用（非空列表）' : '暂无 CAS 内容'}
             description={
               unwired
-                ? '本页没能从后端取到 CAS 内容数据，**不等于**「实例里没有内容」——原因见上方提示。'
+                ? '本页没能从后端取到 CAS 内容数据，不等于「实例里没有内容」——原因见上方提示。'
                 : '后端返回空列表：当前实例确实没有 CAS 内容记录。'
             }
           />
