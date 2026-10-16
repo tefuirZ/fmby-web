@@ -60,8 +60,23 @@ test('② 「添加媒体来源」类型下拉含「云盘账号」组，且与�
     assert.ok(types.includes(c.path), `云盘账号条目必须指向原页面 ${c.path}`);
   }
 
-  // 下拉里确实渲染了这一组（且只在**创建态**那一个 select 上）
-  assert.match(section, /optgroup label="云盘账号/, '创建态下拉必须含「云盘账号」分组');
+  // 下拉里确实渲染了这一组 —— 且**只**在创建态分支（rb01 评审的 Important nit）：
+  //   编辑已有挂载时若出现该组，用户误点 ⇒ `navigate()` 跳走 ⇒ **丢失未保存的编辑**。
+  //   故这里不只查「文件里有这一组」，而是**按 isEdit 的 true/false 两侧分别断言**。
+  const typeArea = section.slice(section.indexOf('来源类型'));
+  const elseIdx = typeArea.indexOf(') : (');
+  assert.ok(
+    elseIdx > 0,
+    '未定位到 isEdit 的三元分隔 `) : (` —— 断言不承重（拒绝假绿）',
+  );
+  const editBranch = typeArea.slice(0, elseIdx);
+  const createBranch = typeArea.slice(elseIdx);
+  assert.match(createBranch, /<optgroup label="云盘账号/, '创建态分支必须含「云盘账号」分组');
+  assert.ok(
+    !editBranch.includes('CLOUD_SOURCE_LINKS'),
+    '编辑态分支（isEdit 的 true 侧）**不得**出现云盘组 —— ' +
+      '编辑时误点会 navigate 跳走并丢失未保存的编辑（rb01 评审 Important）',
+  );
   assert.match(section, /CLOUD_SOURCE_LINKS\.map/, '分组条目必须由单一真源渲染');
   assert.match(
     section,
