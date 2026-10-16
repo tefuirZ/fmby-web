@@ -178,13 +178,15 @@ function DriveConfigTable({
               <td>
                 {config.providerType} · {config.driveRef}
               </td>
-              <td>
-                <input
-                  type="checkbox"
-                  aria-label={`${config.driveRef} 纳入扇出`}
-                  checked={draft.enabled}
-                  onChange={(e) => patch(config, { enabled: e.target.checked })}
-                />
+              <td className={styles.casHitCell}>
+                <label className={styles.casHitCheck}>
+                  <input
+                    type="checkbox"
+                    aria-label={`${config.driveRef} 纳入扇出`}
+                    checked={draft.enabled}
+                    onChange={(e) => patch(config, { enabled: e.target.checked })}
+                  />
+                </label>
               </td>
               <td>
                 <input
@@ -199,9 +201,10 @@ function DriveConfigTable({
                   }
                 />
               </td>
-              <td>
+              <td className={styles.casHitCell}>
                 <button
                   type="button"
+                  className={styles.casHitCellBtn}
                   disabled={saving || !dirty}
                   onClick={() => onSave({ ...draft })}
                 >

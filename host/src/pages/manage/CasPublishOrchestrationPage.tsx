@@ -139,15 +139,17 @@ export function CasPublishOrchestrationPage() {
         ) : (
           <ul className={styles.stackText}>
             {drives.map((drive) => (
-              <li key={drive.driveRef}>
-                <input
-                  type="checkbox"
-                  aria-label={`${drive.driveRef} 选为目标盘`}
-                  checked={targetDrives.has(drive.driveRef)}
-                  onChange={() => toggleTarget(drive.driveRef)}
-                />
-                <span className={styles.primaryText}>{drive.driveRef}</span>
-                <span className={styles.mutedText}>{drive.providerType}</span>
+              <li key={drive.driveRef} className={styles.casHitCell}>
+                <label className={styles.casHitCheck}>
+                  <input
+                    type="checkbox"
+                    aria-label={`${drive.driveRef} 选为目标盘`}
+                    checked={targetDrives.has(drive.driveRef)}
+                    onChange={() => toggleTarget(drive.driveRef)}
+                  />
+                  <span className={styles.primaryText}>{drive.driveRef}</span>
+                  <span className={styles.mutedText}>{drive.providerType}</span>
+                </label>
               </li>
             ))}
           </ul>
@@ -161,7 +163,7 @@ export function CasPublishOrchestrationPage() {
           title="发起扇出写面待后端接线"
           description="后端 CAS 管理面暂无「发起扇出」写端点（admin_cas.rs 只有读面 + 单盘配置写）。本按钮禁用，待后端补 POST /api/admin/cas/fanout 后启用。"
         />
-        <button type="button" disabled>
+        <button type="button" className={styles.casHitBtn} disabled>
           发起扇出（待后端）
         </button>
       </ManageSectionCard>
