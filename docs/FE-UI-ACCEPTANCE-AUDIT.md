@@ -136,6 +136,8 @@
 
 **缺口**：`package.json` 声明了 `react-hook-form` + `zod`，但**仅 `manage/license/schemas.ts` 使用**——其余 20 个表单是手写受控态 + 自研校验。功能可用，但**校验风格/错误呈现不统一**（有的用 `InlineBanner`，有的用 `<span>`）。属可维护性债务，非阻断。
 
+> **【2026-10-16 状态更新 · PR #70 已合】** 登录表单（`pages/login/forms/*` 的 Login/Register/ResetPassword/ForgotPassword/Setup）字段错误的 **a11y 关联已修**：共享 `Field` 原语给 error/hint span 赐 id + render-prop 传 `describedBy`，13 个输入接 `aria-invalid`/`aria-describedby`（此前有 label+role=alert 但输入无 aria-invalid、错误无 id 关联）。见 §9 对照表。管理面表单 `InlineBanner`（表单级）vs 字段 `<span>`（字段级）属**不同错误层级**，非缺陷（见 §9）。
+
 ### 3.3 CRUD
 
 - **56 个文件含 `useMutation`**（详见盘点：install/login/manage 各域/settings）。
@@ -374,3 +376,28 @@ run 3: PASS | ECONNREFUSED 0
 - 本审计是**代码级 + 单测/typecheck 级**验收；**未**逐页做人工浏览器走查（e2e 覆盖 a11y 面 28 页 axe + 若干交互，非全 52 页面功能走查）。
 - 「是否可用」判定基于**实现接线 + 契约端点 + 状态覆盖**；真实后端可用性受后端就绪度影响（§5 D 已列待后端项）。
 - 表清单/表单清单/页面清单均由脚本从源码生成（可复现），非手抄。
+
+---
+
+## §9 a11y / 表单 / 错误呈现 / 焦点 条目状态同步（2026-10-16 · PR #70 合入后）
+
+> 目的：把本审计登记的 a11y/表单类缺口与**当前 main 实况**对齐（"从文档取活"收尾）。判定纪律：**不把有意设计当缺陷**。逐条附 file:line 证据。
+
+### 9.1 条目对照表
+
+| # | 条目（原文判据） | 当前 main 实况 | 状态 | 证据 |
+|---|---|---|---|---|
+| A | §2/§3.2 表格：「3 张裸表无任何 a11y 标注（ManageCasPage）」 | ManageCasPage 3 张表均 `role="region"` + `aria-label` | **已修**（§7 C1，早于本同步） | `manage/ManageCasPage.tsx`（3 `<table>`、3 `role="region"`、5 `aria-label`） |
+| B | §2 表格：「52 张仅容器 region 有名、表本身无名（本仓既定范式）」 | 容器 region 有名、表本身无名——本仓既定范式（`tablewrap-region-audit` 契约锁 51+ 处） | **✅ 非缺陷（有意设计）** | `host/tests/tablewrap-region-audit.test.ts`（名单即范式）；design：region 名给滚动容器，表名冗余 |
+| C | §3.2 表单：「校验风格/错误呈现不统一（有的 InlineBanner 有的 span）」——登录表单字段错误无 a11y 关联 | 登录表单 5 个 ×13 输入接 `aria-invalid` + `aria-describedby`；`Field` 原语 error/hint span 赐 id + 传 `describedBy` | **已修于 PR #70** | `login/forms/fields.tsx`（errorId/describedBy）+ LoginForm 等 5 表单 + `tests/form-validation-a11y.contract.test.ts`（3 断言 + 红侧证明） |
+| D | §3.2 表单：管理面表单 `InlineBanner` vs 字段 `<span>` | `InlineBanner`=**表单级**错误（mutation 失败，role=alert 播报）；字段 `<span>`=**字段级**错误（就近字段）——不同错误层级，各有其位 | **✅ 非缺陷（有意设计）** | 管理面 mutation onError→`InlineBanner`（如 `ManageSecretsPage`/`microsoft/*Section`）；字段级 span 就近输入 |
+| E | §2/§3.4 列表：「媒体列表用 div 网格（非语义 list），读屏不播报『列表』语义」 | div 网格系虚拟化所需（`VirtualizedLibraryDetailGrid`）；键盘漫游已接 roving | **✅ 非缺陷（有意设计）** | §3.4 原文「虚拟化需要 div」；`browse/library-detail/VirtualizedLibraryDetailGrid.tsx` |
+| F | §2 按钮：「477 button，31 带 aria-label，其余靠可见文本」 | 实测**图标按钮 0 个无 accessible name**（全有 aria-label/title）；文本按钮有可见文本（合法可访问名） | **✅ 非缺陷（已满足）** | 全仓 `<button>` 扫描：无文本且无 aria-label/title 者 = 0 |
+| G | §6.2 host 测试 EACCES（search-overlay-focus：PlaybackSidebar Esc / SearchOverlay 焦点归还） | 环境基建（B3：写 `host/tests/__probeFe02Dom-entry.tsx` EACCES），非产品缺陷 | **基建（非产品缺陷）** | §5 B3 / §6.2 |
+
+### 9.2 待修清单（真缺口，未修）
+- **无新增真缺口**：本轮扫描的 a11y/表单/错误/焦点条目中，唯一真缺口（登录表单字段错误 a11y 关联）已修于 PR #70；其余为已修（A）/有意设计（B/D/E/F）/基建（G）。
+- 管理面表单字段级错误的 `aria-invalid`/`aria-describedby` 关联：管理面多为**表单级** `InlineBanner`（role=alert 已播报），字段级 span 场景少且分散，无共享字段原语可一处改；属 §3.2 自评「可维护性债务，非阻断」，**暂列待修（低优）**，待有共享 manage 字段原语时再统一。
+
+### 9.3 结论
+本审计登记的 a11y/表单类条目与当前 main 已对齐：**1 条真缺口已修（PR #70）**、**1 条早先已修（C1）**、**4 条有意设计/已满足**、**1 条基建**。无「硬凑」改动——本轮仅做**文档状态同步**（代码侧唯一真缺口已由 #70 闭环）。
