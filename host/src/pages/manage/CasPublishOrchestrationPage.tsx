@@ -139,7 +139,7 @@ export function CasPublishOrchestrationPage() {
         ) : (
           <ul className={styles.stackText}>
             {drives.map((drive) => (
-              <li key={drive.driveRef}>
+              <li key={drive.driveRef} className={styles.casHitCell}>
                 <label className={styles.casHitCheck}>
                   <input
                     type="checkbox"

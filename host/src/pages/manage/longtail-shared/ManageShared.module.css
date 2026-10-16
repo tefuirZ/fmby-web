@@ -1102,11 +1102,19 @@
  * 解法 = position:absolute 的 ::after 隐形热区（绝对定位不参与布局流）——
  *   视觉尺寸、行高、密度全部零变化，仅触屏（hover:none + pointer:coarse）下
  *   把可点区域扩到 --touch-min（44）。桌面（pointer:fine）不匹配，零影响。
- * .casHitBtn：按钮——以按钮为中心、通栏、44 高的隐形热带。
- * .casHitCheck：包住 <input type=checkbox> 的 <label>（input 无伪元素）——
- *   以 checkbox 为中心、44×44 隐形热区；点热区即经 label 切换 checkbox。
+ * .casHitBtn：**独立按钮**（触发对账/发起扇出，不在密集行内）——position:relative + 44 高热带。
+ * .casHitCellBtn / .casHitCheck：**密集表格/列表单元格内**控件（保存按钮/checkbox）——
+ *   热区填满**单元格**（::after inset:0，定位上下文是 .casHitCell 容器）⇒ 被单元格边界兜住，
+ *   **绝不跨行溢出**（REVIEW-69：原 44px 通栏热带在 30-38px 行高内垂直溢出一旦与相邻行重叠会误点）。
+ *   checkbox 无伪元素 ⇒ 包 <label>（.casHitCheck）填单元格，点整格即切换。
  */
 @media (hover: none) and (pointer: coarse) {
+  /* 密集表格/列表单元格：作为热区定位上下文（::after inset:0 填满本格，不跨行）。 */
+  .casHitCell {
+    position: relative;
+  }
+
+  /* 独立按钮（不在密集行内）：position:relative + 44 高热带，无跨行风险。 */
   .casHitBtn {
     position: relative;
   }
@@ -1119,17 +1127,18 @@
     transform: translateY(-50%);
     height: var(--touch-min);
   }
-  .casHitCheck {
-    position: relative;
-    display: inline-flex;
+
+  /* 单元格内按钮（保存）：热区填满 .casHitCell 单元格，不跨行。 */
+  .casHitCellBtn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
   }
+
+  /* 单元格内 checkbox（包 <label>）：热区填满 .casHitCell 单元格，点整格即切换。 */
   .casHitCheck::after {
     content: '';
     position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: var(--touch-min);
-    height: var(--touch-min);
+    inset: 0;
   }
 }

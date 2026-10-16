@@ -178,7 +178,7 @@ function DriveConfigTable({
               <td>
                 {config.providerType} · {config.driveRef}
               </td>
-              <td>
+              <td className={styles.casHitCell}>
                 <label className={styles.casHitCheck}>
                   <input
                     type="checkbox"
@@ -201,10 +201,10 @@ function DriveConfigTable({
                   }
                 />
               </td>
-              <td>
+              <td className={styles.casHitCell}>
                 <button
                   type="button"
-                  className={styles.casHitBtn}
+                  className={styles.casHitCellBtn}
                   disabled={saving || !dirty}
                   onClick={() => onSave({ ...draft })}
                 >

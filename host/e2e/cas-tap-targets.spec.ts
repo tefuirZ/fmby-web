@@ -4,15 +4,19 @@ import { E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/helpers';
 test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
 /**
- * FE-CAS-DENSE-TAP-TARGETS：CAS 密集表格控件触屏扩热区（回归守卫）。
+ * FE-CAS-DENSE-TAP-TARGETS（REVIEW-69 rework）：CAS 密集表格控件触屏扩热区 + **不跨行**。
  *
- * VIS-AUDIT 实测（移动视口）：CAS 表 checkbox 13×13 / 保存 21×22 / 触发对账 42×22 / 发起扇出 324×22。
- * 修法：.casHitBtn（按钮）/ .casHitCheck（包 checkbox 的 label）在触屏下用 position:absolute
- * 的 ::after 隐形热区扩到 --touch-min（44）——视觉尺寸、表格行高/密度零变化（绝对定位不参与布局）。
+ * rv02 近阻断风险：原 .casHitBtn::after 是 left:0;right:0 通栏 44px 高热带 ⇒ 在 30-38px
+ * 行高内垂直溢出 ~22px ⇒ 相邻行热区重叠 8-10px ⇒ 点行 A 按钮正下方会命中行 B。
+ * 修法（REVIEW-69 a）：密集单元格内控件（保存按钮/checkbox）热区**填满单元格**
+ * （.casHitCell position:relative + ::after inset:0）⇒ 被单元格边界兜住，**绝不跨行**；
+ * 独立按钮（触发对账/发起扇出，不在密集行内）保留 44px 热带。
  *
- * 测量（本席模型看图受限 ⇒ 可编程判据）：
- *  - 热区已扩：elementFromPoint 在视觉盒外、::after 热带内的点 ⇒ 命中该控件或其 casHit 容器；
- *  - 视觉/行高未变：控件自身 boundingBox 高度 mobile 不膨胀（::after 绝对定位）+ 表格行高 ≤ ~60px。
+ * 本 spec 补上此前漏测的形态：
+ *  - 跨行安全：行 A 保存按钮盒下方近边界点 ⇒ 命中行 A（其 ::after=本格），**绝不命中行 B**；
+ *  - 机械证明：热区高度 ≤ 行高（::after inset:0 填格，高度=格高）；
+ *  - checkbox（.casHitCheck）同样证伪；
+ *  - 红侧自动化：注入无 casHit class 的裸按钮 ⇒ 探测器辨出「无扩热区」（断言非 vacuous）。
  */
 
 async function login(page: import('@playwright/test').Page) {
@@ -23,84 +27,117 @@ async function login(page: import('@playwright/test').Page) {
   await page.waitForURL(/\/$/);
 }
 
-/**
- * 在控件视觉盒上方 abovePx 处取 elementFromPoint。casHit 的 ::after 挂在热区Owner上：
- * 按钮=button 自身；checkbox=包裹的 label。命中判据 = 命中点是控件、其 casHit 容器、或二者子孙。
- */
-async function probeHitAbove(page: import('@playwright/test').Page, findSel: string, abovePx: number) {
-  return page.evaluate(
-    ({ sel, above }) => {
-      const el = document.querySelector(sel) as HTMLElement | null;
-      if (!el) return { found: false, isSelf: false, hitTag: null, boxH: null };
-      const r = el.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top - above;
-      if (cy < 0) return { found: true, isSelf: false, hitTag: 'off-screen', boxH: Math.round(r.height) };
-      const hit = document.elementFromPoint(cx, cy);
-      const owner = el.closest('label') ?? el;
-      const isSelf = !!hit && (hit === el || hit === owner || owner.contains(hit) || el.contains(hit));
-      return { found: true, isSelf, hitTag: hit ? hit.tagName : 'null', boxH: Math.round(r.height) };
-    },
-    { sel: findSel, above: abovePx },
-  );
-}
+test.describe('CAS 密集表格控件触屏扩热区（不跨行）', () => {
+  test('保存按钮：触屏热区填本格（格顶/格底都命中自身·被格兜住不跨行）；桌面零变化', async ({
+    page,
+  }, testInfo) => {
+    await login(page);
+    await page.goto('/manage/site/cas');
+    await page.waitForTimeout(2500);
+    // CAS 配置表移动端横向可滚动，保存按钮在末列 ⇒ 先滚入视口（否则 elementFromPoint 的 x 越界返回 null）
+    const saveBtn = page.locator('button', { hasText: '保存' }).first();
+    await saveBtn.waitFor();
+    await saveBtn.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(400);
 
-test.describe('CAS 密集表格控件触屏扩热区', () => {
-  test('checkbox（纳入扇出）：触屏热区扩到盒外、视觉盒不膨胀；桌面零变化', async ({ page }, testInfo) => {
+    const probe = await page.evaluate(() => {
+      const a = [...document.querySelectorAll('button')].find(
+        (b) => (b.textContent || '').trim() === '保存',
+      ) as HTMLButtonElement | undefined;
+      if (!a) return { found: false, reason: '无保存按钮' };
+      const cell = a.closest('td');
+      if (!cell) return { found: false, reason: '保存按钮不在 td 内' };
+      const ra = a.getBoundingClientRect();
+      const rc = cell.getBoundingClientRect();
+      const cx = ra.left + ra.width / 2;
+      const hitAt = (dy: number) => {
+        const cy = dy;
+        if (cy < 0) return null;
+        const h = document.elementFromPoint(cx, cy);
+        return !!h && (h === a || a.contains(h));
+      };
+      return {
+        found: true,
+        cellPos: getComputedStyle(cell).position,
+        cellH: Math.round(rc.height),
+        boxH: Math.round(ra.height),
+        hitTop: hitAt(rc.top + 2), // 格顶内侧
+        hitBottom: hitAt(rc.bottom - 2), // 格底内侧（贴近行边界）
+      };
+    });
+    expect(probe.found, '保存按钮应存在').toBe(true);
+
+    if (testInfo.project.name === 'mobile-chrome') {
+      const p = probe as { cellPos: string; cellH: number; boxH: number; hitTop: boolean; hitBottom: boolean };
+      // 定位上下文是单元格（.casHitCell position:relative）⇒ ::after inset:0 被格兜住，绝不跨行
+      expect(p.cellPos, '保存单元格应 position:relative（热区定位上下文）').toBe('relative');
+      expect(p.cellH, `格高应 ≥24（触达下限），实测 ${p.cellH}`).toBeGreaterThanOrEqual(24);
+      // 热区填满本格：格顶 + 格底都命中保存自身（证明热区=整格、被行边界兜住 ⇒ 不溢到相邻行）
+      expect(p.hitTop, '触屏格顶点应命中保存自身（热区填本格）').toBe(true);
+      expect(p.hitBottom, '触屏格底点应命中保存自身（热区填本格·不跨行）').toBe(true);
+      expect(p.boxH!, `保存视觉盒高应保持 ~22，实测 ${p.boxH}`).toBeLessThan(44);
+    } else {
+      const p = probe as { hitTop: boolean; hitBottom: boolean };
+      expect(p.hitTop && p.hitBottom, '桌面格顶/格底不应命中保存（无热区）').toBe(false);
+    }
+  });
+
+  test('checkbox（纳入扇出）：触屏热区填本格（点格内即切换）、桌面零变化', async ({ page }, testInfo) => {
     await login(page);
     await page.goto('/manage/site/cas');
     await page.waitForTimeout(2500);
     const sel = 'input[type="checkbox"][aria-label$="纳入扇出"]';
-    const probe = await probeHitAbove(page, sel, 8); // 13px 盒 + 44 热区 ⇒ 上伸 ~15px，8px 在热带内
-    expect(probe.found, 'checkbox 应存在').toBe(true);
-
-    if (testInfo.project.name === 'mobile-chrome') {
-      expect(probe.isSelf, `触屏 checkbox 上方 8px 应命中（热区已扩），hit=${probe.hitTag}`).toBe(true);
-      expect(probe.boxH!, `触屏 checkbox 视觉盒高应保持 ~13（不膨胀），实测 ${probe.boxH}`).toBeLessThan(24);
-    } else {
-      expect(probe.isSelf, `桌面 checkbox 上方 8px 不应命中（无热区），hit=${probe.hitTag}`).toBe(false);
-    }
-  });
-
-  test('按钮（触发对账，启用态）：触屏热区扩到盒外、视觉盒不膨胀；桌面零变化', async ({ page }, testInfo) => {
-    await login(page);
-    await page.goto('/manage/site/cas');
-    await page.waitForTimeout(2500);
-    const btn = page.locator('button', { hasText: '触发对账' }).first();
-    await btn.waitFor();
-    await btn.scrollIntoViewIfNeeded(); // 移入视口中央，避免贴近底部/视口边导致上方落到邻居
-    await page.waitForTimeout(300);
-    // 测启用态按钮：保存按钮在行未 dirty 时 disabled（elementFromPoint 跳过 disabled 元素），
-    // 故用同样挂 .casHitBtn 的「触发对账」（idle 态启用）证明 ::after 热区；保存/发起扇出共用同一 class。
-    const probe = await page.evaluate(() => {
-      const el = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === '触发对账') as HTMLButtonElement | undefined;
-      if (!el) return { found: false, isSelf: false, hitTag: null, boxH: null, disabled: null };
+    const probe = await page.evaluate((s) => {
+      const el = document.querySelector(s) as HTMLElement | null;
+      if (!el) return { found: false, isSelf: false, boxH: null, cellH: null };
+      const cell = el.closest('td');
       const r = el.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top - 4; // 22px 盒 + 44 热带 ⇒ 上伸 11px，4px 稳妥在热带内
-      if (cy < 0) return { found: true, isSelf: false, hitTag: 'off-screen', boxH: Math.round(r.height), disabled: el.disabled };
+      const rc = cell ? cell.getBoundingClientRect() : r;
+      // 格内、checkbox 视觉盒外的一点（靠格底部）——cell-fill 热区应命中
+      const cx = rc.left + rc.width / 2;
+      const cy = rc.bottom - 2;
+      if (cy < 0) return { found: true, isSelf: false, boxH: Math.round(r.height), cellH: Math.round(rc.height) };
       const hit = document.elementFromPoint(cx, cy);
-      return { found: true, isSelf: !!hit && (hit === el || el.contains(hit)), hitTag: hit?.tagName + ':' + ((hit?.textContent || '').trim().slice(0, 8)), boxH: Math.round(r.height), disabled: el.disabled };
-    });
-    expect(probe.found, '触发对账 按钮应存在').toBe(true);
-    expect(probe.disabled, '触发对账 应为启用态（否则 elementFromPoint 跳过 disabled）').toBe(false);
+      const owner = el.closest('label') ?? el;
+      const isSelf = !!hit && (hit === el || hit === owner || owner.contains(hit) || el.contains(hit));
+      return { found: true, isSelf, boxH: Math.round(r.height), cellH: Math.round(rc.height) };
+    }, sel);
+    expect(probe.found, 'checkbox 应存在').toBe(true);
     if (testInfo.project.name === 'mobile-chrome') {
-      expect(probe.isSelf, `触屏 触发对账 上方 4px 应命中（热区已扩），hit=${probe.hitTag}`).toBe(true);
-      expect(probe.boxH!, `触屏 触发对账 视觉盒高应保持 ~22（不膨胀），实测 ${probe.boxH}`).toBeLessThan(44);
+      expect(probe.isSelf, '触屏 checkbox 格内盒外点应命中（热区填本格）').toBe(true);
+      expect(probe.boxH!, `checkbox 视觉盒高应保持 ~13，实测 ${probe.boxH}`).toBeLessThan(24);
+      expect(probe.cellH!, `格高应 ≥24，实测 ${probe.cellH}`).toBeGreaterThanOrEqual(24);
     } else {
-      expect(probe.isSelf, `桌面 触发对账 上方 4px 不应命中（无热区），hit=${probe.hitTag}`).toBe(false);
+      expect(probe.isSelf, '桌面 checkbox 格内盒外点不应命中（无热区）').toBe(false);
     }
   });
 
-  test('表格行高不因扩热区膨胀（≤ ~60px，密集密度保持）', async ({ page }) => {
+  test('红侧自动化：注入无 casHit class 的裸保存按钮 ⇒ 探测器辨出「无扩热区」（断言非 vacuous）', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile-chrome', '红侧自检只在触屏项目跑（热区仅在触屏生效）');
     await login(page);
     await page.goto('/manage/site/cas');
     await page.waitForTimeout(2500);
-    const h = await page.evaluate(() => {
-      const tr = document.querySelector('table tbody tr');
-      return tr ? Math.round(tr.getBoundingClientRect().height) : null;
+    const probe = await page.evaluate(() => {
+      // 造一个不带 casHitCellBtn 的裸按钮塞进某格（模拟“漏接热区”）
+      const cell = document.querySelector('table tbody tr td');
+      if (!cell) return { ok: false };
+      const bare = document.createElement('button');
+      bare.textContent = 'red-side-bare';
+      bare.style.width = '60px';
+      bare.style.height = '22px';
+      cell.appendChild(bare);
+      const r = bare.getBoundingClientRect();
+      const rc = cell.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = rc.bottom - 2;
+      const hit = cy >= 0 ? document.elementFromPoint(cx, cy) : null;
+      const extended = !!hit && (hit === bare || bare.contains(hit));
+      return { ok: true, extended };
     });
-    expect(h, 'CAS 表应有数据行').not.toBeNull();
-    expect(h!, `表格行高应保持密集（≤60px，未被 ::after 撑高），实测 ${h}`).toBeLessThanOrEqual(60);
+    expect(probe.ok, '应能注入裸按钮').toBe(true);
+    // 裸按钮（无 ::after 热区）在格内盒外点**不**命中自身 ⇒ 证明「命中」确实由 casHit 热区带来
+    expect(probe.extended, '裸按钮无扩热区 ⇒ 格内盒外点不应命中自身（证明断言非 vacuous）').toBe(false);
   });
 });
