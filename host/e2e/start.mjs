@@ -273,6 +273,12 @@ if (!ready) {
   await stop(1);
 }
 
+// ★FE-ASSET-NULL-COMPACT-ROUND2：**可选** CAS 夹具注入（默认关；开启才注）。
+//   放在**就绪门之后**：此时库已迁移 + seed 已跑，注入才不会被迁移覆盖。
+if (process.env.FMBY_E2E_CAS_SEED === '1') {
+  await injectCasFixtures(dbPath, Date.now());
+}
+
 // ---- ③ 起前端（默认服务**已构建产物** host/dist，对齐卡面真实栈口径）----
 // 卡面：「主仓二进制 + 前端 host/dist（已构建）」。dev server 会开 React
 // StrictMode 双调用（仅 dev），在 VideoPlayer 的异步挂载上暴露竞态
@@ -328,3 +334,57 @@ if (useDevServer) {
   });
 }
 
+
+/**
+ * ★FE-ASSET-NULL-COMPACT-ROUND2：**可选** CAS 夹具注入（**默认关**，`FMBY_E2E_CAS_SEED=1` 才开）。
+ *
+ * 为什么能这么做（纯 SQL 造真数据，不是伪造）：`deferred_gate` 完全由「**活跃还原租约**」派生 ——
+ * 取该 content 的租约 `WHERE content_id=?1 ORDER BY issued_at DESC, id DESC` 的**首条非 `reaped`**
+ * （`bridges/cas_admin.rs:384`），再据 `session_closed_at.is_some()`（闸①）/ `now >= expires_at`（闸②）/
+ * `now >= expires_at + DEFAULT_RESTORE_GRACE_MS`（闸③，10 分钟）判闸。⇒ 纯 SQL 造出
+ * 「会话已关 + TTL 已过 + 未满宽限」的行即得 `blocking_gate='grace'`，且 `grace_remaining_ms` **可知**。
+ * （同族先例：w05 在 #851 域已实证纯 SQL 造 NULL 样本可行 —— `evidence/verify-851/seed_{pg,sqlite}.sql`。）
+ *
+ * 注入两行（`INSERT OR REPLACE`，幂等）：
+ *   · `990001` **NULL/缺失行**：哈希族与 `media_item_id` 全 NULL ⇒ 验「缺失显 — 不编造」
+ *     （注意 `source_kind` 是 **NOT NULL**，故给 `'scan'`；NULL 的是指纹族与媒体项）；
+ *   · `990002` **grace 在挡行** + 一条 `cas_restore`（`expires_at = now − 60s`、
+ *     `session_closed_at = now − 120s`、`phase='session_closed'`）⇒ 剩余 540s。
+ *
+ * 纪律：**默认关**（既有 5 条用例跑同一栈，不得被夹具污染）；开启时由 `cas-admin.spec.ts` ⑥ 断言；
+ * 关时该用例**显式 skip 并说明原因**，不静默跳过。
+ */
+async function injectCasFixtures(dbFile, nowMs) {
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(dbFile);
+  try {
+    const base = nowMs ?? Date.now();
+    const insertContent = db.prepare(
+      `INSERT OR REPLACE INTO cas_content
+         (id, size_bytes, sha256, sha1, pre_id, pre_hash_1m, md5, slice_md5,
+          media_item_id, source_kind, created_at, updated_at)
+       VALUES (?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'scan', ?, ?)`,
+    );
+    const insertLease = db.prepare(
+      `INSERT OR REPLACE INTO cas_restore
+         (id, content_id, drive_id, session_id, materialized_path, issued_at,
+          expires_at, heartbeat_at, session_closed_at, phase, created_at, updated_at)
+       VALUES (?, ?, 0, NULL, ?, ?, ?, NULL, ?, 'session_closed', ?, ?)`,
+    );
+    insertContent.run(990001, 123, base, base);
+    insertContent.run(990002, 456, base, base);
+    insertLease.run(
+      9900021,
+      990002,
+      '/tmp/fmby-e2e-cas-fixture.materialized',
+      base - 180_000,
+      base - 60_000,
+      base - 120_000,
+      base,
+      base,
+    );
+    console.log('[real-server] CAS 夹具已注入：990001(NULL 行) / 990002(grace 在挡，剩余 540s)');
+  } finally {
+    db.close();
+  }
+}
