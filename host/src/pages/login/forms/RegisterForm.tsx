@@ -71,10 +71,12 @@ export function RegisterForm({ onAuthenticated, onPendingApproval }: RegisterFor
         error={errors.code?.message}
         hint="需要有效注册码才能完成注册。"
       >
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               className={clsx(styles.input, invalid && styles.inputError)}
               placeholder="请输入管理员提供的注册码"
               autoComplete="one-time-code"
@@ -85,10 +87,12 @@ export function RegisterForm({ onAuthenticated, onPendingApproval }: RegisterFor
       </Field>
 
       <Field label="用户名" error={errors.username?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               className={clsx(styles.input, invalid && styles.inputError)}
               placeholder="至少 3 个字符"
               autoComplete="username"
@@ -113,10 +117,12 @@ export function RegisterForm({ onAuthenticated, onPendingApproval }: RegisterFor
       </Field>
 
       <Field label="密码" error={errors.password?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               type={showPassword ? 'text' : 'password'}
               className={clsx(
                 styles.input,
@@ -136,10 +142,12 @@ export function RegisterForm({ onAuthenticated, onPendingApproval }: RegisterFor
       </Field>
 
       <Field label="确认密码" error={errors.confirmPassword?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               type={showConfirm ? 'text' : 'password'}
               className={clsx(
                 styles.input,

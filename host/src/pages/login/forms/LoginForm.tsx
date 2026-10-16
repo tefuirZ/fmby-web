@@ -52,10 +52,12 @@ export function LoginForm({ onAuthenticated, onMfaRequired }: LoginFormProps) {
       ) : null}
 
       <Field label="用户名" error={errors.username?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               className={clsx(styles.input, invalid && styles.inputError)}
               placeholder="请输入用户名"
               autoComplete="username"
@@ -66,10 +68,12 @@ export function LoginForm({ onAuthenticated, onMfaRequired }: LoginFormProps) {
       </Field>
 
       <Field label="密码" error={errors.password?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               type={showPassword ? 'text' : 'password'}
               className={clsx(
                 styles.input,

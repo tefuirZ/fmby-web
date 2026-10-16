@@ -123,10 +123,12 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
           error={emailErrors.email?.message}
           hint="提交后无论邮箱是否存在，都会显示同一条提示。"
         >
-          {(id, invalid) => (
+          {(id, invalid, describedBy) => (
             <div className={styles.inputWrapper}>
               <input
                 id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
                 type="email"
                 className={clsx(styles.input, invalid && styles.inputError)}
                 placeholder="请输入注册邮箱"
@@ -162,10 +164,12 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
             </div>
           ) : null}
           <Field label="验证码" error={codeErrors.code?.message}>
-            {(id, invalid) => (
+            {(id, invalid, describedBy) => (
               <div className={styles.inputWrapper}>
                 <input
                   id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
                   className={clsx(styles.input, invalid && styles.inputError)}
                   placeholder="请输入邮件中的验证码"
                   inputMode="numeric"
@@ -176,10 +180,12 @@ export function ForgotPasswordForm({ onBackToLogin }: ForgotPasswordFormProps) {
             )}
           </Field>
           <Field label="新密码" error={codeErrors.newPassword?.message}>
-            {(id, invalid) => (
+            {(id, invalid, describedBy) => (
               <div className={styles.inputWrapper}>
                 <input
                   id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
                   type={showPassword ? 'text' : 'password'}
                   className={clsx(
                     styles.input,
