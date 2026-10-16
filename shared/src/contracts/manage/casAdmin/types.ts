@@ -177,6 +177,12 @@ export interface CasContentSummary {
   /** 是否有本地实体。 */
   hasLocalEntity: boolean;
   /**
+   * #658 ④「秒传来源」：`cas_content.source_kind`（domain 单一真源 `SourceKind::as_str`；
+   * 后端 `CasContentListItemDto.source_kind` 明写供本徽章消费，`rapid_upload` = 秒传命中）。
+   * 数据缺失 ⇒ `null` ⇒ UI 显 `—`，**不编造**。
+   */
+  sourceKind: string | null;
+  /**
    * 还原租约引用（后端最新一条非 Reaped；无 lease/全已回收为 `null`）。
    * ★结构化二字段（holder/expiresAt），不是状态串——与后端 `CasContentLeaseRefDto` 对齐；
    *   过期与否按此刻判断，不折叠成「无 lease」（防伪造对账关键态）。
@@ -213,6 +219,7 @@ export interface RawCasContentSummary {
   media_item_id?: number | null;
   drives?: RawCasContentDriveCopy[];
   has_local_entity?: boolean;
+  source_kind?: string;
   lease?: RawCasContentLeaseRef | null;
   updated_at?: number | null;
 }

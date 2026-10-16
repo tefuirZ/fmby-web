@@ -187,3 +187,35 @@ export function buildDrivePriorityMap(
   }
   return map;
 }
+/**
+ * #658 ④「秒传来源」徽章（后端 `CasContentListItemDto.source_kind`，domain 单一真源
+ * `SourceKind::as_str` 的稳定线格式：`publish`/`share`/`offline`/`scan`/`rapid_upload`）。
+ *
+ * 纪律同族：**未知码原样透出**（不猜、不折叠）、**缺失显示 `—`**（不编造）。
+ * `rapid_upload` = 秒传命中（后端 #861 起单独暴露该来源）。
+ */
+export function resolveSourceKindLabel(kind: string | null | undefined): string {
+  switch (kind) {
+    case 'rapid_upload':
+      return '秒传命中';
+    case 'publish':
+      return '发布入库';
+    case 'share':
+      return '分享转存';
+    case 'offline':
+      return '离线下载';
+    case 'scan':
+      return '扫描入库';
+    case null:
+    case undefined:
+    case '':
+      return '—';
+    default:
+      return kind;
+  }
+}
+
+/** 秒传来源徽章色调：仅 `rapid_upload`（秒传命中）用成功色，其余中性。 */
+export function resolveSourceKindTone(kind: string | null | undefined): 'success' | 'neutral' {
+  return kind === 'rapid_upload' ? 'success' : 'neutral';
+}

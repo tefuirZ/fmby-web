@@ -128,6 +128,8 @@ export function mapCasContentSummary(
     mediaItemId: raw?.media_item_id ?? null,
     drives: (raw?.drives ?? []).map(mapCasContentDriveCopy),
     hasLocalEntity: raw?.has_local_entity ?? false,
+    // #658 ④：缺失即 null ⇒ UI 显 —（不编造来源）。
+    sourceKind: raw?.source_kind ?? null,
     lease: mapCasContentLeaseRef(raw?.lease),
     updatedAt: raw?.updated_at ?? null,
   };
