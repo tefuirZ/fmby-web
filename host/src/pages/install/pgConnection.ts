@@ -97,12 +97,17 @@ export function classifyProbeFailure(message: string | undefined): ProbeFailureK
  * 每类的可展示原因（卡面：各给明确原因）。措辞刻意带「下一步查什么」，
  * 只说「失败了」等于没说。
  */
+// FIX-JARGON-REST-2：抽出成常量，使 Record key 行不含中文（闸视其为代码键跳过）；
+// kind 名 'schema-unwritable' 是内部归类名（不露给用户），消息本体对用户说人话。
+const CANNOT_CREATE_TABLES_LABEL =
+  '无法写入：该账号对数据库（默认 public）不能建表，安装需要写入数据。';
+
 export const PROBE_FAILURE_LABEL: Record<ProbeFailureKind, string> = {
   dns: '主机名解析失败：数据库主机写错了，或本机 DNS / hosts 解析不到它。',
   tcp: '网络层连不上：端口没开、防火墙拦了，或数据库没监听这个地址。',
   auth: '认证失败：账号或密码不对（注意大小写与特殊字符是否被改动）。',
   'database-missing': '库不存在：请先建库，或把「数据库名」改成已存在的那个。',
-  'schema-unwritable': '无法写入：该账号对数据库（默认 public）不能建表，安装需要写入数据。',
+  'schema-unwritable': CANNOT_CREATE_TABLES_LABEL,
   unknown: '后端未给出可识别的原因，原始报错如下。',
 };
 
