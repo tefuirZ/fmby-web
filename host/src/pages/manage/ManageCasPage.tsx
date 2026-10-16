@@ -13,7 +13,7 @@
  * 组件保持在 400 行门禁内（component-size）。
  */
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   casAdminApi,
@@ -26,15 +26,14 @@ import { queryKeys } from '@fmby/v2-shared/query';
 import { ManagePageHeader, ManageSectionCard } from './longtail-shared/components';
 import { CasCopyStateBadge } from './cas/CasCopyStateBadge';
 import { CasDeferredGateDetail } from './cas/CasDeferredGateDetail';
+import { DriveConfigTable } from './cas/DriveConfigTable';
 import { ReconcileTriggerButton, RetryCopyButton } from './cas/casWriteActions';
-import { casDriveKey, isDriveDirty, parsePriorityInput } from './cas/driveConfigEditing';
 import {
   formatGeneratedAt,
   resolveReconcileSectionState,
   resolveReconcileView,
   summarizeReconcile,
 } from './cas/reconcilePresentation';
-import { useTableRowRoving } from '../../features/a11y/useTableRowRoving';
 import styles from './longtail-shared/ManageShared.module.css';
 
 export function ManageCasPage() {
@@ -115,108 +114,6 @@ export function ManageCasPage() {
           未启用端口时区块**完全不渲染** —— 不请求、不显示成「0 条报告」的假空态。 */}
       <ReconcileReportsSection unwired={unwired} />
     </>
-  );
-}
-
-function DriveConfigTable({
-  configs,
-  onSave,
-  saving,
-  savedKey,
-}: {
-  configs: CasDriveConfig[];
-  onSave: (config: CasDriveConfig) => void;
-  saving: boolean;
-  savedKey: string | null;
-}) {
-  // 编辑草稿：以 providerType:driveRef 为键。★没有草稿 ⇒ 没有「改了的东西」，
-  // 「保存」就是无操作；此时不提示「已保存」（⑧ 的 dirty 判据来源）。
-  const [drafts, setDrafts] = useState<Record<string, CasDriveConfig>>({});
-
-  // FE-LIST-KEYNAV-10：本表行内有 checkbox / 数字输入 / 「保存」按钮，
-  // 均已具备原生 Tab 序 ⇒ 不传 onActivate，不凭空给行加 Enter 语义（保存是写操作）。
-  // ★hook 必须早于下面的「空列表」early return（Hooks 规则）。
-  const tbodyRef = useRef<HTMLTableSectionElement>(null);
-  useTableRowRoving({ tbodyRef, rowCount: configs.length });
-
-  const patch = (config: CasDriveConfig, next: Partial<CasDriveConfig>) => {
-    const key = casDriveKey(config);
-    setDrafts((prev) => ({
-      ...prev,
-      [key]: { ...(prev[key] ?? config), ...next },
-    }));
-  };
-
-  const isDirty = (config: CasDriveConfig) =>
-    isDriveDirty(config, drafts[casDriveKey(config)], savedKey);
-
-  if (configs.length === 0) {
-    // 空列表是**真状态**（端口装配了但一个盘都没配），与「未启用」区分开。
-    return <p>尚未配置任何盘。CAS 扇出不会发生。</p>;
-  }
-  return (
-    // ★审计 FE-UI-ACCEPTANCE-AUDIT §5-C1：本页 3 张表原为**裸 table 元素**——
-    // 无容器 region、无表名，是全仓唯一无任何 a11y 标注的表。此处按所在
-    // ManageSectionCard 标题补可访问名（读屏器不再只播报无名的「表」）。
-    <div className={styles.tableWrap} role="region" aria-label="盘配置（CAS 矩阵）（可横向滚动）">
-      <table className={styles.table}>
-      <thead>
-        <tr>
-          <th>盘</th>
-          <th>纳入扇出</th>
-          <th>优先级</th>
-          <th />
-        </tr>
-      </thead>
-      <tbody ref={tbodyRef}>
-        {configs.map((config, index) => {
-          const key = casDriveKey(config);
-          const draft = drafts[key] ?? config;
-          const dirty = isDirty(config);
-          return (
-            <tr key={key} data-row-index={index}>
-              <td>
-                {config.providerType} · {config.driveRef}
-              </td>
-              <td className={styles.casHitCell}>
-                <label className={styles.casHitCheck}>
-                  <input
-                    type="checkbox"
-                    aria-label={`${config.driveRef} 纳入扇出`}
-                    checked={draft.enabled}
-                    onChange={(e) => patch(config, { enabled: e.target.checked })}
-                  />
-                </label>
-              </td>
-              <td>
-                <input
-                  type="number"
-                  aria-label={`${config.driveRef} 优先级`}
-                  value={draft.priority}
-                  onChange={(e) =>
-                    patch(config, {
-                      // 后端 priority 是 i32 ⇒ 非法输入回退原值，不发 NaN。
-                      priority: parsePriorityInput(e.target.value, config.priority),
-                    })
-                  }
-                />
-              </td>
-              <td className={styles.casHitCell}>
-                <button
-                  type="button"
-                  className={styles.casHitCellBtn}
-                  disabled={saving || !dirty}
-                  onClick={() => onSave({ ...draft })}
-                >
-                  保存
-                </button>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-    </div>
   );
 }
 
