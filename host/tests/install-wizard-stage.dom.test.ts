@@ -1,12 +1,12 @@
 /**
  * 安装向导**阶段唯一性 + 重启文案**回归探针（卡 FE-WIZARD-REGRESSION-TEST · 席位 w10）
  *
- * 用户线上实测撞到的两个缺陷（前端 UI 由 fe02 修；本文件负责**防它复发**）：
- *   ① `apply` 成功后「③ 管理员账号」表单段与「④ 完成安装」段**同时渲染**
- *      ⇒ 同一屏出现两遍凭据（可编辑的用户名/口令 + 只读回执）、两套编号；
- *      代码现场：`InstallPage.tsx:287`（`step === 'admin' ? <AdminFieldset/>`）与
- *      `InstallPage.tsx:341`（`apply.isSuccess ? <InstallCompletionPanel/>`）
- *      **同在 `<form>` 内、互不排斥**。
+ * 用户线上实测撞到的两个缺陷（UI 修复已进 main `1be4541`「向导简化」⇒ 本文件的身份是
+ * **防复发锁**：把修好的形状钉住，改回去就红。当年现场（留档，便于 git blame 对照）：
+ *   `InstallPage.tsx:287`（`step === 'admin' ? <AdminFieldset/>`）与
+ *   `:341`（`apply.isSuccess ? <InstallCompletionPanel/>`）**同在 `<form>` 内、互不排斥**。
+ *   ① `apply` 成功后填写段与完成段**同时渲染** ⇒ 同一屏出现两遍凭据
+ *      （可编辑的用户名/口令 + 只读回执）与两套编号。
  *   ② 过渡页/核对页把「complete 落锁后**须重启**」写成硬话，而后端
  *      `install_flow::complete` 走**进程内热切换** ⇒ `restart_required:false`
  *      （`crates/fmby-v2-server/src/install_flow/mod.rs:753-761`，日志原文
@@ -104,6 +104,9 @@ const READ = () => `
       // 凭据回显次数：可编辑的用户名框 vs 只读回显
       editableUsername: inputs.filter((el) => el.value === '${USERNAME}' && !el.readOnly).length,
       readonlyUsername: inputs.filter((el) => el.value === '${USERNAME}' && el.readOnly).length,
+      // 收尾动作按钮（完成段在场证据；文案不写死：完成安装 / 标记安装完成 / 落锁）
+      finalizeButtons: Array.from(document.querySelectorAll('button')).filter((b) =>
+        /完成安装|标记安装完成|落锁/.test((b.textContent || '').trim())).length,
     };
   })()
 `;
@@ -117,6 +120,7 @@ type Read = {
   readonlyPassword: number;
   editableUsername: number;
   readonlyUsername: number;
+  finalizeButtons: number;
 };
 
 /** 装探针 + 起「真 origin」静态/接口服务器（一套共用，两个用例各开新页面）。 */
@@ -367,17 +371,7 @@ async function openAdminStep(h: Harness) {
   return { page, problems };
 }
 
-/** 第 1 步 → 第 2 步（服务器配置核对页）。 */
-async function toServerStep(page: any) {
-  await clickButton(page, /下一步/);
-  await page.waitForFunction(
-    () => (document.body.innerText || '').includes('生效值'),
-    undefined,
-    { timeout: 15000 },
-  );
-}
-
-/** 第 2 步 → 第 3 步（③ 管理员表单在场）。 */
+/** 第 1 步 → 第 2 步（SIMPLIFY-INSTALL-WIZARD 后只有两步：数据库/缓存 → 管理员）。 */
 async function toAdminStep(page: any) {
   await clickButton(page, /下一步/);
   await page.waitForFunction(
@@ -387,7 +381,29 @@ async function toAdminStep(page: any) {
   );
 }
 
-test('阶段唯一性：每阶段只渲染该渲染的那一段（apply 成功后 ③ 表单必须让位、凭据只出现一次）', async (t) => {
+/**
+ * ★重启口径的判据（契约一致性，且**只拦谎、不强制措辞**）：
+ * `install_flow::complete` 落锁后走**进程内热切换**（`hot_switch.rs:1-9 / :35-44`），
+ * 回执恒 `restart_required:false`（`install_flow/mod.rs:753-761`），后端日志原文
+ * 「无需重启」（:751），模块头 :11-14 还专门警告「后端说不需重启、前端仍提示重启 = 自相矛盾」。
+ * ⇒ 禁的是**无条件的「须重启」硬话**；至于页面要不要主动写一句「不需重启」，
+ *   是文案取舍（fe02 合并的形态选择「从简」，整段删掉）⇒ 本探针不强制，
+ *   否则就把「少说一句话」判成缺陷，替产品做决定。
+ */
+const RESTART_LIES = ['须重启', '需要重启', '请重启'];
+
+function assertNoRestartLie(label: string, text: string) {
+  for (const lie of RESTART_LIES) {
+    assert.ok(
+      !text.includes(lie),
+      `★${label} 不得声称「${lie}」—— 后端 complete 走进程内热切换返回 ` +
+        '`restart_required:false`（mod.rs:753-761）、日志原文「无需重启」（:751）。' +
+        `实际文案尾部：${text.slice(-300)}`,
+    );
+  }
+}
+
+test('阶段唯一性：每阶段只渲染该渲染的那一段（apply 成功后填写表单必须让位、凭据只出现一次）', async (t) => {
   let h: Harness;
   try {
     h = await getHarness(t);
@@ -397,7 +413,7 @@ test('阶段唯一性：每阶段只渲染该渲染的那一段（apply 成功�
   }
   const { page, problems } = await openAdminStep(h);
   try {
-    // —— 阶段 A：第 1 步（数据库 / 缓存）⇒ ③/④ 都不该在场
+    // —— 阶段 A：第 1 步（数据库 / 缓存）⇒ 填写段与完成段都不该在场
     const a = await read(page);
     assert.equal(a.writablePassword, 0, `阶段 A 不该有可写口令框：${JSON.stringify(a.legends)}`);
     assert.equal(
@@ -412,82 +428,81 @@ test('阶段唯一性：每阶段只渲染该渲染的那一段（apply 成功�
       `阶段 A（① 页用小节标题不用圈号）不该出现圈号编号：${JSON.stringify(a.circleLegends)}`,
     );
 
-    // —— 阶段 B：第 2 步「服务器配置」核对页 ⇒ 仍不该有 ③/④
-    await toServerStep(page);
-    const b = await read(page);
-    assert.equal(b.writablePassword, 0, '阶段 B（核对页）不该渲染 ③ 表单：' + JSON.stringify(b.legends));
-    assert.equal(b.readonlyPassword, 0, '阶段 B 不该渲染 ④ 完成段：' + JSON.stringify(b.legends));
-
-    // —— 阶段 C：第 3 步 ⇒ ③ 在场（两个可写口令框），④ 不在场
+    // —— 阶段 B：第 2 步（管理员 + 生效值核对）⇒ 填写段在场、完成段不在场
     await toAdminStep(page);
-    const c = await read(page);
-    assert.equal(c.writablePassword, 2, `阶段 C 应恰好是 ③ 的两个可写口令框：${JSON.stringify(c)}`);
+    const b = await read(page);
     assert.equal(
-      c.readonlyPassword,
+      b.writablePassword,
+      2,
+      `阶段 B 应恰好是管理员段的两个可写口令框：${JSON.stringify(b)}`,
+    );
+    assert.equal(
+      b.readonlyPassword,
       0,
-      '阶段 C（apply 还没成功）不该渲染 ④ 的只读展示：' + JSON.stringify(c.legends),
+      '阶段 B（apply 还没成功）不该渲染完成段的只读展示：' + JSON.stringify(b.legends),
     );
-    assert.equal(
-      c.circleLegends.length,
-      1,
-      `阶段 C 应只有一节带圈号编号：${JSON.stringify(c.circleLegends)}`,
-    );
+    assert.equal(b.stepCounter, 1, `阶段 B 进行中应有一套步数计数行：${JSON.stringify(b)}`);
+    assert.equal(b.finalizeButtons, 0, `阶段 B 不该出现「完成安装」按钮：${JSON.stringify(b)}`);
 
     await fillAdmin(page);
     await clickButton(page, /应用安装并创建管理员/);
 
-    // —— 阶段 D：apply 成功 ⇒ ④ 必须在场，③ 必须**让位**（用户实测撞到的正是共存）
+    // —— 阶段 C：apply 成功 ⇒ 完成段在场，填写段必须**让位**（用户实测撞到的正是共存）
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('input')).some((el) => el.readOnly),
       undefined,
       { timeout: 20000 },
     );
-    const d = await read(page);
+    const c = await read(page);
     assert.equal(
-      d.readonlyPassword,
+      c.readonlyPassword,
       1,
-      `阶段 D 应有且仅有完成段的 1 个只读口令展示：${JSON.stringify(d)}`,
+      `阶段 C 应有且仅有完成段的 1 个只读口令展示：${JSON.stringify(c)}`,
     );
     assert.equal(
-      d.writablePassword,
+      c.writablePassword,
       0,
-      `★防复发主断言：apply 成功后「③ 管理员账号」表单段（两个可写口令框）必须让位；` +
-        `非 0 = ③ 与 ④ 同页共存 = 凭据在同一屏出现两遍。实际读数：${JSON.stringify(d)}`,
+      `★防复发主断言：apply 成功后「管理员填写段」（两个可写口令框）必须让位；非 0 = 填写段与` +
+        `完成段同页共存 = 凭据在同一屏出现两遍。实际读数：${JSON.stringify(c)}`,
     );
     assert.equal(
-      d.editableUsername,
+      c.editableUsername,
       0,
-      `★防复发：可编辑的用户名框必须随 ③ 一起让位（否则用户名两遍）：${JSON.stringify(d)}`,
+      `★防复发：可编辑的用户名框必须随填写段一起让位（否则用户名两遍）：${JSON.stringify(c)}`,
     );
     assert.equal(
-      d.readonlyUsername,
+      c.readonlyUsername,
       1,
-      `凭据回执本身不得被删掉（用户名只读展示应恰好 1 处；修法不能是「两段都不渲染」）：${JSON.stringify(d)}`,
+      `凭据回执本身不得被删掉（用户名只读展示应恰好 1 处；修法不能是「两段都不渲染」）：${JSON.stringify(c)}`,
     );
     assert.ok(
-      d.circleLegends.length <= 1,
-      `★同一时刻至多一套圈号编号在场（③/④ 并存 = 2）：${JSON.stringify(d.circleLegends)}`,
+      c.circleLegends.length <= 1,
+      `★同一时刻至多一套圈号编号在场：${JSON.stringify(c.circleLegends)}`,
     );
     assert.equal(
-      d.stepCounter,
+      c.stepCounter,
       0,
-      `★完成段不得再挂「第 N / M 步」计数行 —— 向导已无步可走，留着就是第二套编号：${JSON.stringify(d)}`,
+      `完成段不得再挂「第 N / M 步」计数行 —— 向导已无步可走，留着就是第二套编号：${JSON.stringify(c)}`,
     );
+    assert.equal(
+      c.finalizeButtons,
+      1,
+      `阶段 C 应恰有一个收尾按钮（完成安装）：${JSON.stringify(c)}`,
+    );
+    assertNoRestartLie('阶段 C（完成段）', c.text);
 
-    // —— 阶段 E：complete 成功后整个表单让位给完成横幅
-    await fillConfirm(page);
-    await clickButton(page, /标记安装完成|完成安装|落锁/);
+    // —— 阶段 D：点收尾 ⇒ complete 在飞/完成后，整个表单与完成段都让位给结果横幅
+    await clickButton(page, /完成安装|标记安装完成|落锁/);
     await page.waitForFunction(
-      () => (document.body.innerText || '').includes('restart_required'),
+      () => (document.body.innerText || '').includes('安装已完成'),
       undefined,
       { timeout: 20000 },
     );
-    const e = await read(page);
-    assert.equal(e.writablePassword, 0, `阶段 E 仍不得出现 ③ 的可写口令框：${JSON.stringify(e)}`);
-    assert.ok(
-      e.circleLegends.length <= 1,
-      `阶段 E 至多一节带圈号编号：${JSON.stringify(e.circleLegends)}`,
-    );
+    const d = await read(page);
+    assert.equal(d.writablePassword, 0, `阶段 D 不得再有可写口令框：${JSON.stringify(d)}`);
+    assert.equal(d.readonlyPassword, 0, `阶段 D 不得再挂完成段的口令回显：${JSON.stringify(d)}`);
+    assert.equal(d.finalizeButtons, 0, `阶段 D 收尾按钮应已消失（不能重复点）：${JSON.stringify(d)}`);
+    assertNoRestartLie('阶段 D（安装已完成）', d.text);
   } finally {
     if (problems.length > 0) {
       // 探针自身的运行时异常不能被吞成「断言失败」—— 必须可见（rv01 #2 同口径）
@@ -497,7 +512,7 @@ test('阶段唯一性：每阶段只渲染该渲染的那一段（apply 成功�
   }
 });
 
-test('重启口径一致性：安装面不得把「落锁后须重启」写成硬话，且须如实显示 restart_required:false', async (t) => {
+test('重启口径一致性：安装面任何一段都不得把「须重启」写成硬话', async (t) => {
   let h: Harness;
   try {
     h = await getHarness(t);
@@ -507,72 +522,45 @@ test('重启口径一致性：安装面不得把「落锁后须重启」写成�
   }
   const { page, problems } = await openAdminStep(h);
   try {
-    /**
-     * ★这是**契约一致性**断言，不是文案偏好：
-     * `install_flow::complete` 落锁后走**进程内热切换**（`hot_switch.rs:1-9 / :35-44`），
-     * 回执恒为 `restart_required:false`（`install_flow/mod.rs:753-761`），后端日志原文
-     * 就是「无需重启」（:751）；模块头注释 :11-14 还专门警告「后端说不需重启、前端仍
-     * 提示重启 = 自相矛盾（rb01 在 #23 抓过同类 Critical）」。
-     * 允许的重启表述只有**失败兜底**那一句（切换失败 ⇒ 进程退出，锁已在盘，重启即进主应用）
-     * ⇒ 断言只拦「须重启 / 需要重启 / 请重启」这种**无条件硬话**。
-     */
-    const assertNoRestartClaim = (label: string, text: string) => {
-      for (const phrase of ['须重启', '需要重启', '请重启']) {
-        assert.ok(
-          !text.includes(phrase),
-          `★${label} 不得声称「${phrase}」—— 后端 complete 走进程内热切换返回 ` +
-            `\`restart_required:false\`（mod.rs:753-761），同页上文还写着「热加载 / 不需重启」⇒ 自相矛盾。` +
-            `实际文案尾部：${text.slice(-300)}`,
-        );
-      }
-      assert.match(
-        text,
-        /不[需需]要?重启|无需重启|不用重启/,
-        `${label} 须保留「热加载 ⇒ 不需重启」的如实表述（不得反向删掉）`,
-      );
-    };
+    // 第 1 步（数据库 / 缓存）
+    assertNoRestartLie('第 1 步', (await read(page)).text);
 
-    // —— 第 2 步核对页（ServerConfigSummary）
-    await toServerStep(page);
-    assertNoRestartClaim('服务器配置核对页', (await read(page)).text);
-
-    // —— 过渡页（InstallProgressScreen）：apply 在飞时整页是它，故必须**延迟应答**才采得到
+    // 第 2 步（含「生效值核对」段 —— SIMPLIFY 后并入本页）
     await toAdminStep(page);
+    const b = await read(page);
+    assert.match(
+      b.text,
+      /配置核对|生效值/,
+      `第 2 步应带配置核对段（本用例要覆盖它——这里原本是「complete 落锁后仍须重启」的现场）：` +
+        b.text.slice(-260),
+    );
+    assertNoRestartLie('配置核对段', b.text);
+
+    // 过渡页：apply 在飞时整页是 InstallProgressScreen ⇒ 服务器**延迟应答**才采得到那一帧
     await fillAdmin(page);
     await clickButton(page, /应用安装并创建管理员/);
     await page.waitForFunction(
-      () => (document.body.innerText || '').includes('正在应用安装配置'),
+      () => (document.body.innerText || '').includes('正在安装'),
       undefined,
       { timeout: 5000 },
     );
-    assertNoRestartClaim('应用安装过渡页', (await read(page)).text);
+    assertNoRestartLie('安装过渡页', (await read(page)).text);
 
-    // —— 完成横幅：restart_required 必须来自后端回执（页面原写法是 `?? true` 兜底）
+    // 完成段 + 落锁过渡页 + 结果横幅
     await page.waitForFunction(
       () => Array.from(document.querySelectorAll('input')).some((el) => el.readOnly),
       undefined,
       { timeout: 20000 },
     );
-    await fillConfirm(page);
-    await clickButton(page, /标记安装完成|完成安装|落锁/);
+    assertNoRestartLie('完成段', (await read(page)).text);
+    await clickButton(page, /完成安装|标记安装完成|落锁/);
     await page.waitForFunction(
-      () => (document.body.innerText || '').includes('restart_required'),
+      () => (document.body.innerText || '').includes('正在完成安装') ||
+        (document.body.innerText || '').includes('安装已完成'),
       undefined,
       { timeout: 20000 },
     );
-    const done = (await read(page)).text;
-    // ★断言**值**而不是断言排版：JSX 里 `restart_required =` 与插值分两行 ⇒ 渲染成
-    //   「restart_required =false」（无空格）；写死空格会把这条变成排版快照。
-    assert.match(
-      done,
-      /restart_required\s*=\s*false/,
-      `完成横幅须如实显示后端回执 \`restart_required:false\`：${done.slice(-320)}`,
-    );
-    assert.ok(
-      !/restart_required\s*=\s*true/.test(done),
-      '完成横幅不得显示 `restart_required = true`（后端返回 false ⇒ 显示 true 就是把 `?? true` ' +
-        '兜底当成真值，掩盖回执丢失）',
-    );
+    assertNoRestartLie('落锁过渡页 / 结果横幅', (await read(page)).text);
   } finally {
     if (problems.length > 0) {
       console.error('探针页面异常：\n' + problems.join('\n'));
