@@ -17,7 +17,9 @@
  *   2. 解析 `import <alias> from '<...>.module.css'`（也认 `styles` 别名与
  *      `@import`/`composes` 产生的**导出面**）；
  *   3. 收集 `<alias>.<name>` 用法（含模板串 `${styles.x}`、clsx/对象展开里的成员）；
- *   4. 与 CSS 文件的**选择器类集合**做差集；
+ *   4. 与 CSS 文件的**选择器类集合**做差集（含 `@media`/`@supports`/`@layer`
+ *      等 at-rule **嵌套内部**的选择器 —— 触屏样式全都收在 `@media` 里，
+ *      只看外层会把真导出的类判成缺失，闸自己假红）；
  *   5. 差集命中 ⇒ 按台账判定：
  *        · 在 `KNOWN_MISSING` 台账里 ⇒ WARN（存量债务，不阻塞）；
  *        · 不在台账里（**新增**）⇒ FAIL；
@@ -92,15 +94,23 @@ function cssDefinedClasses(src) {
   let buf = '';
   for (const ch of noComments) {
     if (ch === '{') {
-      if (depth === 0) {
-        for (const m of buf.matchAll(/\.(-?[A-Za-z_][A-Za-z0-9_-]*)/g)) out.add(m[1]);
-      }
+      // ★在**每个** `{` 处收割选择器里的类名，而不是只在外层（depth===0）。
+      //   旧实现只收 depth===0 ⇒ 收在 `@media (hover:none) and (pointer:coarse)`
+      //   里的类名（触屏热区那一整块）**全部看不见**，于是把 CSS Module 真导出的
+      //   类判成「未定义」——闸自己假红，还把「styles.X=undefined⇒热区静默失效」
+      //   这个假结论递给人去改产品代码（实测：打包产物里确有 `_casHitCell_ozgkv_1106`
+      //   导出，见 host/tests/cas-tap-target-cssmodule.dom.test.ts）。
+      //   媒体特性名（`min-width: 64.5em` 之类）不含 `.标识符`，故嵌套收割不会
+      //   把声明误当选择器；声明流则由下面 `;` 处清空 buf 截断。
+      for (const m of buf.matchAll(/\.(-?[A-Za-z_][A-Za-z0-9_-]*)/g)) out.add(m[1]);
       depth += 1;
       buf = '';
     } else if (ch === '}') {
       depth = Math.max(0, depth - 1);
       buf = '';
-    } else if (depth === 0) {
+    } else if (ch === ';') {
+      buf = '';
+    } else {
       buf += ch;
     }
   }
