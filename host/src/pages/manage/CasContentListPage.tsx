@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { resolveContentsTruncation } from './cas/contentsTruncation';
 import { casAdminApi } from '@fmby/v2-shared/contracts/manage/casAdmin';
 import { FeedbackState, InlineBanner, StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -45,6 +46,14 @@ export function CasContentListPage() {
 
   const unwired = contentsQuery.data?.unwired ?? false;
   const items = contentsQuery.data?.items ?? [];
+  // G3：首屏截断必须**可见**。判据落在纯函数里（措辞诚实性由测试钉死）。
+  const truncation = resolveContentsTruncation({
+    count: items.length,
+    limit: contentsQuery.data?.limit ?? 0,
+    unwired,
+    loading: contentsQuery.isPending,
+    isError: contentsQuery.isError,
+  });
 
   const toggle = (contentId: number) => {
     setExpanded((prev) => {
@@ -74,6 +83,12 @@ export function CasContentListPage() {
           title="CAS 内容列表数据面未就绪"
           description="后端列表端点（w02 CAS-CONTENT-LIST-API）尚未接线，下方为占位空列表，不含任何数据。"
         />
+      ) : null}
+
+      {truncation.notice ? (
+        // ★G3：后端此端点返回裸数组（无 total/has_more）⇒ 只能说「已到首屏上限、无法翻页」，
+        //   不能写「共 N 条 / 还有 M 条」——那是在伪造不知道的数。
+        <InlineBanner variant="warning" title="仅显示首屏" description={truncation.notice} />
       ) : null}
 
       <ManageSectionCard
