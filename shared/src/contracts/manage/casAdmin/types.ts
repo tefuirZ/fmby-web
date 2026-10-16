@@ -257,3 +257,39 @@ export interface RawCasContentSummary {
   lease?: RawCasContentLeaseRef | null;
   updated_at?: number | null;
 }
+
+
+/** wire 形态 · 触发对账回执（后端 `CasReconcileTriggerDto`）。 */
+export interface RawCasReconcileTrigger {
+  task_id?: number;
+  created?: boolean;
+}
+
+/**
+ * 域形态 · 触发对账回执。
+ *
+ * ★`created` 必须透出到 UI：`false` = 已有在途任务、**幂等命中未重复入队**，
+ *   与「本次新建」是两件事（都显示「已触发」= 对用户撒谎）。
+ */
+export interface CasReconcileTrigger {
+  taskId: number;
+  created: boolean;
+}
+
+/** wire 形态 · 单档重试复制回执（`reason_*` 为 skip_serializing_if ⇒ 无原因时 key 缺失）。 */
+export interface RawCasRetryCopy {
+  drive_id?: number;
+  copy_state?: string;
+  reason_code?: string | null;
+  reason_detail?: string | null;
+}
+
+/** 域形态 · 重试复制回执（存在性单列，与 `CasDriveStatus.reasonCodePresent` 同纪律）。 */
+export interface CasRetryCopy {
+  driveId: number;
+  /** `present` / `pending`（秒传未命中回落常规上传，**非错误**）/ `failed` / 后端新增态原样透出。 */
+  copyState: string;
+  reasonCode: string | null;
+  reasonDetail: string | null;
+  reasonCodePresent: boolean;
+}

@@ -17,6 +17,10 @@ import type {
   RawCasDriveStatus,
   RawCasFanoutStatus,
   RawCasReconcileReport,
+  RawCasReconcileTrigger,
+  RawCasRetryCopy,
+  CasReconcileTrigger,
+  CasRetryCopy,
 } from "./types";
 
 // 与 `routes/admin_cas.rs` 逐字一致（单一事实源，不另起常量）。
@@ -26,6 +30,15 @@ const FANOUT_PATH = "/api/admin/cas/fanout";
 const RECONCILE_PATH = "/api/admin/cas/reconcile";
 // #658-CONTENT-LIST：CAS 内容列表（w02 后端 CAS-CONTENT-LIST-API 补）。
 const CONTENTS_PATH = "/api/admin/cas/contents";
+
+/**
+ * 首屏条数 —— 与后端默认值同数（`admin_cas.rs` 的 `page_size.unwrap_or(20)`，
+ * 钳位 `1..=200`），**显式发出**只为了一个目的：让前端**知道自己被截断在多少条**，
+ * 从而能诚实告诉用户「这是首屏上限、不是全量」。
+ * ★不发 `page`：后端 `page≠1` 直接 400（键集仓储禁 OFFSET 假分页，docs/15）
+ *   ⇒ 任何「下一页」尝试都是制造假象；深分页的诚实路径是键集游标 wire（属后端升级）。
+ */
+export const CAS_CONTENTS_LIMIT = 20;
 
 /// snake_case → camelCase。
 export function mapCasDriveConfig(
@@ -80,6 +93,28 @@ export function mapCasFanoutStatus(
           graceRemainingMs: raw.deferred.grace_remaining_ms ?? 0,
         }
       : null,
+  };
+}
+
+/// 触发对账回执 → 域形态。`created` 缺失按 `false`（**不假定新建**）。
+export function mapCasReconcileTrigger(
+  raw: Partial<RawCasReconcileTrigger> | null | undefined,
+): CasReconcileTrigger {
+  return { taskId: raw?.task_id ?? 0, created: raw?.created ?? false };
+}
+
+/// 重试复制回执 → 域形态。
+/// ★`copyState` 原样透出（后端是开放字符串）：折叠成「成功/失败」两态会把后端新增态
+///   静默判成失败；`reason_*` 沿用「key 缺失 ≠ 空串」纪律（见 `mapCasDriveStatus`）。
+export function mapCasRetryCopy(
+  raw: Partial<RawCasRetryCopy> | null | undefined,
+): CasRetryCopy {
+  return {
+    driveId: raw?.drive_id ?? 0,
+    copyState: raw?.copy_state ?? '',
+    reasonCode: raw?.reason_code ?? null,
+    reasonDetail: raw?.reason_detail ?? null,
+    reasonCodePresent: raw != null && "reason_code" in raw,
   };
 }
 
@@ -192,13 +227,21 @@ export const casAdminApi = {
   /// ★w02 端点未合时该路由不存在 ⇒ 404 `not_found`，归为「数据面未就绪」而非接线错误
   ///   （列表端点 404 = 端点不存在，不是业务 404）。
   /// ★其余错误（403 能力不足等）⇒ 抛错，交页面 error 态透传后端原文。
-  async listCasContents(): Promise<{ items: CasContentSummary[]; unwired: boolean }> {
+  async listCasContents(): Promise<{
+    items: CasContentSummary[];
+    unwired: boolean;
+    limit: number;
+  }> {
     try {
-      const raw = await httpClient.get<RawCasContentSummary[]>(CONTENTS_PATH);
-      return { items: (raw ?? []).map(mapCasContentSummary), unwired: false };
+      const raw = await httpClient.get<RawCasContentSummary[]>(CONTENTS_PATH, {
+        params: { page_size: CAS_CONTENTS_LIMIT },
+      });
+      const items = (raw ?? []).map(mapCasContentSummary);
+      return { items, unwired: false, limit: CAS_CONTENTS_LIMIT };
     } catch (err) {
       if (isCasAdminUnwired(err) || isNotFound(err)) {
-        return { items: [], unwired: true };
+        // 未装配/端点不存在 ⇒ 假空态，`limit` 无意义（给 0，防 UI 把 0 当「上限 0 条」）。
+        return { items: [], unwired: true, limit: 0 };
       }
       throw err;
     }
@@ -212,10 +255,12 @@ export const casAdminApi = {
   /// 缺 `confirmed` ⇒ 400。一律由 `httpClient` 抛错，前端用 `getErrorMessage`
   /// **透传后端原文**（不另造文案）。
   /// 当前端调用前无需判断能力：403 即能力不足，交给错误文案呈现。
-  async triggerReconcile(): Promise<void> {
-    await httpClient.post<void>(`${RECONCILE_PATH}/trigger`, {
-      params: { confirmed: true },
-    });
+  async triggerReconcile(): Promise<CasReconcileTrigger> {
+    const raw = await httpClient.post<RawCasReconcileTrigger>(
+      `${RECONCILE_PATH}/trigger`,
+      { params: { confirmed: true } },
+    );
+    return mapCasReconcileTrigger(raw);
   },
 
   ///
@@ -226,11 +271,15 @@ export const casAdminApi = {
   ///
   /// ★rb01 本端点**尚未合入** ⇒ 前端接线但不伪装可用：未装配时按 503 显式报
   ///   「端点未装配」（沿用既有 fail-closed 纪律）。
-  async retryFanoutCopy(contentId: number, driveId: number): Promise<void> {
-    await httpClient.post<void>(
+  async retryFanoutCopy(
+    contentId: number,
+    driveId: number,
+  ): Promise<CasRetryCopy> {
+    const raw = await httpClient.post<RawCasRetryCopy>(
       `${FANOUT_PATH}/${contentId}/drives/${driveId}/retry`,
       { params: { confirmed: true } },
     );
+    return mapCasRetryCopy(raw);
   },
 };
 

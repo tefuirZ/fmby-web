@@ -12,6 +12,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { casAdminApi } from '@fmby/v2-shared/contracts/manage/casAdmin';
+import type { CasReconcileTrigger } from '@fmby/v2-shared/contracts/manage/casAdmin';
+import { resolveReconcileReceiptView, resolveRetryCopyView } from './casWriteReceipt';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { queryKeys } from '@fmby/v2-shared/query';
 import styles from '../longtail-shared/ManageShared.module.css';
@@ -24,14 +26,20 @@ import styles from '../longtail-shared/ManageShared.module.css';
 export function ReconcileTriggerButton({
   mutation,
 }: {
-  mutation: UseMutationResult<void, unknown, void>;
+  mutation: UseMutationResult<CasReconcileTrigger, unknown, void>;
 }) {
   return (
     <div>
       <button type="button" className={styles.casHitBtn} disabled={mutation.isPending} onClick={() => mutation.mutate()}>
         {mutation.isPending ? '触发中…' : '触发对账'}
       </button>
-      {mutation.isSuccess ? <span>已触发对账（报告稍后刷新）</span> : null}
+      {mutation.isSuccess && mutation.data ? (
+        // ★G4：回执 `created` 决定这句话的真假 —— 幂等命中不能说成「已入队新任务」。
+        (() => {
+          const view = resolveReconcileReceiptView(mutation.data!);
+          return <span data-tone={view.tone}>{view.label}（报告稍后刷新）</span>;
+        })()
+      ) : null}
       {mutation.isError ? (
         // ★透传后端原文：503/403/400 的原因由后端给出，前端不猜测、不美化。
         <span>触发失败：{getErrorMessage(mutation.error)}</span>
@@ -67,7 +75,13 @@ export function RetryCopyButton({
       <button type="button" className={styles.casHitBtn} disabled={retry.isPending} onClick={() => retry.mutate()}>
         {retry.isPending ? '重试中…' : '重试复制'}
       </button>
-      {retry.isSuccess ? <span>已触发重试</span> : null}
+      {retry.isSuccess && retry.data ? (
+        // ★G4：按 `copy_state` 分支 —— 旧版无条件写「已触发重试」，failed 也被显示成成功。
+        (() => {
+          const view = resolveRetryCopyView(retry.data!);
+          return <span data-tone={view.tone}>{view.label}</span>;
+        })()
+      ) : null}
       {retry.isError ? (
         <span>重试失败：{getErrorMessage(retry.error)}</span>
       ) : null}
