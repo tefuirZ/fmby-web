@@ -92,7 +92,21 @@ test('接线：三个助手不是死代码 —— 契约字段 + mapper + 两个
     '「后端无 DTO」fixme 必须已随接线移除（#862 已合）',
   );
 
+  // ★三闸明细已抽成**共享件**（两处复用，避免两份文案漂移）：断言改钉「组件消费真字段 +
+  //   **两页都渲染该组件**」，比原先「各页直接调助手」更强也更准确。
+  const detailComponent = await readSrc('pages/manage/cas/CasDeferredGateDetail.tsx');
+  assert.match(detailComponent, /resolveDeferredGateLabel/, '共享件必须用同族标签（不另造一套）');
+  assert.match(detailComponent, /graceRemainingMs/, '共享件必须消费宽限期剩余真字段');
+  assert.match(detailComponent, /if \(!deferred\)/, 'shared 件必须在 deferred 缺失时不渲染（不编造）');
+
   const fanoutPage = await readSrc('pages/manage/CasPublishOrchestrationPage.tsx');
   assert.match(fanoutPage, /fanoutQuery\.data\?\.deferred/, '扇出面必须消费三闸明细');
-  assert.match(fanoutPage, /resolveDeferredGateLabel/, '扇出面必须用同族标签（不另造一套）');
+  assert.match(fanoutPage, /CasDeferredGateDetail/, '扇出面必须渲染共享件');
+
+  const orchestrationPage = await readSrc('pages/manage/ManageCasPage.tsx');
+  assert.match(
+    orchestrationPage,
+    /<CasDeferredGateDetail deferred=\{fanoutQuery\.data\.deferred\} \/>/,
+    '编排页（真栈可达的扇出查询处）也必须渲染共享件',
+  );
 });
