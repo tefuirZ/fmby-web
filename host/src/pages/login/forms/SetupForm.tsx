@@ -54,10 +54,12 @@ export function SetupForm({ onSetupCompleted }: SetupFormProps) {
       ) : null}
 
       <Field label="用户名" error={errors.username?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               className={clsx(styles.input, invalid && styles.inputError)}
               placeholder="管理员用户名"
               autoComplete="username"
@@ -82,10 +84,12 @@ export function SetupForm({ onSetupCompleted }: SetupFormProps) {
       </Field>
 
       <Field label="密码" error={errors.password?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               type={showPassword ? 'text' : 'password'}
               className={clsx(
                 styles.input,
@@ -105,10 +109,12 @@ export function SetupForm({ onSetupCompleted }: SetupFormProps) {
       </Field>
 
       <Field label="确认密码" error={errors.confirmPassword?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               type={showConfirm ? 'text' : 'password'}
               className={clsx(
                 styles.input,

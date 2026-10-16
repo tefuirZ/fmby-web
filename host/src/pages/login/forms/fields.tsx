@@ -10,23 +10,31 @@ interface FieldProps {
   label: string;
   error?: string;
   hint?: string;
-  children: (id: string, invalid: boolean) => ReactNode;
+  children: (id: string, invalid: boolean, describedBy: string | undefined) => ReactNode;
 }
 
 export function Field({ label, error, hint, children }: FieldProps) {
   const id = useId();
+  // FE-FORM-VALIDATION-CONSISTENCY：错误/提示 span 赐 id，供输入 aria-describedby 关联
+  // （此前错误仅 role=alert 播报 + 靠邻近/颜色，字段本身无 aria-invalid/aria-describedby
+  //  ⇒ 读屏聚焦字段时不知道它无效/错在哪；此处补字段级关联）。
+  const errorId = error ? `${id}-error` : undefined;
+  const hintId = !error && hint ? `${id}-hint` : undefined;
+  const describedBy = errorId ?? hintId;
   return (
     <div className={styles.fieldGroup}>
       <label className={styles.label} htmlFor={id}>
         {label}
       </label>
-      {children(id, Boolean(error))}
+      {children(id, Boolean(error), describedBy)}
       {error ? (
-        <span className={styles.fieldError} role="alert">
+        <span id={errorId} className={styles.fieldError} role="alert">
           {error}
         </span>
       ) : hint ? (
-        <span className={styles.fieldHint}>{hint}</span>
+        <span id={hintId} className={styles.fieldHint}>
+          {hint}
+        </span>
       ) : null}
     </div>
   );

@@ -76,10 +76,12 @@ export function ResetPasswordForm({ ticket, onDone }: ResetPasswordFormProps) {
       <input type="hidden" {...register('ticket')} />
 
       <Field label="新密码" error={errors.newPassword?.message}>
-        {(id, invalid) => (
+        {(id, invalid, describedBy) => (
           <div className={styles.inputWrapper}>
             <input
               id={id}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               type={showPassword ? 'text' : 'password'}
               className={clsx(
                 styles.input,
