@@ -142,3 +142,32 @@ host test:   ℹ pass 320 / ℹ fail 0
 
 ## 红线遵守
 零新依赖 / 未碰 themes / 未碰 /manage 授权面 / 未动 `shared/src/**/*.d.ts` / 未并 integration/BATCH / 未 push main。
+
+---
+
+## 追加（FE-AI-RESIDUAL 收尾，fe01）—— 遗留项处置 + **新登记一条后端缺口**
+
+### 已完成（本文件签出的两处前端遗留）
+
+- **① `suggest` 无 UI 入口** ⇒ 已补（`useAiInterventionMutations.ts` 的 `suggestMutation` +
+  详情面板「获取 AI 建议」+ 只读结果块；**只读语义 ⇒ 不 invalidateAll**）。契约：
+  `tests/ai-residual.contract.test.ts` ①（含红侧证明）。
+- **② 任务中心「AI 介入概览」段** ⇒ 已补（`TaskCenterDetailDrawer.tsx`，V1 位置同形；
+  复用 `useAiInterventionThreadQuery`）。契约：同文件 ②（含红侧证明）。
+
+### ★新登记的后端缺口（本卡实测发现，属后端仓，前端未伪造）
+
+**任务详情 DTO 缺 AI 上下文**：V1 的 `TaskCenterAiInterventionSection` 读 `detail.aiIntervention`；
+V2 的 `crates/fmby-v2-application/src/task_center.rs:181` `TaskCenterItem`/`TaskCenterDetail`
+**只有 `media_item_id`**，无任何 AI 字段（也无 `media_title`，其注释已明写「恒 None：跨域 join
+登记后续卡」）。
+⇒ 本次前端**有意偏离 V1**：改用**既有 AI 端点** `GET /api/manage/ai-interventions/media/{id}`
+以 `mediaItemId` 定位（只读、复用既有 hook）。若后端后续补 `ai_intervention` 上下文，
+前端可回到「任务详情自带上下文」的 V1 形态（届时删掉本段的多一次请求）。
+
+### 沿用本文件 ④ 的既有登记（本次复核仍然成立，未改后端）
+
+1. `threads` 无 `search`/`sessionState`/`applied` 过滤（仅 limit/offset）⇒ UI 客户端筛选并明示。
+2. `threads` 返回**裸数组**（无 `total`/`page`）⇒ 无真实分页。
+3. `AiInterventionThread` 无 `mediaTitle` ⇒ 列表标题列显示 `—`（不伪造）。
+4. handler 文件 doc-comment 陈旧（写「当前 1 端点」，实为 **7**）。

@@ -34,8 +34,13 @@ export function AiInterventionSection() {
   const threadQuery = useAiInterventionThreadQuery(selectedMediaItemId);
   const settingsQuery = useAiAssistSettingsQuery();
 
-  const { openSessionMutation, sendMessageMutation, closeSessionMutation, applyMutation } =
-    useAiInterventionMutations(selectedMediaItemId);
+  const {
+    openSessionMutation,
+    sendMessageMutation,
+    closeSessionMutation,
+    applyMutation,
+    suggestMutation,
+  } = useAiInterventionMutations(selectedMediaItemId);
   const saveSettingsMutation = useSaveAiAssistSettingsMutation();
 
   const selectThread = useCallback((mediaItemId: string) => {
@@ -89,6 +94,9 @@ export function AiInterventionSection() {
             sendPending={sendMessageMutation.isPending}
             closePending={closeSessionMutation.isPending}
             applyPending={applyMutation.isPending}
+            suggestPending={suggestMutation.isPending}
+            suggestion={suggestMutation.data}
+            suggestError={suggestMutation.error}
             actionError={actionErrorValue}
             onOpen={(skillKey: AiInterventionSkillKey | undefined) =>
               openSessionMutation.mutate(skillKey)
@@ -96,6 +104,7 @@ export function AiInterventionSection() {
             onSend={(sessionId, message) => sendMessageMutation.mutate({ sessionId, message })}
             onClose={(sessionId) => closeSessionMutation.mutate(sessionId)}
             onApply={(sessionId) => applyMutation.mutate(sessionId)}
+            onSuggest={() => suggestMutation.mutate()}
             onDismissError={() => setActionError(null)}
           />
         ) : (

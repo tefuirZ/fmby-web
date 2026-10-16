@@ -39,7 +39,20 @@ export function useAiInterventionMutations(mediaItemId: string | null) {
     onSuccess: invalidateAll,
   });
 
-  return { openSessionMutation, sendMessageMutation, closeSessionMutation, applyMutation };
+  // FE-AI-RESIDUAL ①：`POST /media/{id}/suggest`（A2 只读建议）此前**零 UI 入口**
+  // （codegraph：`suggestForMediaItem` 无调用者）。只读语义 ⇒ 成功**不**失效任何查询，
+  // 避免制造无谓重取；与其余写操作的失效策略有意不同。
+  const suggestMutation = useMutation({
+    mutationFn: () => aiInterventionsApi.suggestForMediaItem(mediaItemId as string),
+  });
+
+  return {
+    openSessionMutation,
+    sendMessageMutation,
+    closeSessionMutation,
+    applyMutation,
+    suggestMutation,
+  };
 }
 
 /** AI 辅助设置保存（成功后失效设置查询）。 */
