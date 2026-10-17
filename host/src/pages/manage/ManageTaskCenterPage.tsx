@@ -161,6 +161,11 @@ export function ManageTaskCenterPage() {
           page={page}
           totalPages={totalPages}
           isFetching={listQuery.isFetching}
+          hasActiveFilters={
+            categoryFilter !== 'all' ||
+            statusFilter !== 'all' ||
+            rangePreset !== 'today'
+          }
           setSelectedTask={setSelectedTask}
           setPage={setPage}
         />

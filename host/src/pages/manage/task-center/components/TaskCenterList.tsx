@@ -14,6 +14,8 @@ interface TaskCenterListProps {
   page: number;
   totalPages: number;
   isFetching: boolean;
+  /** E3 裁决：空态两态分开 —— true = 有筛选（筛空），false = 真·无任务。 */
+  hasActiveFilters: boolean;
   setSelectedTask: Dispatch<SetStateAction<SelectedTaskRef | null>>;
   setPage: Dispatch<SetStateAction<number>>;
 }
@@ -24,6 +26,7 @@ export function TaskCenterList({
   page,
   totalPages,
   isFetching,
+  hasActiveFilters,
   setSelectedTask,
   setPage,
 }: TaskCenterListProps) {
@@ -62,11 +65,21 @@ export function TaskCenterList({
           </thead>
           <tbody ref={tbodyRef}>
             {items.length === 0 ? (
-              <EmptyTableRow
-                colSpan={8}
-                title="当前筛选下没有任务"
-                description="换个时间窗口或状态试试，别把自己筛成真空了。"
-              />
+              hasActiveFilters ? (
+                // 筛空：用户主动收窄了范围 ⇒ 指引放宽筛选。
+                <EmptyTableRow
+                  colSpan={8}
+                  title="当前筛选下没有任务"
+                  description="换个时间窗口或状态试试，别把自己筛成真空了。"
+                />
+              ) : (
+                // 真·无任务：系统当前没有任何运行中的任务（产品裁决措辞）。
+                <EmptyTableRow
+                  colSpan={8}
+                  title="当前没有运行中的任务"
+                  description="系统当前空闲；任务启动后会自动出现在这里。"
+                />
+              )
             ) : (
               items.map((item, rowIndex) => (
                 <tr key={`${item.category}:${item.id}`} data-row-index={rowIndex}>
