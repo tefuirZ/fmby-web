@@ -197,7 +197,6 @@ export function UserEditForm({
           className={styles.secondaryButton}
           type="button"
           onClick={onCancel}
-          disabled={mutation.isPending}
         >
           取消
         </button>

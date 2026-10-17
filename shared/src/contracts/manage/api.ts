@@ -214,7 +214,7 @@ export const manageApi = {
     userId: string,
     payload: UpdateManageUserRequest,
   ): Promise<ManageUserDetailRecord> {
-    const raw = await httpClient.patch<RawManagedUserRecord>(
+    const raw = await httpClient.patch<RawManagedUserRecord | undefined>(
       `/api/manage/users/${userId}`,
       {
         // CONFIRM-GATE-ALIGN：后端 `manage.users_update` 走 `?confirmed=true` query 闸
@@ -244,7 +244,12 @@ export const manageApi = {
         },
       },
     );
-    return mapUserRecord(raw);
+    // ★收尾实测二：后端 PATCH 返回 **204 No Content（无 body）**——此前直接
+    // mapUserRecord(undefined) 抛「Cannot read properties of undefined
+    // (reading 'id')」。兜底：回读详情，返回类型保持 ManageUserDetailRecord。
+    const record =
+      raw ?? (await httpClient.get<RawManagedUserRecord>(`/api/manage/users/${userId}`));
+    return mapUserRecord(record);
   },
 
   async batchUpdateUsers(
