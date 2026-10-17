@@ -32,7 +32,7 @@ export function NamingRulesHeader({
     <>
       <ManagePageHeader
         title="命名刮削设置"
-        description="这页收口命名清洗、识别后自动刮削、主元数据来源、元数据语言和缺失海报补刮。数据库是元数据真相源，海报会落本地缓存，不再只存一条屁用没有的外链。"
+        description="这页收口命名清洗、识别后自动刮削、主元数据来源、元数据语言和缺失海报补刮。数据库是元数据真相源，海报落本地缓存，播放不依赖第三方外链可达性。"
         meta={
           <div className={sharedStyles.metaRow}>
             <StatusBadge label="TMDB 主链路已接通" variant="success" />
