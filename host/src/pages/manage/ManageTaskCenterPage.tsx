@@ -169,12 +169,29 @@ export function ManageTaskCenterPage() {
   }, [listQuery, overviewQuery]);
 
   if ((overviewQuery.isPending && !overviewQuery.data) || (listQuery.isPending && !listQuery.data)) {
+    // ★E3 ④b：首屏无数据时的 3s 降级面挂在这里（早 return 分支）——
+    // 用户卡在 loading 时唯一可见的就是这屏，降级条必须长在这儿。
     return (
-      <FeedbackState
-        variant="loading"
-        title="正在装配任务中心"
-        description="正在汇总流水线、异常与审核任务，请稍等。"
-      />
+      <div className={styles.page}>
+        <ManagePageHeader
+          title="任务中心"
+          description="把扫描、识别、刮削、AI、审核和墓碑任务统一拎出来，先看系统在干什么，再定位卡在哪。"
+        />
+        {stalled ? (
+          <div className={styles.emptyInlineState} role="status" data-testid="task-center-stall">
+            响应较慢：任务数据仍在后台执行，已降级为本页轮询，可点重试或稍候自动恢复。
+            <button className={styles.smallButton} type="button" onClick={retryStalled}>
+              重试
+            </button>
+          </div>
+        ) : (
+          <FeedbackState
+            variant="loading"
+            title="正在装配任务中心"
+            description="正在汇总流水线、异常与审核任务，请稍等。"
+          />
+        )}
+      </div>
     );
   }
 
