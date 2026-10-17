@@ -4,3 +4,4 @@ export { TaskCenterFilters } from './TaskCenterFilters';
 export { TaskCenterList } from './TaskCenterList';
 export { TaskCenterDetailDrawer } from './TaskCenterDetailDrawer';
 export { TaskCenterFlash } from './TaskCenterFlash';
+export { TaskCenterStreamBoard } from './TaskCenterStreamBoard';

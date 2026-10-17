@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import type { TaskCenterCategory, TaskCenterListQuery, TaskCenterStatus } from '@fmby/v2-shared/contracts/manage/task-center';
+import {
+  taskCenterApi,
+  type TaskCenterCategory,
+  type TaskCenterListQuery,
+  type TaskCenterStatus,
+} from '@fmby/v2-shared/contracts/manage/task-center';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
@@ -12,9 +17,15 @@ import {
   TaskCenterFlash,
   TaskCenterList,
   TaskCenterMetrics,
+  TaskCenterStreamBoard,
 } from './task-center/components';
 import { PAGE_SIZE } from './task-center/constants';
-import { useTaskCenterMutations, useTaskCenterQueries } from './task-center/hooks';
+import {
+  useTaskCenterMutations,
+  useTaskCenterQueries,
+  useTaskCenterStream,
+  createPollingStream,
+} from './task-center/hooks';
 import type { FlashState, RangePreset, SelectedTaskRef } from './task-center/types';
 import { buildRangePreset, showFlash } from './task-center/utils';
 
@@ -39,10 +50,30 @@ export function ManageTaskCenterPage() {
     [categoryFilter, page, statusFilter, timeRange.from, timeRange.to],
   );
 
+  // E3「可以慢，不能空」：第 1 页走**流式装配**（首批尽快出 + 逐批 append + 3s 降级），
+  // 分页 REST 只在用户手动翻页（page>1）时才启用 ⇒ 同一份数据不被两条路径各拉一次。
+  const isStreamingFirstPage = page === 1;
   const { overviewQuery, listQuery, detailQuery } = useTaskCenterQueries(
     listQueryInput,
     selectedTask,
+    !isStreamingFirstPage,
   );
+  const pollingStream = useMemo(
+    () =>
+      createPollingStream({
+        fetchPage: (targetPage) =>
+          taskCenterApi.getItems({ ...listQueryInput, page: targetPage }),
+      }),
+    // listQueryInput 变了（筛选/排序口径）⇒ 重开一条流
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [listQueryInput],
+  );
+  const stream = useTaskCenterStream({
+    loadFirstBatch: pollingStream.loadFirstBatch,
+    subscribeBatches: pollingStream.subscribeBatches,
+    enabled: isStreamingFirstPage,
+    resetKey: JSON.stringify(listQueryInput),
+  });
 
   const { actionMutation } = useTaskCenterMutations({
     onSettledSuccess: (message, redirectHint) => {
@@ -59,24 +90,28 @@ export function ManageTaskCenterPage() {
     },
   });
 
-  const items = listQuery.data?.items ?? [];
-  const total = listQuery.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // ★数据源按「第 1 页 = 流式、翻页 = 分页 REST」二选一（同一页不重复取）。
+  //   改前 `items = listQuery.data?.items ?? []` 只有整页一条路径 ⇒ 首屏必须等整页到货。
+  const streamItems = isStreamingFirstPage ? stream.items : (listQuery.data?.items ?? []);
+  const streamTotal = isStreamingFirstPage
+    ? (stream.total || (listQuery.data?.total ?? 0))
+    : (listQuery.data?.total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(streamTotal / PAGE_SIZE));
   const categoryKpiMap = useMemo(() => {
     return new Map((overviewQuery.data?.categories ?? []).map((item) => [item.category, item]));
   }, [overviewQuery.data?.categories]);
 
-  if ((overviewQuery.isPending && !overviewQuery.data) || (listQuery.isPending && !listQuery.data)) {
-    return (
-      <FeedbackState
-        variant="loading"
-        title="正在装配任务中心"
-        description="正在汇总流水线、异常与审核任务，请稍等。"
-      />
-    );
-  }
+  // ★E3 §5：这里**不再有**「整页 loading 早退」。改前 `isPending` 会把整页换成
+  //   一个 FeedbackState 转圈（= 卡面明令禁止的「纯转圈」，用户点开什么都看不到）。
+  //   现在首帧即渲染页面外壳 + 骨架行，KPI 区在总览到货前不渲染（不用 0 冒充「没有任务」，
+  //   同 FE-HONESTY-P2 的「假 0 会话」口径）。
+  const overviewReady = Boolean(overviewQuery.data);
 
-  if ((overviewQuery.isError && !overviewQuery.data) || (listQuery.isError && !listQuery.data)) {
+  // ★两条取数路径各自的失败都要有明确态（卡面 §3「绝不允许空壳=未知」）：
+  //   第 1 页 = 流式（stream.error 由 board 内联呈现）；第 2 页起 = 分页 REST，
+  //   它的失败必须在这里兜住——否则翻页失败只剩一张空表。
+  const pagedQueryFailed = !isStreamingFirstPage && listQuery.isError && !listQuery.data;
+  if ((overviewQuery.isError && !overviewQuery.data) || pagedQueryFailed) {
     return (
       <FeedbackState
         variant="error"
@@ -129,19 +164,23 @@ export function ManageTaskCenterPage() {
         }
       />
 
-      <TaskCenterMetrics
-        total={overviewQuery.data?.total ?? 0}
-        running={overviewQuery.data?.running ?? 0}
-        failed={overviewQuery.data?.failed ?? 0}
-        todaySucceeded={overviewQuery.data?.todaySucceeded ?? 0}
-      />
+      {overviewReady ? (
+        <TaskCenterMetrics
+          total={overviewQuery.data?.total ?? 0}
+          running={overviewQuery.data?.running ?? 0}
+          failed={overviewQuery.data?.failed ?? 0}
+          todaySucceeded={overviewQuery.data?.todaySucceeded ?? 0}
+        />
+      ) : null}
 
-      <TaskCenterCategoryGroups
-        categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
-        setPage={setPage}
-        categoryKpiMap={categoryKpiMap}
-      />
+      {overviewReady ? (
+        <TaskCenterCategoryGroups
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          setPage={setPage}
+          categoryKpiMap={categoryKpiMap}
+        />
+      ) : null}
 
       <ManageSectionCard
         title="筛选与列表"
@@ -155,15 +194,38 @@ export function ManageTaskCenterPage() {
           setPage={setPage}
         />
 
-        <TaskCenterList
-          items={items}
-          total={total}
-          page={page}
-          totalPages={totalPages}
-          isFetching={listQuery.isFetching}
-          setSelectedTask={setSelectedTask}
-          setPage={setPage}
-        />
+        {/* ★第 1 页 = 流式壳（骨架/逐批/降级/空态四态可见）；
+            第 2 页起 = 既有分页 REST（翻页语义不变，不再流式重灌首页）。 */}
+        {isStreamingFirstPage ? (
+          <TaskCenterStreamBoard
+            status={stream.status}
+            items={streamItems}
+            loadedCount={streamItems.length}
+            total={streamTotal}
+            errorMessage={stream.errorMessage}
+            onRetry={stream.retry}
+          >
+            <TaskCenterList
+              items={streamItems}
+              total={streamTotal}
+              page={page}
+              totalPages={totalPages}
+              isFetching={stream.status === 'streaming'}
+              setSelectedTask={setSelectedTask}
+              setPage={setPage}
+            />
+          </TaskCenterStreamBoard>
+        ) : (
+          <TaskCenterList
+            items={streamItems}
+            total={streamTotal}
+            page={page}
+            totalPages={totalPages}
+            isFetching={listQuery.isFetching}
+            setSelectedTask={setSelectedTask}
+            setPage={setPage}
+          />
+        )}
       </ManageSectionCard>
 
       <TaskCenterDetailDrawer
