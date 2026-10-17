@@ -1,6 +1,5 @@
 import {
   ArrowUpCircle,
-  CheckCircle2,
   DownloadCloud,
   FileSearch,
   FolderSync,
@@ -66,11 +65,17 @@ export function ActiveTaskQueueWidget({
             <ListTodo size={18} />
           </span>
           <h2 className={styles.cardTitle}>正在运行的任务队列</h2>
-          <span className={styles.cardSubtitle}>（{runningCount} 个执行中 · 共 {tasks.length} 项）</span>
+          {/* FE-UI-ACCEPT A2：tasks 数据面未接入前不渲染「0 个执行中 · 共 0 项」——
+              把「没有数据」算成「0 项在跑」同样是谎报的一半。 */}
+          {tasks.length > 0 ? (
+            <span className={styles.cardSubtitle}>（{runningCount} 个执行中 · 共 {tasks.length} 项）</span>
+          ) : null}
         </div>
         <div className={styles.cardHeaderActions}>
+          {/* FE-UI-ACCEPT A2：死链修复——路由表只有 /manage/task-center，
+              原先的 /manage/tasks 会进 RouteErrorPage（验收 deadLinkCount=1 实锤）。 */}
           <Link
-            to="/manage/tasks"
+            to="/manage/task-center"
             style={{
               fontSize: '12px',
               color: 'var(--manage-cyan)',
@@ -85,12 +90,12 @@ export function ActiveTaskQueueWidget({
 
       {tasks.length === 0 ? (
         <div style={{ padding: 'var(--space-6) var(--space-4)', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <CheckCircle2 size={24} style={{ color: 'var(--success)', marginBottom: '8px' }} />
+          <ListTodo size={24} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
           <div style={{ fontSize: '13.5px', color: 'var(--text-primary)', fontWeight: 500 }}>
-            任务队列空闲
+            暂无任务数据
           </div>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
-            所有挂载目录、海报与元数据已完成最新刮削与入库。
+            运行中任务的数据面尚未接入，这里不展示猜测值；全量任务请到任务中心查看。
           </p>
         </div>
       ) : (
