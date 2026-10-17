@@ -281,12 +281,6 @@ export function LoginPage() {
           onAuthenticated={handleAuthenticated}
           onCancel={() => setMfaChallenge(null)}
         />
-      ) : mfaChallenge ? (
-        <MfaVerifyPanel
-          challenge={mfaChallenge}
-          onAuthenticated={handleAuthenticated}
-          onCancel={() => setMfaChallenge(null)}
-        />
       ) : (
         <>
           <LoginForm
