@@ -12,6 +12,7 @@ import { InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '@/pages/manage/longtail-shared/components';
+import { ScanQrImage } from '@/pages/manage/longtail-shared/components/ScanQrImage';
 
 const POLL_INTERVAL_MS = 3000;
 /** 终态：不再轮询。 */
@@ -111,7 +112,7 @@ export function Yun139QrLoginSection() {
               />
             </label>
             {qrImage ? (
-              <img src={qrImage} alt="139 登录二维码" className={styles.readonlyField} />
+              <ScanQrImage src={qrImage} alt="139 登录二维码" kind="vector" />
             ) : qrUrl ? (
               <div className={styles.fieldHint}>
                 二维码图不可用（后端取图失败），请用链接扫码：

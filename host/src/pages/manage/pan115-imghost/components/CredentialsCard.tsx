@@ -14,6 +14,7 @@ import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@fmby/v2-s
 import { queryKeys } from '@fmby/v2-shared/query';
 import { useImghostQrLogin } from '../hooks/useImghostQrLogin';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
+import { ScanQrImage } from '@/pages/manage/longtail-shared/components/ScanQrImage';
 
 // ─── 常量 ─────────────────────────────────────────────────────────────────────
 
@@ -224,16 +225,11 @@ export function CredentialsCard() {
               gap: 12,
             }}
           >
-            <img
+            <ScanQrImage
               src={qrSession.qrImage ?? qrSession.qrUrl}
               alt="115 扫码登录二维码"
-              style={{
-                width: 220,
-                height: 220,
-                background: '#fff',
-                padding: 8,
-                borderRadius: 8,
-              }}
+              kind="bitmap"
+              naturalSize={185}
             />
             <p className={styles.mutedText}>状态：{QR_STATUS_LABELS[qrStatus]}</p>
             {activating ? (
