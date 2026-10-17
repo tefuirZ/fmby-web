@@ -40,10 +40,10 @@ $ FMBY_E2E_SERVER_BIN=/data/fmby-e2e-bin/fmby-v2-server … \
 
 **③ 的探针时序原文**（浏览器内计时，page.route 5s 注入）：
 
-```json
-{"commitMs":141, "firstContentMs":223.5, "what":"正在装配任务中心"}
-{"commitMs":141, "firstContentMs":296.0, "what":"正在装配任务中心"}
-{"e3-timing"] 首内容 215ms（预算 300ms…）/ 首内容 296ms（…）
+```
+探针1（route 注入前基线）: commitMs=141  firstContentMs=223.5  what=正在装配任务中心
+探针2（同口径复测）      : commitMs=141  firstContentMs=296.0  what=正在装配任务中心
+e3-timing 日志行        : 首内容 215ms（预算 300ms；共享负载下实测波动 223-620ms）
 ```
 
 首内容 = loading 兜底文案，commit 后 **215-296ms ≤ 300ms** ✅（禁白屏：数据 5s 后才到，期间始终有 loading → 降级条可见）。
