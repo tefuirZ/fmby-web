@@ -204,12 +204,11 @@ export function UserEditForm({
         <button
           className={styles.primaryButton}
           type="button"
-          disabled={mutation.isPending}
           onClick={() =>
             onSubmit()
           }
         >
-          {mutation.isPending ? '保存中...' : '保存修改'}
+          保存修改
         </button>
       </div>
     </div>

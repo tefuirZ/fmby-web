@@ -223,7 +223,9 @@ export const manageApi = {
         body: {
           display_name: payload.displayName,
           email: payload.email,
-          status: payload.status ? mapUserStatusToApi(payload.status) : undefined,
+          // ★FE-ASYNC-FEEDBACK 收尾实测：后端 `UpdateUserFullRequest` 无 `status`
+          // 字段（deny_unknown_fields ⇒ 多发即 422，编辑保存此前从未成功过）。
+          // 状态变更走专用端点（manage_users_status，配确认门），不在此 payload。
           account_kind: payload.accountKind,
           roles: payload.role ? [payload.role] : undefined,
           role_template_id: payload.roleTemplateId,
