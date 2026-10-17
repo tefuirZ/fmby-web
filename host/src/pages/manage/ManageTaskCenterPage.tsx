@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { TaskCenterCategory, TaskCenterListQuery, TaskCenterStatus } from '@fmby/v2-shared/contracts/manage/task-center';
 import { FeedbackState } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
@@ -14,7 +14,10 @@ import {
   TaskCenterMetrics,
 } from './task-center/components';
 import { PAGE_SIZE } from './task-center/constants';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@fmby/v2-shared/query';
 import { useTaskCenterMutations, useTaskCenterQueries } from './task-center/hooks';
+import { useTaskCenterRealtime } from './task-center/hooks/useTaskCenterRealtime';
 import type { FlashState, RangePreset, SelectedTaskRef } from './task-center/types';
 import { buildRangePreset, showFlash } from './task-center/utils';
 
@@ -66,6 +69,105 @@ export function ManageTaskCenterPage() {
     return new Map((overviewQuery.data?.categories ?? []).map((item) => [item.category, item]));
   }, [overviewQuery.data?.categories]);
 
+  // ★E3 端到端转正（后端 edc81510c8 推 task.center.batch）：WS 分批消费接线。
+  // ② 每批合并进当前列表缓存（DOM 立即可见：行状态更新 / 新行头部插入）；
+  // ④ seqGapped ⇒ 全量重拉；3s 无数据 ⇒ 降级条（仍在后台执行 + 重试）。
+  type TaskCenterRow = NonNullable<typeof listQuery.data>['items'][number];
+
+  // wire.status 是后端枚举的 7 值集合（TaskCenterStatus）；显式白名单收窄，
+  // 未知值保守回落 Queued（不谎报具体状态；summary 已注明实时新任务）。
+  const TASK_CENTER_STATUSES: TaskCenterStatus[] = [
+    'Queued',
+    'Running',
+    'RetryWaiting',
+    'Failed',
+    'Succeeded',
+    'NeedsReview',
+    'Cancelled',
+    'Skipped',
+  ];
+  const narrowStatus = (raw: string): TaskCenterStatus =>
+    TASK_CENTER_STATUSES.includes(raw as TaskCenterStatus)
+      ? (raw as TaskCenterStatus)
+      : 'Queued';
+  const queryClient = useQueryClient();
+  const [batchCounters, setBatchCounters] = useState({ batches: 0, appended: 0, updated: 0 });
+  const [stalled, setStalled] = useState(false);
+  const realtime = useTaskCenterRealtime(true);
+
+  const lastBatch = realtime.lastBatch;
+  useEffect(() => {
+    if (!lastBatch) return;
+    const key = queryKeys.manage.taskCenter.list(listQueryInput as Record<string, unknown>);
+    const current = queryClient.getQueryData(key) as
+      | { items?: TaskCenterRow[]; total?: number }
+      | undefined;
+    if (!current?.items) return; // 无缓存列表（未加载/已卸载）不凭空造数据
+    const next = [...current.items];
+    let appended = 0;
+    let updated = 0;
+    for (const wire of lastBatch.items) {
+      const idx = next.findIndex(
+        (row) => row.category === wire.category && row.id === wire.id,
+      );
+      if (idx >= 0) {
+        // ②b 原地更新：状态 + 更新时间（其余字段保留，不丢富形状）。
+        next[idx] = {
+          ...next[idx],
+          status: narrowStatus(wire.status),
+          updatedAt: wire.updated_at ?? next[idx].updatedAt,
+        };
+        updated += 1;
+      } else {
+        // ②a 头部插入新行（wire 只有最小字段，诚实兜底，不伪造 mediaTitle）。
+        next.unshift({
+          category: wire.category as TaskCenterCategory,
+          id: wire.id,
+          status: narrowStatus(wire.status),
+          createdAt: wire.updated_at ?? new Date().toISOString(),
+          updatedAt: wire.updated_at ?? new Date().toISOString(),
+          retryCount: 0,
+          summary: wire.title ?? '（实时推送的新任务）',
+        });
+        appended += 1;
+      }
+    }
+    queryClient.setQueryData(key, {
+      ...current,
+      items: next,
+      total: current.total ?? next.length,
+    });
+    setBatchCounters((p) => ({
+      batches: p.batches + 1,
+      appended: p.appended + appended,
+      updated: p.updated + updated,
+    }));
+  }, [lastBatch, listQueryInput, queryClient]);
+
+  // ④a 丢帧 ⇒ 全量重拉（降级轮询兜底）。
+  useEffect(() => {
+    if (realtime.seqGapped) {
+      void listQuery.refetch();
+    }
+  }, [realtime.seqGapped, listQuery]);
+
+  // ④b 3s 无数据（首屏 pending/拉取中且无缓存）⇒ 降级条。
+  const noData = (listQuery.isPending || listQuery.isFetching) && !listQuery.data;
+  useEffect(() => {
+    if (!noData) {
+      setStalled(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setStalled(true), 3_000);
+    return () => window.clearTimeout(timer);
+  }, [noData]);
+
+  const retryStalled = useCallback(() => {
+    setStalled(false);
+    void overviewQuery.refetch();
+    void listQuery.refetch();
+  }, [listQuery, overviewQuery]);
+
   if ((overviewQuery.isPending && !overviewQuery.data) || (listQuery.isPending && !listQuery.data)) {
     return (
       <FeedbackState
@@ -111,6 +213,12 @@ export function ManageTaskCenterPage() {
             <span className={styles.metaText}>
               当前页：{page} / {totalPages}
             </span>
+            {/* ② 每批 append/更新计数的 DOM 可观测面（E3 转正断言对象） */}
+            {batchCounters.batches > 0 ? (
+              <span className={styles.metaText} data-testid="realtime-batch-counters">
+                实时推送：{batchCounters.batches} 批 · 追加 {batchCounters.appended} · 更新 {batchCounters.updated}
+              </span>
+            ) : null}
           </>
         }
         actions={
@@ -142,6 +250,16 @@ export function ManageTaskCenterPage() {
         setPage={setPage}
         categoryKpiMap={categoryKpiMap}
       />
+
+      {/* ④b 3s 无数据降级条：文案 + 重试（E3 转正断言对象；仍在后台执行 = 诚实降级） */}
+      {stalled ? (
+        <div className={styles.emptyInlineState} role="status" data-testid="task-center-stall">
+          响应较慢：任务数据仍在后台执行，已降级为本页轮询，可点重试或稍候自动恢复。
+          <button className={styles.smallButton} type="button" onClick={retryStalled}>
+            重试
+          </button>
+        </div>
+      ) : null}
 
       <ManageSectionCard
         title="筛选与列表"
