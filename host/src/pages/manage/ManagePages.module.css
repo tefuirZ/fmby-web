@@ -102,6 +102,22 @@
   flex-wrap: wrap;
 }
 
+/* P1-7（FE-UI-DENSITY-AUDIT）：可折叠分节卡 —— native <details> 的 summary
+   复用 .sectionHeader 结构，隐藏默认三角标记、光标提示可点展开。 */
+.sectionCard > summary.sectionHeader {
+  cursor: pointer;
+  list-style: none;
+}
+
+.sectionCard > summary.sectionHeader::-webkit-details-marker {
+  display: none;
+}
+
+/* P1-7：锚点导航的跳转落点，留出 sticky 顶栏高度，防止目标标题被遮挡。 */
+.anchorTarget {
+  scroll-margin-top: var(--space-10);
+}
+
 .sectionTitle {
   margin: 0;
   font-size: var(--text-h3);

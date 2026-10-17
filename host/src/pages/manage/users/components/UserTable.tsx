@@ -171,20 +171,16 @@ export function UserTable({
                 />
               </th>
               <th>账号</th>
-              <th>角色</th>
-              <th>类型</th>
+              <th>权限</th>
               <th>状态</th>
-              <th>来源授权</th>
-              <th>创建时间</th>
-              <th>最近登录</th>
-              <th>最近设备</th>
+              <th>登录 / 设备</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody ref={tbodyRef}>
             {users.length === 0 ? (
               <EmptyTableRow
-                colSpan={10}
+                colSpan={6}
                 title={
                   isPageTransitioning
                     ? '正在加载当前页'
@@ -228,15 +224,25 @@ export function UserTable({
                         <span className={styles.mutedText}>@{user.username}</span>
                       </div>
                     </td>
-                    <td className={styles.nowrap}>{user.roleLabel}</td>
-                    <td className={styles.nowrap}>{getUserAccountKindLabel(user.accountKind)}</td>
+                    <td>
+                      {/* P1-8：角色 + 类型 + 来源授权合并为「权限」一列。
+                          三源数据全部保留（徽章组 + 摘要文本），详情见抽屉。 */}
+                      <div className={styles.stackText}>
+                        <span className={styles.nowrap}>{user.roleLabel}</span>
+                        <span className={styles.mutedText}>{getUserAccountKindLabel(user.accountKind)}</span>
+                        <span className={styles.mutedText}>{describeSourceGrantSummary(user)}</span>
+                      </div>
+                    </td>
                     <td className={styles.nowrap}>
                       <StatusBadge label={getUserStatusLabel(user.status)} variant={getManageStatusVariant(user.status)} />
                     </td>
-                    <td>{describeSourceGrantSummary(user)}</td>
-                    <td className={styles.nowrap}>{formatDateTime(user.createdAt)}</td>
-                    <td className={styles.nowrap}>{formatDateTime(user.lastLoginAt)}</td>
-                    <td className={styles.nowrap}>{user.lastDevice || '—'}</td>
+                    <td>
+                      {/* P1-8：最近登录 + 最近设备合并为一列两行文本（零信息损失）。 */}
+                      <div className={styles.stackText}>
+                        <span className={styles.nowrap}>{formatDateTime(user.lastLoginAt)}</span>
+                        <span className={styles.mutedText}>{user.lastDevice || '—'}</span>
+                      </div>
+                    </td>
                     <td className={styles.actionsCell}>
                       <div className={styles.tableActionRow}>
                         <button className={styles.smallButton} type="button" onClick={() => onOpenView(user.id)}>详情</button>

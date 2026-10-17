@@ -29,7 +29,7 @@ export function RegistrationCodeHeader({
     <>
       <ManagePageHeader
         title="注册码管理"
-        description="批次化发码、共享码入口和单码明细都收在一个工作台里，窄屏也别再靠横向滚动硬撑。"
+        description="批次化发码、共享码入口与单码明细的统一工作台。"
         meta={
           <span className={styles.metaText}>
             当前共 {batchCount} 个批次，{codeCount} 条注册码

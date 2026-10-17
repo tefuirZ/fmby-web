@@ -17,7 +17,6 @@ import {
   useManageMediaItemsQuery,
 } from './media-items/hooks';
 import {
-  MediaItemMetricsBoard,
   MediaItemFilters,
   MediaItemsListSection,
 } from './media-items/components';
@@ -193,10 +192,9 @@ export function ManageMediaItemsPage() {
     metadataStatus !== 'all' ||
     overrideFilter !== 'all';
 
+  // P1-3：仅保留仍被筛选条消费的 localOverrideCount；其余三个当前页瞬态计数
+  // 随 MediaItemMetricsBoard 一并退场。
   const localOverrideCount = items.filter((item) => item.hasLocalOverride).length;
-  const playableCount = items.filter((item) => item.sourceStatus === 'playable').length;
-  const metadataIssueCount = items.filter((item) => item.metadataStatus !== 'success').length;
-  const assetReadyCount = items.filter((item) => item.hasPoster || item.hasSubtitle).length;
 
   const resetFilters = () => {
     setKeyword('');
@@ -284,13 +282,8 @@ export function ManageMediaItemsPage() {
         />
       ) : null}
 
-      <MediaItemMetricsBoard
-        total={total}
-        localOverrideCount={localOverrideCount}
-        playableCount={playableCount}
-        metadataIssueCount={metadataIssueCount}
-        assetReadyCount={assetReadyCount}
-      />
+      {/* P1-3（FE-UI-DENSITY-AUDIT）：原 MediaItemMetricsBoard 指标板整节删除——
+          「资源总数」与页头重复，其余三块是随翻页乱跳的当前页瞬态值。 */}
 
       <MediaItemFilters
         keyword={keyword}
@@ -308,7 +301,7 @@ export function ManageMediaItemsPage() {
         librariesQuery={librariesQuery}
         itemsCount={items.length}
         total={total}
-        localOverrideCount={items.filter((item) => item.hasLocalOverride).length}
+        localOverrideCount={localOverrideCount}
         isFetching={mediaItemsQuery.isFetching}
         hasActiveFilters={hasActiveFilters}
         onResetFilters={resetFilters}

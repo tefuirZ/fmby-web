@@ -87,18 +87,8 @@ export function PlaybackStage({
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                   {copied ? '已复制' : '复制播放链接'}
                 </button>
-                {portableStreamUrl ? (
-                  <a
-                    className={styles.ghostButton}
-                    href={portableStreamUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                    title="在浏览器新标签中打开视频流"
-                  >
-                    <ExternalLink size={14} />
-                    新标签打开
-                  </a>
-                ) : null}
+                {/* P1-6②（FE-UI-DENSITY-AUDIT）：删「新标签打开」——与「在外部播放器中
+                    打开」同 portableStreamUrl 同 target=_blank，行为完全相同。 */}
               </div>
             </div>
           )}

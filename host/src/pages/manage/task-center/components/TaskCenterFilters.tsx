@@ -1,13 +1,12 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { TaskCenterCategory, TaskCenterStatus } from '@fmby/v2-shared/contracts/manage/task-center';
+import type { TaskCenterStatus } from '@fmby/v2-shared/contracts/manage/task-center';
 import styles from '../../ManagePages.module.css';
-import { CATEGORY_ORDER, STATUS_OPTIONS, RANGE_OPTIONS } from '../constants';
-import { getCategoryLabel } from '../utils';
+import { STATUS_OPTIONS, RANGE_OPTIONS } from '../constants';
 import type { RangePreset } from '../types';
 
+// P1-2（FE-UI-DENSITY-AUDIT）：categoryFilter 不再由本区控制——它与
+// 「分类总览」卡片组绑同一 state，一屏两个控件改同一个值；二选一保留卡片组。
 interface TaskCenterFiltersProps {
-  categoryFilter: 'all' | TaskCenterCategory;
-  setCategoryFilter: Dispatch<SetStateAction<'all' | TaskCenterCategory>>;
   statusFilter: 'all' | TaskCenterStatus;
   setStatusFilter: Dispatch<SetStateAction<'all' | TaskCenterStatus>>;
   rangePreset: RangePreset;
@@ -16,8 +15,6 @@ interface TaskCenterFiltersProps {
 }
 
 export function TaskCenterFilters({
-  categoryFilter,
-  setCategoryFilter,
   statusFilter,
   setStatusFilter,
   rangePreset,
@@ -27,25 +24,6 @@ export function TaskCenterFilters({
   return (
     <div className={styles.toolbar}>
       <div className={styles.filterGroup}>
-        <label className={styles.label}>
-          类别
-          <select
-            className={styles.select}
-            value={categoryFilter}
-            onChange={(event) => {
-              setCategoryFilter(event.target.value as 'all' | TaskCenterCategory);
-              setPage(1);
-            }}
-          >
-            <option value="all">全部类别</option>
-            {CATEGORY_ORDER.map((category) => (
-              <option key={category} value={category}>
-                {getCategoryLabel(category)}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <label className={styles.label}>
           状态
           <select

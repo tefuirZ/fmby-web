@@ -15,6 +15,19 @@
  * LibrariesPage / LibraryDetailPage / item-detail 各 section 完全一致。
  */
 
+/* P1-1（FE-UI-DENSITY-AUDIT）：条目详情「分节」容器 —— 与 `.page` 同栅格
+   （gap/宽度/居中）但**不带 padding**。用于外层已是 `.page` 的内层，
+   消除双重 gutter 导致的 hero 与分节左右缘错位。 */
+.pageSections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: var(--grid-max-width);
+  margin: 0 auto;
+  color: var(--text-1);
+}
+
 .page {
   display: flex;
   flex-direction: column;

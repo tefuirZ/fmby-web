@@ -44,7 +44,8 @@ export function getManageStatusVariant(
 
 interface ManagePageHeaderProps {
   title: string;
-  description: string;
+  /** 卡①（UI 密度）：改为可选——页头只保留必要层级（title + meta/actions），描述有话才说。 */
+  description?: string;
   meta?: ReactNode;
   actions?: ReactNode;
 }
@@ -58,9 +59,10 @@ export function ManagePageHeader({
   return (
     <header className={styles.header}>
       <div className={styles.headerContent}>
-        <div className={styles.eyebrow}>管理中心</div>
+        {/* 卡①（FE-UI-DENSITY-AUDIT §2-S3）：删除硬编码 eyebrow「管理中心」——
+            与侧栏「管理工作台」同义，38+ 页每页多一行无效层级。 */}
         <h1 className={styles.title}>{title}</h1>
-        <p className={styles.description}>{description}</p>
+        {description ? <p className={styles.description}>{description}</p> : null}
         {meta ? <div className={styles.metaRow}>{meta}</div> : null}
       </div>
       {actions ? <div className={styles.headerActions}>{actions}</div> : null}

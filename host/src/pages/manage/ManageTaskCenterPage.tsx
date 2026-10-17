@@ -148,8 +148,6 @@ export function ManageTaskCenterPage() {
         description="按类别、状态和时间窗口缩小范围，点击详情看原始载荷与错误上下文。"
       >
         <TaskCenterFilters
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
           rangePreset={rangePreset}

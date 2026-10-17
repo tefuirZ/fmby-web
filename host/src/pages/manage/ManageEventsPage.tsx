@@ -105,7 +105,7 @@ export function ManageEventsPage() {
     <div className={styles.page}>
       <ManagePageHeader
         title="事件中心"
-        description="以请求维度聚合的审计事件时间线；运行日志源缺失时诚实降级（runtimeSourceAvailable=false）。"
+        description="以请求维度聚合的审计事件时间线；运行日志源缺失时诚实降级。"
         meta={
           <span className={styles.metaText}>
             当前共 {events.length} 条事件 · 运行源{' '}

@@ -79,7 +79,7 @@ export function UsersHeaderAndTable({
     <>
     <ManagePageHeader
       title="用户管理"
-      description="补齐账号详情、创建、编辑和批量软删除闭环，删除语义先明确收口为停用账号并吊销活跃会话。"
+      description="账号的创建、编辑、停用与批量管理；删除语义为停用账号并吊销其活跃会话。"
       meta={<span className={styles.metaText}>共 {totalUsers} 个账号，当前第 {page} / {totalPages} 页</span>}
       actions={
         <>

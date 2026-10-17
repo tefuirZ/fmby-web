@@ -464,9 +464,11 @@
 }
 
 /* ── 服务器与硬件水位面板 (Server Vitals) ─────────────────────── */
+/* P1-9 ③（FE-UI-DENSITY-AUDIT）：4 指标收敛为一行（原纵向堆叠占 4 行）；
+   窄屏 flex-wrap 换行，各项均分。 */
 .vitalsGrid {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--space-4);
 }
 
@@ -474,6 +476,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .vitalHeader {

@@ -65,7 +65,7 @@ export function CasPublishOrchestrationPage() {
     <div className={styles.page}>
       <ManagePageHeader
         title="CAS 发布编排"
-        description="选源内容 → 选目标盘 → 发起扇出 → 进度与失败原因（#658 第 2 页；发起扇出写面待后端接线）。"
+        description="选源内容 → 选目标盘 → 发起扇出 → 查看进度与失败原因。"
       />
 
       {/* 两态分开（#78 G5）：数据面不可用 ≠ 实例里没有内容。 */}

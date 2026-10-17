@@ -156,7 +156,11 @@ export function ItemDetailPage() {
     <div className={styles.page}>
       <ItemDetailHero item={item} posterBadges={posterBadges} />
 
-      <div className={styles.page}>
+      {/* P1-1（FE-UI-DENSITY-AUDIT）：内层**不再**套 `.page`。
+          原实现外层+内层各带 `padding: … var(--grid-margin) …` ⇒ 横向 gutter
+          叠加至 2×`--grid-margin`（最大 80px/侧），且 hero（外层）与全部分节
+          （内层）左右缘错位。改用无 padding 的 `pageSections`，两者共用同一栅格。 */}
+      <div className={styles.pageSections}>
         {hasEpisodeSelector ? (
           <ItemDetailEpisodeSection
             item={item}

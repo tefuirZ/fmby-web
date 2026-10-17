@@ -56,24 +56,25 @@ const UNLABELED_INPUTS: Array<{ file: string; line: number; want: string }> = [
     line: 117,
     want: '搜索',
   },
+  // P1-7（UI 密度卡 ca325c8）在该文件 ManageSectionCard 加 collapsible 一行 ⇒ 行号整体 +1。
   {
     file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 213,
+    line: 214,
     want: '刮削源',
   },
   {
     file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 220,
+    line: 221,
     want: '搜索关键词',
   },
   {
     file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 263,
+    line: 264,
     want: '外部编号',
   },
   {
     file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 270,
+    line: 271,
     want: '匹配原因',
   },
 ];

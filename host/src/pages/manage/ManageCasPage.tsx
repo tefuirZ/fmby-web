@@ -72,7 +72,7 @@ export function ManageCasPage() {
     <>
       <ManagePageHeader
         title="CAS 编排"
-        description="多盘扇出配置与状态（后端 #42-N5）。未启用时不会显示成空列表。"
+        description="多盘扇出配置与状态；未启用时不会显示成空列表。"
       />
 
       {unwired ? (

@@ -29,7 +29,6 @@ interface MediaItemFiltersProps {
   setOverrideFilter: Dispatch<SetStateAction<OverrideFilter>>;
   librariesQuery: UseQueryResult<ManageLibrariesResponse>;
   itemsCount: number;
-  total: number;
   localOverrideCount: number;
   isFetching: boolean;
   hasActiveFilters: boolean;
@@ -51,7 +50,6 @@ export function MediaItemFilters({
   setOverrideFilter,
   librariesQuery,
   itemsCount,
-  total,
   localOverrideCount,
   isFetching,
   hasActiveFilters,
@@ -169,7 +167,7 @@ export function MediaItemFilters({
         <div className={styles.filterFooter}>
           <div className={sharedStyles.chipRow}>
             <span className={sharedStyles.chip}>当前页 {itemsCount} 条</span>
-            <span className={sharedStyles.chip}>总计 {total} 条</span>
+            {/* P1-3：删「总计 {total} 条」chip——total 只保留页头一处，避免同屏重复。 */}
             <span className={sharedStyles.chip}>
               覆盖命中 {localOverrideCount} 条
             </span>

@@ -85,14 +85,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-1);
-}
-
-.navCard[data-active='true'] {
-  border-color: color-mix(in srgb, var(--manage-cyan) 35%, transparent);
+  /* P1-11（FE-UI-DENSITY-AUDIT）：去盒子（原 border+bg+padding 卡片套在 .rail
+     里，再套第三层分组）——暗房「没有卡片」原则；分组间以上边线分区，
+     激活态反馈由分组标题 cyan accent 承担。 */
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .navCardHeader {
@@ -115,27 +112,8 @@
   gap: 2px;
 }
 
-.subGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: var(--space-2);
-}
 
-.subGroupTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-caption);
-  color: var(--text-muted);
-}
 
-.subGroupBody {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
 
 .navLink {
   display: flex;

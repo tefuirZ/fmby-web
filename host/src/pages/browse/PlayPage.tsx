@@ -350,7 +350,6 @@ export function PlayPage() {
               canPlay={canPlay}
               copied={copied}
               onCopyLink={handleCopyLink}
-              portableStreamUrl={portableStreamUrl}
               hasSidebar={hasSidebar}
               sidebarOpen={sidebarOpen}
               isEpisodeView={isEpisodeView}

@@ -12,14 +12,10 @@ import cockpitStyles from './overview/ManageOverviewCockpit.module.css';
 import { OverviewKpiCapsules } from './overview/OverviewKpiCapsules';
 import { OverviewSetupGuide } from './overview/OverviewSetupGuide';
 import {
-  ActiveTaskQueueWidget,
   LivePlaybackStreams,
   MountsHealthMatrix,
   RiskRadarPanel,
   ServerVitalsPanel,
-  TaskDetailModal,
-  TaskPipelineWidget,
-  type ActiveTaskQueueItem,
 } from './overview';
 import {
   ManagePageHeader,
@@ -32,9 +28,9 @@ import { buildSetupGuide } from './setup-guide';
 export function ManageOverviewPage() {
   const queryClient = useQueryClient();
   const [banner, setBanner] = useState<BannerState | null>(null);
-  const tasks: ActiveTaskQueueItem[] = [];
-  const [selectedTask, setSelectedTask] = useState<ActiveTaskQueueItem | null>(null);
-  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState<boolean>(false);
+  // P1-9 ①（FE-UI-DENSITY-AUDIT）：ActiveTaskQueueWidget 及其任务详情模态从首屏
+  // 拔除——本分支上它本就是硬编码空数组 + 死链的空壳（P0-1），任务域的真面在
+  // 任务中心；空态诚实化修复在 lovely-skunk 分支（99a171a）另行处置 widget 本体。
 
   const overviewQuery = useQuery({
     queryKey: queryKeys.manage.overview(),
@@ -107,22 +103,8 @@ export function ManageOverviewPage() {
     },
   });
 
-  const handleOpenTaskDetail = (task: ActiveTaskQueueItem) => {
-    setSelectedTask(task);
-    setIsTaskDetailOpen(true);
-  };
-
-  const handleBoostPriority = () => {
-    setBanner({ variant: 'error', title: '任务操作不可用', description: '任务中心尚未装配真实调度服务。' });
-  };
-
-  const handleCancelTask = () => {
-    setBanner({ variant: 'error', title: '任务操作不可用', description: '任务中心尚未装配真实调度服务。' });
-  };
-
-  const handleRetryTask = () => {
-    setBanner({ variant: 'error', title: '任务操作不可用', description: '任务中心尚未装配真实调度服务。' });
-  };
+  // P1-9 ①：原任务队列的四个 handler（open/boost/cancel/retry）随 widget 与
+  // 模态一并退场——boost/cancel/retry 本就是「任务中心尚未装配」的报错占位。
 
   if (
     overviewQuery.isPending ||
@@ -325,9 +307,17 @@ export function ManageOverviewPage() {
           totalAlertsCount={totalAlertsCount}
           mountsKpiSubText={getMountsKpiSubText()}
         />
+        {/* P1-9 ②：高频入口上移为 KPI 下方一行 chip（原沉在底部看板网格里）。 */}
+        <div className={styles.chipRow}>
+          {overview.quickLinks.slice(0, 6).map((link) => (
+            <Link key={link.id} to={link.to} className={styles.chip}>
+              {link.label}
+            </Link>
+          ))}
+        </div>
         {/* 2. 驾驶舱主栅格 (黄金 6:4 双列) */}
         <div className={cockpitStyles.cockpitMainGrid}>
-          {/* 左列：实时推流监控卡片 + 风险雷达 + 正在运行的任务队列 (红色框区域) */}
+          {/* 左列：实时推流监控 + 风险雷达（P1-9：活动流并入，空壳任务队列拔除） */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', minWidth: 0 }}>
             <LivePlaybackStreams
               sessions={sessions}
@@ -341,14 +331,7 @@ export function ManageOverviewPage() {
             <RiskRadarPanel
               todoItems={overview.todoItems}
               emptyLibrariesCount={libraries.filter((l) => (l.itemCount ?? 0) === 0).length}
-            />
-
-            {/* 红色框位置：正在运行的任务队列 (刮削、扫描、探针、清洗) */}
-            <ActiveTaskQueueWidget
-              tasks={tasks}
-              onOpenTaskDetail={handleOpenTaskDetail}
-              onBoostPriority={handleBoostPriority}
-              onCancelTask={handleCancelTask}
+              activities={overview.activities}
             />
           </div>
 
@@ -357,7 +340,6 @@ export function ManageOverviewPage() {
             <ServerVitalsPanel
               environmentLabel={overview.environmentLabel}
               environmentStatus={overview.environmentStatus}
-              refreshedAt={overview.refreshedAt}
             />
 
             <MountsHealthMatrix
@@ -368,23 +350,7 @@ export function ManageOverviewPage() {
             />
           </div>
         </div>
-
-        {/* 3. 底部看板：常用高频操作与最近审计轨迹 */}
-        <TaskPipelineWidget
-          activities={overview.activities}
-          quickLinks={overview.quickLinks}
-        />
       </div>
-
-      {/* 任务详情交互模态框 */}
-      <TaskDetailModal
-        open={isTaskDetailOpen}
-        onOpenChange={setIsTaskDetailOpen}
-        task={selectedTask}
-        onBoostPriority={handleBoostPriority}
-        onCancelTask={handleCancelTask}
-        onRetryTask={handleRetryTask}
-      />
     </div>
   );
 }

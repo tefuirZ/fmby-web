@@ -21,7 +21,7 @@ import {
   Search,
   Send,
   Settings,
-  Shield,
+ 
   ShieldCheck,
   SlidersHorizontal,
   Users,
@@ -77,28 +77,16 @@ const manageNavTree: ManageNavNode[] = [
     id: 'site',
     label: '用户与站点',
     icon: Settings,
+    // P1-11（FE-UI-DENSITY-AUDIT）：原「邀请与用户/会话与日志」两个中间层退场，
+    // 叶子直接挂在分支下（两层封顶）；叶子文案自解释，入口一条不少。
     children: [
-      {
-        id: 'site-users',
-        label: '邀请与用户',
-        icon: Users,
-        children: [
-          { id: 'site-registration-codes', label: '邀请与注册码', icon: KeyRound, to: '/manage/site/users/registration-codes' },
-          { id: 'site-accounts', label: '用户账号', icon: Users, to: '/manage/site/users/accounts' },
-          { id: 'site-role-templates', label: '权限模板', icon: Library, to: '/manage/site/users/role-templates' },
-          { id: 'site-rewards', label: '积分与签到', icon: CalendarCheck, to: '/manage/site/rewards' },
-        ],
-      },
-      {
-        id: 'site-security',
-        label: '会话与日志',
-        icon: Shield,
-        children: [
-          { id: 'site-sessions', label: '当前会话', icon: Monitor, to: '/manage/site/security/sessions' },
-          { id: 'site-audit-logs', label: '操作记录', icon: ScrollText, to: '/manage/site/security/audit-logs' },
-          { id: 'site-runtime-logs', label: '运行日志', icon: FileText, to: '/manage/site/security/runtime-logs' },
-        ],
-      },
+      { id: 'site-registration-codes', label: '邀请与注册码', icon: KeyRound, to: '/manage/site/users/registration-codes' },
+      { id: 'site-accounts', label: '用户账号', icon: Users, to: '/manage/site/users/accounts' },
+      { id: 'site-role-templates', label: '权限模板', icon: Library, to: '/manage/site/users/role-templates' },
+      { id: 'site-rewards', label: '积分与签到', icon: CalendarCheck, to: '/manage/site/rewards' },
+      { id: 'site-sessions', label: '当前会话', icon: Monitor, to: '/manage/site/security/sessions' },
+      { id: 'site-audit-logs', label: '操作记录', icon: ScrollText, to: '/manage/site/security/audit-logs' },
+      { id: 'site-runtime-logs', label: '运行日志', icon: FileText, to: '/manage/site/security/runtime-logs' },
       { id: 'site-developer-api', label: '开放 API 目录', icon: Code, to: '/manage/media/developer-api' },
       { id: 'site-auth-providers', label: '登录提供方', icon: LogIn, to: '/manage/media/auth-providers' },
       { id: 'site-settings', label: '站点设置', icon: Settings, to: '/manage/site/settings' },
@@ -223,29 +211,12 @@ function NavBranch({
   level?: number;
   onNavigate?: () => void;
 }) {
+  // P1-11：导航树压平为两层后，本组件只剩叶子映射（原三层 subGroup 递归分支删除）。
   return (
     <>
-      {nodes.map((node) => {
-        if (node.children && node.children.length > 0) {
-          const Icon = node.icon;
-          return (
-            <div
-              key={node.id}
-              className={styles.subGroup}
-              data-active={isNodeActive(pathname, node) ? 'true' : undefined}
-            >
-              <div className={styles.subGroupTitle}>
-                {Icon ? <Icon size={15} className={styles.navIcon} aria-hidden="true" /> : null}
-                <span>{node.label}</span>
-              </div>
-              <div className={styles.subGroupBody}>
-                <NavBranch nodes={node.children} pathname={pathname} level={level + 1} onNavigate={onNavigate} />
-              </div>
-            </div>
-          );
-        }
-        return <NavLeaf key={node.id} node={node} pathname={pathname} level={level} onNavigate={onNavigate} />;
-      })}
+      {nodes.map((node) => (
+        <NavLeaf key={node.id} node={node} pathname={pathname} level={level} onNavigate={onNavigate} />
+      ))}
     </>
   );
 }

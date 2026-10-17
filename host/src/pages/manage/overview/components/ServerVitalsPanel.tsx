@@ -17,14 +17,12 @@ interface ServerVitalsPanelProps {
   /** 后端 wire 无 environment_status（X-2）：缺省显示「—」，不编造 healthy。 */
   environmentLabel?: string;
   environmentStatus?: 'healthy' | 'warning' | 'critical';
-  refreshedAt?: string;
   vitals?: ServerVitalsTelemetry;
 }
 
 export function ServerVitalsPanel({
   environmentLabel = '—',
   environmentStatus,
-  refreshedAt,
   vitals,
 }: ServerVitalsPanelProps) {
   // 硬件监控指标（动态对接后端 /api/admin/overview 或系统遥测数据）
@@ -126,17 +124,10 @@ export function ServerVitalsPanel({
               ↑ {bandwidthOut ?? '不可用'} · ↓ {bandwidthIn ?? '不可用'}
             </span>
           </div>
-          <div className={styles.gaugeTrack}>
-            <div className={`${styles.gaugeFill} ${styles.cyan}`} style={{ width: '38%' }} />
-          </div>
+          {/* P1-9 ③：删假 gauge——后端无带宽利用率真值，原 38% 是硬编码装饰。 */}
         </div>
       </div>
 
-      {refreshedAt ? (
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', paddingTop: '4px', textAlign: 'right' }}>
-          指标每 10 秒自动巡检 · 最近刷新：{new Date(refreshedAt).toLocaleTimeString()}
-        </div>
-      ) : null}
     </section>
   );
 }

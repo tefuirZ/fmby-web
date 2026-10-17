@@ -81,7 +81,7 @@ export function CasContentListPage() {
     <div className={styles.page}>
       <ManagePageHeader
         title="CAS 内容列表"
-        description="内容寻址存储真值视图：每条内容已落哪些盘、是否有本地实体、lease 状态（#658 第 1 页；发布编排/分享转存另卡）。"
+        description="内容寻址存储真值视图：每条内容已落哪些盘、是否有本地实体、lease 状态。"
       />
 
       {/* 两态分开（#78 G5）：①「数据面不可用」= 本实例没给出数据（端口未装配 / 路由 404），

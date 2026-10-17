@@ -122,9 +122,11 @@ export function HistoryPage() {
               <option value="completed">已看完</option>
             </select>
           </div>
-          <span className={styles.metaText}>
-            当前结果：{continueWatching.length + recentlyPlayed.length + completed.length} 条
-          </span>
+          {/* P1-4（FE-UI-DENSITY-AUDIT）：原「当前结果：N 条」与页头「共整理出
+              N 条记录」同值重复，已删；改为仅在筛选生效时提示。 */}
+          {typeFilter !== 'all' || timeRange !== 'all' || stateFilter !== 'all' ? (
+            <span className={styles.metaText}>筛选生效中</span>
+          ) : null}
         </div>
       </section>
 

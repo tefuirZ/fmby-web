@@ -230,25 +230,54 @@ export function ManageMediaItemDetailPage() {
         />
       ) : null}
 
-      <MediaItemOverviewSection detail={detail} />
+      {/* P1-7（FE-UI-DENSITY-AUDIT）：8 节锚点导航（复用 chip 词汇）；
+          低频三节（流水线/身份治理/危险操作）已默认折叠。 */}
+      <nav className={sharedStyles.chipRow} aria-label="资源详情分节导航">
+        <a className={sharedStyles.chip} href="#sec-overview">基础信息</a>
+        <a className={sharedStyles.chip} href="#sec-metadata">元数据</a>
+        <a className={sharedStyles.chip} href="#sec-sources">数据源</a>
+        <a className={sharedStyles.chip} href="#sec-artwork">图片资产</a>
+        <a className={sharedStyles.chip} href="#sec-subtitle">字幕</a>
+        <a className={sharedStyles.chip} href="#sec-pipeline">流水线</a>
+        <a className={sharedStyles.chip} href="#sec-identity">身份治理</a>
+        <a className={sharedStyles.chip} href="#sec-danger">危险操作</a>
+      </nav>
+
+      <div id="sec-overview" className={sharedStyles.anchorTarget}>
+        <MediaItemOverviewSection detail={detail} />
+      </div>
 
       {/* key 绑定资源编号：在两条资源之间切换时强制重建表单，避免草稿串台 */}
-      <MediaItemMetadataSection detail={detail} key={item.id} mutations={mutations} />
+      <div id="sec-metadata" className={sharedStyles.anchorTarget}>
+        <MediaItemMetadataSection detail={detail} key={item.id} mutations={mutations} />
+      </div>
 
-      <MediaItemSourcesSection mutations={mutations} sources={detail.sources} />
+      <div id="sec-sources" className={sharedStyles.anchorTarget}>
+        <MediaItemSourcesSection mutations={mutations} sources={detail.sources} />
+      </div>
 
-      <MediaItemArtworkSection detail={detail} mutations={mutations} />
+      <div id="sec-artwork" className={sharedStyles.anchorTarget}>
+        <MediaItemArtworkSection detail={detail} mutations={mutations} />
+      </div>
 
-      <MediaItemSubtitleSection
-        mutations={mutations}
-        subtitles={detail.subtitleOverrides}
-      />
+      <div id="sec-subtitle" className={sharedStyles.anchorTarget}>
+        <MediaItemSubtitleSection
+          mutations={mutations}
+          subtitles={detail.subtitleOverrides}
+        />
+      </div>
 
-      <MediaItemPipelineSection mutations={mutations} pipelineQuery={pipelineQuery} />
+      <div id="sec-pipeline" className={sharedStyles.anchorTarget}>
+        <MediaItemPipelineSection mutations={mutations} pipelineQuery={pipelineQuery} />
+      </div>
 
-      <MediaItemIdentityGovernancePanel detail={detail} mutations={mutations} />
+      <div id="sec-identity" className={sharedStyles.anchorTarget}>
+        <MediaItemIdentityGovernancePanel detail={detail} mutations={mutations} />
+      </div>
 
-      <MediaItemDangerZoneSection detail={detail} mutations={mutations} />
+      <div id="sec-danger" className={sharedStyles.anchorTarget}>
+        <MediaItemDangerZoneSection detail={detail} mutations={mutations} />
+      </div>
     </div>
   );
 }

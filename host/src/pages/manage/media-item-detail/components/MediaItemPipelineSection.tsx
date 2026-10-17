@@ -84,6 +84,7 @@ export function MediaItemPipelineSection({
 
   return (
     <ManageSectionCard
+      collapsible
       title="元数据流水线"
       description="识别、身份绑定与刮削三个环节的实时状态；有任务在跑时本段落会自动刷新。"
       actions={

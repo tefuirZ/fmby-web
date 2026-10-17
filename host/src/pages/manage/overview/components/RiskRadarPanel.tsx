@@ -1,16 +1,19 @@
 import { AlertOctagon, AlertTriangle, CheckCircle, Info, ShieldAlert, Sparkles } from 'lucide-react';
 import { Link } from 'react-router';
-import type { ManageTodoItem } from '@fmby/v2-shared/contracts/manage';
+import type { ManageActivityItem, ManageTodoItem } from '@fmby/v2-shared/contracts/manage';
 import styles from '../ManageOverviewCockpit.module.css';
 
 interface RiskRadarPanelProps {
   todoItems: ManageTodoItem[];
   emptyLibrariesCount?: number;
+  /** P1-9 ②：原底部看板的活动流并入本节（风险与动态一屏可见）。 */
+  activities?: ManageActivityItem[];
 }
 
 export function RiskRadarPanel({
   todoItems,
   emptyLibrariesCount = 0,
+  activities = [],
 }: RiskRadarPanelProps) {
   const getLevelIcon = (level: string) => {
     switch (level) {
@@ -81,6 +84,34 @@ export function RiskRadarPanel({
           ) : null}
         </div>
       )}
+
+      {/* P1-9 ②：活动流并入（原 TaskPipelineWidget「最近运维操作轨迹」，最多 3 条）。 */}
+      {activities.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: 'var(--space-2)', borderTop: '1px dashed rgba(255,255,255,0.06)' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>最近运维操作轨迹</div>
+          {activities.slice(0, 3).map((act) => (
+            <div
+              key={act.id}
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: '8px',
+                padding: '6px 0',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{act.title}</span>
+                {act.summary ? <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>{act.summary}</span> : null}
+              </div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '11px', flexShrink: 0 }}>
+                {new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

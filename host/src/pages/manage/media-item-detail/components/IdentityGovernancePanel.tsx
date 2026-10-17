@@ -155,6 +155,7 @@ export function MediaItemIdentityGovernancePanel({ detail, mutations }: Identity
 
   return (
     <ManageSectionCard
+      collapsible
       title="身份与可见性治理"
       description="切换普通用户可见性、触发识别、或手工把这条资源绑定到刮削源上的具体条目。"
     >

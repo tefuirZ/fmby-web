@@ -53,6 +53,7 @@ export function MediaItemDangerZoneSection({
 
   return (
     <ManageSectionCard
+      collapsible
       title="危险操作"
       description="以下操作会直接丢弃人工编辑结果，执行前需要按站点策略完成二次确认。"
     >

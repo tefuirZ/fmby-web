@@ -163,9 +163,10 @@ export function LibraryDetailPage() {
               </button>
             ) : null}
           </div>
+          {/* P1-5（FE-UI-DENSITY-AUDIT）：去「已加载 x/y · 已全部加载」尾巴——
+              加载计数只保留 hero 的 loadedLabel 一处。 */}
           <span className={styles.metaText}>
             当前结果：{items.length} 个
-            {loadedCount < vm.totalItems ? ` · 已加载 ${loadedCount}/${vm.totalItems}` : ` · 已全部加载 ${loadedCount} 个`}
           </span>
         </div>
       </section>
@@ -184,13 +185,14 @@ export function LibraryDetailPage() {
         />
       )}
 
+      {/* P1-5：尾部提示只带布尔态（去 totalItems 数字——数字在 hero 已有）。 */}
       <div ref={loadMoreRef} className={styles.loadMoreHintCard}>
         <div className={styles.metaText}>
           {vm.isFetchingNextPage
             ? '正在继续加载剩余内容...'
             : vm.hasNextPage
               ? '继续下滑，自动加载后续内容'
-              : `这个媒体库的 ${vm.totalItems} 个条目已经全部展开了`}
+              : '已全部展开'}
         </div>
       </div>
     </div>

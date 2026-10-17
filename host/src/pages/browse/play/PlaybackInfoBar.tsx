@@ -1,6 +1,6 @@
-/** 播放页信息条：格式徽标 + 外部操作（复制/外部播放器/队列开关）。 */
+/** 播放页信息条：格式徽标 + 外部操作（复制/队列开关）。外部播放器专门面在 ExternalPlayerBar（P1-6① 删裸直链）。 */
 
-import { Check, Copy, ExternalLink } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import styles from '../PlayPage.module.css';
 
 interface PlaybackInfoBarProps {
@@ -10,7 +10,6 @@ interface PlaybackInfoBarProps {
   canPlay: boolean;
   copied: boolean;
   onCopyLink: () => void;
-  portableStreamUrl?: string;
   hasSidebar: boolean;
   sidebarOpen: boolean;
   isEpisodeView: boolean;
@@ -24,7 +23,6 @@ export function PlaybackInfoBar({
   canPlay,
   copied,
   onCopyLink,
-  portableStreamUrl,
   hasSidebar,
   sidebarOpen,
   isEpisodeView,
@@ -51,17 +49,8 @@ export function PlaybackInfoBar({
           {copied ? <Check size={13} /> : <Copy size={13} />}
           {copied ? '已复制' : '复制链接'}
         </button>
-        {portableStreamUrl ? (
-          <a
-            className={styles.secondaryButton}
-            href={portableStreamUrl}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <ExternalLink size={13} />
-            外部播放器
-          </a>
-        ) : null}
+        {/* P1-6①（FE-UI-DENSITY-AUDIT）：删「外部播放器」裸直链 anchor——
+            ExternalPlayerBar 六深链按钮是专门面，裸 anchor 同义且更低级。 */}
         {hasSidebar ? (
           <button className={styles.ghostButton} type="button" onClick={onToggleSidebar}>
             {sidebarOpen ? '收起队列' : isEpisodeView ? '打开剧集队列' : '打开相关推荐'}
