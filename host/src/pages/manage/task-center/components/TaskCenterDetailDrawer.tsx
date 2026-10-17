@@ -18,6 +18,7 @@ import { ManageSectionCard, getManageStatusVariant } from '../../components';
 import { useAiInterventionThreadQuery } from '../../naming-rules/ai-intervention/hooks/useAiInterventionQueries';
 import { sessionStateLabel, skillLabel } from '../../naming-rules/ai-intervention/aiInterventionSupport';
 import { getCategoryLabel, getStatusLabel, mapStatusVariant, buildTaskActions } from '../utils';
+import { useAsyncJobs } from '@fmby/v2-shared/ui';
 import type { SelectedTaskRef } from '../types';
 
 interface TaskCenterDetailDrawerProps {
@@ -119,6 +120,7 @@ export function TaskCenterDetailDrawer({
   detailQuery,
   actionMutation,
 }: TaskCenterDetailDrawerProps) {
+  const jobs = useAsyncJobs();
   return (
     <SideDrawer
       open={selectedTask !== null}
@@ -225,14 +227,23 @@ export function TaskCenterDetailDrawer({
                       action.tone === 'danger' ? styles.smallDangerButton : styles.smallButton
                     }
                     type="button"
-                    disabled={actionMutation.isPending}
-                    onClick={() =>
-                      actionMutation.mutate({
-                        category: detailQuery.data.category,
-                        taskId: detailQuery.data.id,
-                        action: action.action,
-                      })
-                    }
+                    onClick={() => {
+                      // ★FE-ASYNC-FEEDBACK：动作走后台任务反馈层——提交即 toast +
+                      // 任务中心「后台任务」可查；不再用共享 isPending 锁全部按钮，
+                      // 重复点击由幂等键拒绝（已在执行 toast，不重复发请求）。
+                      jobs.submit(
+                        {
+                          key: `task-action:${detailQuery.data.category}:${detailQuery.data.id}:${action.action}`,
+                          name: `${action.label}（${getCategoryLabel(detailQuery.data.category)}）`,
+                        },
+                        () =>
+                          actionMutation.mutateAsync({
+                            category: detailQuery.data.category,
+                            taskId: detailQuery.data.id,
+                            action: action.action,
+                          }),
+                      );
+                    }}
                   >
                     {action.label}
                   </button>
