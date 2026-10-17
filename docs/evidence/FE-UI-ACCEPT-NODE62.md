@@ -202,3 +202,74 @@ MFA TOTP（`/manage/site/settings` → 「开始绑定」→ 后端本地生成 
 | `samples/desktop/item-skin-no-cta.png` | ItemSkin ready 态：无任何可点元素 + 装饰海报墙 |
 
 全量 DOM 证据（JSON/txt）：`/tmp/farm-accept-ui2/`（a1–a6 共 17 个文件，含逐页脱梯全列表）；复现命令见 §1，spec 入库于 `host/e2e/farm-accept-ui2.spec.ts`（证据落 `/tmp/farm-accept-ui2/`，playwright 不清理）。
+
+
+---
+
+## §7 P0 复验（修复后第二轮真栈，2026-10-17）
+
+修复 commits：`99a171a`（A2）→ `21060d8`（A3）→ `dbbf096`（A5，含 spec 判定口径对齐 §4 分级）。
+复验命令与 §1 完全一致（dist/主题产物均按新源重建，start.mjs 走新鲜产物）。结果：**三条 P0 全部转绿**。
+
+| 断言 | 修前 | 修后 | 修后 DOM 原文 |
+|---|---|---|---|
+| A2 空态不谎报 | ❌ 谎报文案 + 死链×1 | **✅** | 见 §7.1 |
+| A3 文案无粗口 | ❌「屁用没有」 | **✅** | 见 §7.2 |
+| A5 首屏主行动 | ❌ clickableCount=0 | **✅** | 见 §7.3 |
+
+复验全量：`5 passed / 6 failed`——仍红的 6 条全部是**非本卡范围**：A4×5（P2 间距阶梯，对应审计 B4 批次）、A6×1（P1 历史页双计数，对应 B2 批次）；另有 A5 的 P1/P2 后续项（海报墙装饰化、meta 重复）按 §4 分级降为注记。
+
+### §7.1 A2 修复后 DOM 原文
+
+`a2-problems.json` → `[]`；`a2-dead-link.json` → `{"deadLinkCount": 0, "deadLinkHref": null}`；`a2-manage-body.txt` 摘录（谎报文案已不存在，全页检索 False）：
+
+```
+正在运行的任务队列
+任务中心 ➔
+暂无任务数据
+
+运行中任务的数据面尚未接入，这里不展示猜测值；全量任务请到任务中心查看。
+```
+
+修法：`ActiveTaskQueueWidget.tsx`——空态改「暂无任务数据」（图标 CheckCircle2 绿√ → 中性 ListTodo）；0 项时不再渲染「0 个执行中 · 共 0 项」副标题；死链 `/manage/tasks` → `/manage/task-center`。
+
+### §7.2 A3 修复后 DOM 原文
+
+`a3-naming-body.txt`：`含粗口: False`。页头现文案：
+
+```
+命名刮削设置
+这页收口命名清洗、识别后自动刮削、主元数据来源、元数据语言和缺失海报补刮。
+数据库是元数据真相源，海报落本地缓存，播放不依赖第三方外链可达性。
+```
+
+修法：`NamingRulesHeader.tsx:35` 重写；全仓粗口扫描（20 词）确认无同源漏网入口（此前修复轮未盖到该文件）。
+
+### §7.3 A5 修复后 DOM 原文
+
+`a5-item-skin-probe.json`（修后）：
+
+```json
+{
+  "url": "/item/101",
+  "skinState": "ready",
+  "playControls": ["立即播放"],
+  "clickableCount": 1,
+  "metaLine": "2014 · 电影 · 2014 · 电影",
+  "metaLineDup": true
+}
+```
+
+`a5-item-skin-problems.json`：`{"p0": [], "deferred": ["P1（后续卡）：海报墙纯装饰占位 220px 无 img", "P2（后续卡）：meta 行重复「2014 · 电影 ×2"]}`。
+修法（跨三层，`dbbf096`）：
+1. shared `SkinActions` 增语义键 `playItem`/`playHref`（openItem/itemHref 同模式孪生键，旧 skin 忽略不崩）；
+2. host `loaders.ts` 注入 `navigate(/play/:id)`，并把播放目标归一后下发（契约 `playbackTargetId` 缺省时 `canPlay ? item.id : undefined`，与 host 回退页同口径——首跑实测后端不下发 playbackTargetId，这正是首轮修复后 clickableCount 仍为 0 的根因）；
+3. darkroom `ItemSkin` ready 分支渲染主行动：有 `playHref` → 真实 `<a href="/play/101">立即播放</a>`，仅 `playItem` → `<button>`，无注入/无可播目标不伪造；label 用契约 `primaryActionLabel`。
+主题单测：ItemSkin 12/12（新增 3 例先红后绿）、LibrarySkin 10/10 无回归。样本：`samples/desktop/item-skin-play-cta.png`（修后）/ `item-skin-no-cta.png`（修前对照）。
+
+### §7.4 遗留（非本卡，按级别排队）
+
+- **P1**：A6 历史页双计数（HistoryPage.tsx:71/126）→ B2 批次；
+- **P1（新）**：ItemSkin 海报墙纯装饰占位（海报契约数据在、不渲染）→ 皮肤卡；
+- **P2**：A4 间距阶梯 5/5 页（badge 3px / kbd 5px / navLink 6px / primaryButton 10·18px / 登录卡 36px 五个组件收敛）→ B4 批次；
+- **P2（新）**：ItemSkin meta 行重复；QR 无宽度上限（TOTP 桌面档 1014px）；服务器脉搏面板整块「不可用」仍占一屏块。
