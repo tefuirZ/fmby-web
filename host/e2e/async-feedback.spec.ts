@@ -174,7 +174,8 @@ test.describe('FE-ASYNC-FEEDBACK 异步反馈验收', () => {
   test('幂等：进行中重复提交 ⇒ 「已在执行」toast + 不产生第二行', async ({ page }) => {
     await login(page);
     await createTargetUser(page);
-    delayUserPatch(page, 3_000);
+    // 8s：重开抽屉（row→编辑→detail→fill→save）约 3-5s，窗口必须盖住第二次提交
+    delayUserPatch(page, 8_000);
 
     await page.goto('/manage/site/users/accounts');
     await openEditAndRename(page, '幂等一轮');
@@ -190,8 +191,10 @@ test.describe('FE-ASYNC-FEEDBACK 异步反馈验收', () => {
     await expect(page.getByRole('button', { name: '保存修改' })).toBeVisible();
 
     // 全程只有一行该任务（没有重复提交产生的第二行）（SPA 导航保内存态）。
-    // ★先关抽屉：Radix 模态会挡住外部点击（侧栏链接点不到）。
-    await page.getByRole('button', { name: '取消', exact: true }).click();
+    // ★先关抽屉（Escape → Radix onOpenChange(false) → onClose）：Radix 模态
+    // 会挡住外部点击（侧栏链接点不到）；「取消」只切查看态不关抽屉。
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: '保存修改' })).toBeHidden({ timeout: 5_000 });
     await page.getByRole('link', { name: '任务中心' }).click();
     await expect(page.getByRole('heading', { name: '后台任务' })).toBeVisible({ timeout: 15_000 });
     const rows = page.getByRole('row', { name: new RegExp(USERNAME) });
