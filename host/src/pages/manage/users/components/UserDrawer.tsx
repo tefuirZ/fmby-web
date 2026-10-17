@@ -8,6 +8,7 @@ import { FeedbackState } from '@fmby/v2-shared/ui';
 import { InlineBanner } from '@fmby/v2-shared/ui';
 import { Drawer } from '@fmby/v2-shared/ui';
 import { StatusBadge } from '@fmby/v2-shared/ui';
+import { useAsyncJobs } from '@fmby/v2-shared/ui';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../longtail-shared/ManageShared.module.css';
@@ -29,6 +30,8 @@ import {
 interface MutationShape<TVars> {
   isPending: boolean;
   mutate: (vars: TVars) => void;
+  /** FE-ASYNC-FEEDBACK：后台任务追踪需要 Promise 语义；真实 useMutation 结果自带。 */
+  mutateAsync?: (vars: TVars) => Promise<unknown>;
 }
 
 interface UserDetailQueryShape {
@@ -73,6 +76,8 @@ export function UserDrawer({
   onResetPassword,
   onClose,
 }: UserDrawerProps) {
+  // ★FE-ASYNC-FEEDBACK：权限变更走后台任务反馈层（提交即反馈 + 幂等 + 任务中心可见）。
+  const jobs = useAsyncJobs();
   const currentDetail = userDetailQuery.data;
   const mountOptions = mounts.map((mount) => ({
     id: mount.id,
@@ -138,23 +143,33 @@ export function UserDrawer({
           selectedTemplate={selectedTemplate}
           activeRoleTemplates={activeRoleTemplates}
           mutation={updateUserMutation}
-          onSubmit={() =>
-            updateUserMutation.mutate({
-              userId: currentDetail.id,
-              payload: {
-                displayName: normalizeFormText(formState.displayName),
-                email: normalizeFormText(formState.email),
-                role: formState.role,
-                roleTemplateId: normalizeFormText(formState.roleTemplateId),
-                status: formState.status,
-                accountKind: formState.accountKind,
-                maxSessions: parseOptionalPositiveInt(formState.maxSessions),
-                validUntil: parseOptionalDateTimeLocal(formState.validUntil),
-                maxConcurrentPlaybacks: parseOptionalPositiveInt(formState.maxConcurrentPlaybacks),
-                sourceGrants: selectedTemplate ? undefined : formState.sourceGrants,
+          onSubmit={() => {
+            // ★FE-ASYNC-FEEDBACK：提交即反馈（toast + 任务中心「后台任务」），
+            // 抽屉立即关闭不锁人；重复提交由幂等键拒绝（「已在执行」toast）。
+            const jobId = jobs.submit(
+              {
+                key: `user-update:${currentDetail.id}`,
+                name: `更新用户「${currentDetail.username}」`,
               },
-            })
-          }
+              () =>
+                updateUserMutation.mutateAsync?.({
+                  userId: currentDetail.id,
+                  payload: {
+                    displayName: normalizeFormText(formState.displayName),
+                    email: normalizeFormText(formState.email),
+                    role: formState.role,
+                    roleTemplateId: normalizeFormText(formState.roleTemplateId),
+                    status: formState.status,
+                    accountKind: formState.accountKind,
+                    maxSessions: parseOptionalPositiveInt(formState.maxSessions),
+                    validUntil: parseOptionalDateTimeLocal(formState.validUntil),
+                    maxConcurrentPlaybacks: parseOptionalPositiveInt(formState.maxConcurrentPlaybacks),
+                    sourceGrants: selectedTemplate ? undefined : formState.sourceGrants,
+                  },
+                }) ?? Promise.reject(new Error('updateUserMutation 未提供 mutateAsync')),
+            );
+            if (jobId) setDrawerState(null);
+          }}
           onCancel={() => setDrawerState({ mode: 'view', userId: currentDetail.id })}
         />
 
