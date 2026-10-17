@@ -76,6 +76,47 @@ test('ready 态：横向双栏重排断言（海报墙 + 元数据栏 —— hos
   assert.match(html, /已入库/, '来源状态徽标');
 });
 
+// FE-UI-ACCEPT A5（P0）：ready 态必须有可用的播放主行动 —— 此前 skin 无任何
+// 可点元素，用户无法从详情页发起播放（真栈实测 clickableCount=0）。
+test('播放主行动：注入 playItem/playHref → 真实 <a href> 锚点', () => {
+  const html = renderSkin({
+    state: 'ready',
+    data: {
+      item: { ...READY_DATA.item, playbackTargetId: 'i-play', primaryActionLabel: '继续播放' },
+      episodeOptions: [],
+    },
+    actions: { playItem: () => {}, playHref: (id: string) => `/play/${id}` },
+  });
+  assert.match(html, /<a[^>]*data-darkroom="primary-button"[^>]*href="\/play\/i-play"/);
+  assert.match(html, /继续播放/, 'label 用 host 下发的 primaryActionLabel');
+});
+
+test('播放主行动回退：只有 playItem 无 playHref → <button>，不伪造链接', () => {
+  const html = renderSkin({
+    state: 'ready',
+    data: {
+      item: { ...READY_DATA.item, playbackTargetId: 'i-play' },
+      episodeOptions: [],
+    },
+    actions: { playItem: () => {} },
+  });
+  assert.match(html, /<button[^>]*data-darkroom="primary-button"/);
+  assert.match(html, /播放/);
+});
+
+test('播放主行动：无 playbackTargetId 或旧 host 未注入 → 不渲染，不伪造', () => {
+  const noTarget = renderSkin({ state: 'ready', data: READY_DATA });
+  assert.doesNotMatch(noTarget, /data-darkroom="primary-button"/);
+  const noActions = renderSkin({
+    state: 'ready',
+    data: {
+      item: { ...READY_DATA.item, playbackTargetId: 'i-play' },
+      episodeOptions: [],
+    },
+  });
+  assert.doesNotMatch(noActions, /data-darkroom="primary-button"/);
+});
+
 test('移动端分支：卡墙结构由 CSS 断点承担（无内联列数）', () => {
   const html = renderSkin({ state: 'ready', data: READY_DATA });
   assert.match(html, /data-darkroom="item-columns"/);
