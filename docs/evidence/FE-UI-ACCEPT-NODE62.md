@@ -273,3 +273,149 @@ MFA TOTP（`/manage/site/settings` → 「开始绑定」→ 后端本地生成 
 - **P1（新）**：ItemSkin 海报墙纯装饰占位（海报契约数据在、不渲染）→ 皮肤卡；
 - **P2**：A4 间距阶梯 5/5 页（badge 3px / kbd 5px / navLink 6px / primaryButton 10·18px / 登录卡 36px 五个组件收敛）→ B4 批次；
 - **P2（新）**：ItemSkin meta 行重复；QR 无宽度上限（TOTP 桌面档 1014px）；服务器脉搏面板整块「不可用」仍占一屏块。
+
+---
+
+## §8 P0/P1 复验二轮（真栈，2026-10-17 晚）
+
+> 卡面：UI 农场验收**二轮**。对象 = `lovely-skunk` @ `ba0cb54c8ad7f61d89e2ff4bdb46528c57e0e51c`
+> （= §7 一轮复验报告 commit，含 `99a171a` A2 / `21060d8` A3 / `dbbf096` A5 三个修复）。
+> 命令与 §1 **逐字一致**（端口改 15181/18198 避让；产物按新源重建：`pnpm install --frozen-lockfile`
+> → `pnpm build:themes` → `host` vite build 40.53s）。
+> 结果：**5 passed / 6 failed**（2.0m）。
+
+### §8.1 六组断言全量结果
+
+| # | 断言 | 口径 | 二轮结果 | 一轮（§7） | 判定 |
+|---|---|---|---|---|---|
+| A1 | 二维码三档尺寸 ≥180px | 真实 DOM `boundingBox` | **✅ PASS** | ✅ | **PASS** |
+| A2 | 空态不得谎报 + 无死链 | DOM 全文 + 死链 href 计数 | **✅ PASS** | ✅ | **PASS** |
+| A3 | 生产文案无粗口 | DOM 全文 | **✅ PASS** | ✅ | **PASS** |
+| A4 | 留白间距 4–64 阶梯 | `getComputedStyle` 全量 padding/gap | ❌ 5/5 页仍红 | ❌ 5/5 | **不绿**（P2） |
+| A5 | 条目详情首屏主行动 | `data-darkroom` DOM 探针 | **✅ PASS**（P0 部分） | ✅ | **PASS** |
+| A6 | 历史页同屏双计数 | 真实播放造历史后 DOM 文本 | ❌ 仍红 | ❌ | **不绿**（P1） |
+
+**A1–A3 / A5 四条转绿且在二轮稳定复现**（不是偶发）：三条 P0 的修复（`99a171a`/`21060d8`/`dbbf096`）
+在**全量重建产物 + 重跑**后依然成立 ⇒ 可判 **PASS**，不是「一轮绿二轮抖」。
+
+### §8.2 PASS 四条的证据原文（二轮实测）
+
+**A1**（`/tmp/farm-accept-ui2/a1-totp-qr-sizes.json`，TOTP 三档全部 ≥180px）：
+
+```json
+{ "desktop": { "width": 1014, "height": 1006 },
+  "tablet":  { "width": 721,  "height": 713 },
+  "phone":   { "width": 309,  "height": 301 } }
+```
+
+运营商面（`a1-carrier-summary.json`）：`yun139` 三档同上；`imghost` = 「入口按钮不可见（付费守卫/能力面限制，环境受限）」；`pan115-share` = 「入口按钮不可见（面未渲染或能力面限制）」。**与 §3 一轮口径一致：TOTP 是唯一可确定性取到三档渲染尺寸的面，另两个入口受环境/能力面限制，不计入判定。**
+
+**A2**（`a2-problems.json` → `[]`；`a2-dead-link.json`）：
+
+```json
+{ "deadLinkCount": 0, "deadLinkHref": null }
+```
+
+中控页 DOM 全文检索「谎报文案」= False。死链 `/manage/tasks` 已改 `/manage/task-center`（`99a171a`）。
+
+**A3**：`a3-naming-body.txt` 含粗口 = False；全仓 20 词粗口扫描无同源漏网（`21060d8` 修 `NamingRulesHeader.tsx:35`）。
+
+**A5**（`a5-item-skin-probe.json`，`/item/101`，`skinState: ready`）：
+
+```json
+{
+  "url": "/item/101",
+  "skinState": "ready",
+  "playControls": ["立即播放"],
+  "clickableCount": 1,
+  "posterWall": { "left": 433, "width": 220 },
+  "posterWallHasImg": false,
+  "metaLine": "2014 · 电影 · 2014 · 电影",
+  "metaLineDup": true
+}
+```
+
+`a5-item-skin-problems.json`：`{"p0": [], "deferred": [P1 海报墙纯装饰占位 220px 无 img, P2 meta 行重复]}`。
+⇒ **P0 主行动达成**（`clickableCount` 0 → 1，真实 `<a href="/play/101">立即播放</a>`）；
+P1/P2 后续项按 §4 分级降为注记，**不阻塞 A5 判 PASS**。
+
+### §8.3 不绿项：A6（P1）DOM 原文 + 归属
+
+`/tmp/farm-accept-ui2/a6-history-body.txt`（真实播放造历史后 `/history` 全文）两处同值计数**同时在场**：
+
+```
+共整理出 1 条记录          ← 页头 meta
+当前结果：1 条             ← 工具条
+```
+
+`hasHistory = /共整理出\s*\d+\s*条记录/` → true（播放造历史**生效**，非 skip）；
+`toolbarCount = /当前结果：\s*\d+\s*条/` → true ⇒ 断言 `expect(toolbarCount).toBe(false)` 失败。
+
+**归属（源码实读）**：`host/src/pages/browse/HistoryPage.tsx`
+
+```tsx
+71:  meta={<span className={styles.metaText}>共整理出 {allItems.length} 条记录</span>}
+126: 当前结果：{continueWatching.length + recentlyPlayed.length + completed.length} 条
+```
+
+**注意本轮的取证质量比 §3 一轮高**：§3 一轮时 A6 是「运行时实锤」但未贴 DOM 文本；
+本轮 `a6-history-body.txt` 证明**播放造历史链路在种子环境可用**（`共整理出 1 条` 非 0），
+⇒ 双计数是**真运行时缺陷**，不再是「环境受限只能静态列」。
+
+**最小修法**（不在本卡范围，B2 批次）：工具条 `当前结果：N 条` 是**筛选后**计数、
+页头 `共整理出 N 条记录` 是**全量**计数——两者语义本应不同，只在「无筛选」时数值巧合相等。
+修法是让工具条显示「筛选后 / 共 N 条」的区分形态（或筛选激活时才显示工具条计数），
+**不是**简单删一处（删会把筛选反馈也删掉）。
+
+### §8.4 不绿项：A4（P2）五页 45 处脱梯 + 归属
+
+判据（spec `collectOffLadder`）：阶梯 = `{0,4,8,12,16,20,24,32,40,48,64}`，1–2px 发丝白名单。
+二轮五页合计 **45 处**（`/tmp/farm-accept-ui2/a4-*-off-ladder.json`）：
+
+| 页 | 处数 |
+|---|---|
+| manage-overview `/manage` | 14 |
+| manage-media-items `/manage/media/items` | 9 |
+| manage-users `/manage/site/users/accounts` | 8 |
+| history `/history` | 9 |
+| login `/login` | 5 |
+
+按 CSS module 类名聚合后是 **8 个组件**（§7.4 一轮时说「五个组件」，二轮实测实为 8 个）：
+
+| 组件（sample selector） | 次数 | 脱梯值 | 源定义（file:line） |
+|---|---|---|---|
+| `kbd._searchKbd` | 8 | `padding: 1px 5px`（左右 5px） | `host/src/app/layouts/TopBar.module.css:171-175` |
+| `a._navLink` | 8 | `padding: var(--space-2) var(--space-3)` ⇒ 上下 **6px** | `host/src/app/layouts/ManageLayout.module.css:140-145` |
+| `span._badge` | 6 | `padding: 3px var(--space-3)` ⇒ 上下 **3px** | `shared/src/ui/common/StatusBadge.module.css:8-12` |
+| `button._secondaryButton` | 4 | 上下 10px / 左右 14px | `host/src/pages/install/*.module.css`（安装面 4 处使用） |
+| `div._leftArea` | 4 | `gap: clamp(16px, 2.5vw, 36px)` ⇒ **36px** | `host/src/app/layouts/TopBar.module.css:56-59` |
+| `a._primaryButton` | 4 | 上下 10px / 左右 **18px** | `host/src/pages/manage/**/*.module.css`（manage 面主按钮） |
+| `article._mountListItem` | 4 | `padding: 10px 14px` | `host/src/pages/manage/overview/ManageOverviewCockpit.module.css:557-562` |
+| `div._vitalItem` | 1 | `gap: 6px` | `host/src/pages/manage/overview/ManageOverviewCockpit.module.css:473-476` |
+
+另有两处**非组件类**脱梯（单点，属局部布局非设计系统）：
+`option` `gap: 7px` ×2（原生 select option）、`input._searchInput_fingo_289` `padding-left: 42px` ×1、
+`input._input_1pcos_175` `padding-right: 36px` ×1（输入框内嵌图标留位）。
+
+**最小修法**（B4 批次，8 个组件收敛）：把 3/5/6/7/10/14/18/36/42 全部收到阶梯值
+（`3px→4px`、`5px→4px`、`6px→8px`、`7px→8px`、`10px→8px或12px`、`14px→16px`、`18px→20px`、`36px→32px或40px`、`42px→40px`）。
+`leftArea` 的 `clamp(16px, 2.5vw, 36px)` 需把上界收到 32 或把下界抬到 20（否则视口宽度变化会持续脱梯）。
+**发丝 1–2px 已在白名单内**（`searchKbd` 的 `padding: 1px 5px` 只罚左右 5px，不罚 1px）。
+
+### §8.5 二轮结论
+
+| 级别 | 项 | 二轮状态 |
+|---|---|---|
+| **P0** | A2 空态谎报 + 死链 | **✅ PASS**（稳定复现） |
+| **P0** | A3 粗口文案 | **✅ PASS**（稳定复现） |
+| **P0** | A5 首屏主行动 | **✅ PASS**（P0 部分；P1/P2 注记项不阻塞） |
+| **P1** | A6 历史页双计数 | ❌ 仍红（`HistoryPage.tsx:71/126`，DOM 原文见 §8.3）→ B2 |
+| **P1** | ItemSkin 海报墙纯装饰占位 | ❌ 仍红（`a5-item-skin-probe.json` `posterWallHasImg: false`，220px）→ 皮肤卡 |
+| **P2** | A4 间距阶梯 5/5 页 | ❌ 仍红（45 处 / 8 组件，归属见 §8.4）→ B4 |
+| **P2** | ItemSkin meta 行重复 | ❌ 仍红（`metaLineDup: true`，「2014 · 电影 · 2014 · 电影」）→ 皮肤卡 |
+| **P2** | QR 无宽度上限 | ❌ 仍红（TOTP 桌面档 **1014px**，与 §7.4 一轮记录一致）→ B4 |
+| — | A1 二维码三档 | **✅ PASS**（环境受限的 2 个运营商入口口径不变） |
+
+**净结论**：三条 P0 **在二轮全部稳定转绿**，可结案。剩余 1 条 P1 + 4 条 P2 均**非本卡范围**
+（B2 / B4 / 皮肤卡），且本轮把 A6 从「静态列」升级为「运行时实锤 + DOM 原文 + 语义级最小修法」，
+A4 从「五个组件」修正为「八个组件 + 逐条 file:line」。
