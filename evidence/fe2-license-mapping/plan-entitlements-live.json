@@ -1,0 +1,112 @@
+{
+ "_note": "运行中 license-server(/healthz 200) 的 /api/public/pricing 原始响应裁剪：仅保留套餐码/标签/entitlement_snapshot",
+ "source": "http://127.0.0.1:9088/api/public/pricing",
+ "plans": [
+  {
+   "code": "Free",
+   "label": "免费版",
+   "plan_id": "plan_free",
+   "sort_order": null,
+   "entitlement_snapshot": {
+    "feature.compat.emby": true,
+    "feature.metadata.scrape": true,
+    "feature.open_api": true,
+    "feature.probe.remote": true,
+    "feature.storage.alist.provider": true,
+    "feature.storage.local": true,
+    "feature.storage.openlist.provider": true,
+    "limit.activation_instances.max": 1,
+    "limit.users.max": 5,
+    "policy.heartbeat.interval_secs": 21600,
+    "policy.lease.grace_ttl_secs": 604800,
+    "policy.lease.ttl_secs": 604800
+   }
+  },
+  {
+   "code": "Basic",
+   "label": "基础版",
+   "plan_id": "plan_basic",
+   "sort_order": null,
+   "entitlement_snapshot": {
+    "feature.compat.emby": true,
+    "feature.metadata.scrape": true,
+    "feature.open_api": true,
+    "feature.probe.remote": true,
+    "feature.storage.alist.provider": true,
+    "feature.storage.local": true,
+    "feature.storage.microsoft.provider": true,
+    "feature.storage.openlist.provider": true,
+    "feature.storage.pan115.provider": true,
+    "feature.upstream.emby": true,
+    "limit.activation_instances.max": 1,
+    "limit.users.max": 30,
+    "policy.heartbeat.interval_secs": 21600,
+    "policy.lease.grace_ttl_secs": 604800,
+    "policy.lease.ttl_secs": 604800
+   }
+  },
+  {
+   "code": "Advanced",
+   "label": "进阶版",
+   "plan_id": "plan_advanced",
+   "sort_order": null,
+   "entitlement_snapshot": {
+    "feature.compat.emby": true,
+    "feature.metadata.scrape": true,
+    "feature.open_api": true,
+    "feature.probe.remote": true,
+    "feature.storage.alist.provider": true,
+    "feature.storage.local": true,
+    "feature.storage.microsoft.provider": true,
+    "feature.storage.openlist.provider": true,
+    "feature.storage.pan115.imghost": true,
+    "feature.storage.pan115.provider": true,
+    "feature.upstream.apple_cms": true,
+    "feature.upstream.emby": true,
+    "feature.users.expiration": true,
+    "feature.users.registration_codes": true,
+    "feature.users.registration_window": true,
+    "limit.activation_instances.max": 2,
+    "limit.users.max": 1000,
+    "policy.heartbeat.interval_secs": 21600,
+    "policy.lease.grace_ttl_secs": 604800,
+    "policy.lease.ttl_secs": 604800
+   }
+  },
+  {
+   "code": "Professional",
+   "label": "专业版",
+   "plan_id": "plan_professional",
+   "sort_order": null,
+   "entitlement_snapshot": {
+    "feature.assets.internal_imghost": true,
+    "feature.assets.poster_imghost": true,
+    "feature.compat.emby": true,
+    "feature.identity.google": true,
+    "feature.identity.telegram": true,
+    "feature.metadata.scrape": true,
+    "feature.open_api": true,
+    "feature.probe.remote": true,
+    "feature.storage.alist.provider": true,
+    "feature.storage.local": true,
+    "feature.storage.microsoft.account_pool": true,
+    "feature.storage.microsoft.load_balancing": true,
+    "feature.storage.microsoft.provider": true,
+    "feature.storage.openlist.provider": true,
+    "feature.storage.pan115.imghost": true,
+    "feature.storage.pan115.provider": true,
+    "feature.storage.pan115.share": true,
+    "feature.upstream.apple_cms": true,
+    "feature.upstream.emby": true,
+    "feature.users.expiration": true,
+    "feature.users.registration_codes": true,
+    "feature.users.registration_window": true,
+    "limit.activation_instances.max": 3,
+    "limit.users.max": -1,
+    "policy.heartbeat.interval_secs": 21600,
+    "policy.lease.grace_ttl_secs": 604800,
+    "policy.lease.ttl_secs": 604800
+   }
+  }
+ ]
+}
