@@ -154,7 +154,16 @@ export interface LicenseVisibilityRecord {
 /** 授权状态主 DTO（GET /status 与各写操作响应内的 status 载体）。 */
 export interface LicenseStatusRecord {
   runtimeState: LicenseRuntimeState;
+  /**
+   * **保留字段（语义=付费功能可用）**，请读 {@link paidFeaturesAllowed}。
+   * `false` 不代表站点不可用：免费基线（浏览/鉴权/安装/本地库）仍可用（BE 设计=A）。
+   */
   businessAccessAllowed: boolean;
+  /** 语义正确名（与 `businessAccessAllowed` 恒等）。UI 文案请用它。 */
+  paidFeaturesAllowed: boolean;
+  /** 免费基线是否不受授权影响（BE 恒 true）。 */
+  freeBaselineAvailable: boolean;
+  /** 授权服务地址 = BE 实际取址（同源；随 `FMBY_LICENSE_AUTHORITY_OVERRIDE` 变化）。 */
   serverBaseUrl: string;
   realtimeEnabled: boolean;
   realtimeStatus: LicenseRealtimeStatus | null;

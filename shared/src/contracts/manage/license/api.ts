@@ -97,7 +97,26 @@ interface RawLicenseSummary {
 
 interface RawLicenseStatusResponse {
   runtime_state: string;
+  /**
+   * **保留字段（语义 = 付费功能是否可用）**，请读 {@link paid_features_allowed}。
+   *
+   * 注意（BE 2026-10-19 确认，设计=A）：本字段 `false` **不代表站点不可用**——
+   * 免费基线（浏览/鉴权/安装/本地库等）由 license gate 判 Exempt，未激活时仍返回 200。
+   * UI 文案应为「授权未激活：**付费功能**不可用；浏览等免费功能不受影响」，
+   * **绝不能用它去禁用浏览/播放列表等免费面**。
+   */
   business_access_allowed: boolean;
+  /** 与 `business_access_allowed` 恒等的语义正确名（付费能力是否可用）。新代码请用本字段。 */
+  paid_features_allowed?: boolean;
+  /** 免费基线是否不受授权影响（BE 恒 `true`；设计=A 的显式声明）。 */
+  free_baseline_available?: boolean;
+  /**
+   * 授权服务地址 = **客户端实际取址**（与装配同源：`resolve_authorities_from_env()` →
+   * `primary_base_url()`）。
+   *
+   * 语义边界：这是**配置值**，不是可达性证明；`FMBY_LICENSE_AUTHORITY_OVERRIDE` 生效时
+   * 本字段随该 override 变化（BE 已修双源不一致，勿在前端二次推导/硬编码生产域名）。
+   */
   server_base_url: string;
   realtime_enabled: boolean;
   realtime_status: string | null;
@@ -346,6 +365,9 @@ function mapStatus(raw: RawLicenseStatusResponse): LicenseStatusRecord {
   return {
     runtimeState,
     businessAccessAllowed: raw.business_access_allowed,
+    // 旧 BE 未返回新字段时回落到旧字段（向后兼容；新 BE 恒有这两个字段）。
+    paidFeaturesAllowed: raw.paid_features_allowed ?? raw.business_access_allowed,
+    freeBaselineAvailable: raw.free_baseline_available ?? true,
     serverBaseUrl: raw.server_base_url,
     realtimeEnabled: raw.realtime_enabled,
     realtimeStatus,
