@@ -122,6 +122,24 @@ test('P0-①d：队列与详情模态不得再用后端没有的假形状字段'
   }
 });
 
+test('P0-①e：详情模态的媒体/时间/尝试次数必须按后端字段真值说', () => {
+  const src = readCode(TASK_MODAL);
+  // 后端 media_title 恒 null（V2 task_definition 无媒体标题列）⇒ 判据只有 mediaItemId
+  assert.ok(
+    !/mediaTitle\s*\?\?\s*['"]系统级任务['"]/.test(src),
+    '不得用 `mediaTitle ?? 「系统级任务」` 判类别——该字段后端恒 null，会把绑了媒体的任务也说成系统级',
+  );
+  assert.ok(/mediaItemId/.test(src), '媒体文案必须看 mediaItemId');
+  // 后端 updated_at 是 Option ⇒ 不许让 formatRelativeTime 的「刚刚更新」兜底冒充
+  assert.ok(
+    /task\.updatedAt\s*\?/.test(src),
+    'updatedAt 缺失时必须显式分支（后端在途任务没有终态时刻），不许直接丢给 formatRelativeTime 兜底',
+  );
+  // 后端 retry_count 实为 attempt（首次执行即 1）⇒ 不许说「已重试」
+  assert.ok(!src.includes('已重试'), '不得说「已重试 N 次」——该槽位是 attempt，首次执行就是 1');
+  assert.ok(/次尝试/.test(src), '应照实说「第 N 次尝试」');
+});
+
 // ─── P0-② 生产 UI 文案不得含粗口 ───────────────────────────────────────────
 
 test('P0-②：命名刮削页头不得含粗口（改前「屁用没有」）', () => {

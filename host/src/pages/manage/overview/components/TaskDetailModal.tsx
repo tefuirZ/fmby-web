@@ -67,14 +67,21 @@ export function TaskDetailModal({
               />
             </div>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              更新于 {formatRelativeTime(task.updatedAt)}
+              {/* 后端 updated_at 是 Option：在途任务没有终态时刻 ⇒ 不许拿
+                  formatRelativeTime 的兜底「刚刚更新」冒充"刚更新过"。 */}
+              {task.updatedAt ? `更新于 ${formatRelativeTime(task.updatedAt)}` : '尚无终态时刻'}
             </span>
           </div>
 
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             <strong>媒体：</strong>
-            {task.mediaTitle ?? '系统级任务'}
-            {task.mediaItemId ? `（${task.mediaItemId}）` : ''}
+            {/* 后端 media_title 恒 null（V2 task_definition 无媒体标题列）⇒ 判「系统级任务」
+                的判据只能是 mediaItemId，不能是恒空的标题字段。 */}
+            {task.mediaTitle
+              ? task.mediaTitle
+              : task.mediaItemId
+                ? `媒体 ${task.mediaItemId}`
+                : '系统级任务'}
           </div>
         </div>
 
@@ -84,13 +91,14 @@ export function TaskDetailModal({
             <strong>最近失败：</strong>
             {task.lastErrorCode ? `[${task.lastErrorCode}] ` : ''}
             {task.lastErrorMessage}
-            {task.retryCount > 0 ? `（已重试 ${task.retryCount} 次）` : ''}
+            {`（第 ${task.retryCount} 次尝试）`}
           </div>
-        ) : task.retryCount > 0 ? (
+        ) : (
           <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-            已重试 {task.retryCount} 次
+            {/* 后端该槽位是 attempt（首次执行即 1），不是"重试过几次" */}
+            第 {task.retryCount} 次尝试
           </div>
-        ) : null}
+        )}
 
         {/* 动作控制条：与任务中心同一套动作口径 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
