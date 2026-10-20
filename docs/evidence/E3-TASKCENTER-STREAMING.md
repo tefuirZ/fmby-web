@@ -104,6 +104,26 @@ ok 4 - §8/验收d：空态必须写「当前没有运行中的任务」+ 给引
 
 ---
 
+## 5.1 真栈终验做不了时的替代路径：读后端源码逐字段对账（本轮实做）
+
+真栈 e2e 卡在「后端二进制归农场 + 前端构建归编排侧」，但**终验要回答的是
+「前端有没有说错话」，这个不需要浏览器**——读后端实现逐字段核对即可。本轮据此
+对出了四处前端与后端口径不符，前三处是撒谎，已修（commit `ef752e6`）：
+
+| 前端原写法 | 后端实况（file:line） | 后果 | 改后 |
+|---|---|---|---|
+| `item.mediaTitle ?? '系统级任务'`（列表桌面列 / 移动卡 / 流式行走卡 / 抽屉） | `TaskCenterItem.media_title` **恒 None**（`crates/fmby-v2-application/src/task_center.rs`：「V2 task_definition 无媒体标题列」） | **所有**任务都被说成「系统级任务」，包括绑了 `mediaItemId` 的刮削 | `getTaskMediaLabel()`：标题 > `媒体 <mediaItemId>` > 系统级任务（判据换成媒体项） |
+| `formatRelativeTime(item.updatedAt)` | `updated_at: Option<i64>`（在途任务为 null） | `formatRelativeTime` 兜底文案是「刚刚更新」⇒ 早 9 点开始还在跑的任务写着「刚刚更新」 | `getTaskTimeHint()`：无终态时刻 ⇒「尚无终态时刻」 |
+| 列头「重试」+ 值 `retryCount`、抽屉「重试次数」、行卡「重试 N 次」 | 该槽位填的是 `attempt`（`d.attempt()`，**首次执行即 1**） | 从没重试过的任务恒显示「重试 1 次」 | 统一说「尝试」 |
+| 列头「摘要」/分区「摘要与动作」 | `summary: d.idempotency_key().to_string()` | 拿任务键冒充人写的摘要 | 「任务键」/「任务键与动作」 |
+
+另有一处**契约过严**（同一病根）：`TaskCenterItemRecord.updatedAt: string` 与后端
+`Option` 不符，TS 拦不住 null 一路流到 UI ⇒ 改 `updatedAt?: string`、raw 允许 `null`、
+mapper 归一到 `undefined`。守卫：`tests/task-center-copy-truth.test.ts`（10 条，全绿）。
+
+★这条路径的边界也要说清：源码对账能证明「字段用对了」，**不能**证明「真实响应长这样」
+（比如后端某天把 `media_item_id` 也置空）。后者只有真栈 e2e 能证 —— 仍挂在农场。
+
 ## 6. ponytail 段
 
 1. **没接真 WS**。后端没有 task-center 事件，接上去只会 3 秒后走进降级——那是骗人。卡面 §4 明写「WS 不可用自动退回分页轮询」，所以本轮直接把轮询当默认实现，WS seam 留着。等后端事件就位，只换 `subscribeBatches` 的注入内容。
