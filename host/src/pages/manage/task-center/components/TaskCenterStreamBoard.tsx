@@ -21,8 +21,13 @@ import type { ReactNode } from 'react';
 import { AlertTriangle, Inbox, ListTodo, RefreshCw } from 'lucide-react';
 import type { TaskCenterItemRecord } from '@fmby/v2-shared/contracts/manage/task-center';
 import { StatusBadge } from '@fmby/v2-shared/ui';
-import { formatRelativeTime } from '@fmby/v2-shared/time';
-import { getCategoryLabel, getStatusLabel, mapStatusVariant } from '../utils';
+import {
+  getCategoryLabel,
+  getStatusLabel,
+  getTaskMediaLabel,
+  getTaskTimeHint,
+  mapStatusVariant,
+} from '../utils';
 import {
   SKELETON_ROWS,
   buildStreamStatusText,
@@ -185,9 +190,10 @@ export function TaskCenterStreamBoard({
               </div>
               <div className={styles.rowBody}>{item.summary}</div>
               <div className={styles.rowMeta}>
-                <span>{item.mediaTitle ?? '系统级任务'}</span>
-                <span>{formatRelativeTime(item.updatedAt)}</span>
-                {item.retryCount > 0 ? <span>重试 {item.retryCount} 次</span> : null}
+                <span>{getTaskMediaLabel(item)}</span>
+                <span>{getTaskTimeHint(item.updatedAt)}</span>
+                {/* 后端 retry_count 实为 attempt（首次执行即 1）⇒ 说「尝试」不说「重试」 */}
+                <span>尝试 {item.retryCount} 次</span>
               </div>
               {item.lastErrorMessage ? (
                 <div className={styles.rowError}>
