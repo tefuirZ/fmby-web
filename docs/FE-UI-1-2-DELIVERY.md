@@ -335,9 +335,9 @@ FMBY_E2E_REQUIRED=1 pnpm e2e-gate                      # 同上，走 pnpm verif
 
 | 项 | 结果 |
 |---|---|
-| `node --import ./tests/register-aliases.mjs --test tests/*.test.ts` | **824 tests / 820 pass / 4 fail**（456s）。4 条失败**全部是 main 存量红**，与本 PR 无关：`cas-admin-page.contract.test.ts` ⑦⑧（`cas-drive-write-affordance` ④）+ `tablewrap-region-audit.test.ts` A④（名单过期：`ManageCasPage.tsx::盘配置（CAS 矩阵）`）。本 PR 未触及任何 `cas*` 文件（`git diff --name-only origin/main...HEAD` 可复核） |
+| `node --import ./tests/register-aliases.mjs --test tests/*.test.ts` | **825 tests / 821 pass / 4 fail**（456s）。4 条失败**全部是 main 存量红**，与本 PR 无关：`cas-admin-page.contract.test.ts` ⑦⑧（`cas-drive-write-affordance` ④）+ `tablewrap-region-audit.test.ts` A④（名单过期：`ManageCasPage.tsx::盘配置（CAS 矩阵）`）。本 PR 未触及任何 `cas*` 文件（`git diff --name-only origin/main...HEAD` 可复核） |
 | `qr-image-responsive.dom.test.ts` | 3/3（真 Chromium DOM 尺寸） |
-| `manage-overview-honesty.test.ts` | **6/6**（P0-①a/b/c/d + P0-② + 导出护栏；红侧：改前四条全中） |
+| `manage-overview-honesty.test.ts` | **10/10**（P0-①a/b/c/d + P0-② + 导出护栏；红侧：改前四条全中） |
 | `fe-ui2-density-mechanical.test.ts` | 3/3（P2-4 红侧先跑必红；P1-4/P1-5 为防回归钉） |
 | `tsc -p host/tsconfig.app.json --noEmit` | **本会话未跑**（席位纪律：类型检查/构建由编排侧执行）⇒ 交卡请求代跑，不得当作已绿 |
 | 门禁实跑（本会话，全 EXIT=0） | `check-contract-mappers` / `check-frontend-component-size` / `check-frontend-dupes` / `check-css-module-usage` / `check-versions` / `check-repo-size` / `check-theme-parity` **全部 PASS** |
