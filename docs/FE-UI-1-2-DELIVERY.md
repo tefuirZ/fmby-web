@@ -12,11 +12,18 @@
 | sha（rebase 后） | 卡 | 标题 | 代码文件 | 测试 |
 |---|---|---|---|---|
 | `625cd8b` | FE-UI-1 | `feat(ui): 扫码二维码可缩放（容器自适应 + 三档尺寸 + 180px 下限）` | 7（1 新组件 + 5 接入 + 1 css） | `qr-image-responsive.dom.test.ts` +3 |
-| `51c5e71` | FE-UI-2 P0 | `fix(ui): 收掉 FE-UI-2 P0（任务队列本体诚实化 + 粗口文案）` | 5 | `manage-overview-honesty.test.ts` 6 条 |
+| `51c5e71` | FE-UI-2 P0 | `fix(ui): 收掉 FE-UI-2 P0（任务队列本体诚实化 + 粗口文案）` | 5 | `manage-overview-honesty.test.ts`（现 10 条，本提交贡献 6） |
 | `8f86553` | FE-UI-2 P2-4 | `refactor(ui): FE-UI-2 P2-4 登录页 mfa 死代码分支 + 三条防回归钉` | 2 | `fe-ui2-density-mechanical.test.ts` 3 条 |
-| 本 commit | 交付 | `docs(ui): FE-UI-1 + FE-UI-2 交付说明（含农场验收步骤）` | 0 | — |
+| `ac48a0c` | 交付 | `docs(ui): FE-UI-1 + FE-UI-2 交付说明（rebase 到 main 后重写口径）` | 0（本文档） | — |
+| `81b2b56` | 台账 | `docs(evidence): 前端留白/文案台账——rebase 后重扫` | 0 | —（`FE-UI-DENSITY-FIXED.md`） |
+| `b57ca03` | 门禁 | `docs(ui): 补门禁实跑结果 + 更正「真栈跑不了」的错误理由` | 0 | — |
+| `a5c4c6c` | FE-UI-2 谎报第三批 | `fix(ui): 中控详情模态的媒体/时间/尝试次数按后端字段真值说` | 1 | 并入 `manage-overview-honesty.test.ts`（P0-①e） |
+| `cb48dd0` | 校正 | `docs(ui): 交付说明验证记录换成终稿实跑数字` | 0 | — |
+| `daaefbe` | 杂项（非 UI 密度） | `chore(gitignore): node_modules 去掉尾斜杠` | 1（`.gitignore`） | 判据 = `git check-ignore -v` 三条命中 |
 
-`git log --oneline 591eb0a..HEAD` 应恰好 4 条（本文件 +3）。
+★**条数校正**：本分支 `git log --oneline origin/main..HEAD` 实为 **9 条**（本文件初版写"应恰好 4 条"，
+随评审追加 5 条后未回写 ⇒ 已按实况更正）。
+`honesty` 测试由初版 6 条增至 **10 条**（`a5c4c6c` 加 P0-①a/b/c/d/e + 护栏）。
 
 ### 0.1 rebase 后与 main 撞车的两条（如实登记）
 
