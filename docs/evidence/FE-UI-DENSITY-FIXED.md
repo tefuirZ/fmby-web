@@ -102,23 +102,43 @@ PY
 | P1-9 中控 10 块 → 审计目标 8 块（差 2 块） | 🟡 未收口 | main 已做 13→10，剩余两块要动布局分组，属结构改动 |
 | P2-3/5/6/7/8/9/10 | ❌ 未修 | 同上 |
 
-## 四、为什么本轮不出「已修」数字
+## 四、为什么本轮不出「已修」数字（★理由已更正，别再用旧说法）
 
-卡面要求「每条给改前/改后证据（截图或 DOM 断言原文）」。本机纪律（.58 禁重活、node62 限流
-load<25）下，**Playwright 真栈跑不了**；无真栈证据的 CSS 改动属于「未验证修改」，比不改更危险
-（视觉回归无人发现）。故本轮只交付**精确实测清单**（上表 + 可复跑命令），不做盲改。
+初版台账写的是「Playwright 真栈跑不了」——**这条是错的，已删**。本会话实测：
+组件级真 Chromium DOM probe 在本席位**能跑**（`tests/qr-image-responsive.dom.test.ts`
+与 `tests/task-center-streaming.dom.test.ts` 都是真浏览器，单次 3–13s，全绿）。
+所以「没有真栈能力」不是不修的理由。
+
+真正的理由是下面三条，按分量排序：
+
+1. **字号/间距不是「改成 token」这种机械映射**：`--text-*` 只有 40/30/23/18/17/15/13/12
+   六档，而这批值集中在 9/9.5/10/10.5/11/11.5/12.5/13.5/14.5px——**没有相邻 token 可映射**
+   （11 → 12 是 +9% 的可见变化）。改哪一个档、是否新增一档，是设计裁定，不是代码清理。
+2. **页面级 computed 值需要整页 app 真栈**：组件级 probe 能测单个组件的 computed 样式，
+   但 P2-1/P2-2 的分布跨 15 个文件、80% 集中在 3 个 manage CSS，要逐页测就得起
+   后端 + 前端构建（cargo 与 `pnpm build` 在本席位归编排侧/农场）⇒ 本轮能力面到不了。
+3. **盲改的风险不对称**：这些值当前是「视觉上还能看」的状态；无视觉比对改成 token
+   属于「未验证修改」，回归无人发现。
+
+⇒ 故本轮交付**精确实测清单 + 可复跑命令**（§二/§五），把「债务量」钉死，
+不做没有裁定的改值。这是「不修的理由」，不是「修不了」。
 
 ★这条同样适用于 P0/P1 的「已修」标签：本台账只标**代码级已改 + 有源码/DOM 断言证据**的条目；
 「看起来变好看了」不在证据范围内。
 
-## 五、复跑命令（下一轮真栈可用）
+## 五、复跑命令（本席位实测可跑的部分已标注）
 
 ```bash
-# ① 清单复扫（只读，秒级）：见 §二 的 python 块，在仓根直接跑
-# ② 真栈截图（需 node62 空窗或本机允许 Playwright）：
+# ① 清单复扫（只读，秒级，本席位可跑）：见 §二 的 python 块，在仓根直接跑
+# ② 前端单测 + 组件级真 Chromium DOM probe（本席位可跑，实测）：
+cd host && node --import ./tests/register-aliases.mjs --test tests/*.test.ts   # 本会话 824 tests / 820 pass / 4 fail(main 存量红)
+cd host && node --import ./tests/register-aliases.mjs --test tests/qr-image-responsive.dom.test.ts
+# ③ 门禁（轻活，本席位可跑，实测全绿）：
+node scripts/check-contract-mappers.mjs && node scripts/check-frontend-component-size.mjs \
+  && node scripts/check-frontend-dupes.mjs && node scripts/check-css-module-usage.mjs \
+  && node scripts/check-versions.mjs && node scripts/check-repo-size.mjs
+# ④ 整页真栈 e2e（需后端二进制 + 前端构建 ⇒ 归农场/编排侧）：
 cd host && node node_modules/@playwright/test/cli.js test e2e/manage-pages.spec.ts --project=chromium
-# ③ 前端单测（轻活，本机可跑）：
-cd host && node --import ./tests/register-aliases.mjs --test tests/*.test.ts
 ```
 
 ## ponytail
