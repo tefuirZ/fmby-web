@@ -12,6 +12,10 @@ import {
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatEpochMs, formatEpochRelative } from '../licenseFormat';
+import {
+  formatRealtimeStatusLabel,
+  formatRuntimeStatusLabel,
+} from '../licenseSummaryPresentation';
 import styles from '../../longtail-shared/ManageShared.module.css';
 
 interface LicenseStatusOverviewProps {
@@ -27,8 +31,9 @@ export function LicenseStatusOverview({
   heartbeatError,
   onHeartbeat,
 }: LicenseStatusOverviewProps) {
-  const runtimeLabel = status.runtimeState ?? '未知';
-  const realtimeStatusLabel = status.realtimeStatus ?? '待初始化';
+  // ★LICENSE-UX-STATUS-LABELS：走呈现层中文标签（以前直取枚举 ⇒ 徽章上露 `unactivated`/`grace`）。
+  const runtimeLabel = formatRuntimeStatusLabel(status.runtimeState);
+  const realtimeStatusLabel = formatRealtimeStatusLabel(status.realtimeStatus);
   const summaryItems = [
     {
       // ★文案修正（2026-10-19）：旧文案把 `business_access_allowed=false` 显示成「阻断 / 业务链路会被阻断」，
