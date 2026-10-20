@@ -9,6 +9,12 @@ import type { ApiError } from '@fmby/v2-shared/types';
 import { isApiError } from '@fmby/v2-shared/types';
 import { isBackendErrorBody, retryableForCode } from '@fmby/v2-shared/errors/error';
 
+import {
+  extractFeatureKeyFromMessage,
+  freeBaselineDeniedMessage,
+  isFreeBaselineFeature,
+} from '@fmby/v2-shared/contracts/manage/license/freeBaseline';
+
 type ApiErrorWithHttpMetadata = ApiError & {
   /** 原始 HTTP 状态码，便于调用方区分业务错误和传输错误。 */
   status: number;
@@ -36,6 +42,24 @@ function withHttpMetadata(
   };
 }
 
+
+/**
+ * ★免费基线能力被拒 ⇒ **改写文案**（去掉「请购买/升级授权」）。
+ *
+ * 为什么在这里改而不是逐页改：所有 403 都经 `mapResponseToApiError` 这一个口；
+ * 逐页改会漏（12 项散落在多个页面），而"漏"的后果正是让用户以为要掏钱买
+ * 一个承诺免费的功能。
+ *
+ * 判据：`error_code === 'license_feature_denied'` **且**文案里的能力键属
+ * `FREE_BASELINE_FEATURES`。付费能力原样透传（引导购买是对的）。
+ */
+function rewriteFreeBaselineDenial(error: ApiError): ApiError {
+  if (error.code !== 'license_feature_denied') return error;
+  const key = extractFeatureKeyFromMessage(error.message);
+  if (!key || !isFreeBaselineFeature(key)) return error;
+  return { ...error, message: freeBaselineDeniedMessage(key) };
+}
+
 /**
  * 将 fetch Response 映射为 ApiError
  */
@@ -44,7 +68,7 @@ export async function mapResponseToApiError(response: Response): Promise<ApiErro
   try {
     const body: unknown = await response.json();
     if (isBackendErrorBody(body)) {
-      return withHttpMetadata(
+      const mapped: ApiErrorWithHttpMetadata = withHttpMetadata(
         {
           // ★M2 收窄（rb02 终审⑤）：仅 AUTH_REQUIRED/AUTH_EXPIRED 折入 HTTP_401
           //   （会话失效语义）；其余 9 支 401 码**保留后端码**，原始码经 backendCode 旁路。
@@ -61,7 +85,8 @@ export async function mapResponseToApiError(response: Response): Promise<ApiErro
         },
         response,
       );
-    }
+      // ★#91：免费基线能力被拒——把「请购买/升级授权」改写成如实说明。
+      return rewriteFreeBaselineDenial(mapped);    }
     if (isApiError(body)) {
       return withHttpMetadata(body, response);
     }
