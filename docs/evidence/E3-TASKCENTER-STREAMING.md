@@ -98,7 +98,7 @@ ok 4 - §8/验收d：空态必须写「当前没有运行中的任务」+ 给引
 | 项 | 状态 |
 |---|---|
 | §9 真 WS task-center 推送 | **测不出**：后端 `PlaybackRealtimeEventType` 只有 7 类 playback 事件（`crates/fmby-v2-application/src/playback/realtime.rs:37`），无 task-center 事件 ⇒ 连不上就不是推送。已做成注入式 seam（`subscribeBatches`）+ 分页轮询降级，后端补事件后只换注入实现，UI/hook 零改 |
-| 真后端下的首屏耗时 | **未测**：探针用假 loader 注入 5s 延迟，不测真实 HTTP 往返（不跑 `pnpm build`，构建归主代理；真栈首屏需农场 e2e） |
+| 真后端下的首屏耗时 | **未测**：探针用假 loader 注入 5s 延迟，不测真实 HTTP 往返。真栈 e2e 需要 ① 后端二进制（`cargo build` 归农场）② 前端构建（`pnpm build` 归编排侧）⇒ 本席位不具备，转农场执行。命令：`FMBY_ORCHESTRATOR=1 bash scripts/farm.sh <本 PR 尖> build --node node62` 后 `cd host && node node_modules/@playwright/test/cli.js test e2e/` |
 | 动效的「可关闭」UI 开关 | **未做**：走系统级 `prefers-reduced-motion`（YAGNI，不为一个提示动效造设置项） |
 | 第 2 页起的流式 | **未做**：翻页语义已由既有分页 REST 覆盖，第 1 页才需要「尽快出内容」 |
 
@@ -121,4 +121,5 @@ ok 4 - §8/验收d：空态必须写「当前没有运行中的任务」+ 给引
 | `tsc -p host/tsconfig.app.json --noEmit` | **本会话未跑**（席位纪律：类型检查/构建由编排侧执行）⇒ 交卡请求代跑，不得当作已绿 |
 | `tablewrap-region-audit.test.ts` | **4/5**：A④「aria-label 名单」红，原因是名单里有 `ManageCasPage.tsx::盘配置（CAS 矩阵）` 而代码已无 ⇒ **main 存量红**，与本卡无关（本卡未触及任何 `cas*` 文件） |
 | 全量 `tests/*.test.ts` | **824 tests / 820 pass / 4 fail**，4 条失败全为 main 存量红（`cas-admin-page.contract` ⑦⑧、`cas-drive-write-affordance` ④、`tablewrap-region-audit` A④） |
-| `check-frontend-component-size` / `check-frontend-dupes` / `check-contract-mappers` / `check-versions` / `check-repo-size` | 本会话未重跑（原分支记录为 PASS）；请求编排侧随 PR 门禁复跑 |
+| 门禁实跑（本会话，全 EXIT=0） | `check-contract-mappers` / `check-frontend-component-size` / `check-frontend-dupes` / `check-css-module-usage` / `check-versions` / `check-repo-size` / `check-theme-parity` **全部 PASS** |
+| `check-frontend-size` | 未跑：需 `host/dist/.vite/manifest.json`（先 `pnpm build`）⇒ 归编排侧 |
