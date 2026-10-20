@@ -263,17 +263,27 @@ export function useTaskCenterStream({
     setState((prev) => ({ ...prev, ...next }));
   }, []);
 
-  /** 重置卡死计时（每收到一批就重置）。 */
+  /** 重置卡死计时（每收到一批就重置），并**无条件**清除降级态。 */
   const armStallTimer = useCallback(() => {
     if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
-    stalled && setStalled(false);
+    // ★不能写成 `stalled && setStalled(false)`：fetchPage 定义在轮询 useEffect 内，
+    //   捕获的是**首次渲染**时的 armStallTimer（那时 stalled=false）⇒ 守卫恒假 ⇒
+    //   本函数在 fetchPage 路径上**永远不复位** stalled。
+    //   用户可见后果有边界：banner 的判定是 `stalled && phase === "loading"`，
+    //   走到终态(done/empty/failed)时靠 phase 兜住、降级条会消失，所以 e2e 里
+    //   「数据到达后降级条不再出现」并**不是**这条 bug 被修好的证据。
+    //   真会踩到的是：loading 中途已收首批（phase 仍是 loading、stalled 残留 true）
+    //   ⇒ 明明在正常流入数据却显示「加载缓慢」。该场景**未做 e2e 复现**（需 5s 后
+    //   再分批到达的节律），故此处记为**代码审查发现 + 防御性修正**，不冒充实测结论。
+    //   无条件 setState 安全：同值时 React 自行 bail out，不会多渲染。
+    setStalled(false);
     stallTimerRef.current = setTimeout(() => {
       if (!mountedRef.current) return;
       // 3s 无任何数据且仍非终态 ⇒ 判卡死（⑦）。
       // 仅「仍在加载」判卡死；终态（done/empty/failed）不该弹降级。
       if (stateRef.current.phase === 'loading') setStalled(true);
     }, STALL_MS);
-  }, [stalled]);
+  }, []);
 
   // ---- 首块 + 降级轮询 ----
   useEffect(() => {
