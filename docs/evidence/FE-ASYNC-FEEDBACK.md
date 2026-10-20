@@ -83,3 +83,42 @@ node node_modules/@playwright/test/cli.js test e2e/async-feedback.spec.ts \
 - **跳过**：批量编辑/批量停用接反馈层——批量已有 `BatchProgressPanel` 逐条进度（可见性已达标）；接法与单条相同，待有第二处真实卡点再统一。
 - **跳过**：jobs 持久化到 sessionStorage——E1 落地后状态来自服务端，本地持久化是弃子工程。
 - **未跑**：`pnpm verify`（他席 WIP 的 tsc 错会挡全量 typecheck；本卡文件单独 tsc 0 错 + e2e 真栈 3/3）。
+
+---
+
+## §7 降级路径 e2e 补录（2026-10-20 · task-center-degradation.spec.ts）
+
+> 新增 `host/e2e/task-center-degradation.spec.ts`（4 用例）——补 async-feedback.spec 未覆盖的
+> 「可以慢，不能空」红线两条：① 数据源 5s 延迟仍 ≤300ms 出内容；② WS 不可用 + >3s ⇒
+> 降级文案 + 重试。真栈两轮复跑原文（农场二进制 2026-10-16 构建 + 真 SQLite 种子）：
+
+```text
+第 1 轮：4 passed (1.1m)
+第 2 轮（复跑验证稳定性）：
+  [①] click=199ms  click→h1可见=321ms  (预算 ≤300ms)
+  ✓ 1 ① 数据源 5s 延迟 ⇒ 点开后 ≤300ms 仍出内容 (3.6s)
+  ✓ 2 ② 数据源 >3s 且 WS 不可用 ⇒ 出现降级文案 + 重试按钮 (7.5s)
+  ✓ 3 ③ WS 不可用但数据最终到达 ⇒ 降级态被真实数据取代 (8.7s)
+  ✓ 4 ④ 点重试 ⇒ 重新拉取并出内容（降级不是死路） (11.2s)
+  4 passed (34.9s)
+```
+
+复现命令：
+
+```bash
+cd host
+FMBY_E2E_SERVER_BIN=/data/fmby-e2e-bin/fmby-v2-server \
+FMBY_E2E_SEED_BIN=/data/fmby-e2e-bin/fmby-e2e-seed \
+FMBY_E2E_WEB_PORT=15186 FMBY_E2E_BACKEND_PORT=18206 FMBY_QUEUE_DISABLE=1 \
+node node_modules/@playwright/test/cli.js test e2e/task-center-degradation.spec.ts \
+  --project=chromium --reporter=list --timeout=60000
+```
+
+诚实边界：
+- 农场二进制早于后端 WS task_center 端点 commit ⇒ ①③④ 断言的是「WS 不可用降级正确性」
+  （route.abort 全部 realtime/ws）；「WS 真推分批数据」需新二进制，标**测不出**；
+- ① 的计时口径：click→h1 可见 = 321ms 超预算 300ms，但断言按用户感知段
+  （tPaint - tClick，click 段 199ms 是 Playwright 可操作性等待）⇒ 122ms ✓；
+  spec 注释里记了首版把 locator 解析算进计时的假红教训；
+- hook 修复（armStallTimer 无条件 setStalled(false)）为**代码审查发现+防御性修正**：
+  stale closure 使 fetchPage 路径永不复位 stalled；该场景未做 e2e 复现，不冒充实测结论。
