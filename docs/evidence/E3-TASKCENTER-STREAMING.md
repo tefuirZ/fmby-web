@@ -138,8 +138,9 @@ mapper 归一到 `undefined`。守卫：`tests/task-center-copy-truth.test.ts`�
 | 项 | 结果 |
 |---|---|
 | `task-center-streaming.unit.test.ts` + `.dom.test.ts` | **25/25 pass**（21 单测 + 4 真 Chromium DOM）——rebase 到 `591eb0a` 后重跑 |
+| `task-center-copy-truth.test.ts`（本卡终验新增） | **10/10 pass**（媒体/时间/尝试次数三处口径 + 契约可选性） |
 | `tsc -p host/tsconfig.app.json --noEmit` | **本会话未跑**（席位纪律：类型检查/构建由编排侧执行）⇒ 交卡请求代跑，不得当作已绿 |
 | `tablewrap-region-audit.test.ts` | **4/5**：A④「aria-label 名单」红，原因是名单里有 `ManageCasPage.tsx::盘配置（CAS 矩阵）` 而代码已无 ⇒ **main 存量红**，与本卡无关（本卡未触及任何 `cas*` 文件） |
-| 全量 `tests/*.test.ts` | **824 tests / 820 pass / 4 fail**，4 条失败全为 main 存量红（`cas-admin-page.contract` ⑦⑧、`cas-drive-write-affordance` ④、`tablewrap-region-audit` A④） |
+| 全量 `tests/*.test.ts` | **847 tests / 843 pass / 4 fail**，4 条失败全为 main 存量红（`cas-admin-page.contract` ⑦⑧、`cas-drive-write-affordance` ④、`tablewrap-region-audit` A④） |
 | 门禁实跑（本会话，全 EXIT=0） | `check-contract-mappers` / `check-frontend-component-size` / `check-frontend-dupes` / `check-css-module-usage` / `check-versions` / `check-repo-size` / `check-theme-parity` **全部 PASS** |
 | `check-frontend-size` | 未跑：需 `host/dist/.vite/manifest.json`（先 `pnpm build`）⇒ 归编排侧 |
