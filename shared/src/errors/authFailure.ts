@@ -3,25 +3,14 @@ import type { ApiError } from '@fmby/v2-shared/types';
 
 type AuthFailureListener = () => void;
 
-const AUTH_FAILURE_CODES = new Set(['unauthorized']);
-const AUTH_NON_SESSION_CODES = new Set(['credential_invalid', 'dependency_rate_limited']);
-const AUTH_FAILURE_HTTP_CODES = new Set(['HTTP_401']);
-const AUTH_FAILURE_MESSAGE_PATTERNS = [
-  '缺少认证令牌',
-  '缺少访问令牌',
-  '无效的会话令牌',
-  '会话令牌',
-  '认证已过期',
-  'unauthorized',
-  'token',
-] as const;
-const INVALID_CREDENTIAL_PATTERNS = [
-  'invalid credentials',
-  '凭据无效',
-  '用户名或密码',
-  '账号或密码',
-  '用户名密码',
-] as const;
+// ★rb02 收口（二/四）：两支死 Set（AUTH_NON_SESSION_CODES / AUTH_FAILURE_HTTP_CODES）
+//   与消息模式尾段已删——core.ts:274 是唯一触发点；三态 code 合成下 HTTP_401 在下方
+//   提前 return ⇒ 尾段恒不可达；排除集与恒 false 回落结果相同 ⇒ 删除**零行为变化**。
+//   （三）命名对齐（SCREAMING）本身亦无行为变化，不构成对「429 误触发登出」的修复。
+//   历史注（保留，四）：'CREDENTIAL_INVALID' 与 'DEPENDENCY_RATE_LIMITED' 均**非**
+//   error-catalog 201 码（rb02 核正；T2·二 原注释误称后者为 catalog 真码）——
+//   若将来真码化，重排守卫时在此处加回排除语义。
+const AUTH_FAILURE_CODES = new Set(['UNAUTHORIZED']);
 
 const listeners = new Set<AuthFailureListener>();
 
@@ -61,28 +50,16 @@ export function isSessionInvalidationError(error: unknown): boolean {
     return false;
   }
 
-  if (AUTH_NON_SESSION_CODES.has(error.code)) {
-    return false;
-  }
-
+  // 明确的会话失败码（live：SCREAMING 与 wire 同形）。
   if (AUTH_FAILURE_CODES.has(error.code)) {
     return true;
   }
 
-  // 登录接口自身的 401 是“用户名/密码错误”，不是“会话已失效”，
-  // 不能触发全局登出事件（临时止血方案；正式 error_code 区分见 F2/P4-06）。
+  // FE 私有折叠码（M2 收窄：仅 AUTH_REQUIRED/AUTH_EXPIRED 折成 HTTP_401）。
+  // 登录接口自身的 401 是“用户名/密码错误”，不是“会话已失效”，不能触发全局登出。
   if (error.code === 'HTTP_401') {
     return !isAuthLoginRequest(error);
   }
 
-  if (!AUTH_FAILURE_HTTP_CODES.has(error.code)) {
-    return false;
-  }
-
-  const message = error.message.trim().toLowerCase();
-  if (INVALID_CREDENTIAL_PATTERNS.some((pattern) => message.includes(pattern))) {
-    return false;
-  }
-
-  return AUTH_FAILURE_MESSAGE_PATTERNS.some((pattern) => message.includes(pattern.toLowerCase()));
+  return false;
 }

@@ -4,8 +4,10 @@
 
 /** 统一 API 错误结构（归一化后使用 camelCase，来源兼容后端 snake_case）。 */
 export interface ApiError {
-  /** 后端 ErrorBody.error_code 的稳定 snake_case slug。 */
+  /** 后端 ErrorBody.error_code 的稳定 slug（SCREAMING；M2 收窄后部分 401 折为 FE 私有 HTTP_401）。 */
   code: string;
+  /** ★M2 收窄旁路：折叠前原始后端码（未折叠时与 code 同值）。 */
+  backendCode?: string;
   message: string;
   traceId?: string;
   /** 仅由错误码/HTTP 状态推导，不信任服务端任意布尔字段。 */
@@ -18,22 +20,15 @@ export interface BackendErrorBody {
   trace_id?: string;
 }
 
-const RETRYABLE_CODES = new Set([
-  // ★M1（产品裁：429 语义=限流 ⇒ 一律可重试）：catalog 三支 Coded-429 码。
-  //   大小写照 wire 真值（error_code/slug.rs as_slug = SCREAMING_SNAKE）。
-  'AUTH_RATE_LIMITED',
-  'PLAYBACK_SESSION_LIMIT_EXCEEDED',
-  'INSTALL_RATE_LIMITED',
-  // ⚠️ 以下 5 条为**存量死条目**：wire error_code 是 SCREAMING（as_slug），
-  //    snake_case 从未命中 ⇒ 本集合此前对真实流量恒空命中。修正大小写 =
-  //    行为变更（DependencyTimeout 等将变为可重试），超出 M1 范围 ⇒ 另卡裁决。
-  //    （#1870/#1871 的生成器落地后本集合改为生成派生，死条目问题随之消失。）
-  'dependency_timeout',
-  'dependency_unavailable',
-  'dependency_rate_limited',
-  'retryable_storage',
-  'internal',
-]);
+import { CODES_HTTP_429 } from './error-catalog.generated';
+
+/** 可重试码集 = Coded-429（限流一律可重试，#1838/M1；generated 单源）。
+ *  ★rb02 复评裁决（②）：原「意图可重试族」名单 5 slug 经 catalog 201 码逐字核
+ *  **全 0 命中**（DEPENDENCY_TIMEOUT/…/INTERNAL 均非 catalog slug）⇒ 过滤为空操作，
+ *  名单已删（历史与意图见 git）。意图与 catalog 真码的映射由 T1 裁定；
+ *  T1 落地前本集 = Coded-429 单源。
+ */
+const RETRYABLE_CODES = new Set<string>(CODES_HTTP_429);
 
 export function isApiError(error: unknown): error is ApiError {
   return (
