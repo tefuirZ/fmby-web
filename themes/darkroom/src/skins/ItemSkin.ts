@@ -31,6 +31,10 @@ interface SkinItem {
   actors?: { name: string; role?: string }[];
   sourceStatusLabel?: string;
   progress?: { progressPercent?: number };
+  /** 可播放目标（契约面 playbackTargetId；无则不渲染播放主行动） */
+  playbackTargetId?: string;
+  /** 主行动文案（契约面 primaryActionLabel，如「播放 / 继续播放」） */
+  primaryActionLabel?: string;
 }
 
 interface SkinItemData {
@@ -164,6 +168,34 @@ export function ItemSkin(props: SkinProps) {
           ? createElement('p', { 'data-darkroom': 'tagline' }, item.tagline)
           : null,
         metaLine ? createElement('p', { 'data-darkroom': 'meta-line' }, metaLine) : null,
+        // FE-UI-ACCEPT A5（P0）：ready 态必须有可用的播放主行动。此前本分支无
+        // 任何可点元素（真栈实测 clickableCount=0），用户无法从详情页开始播放。
+        // 契约同 BUG-SKIN-NAV-01：href 由 host 注入（playHref），点击走 playItem
+        // 做 SPA 导航；无 href 时退化为 <button>；无注入/无播放目标时不伪造。
+        item.playbackTargetId && typeof actions.playItem === 'function'
+          ? typeof actions.playHref === 'function'
+            ? createElement(
+                'a',
+                {
+                  'data-darkroom': 'primary-button',
+                  href: actions.playHref(item.playbackTargetId),
+                  onClick: (event: { preventDefault?: () => void }) => {
+                    event.preventDefault?.();
+                    actions.playItem?.(item.playbackTargetId!);
+                  },
+                },
+                item.primaryActionLabel ?? '播放',
+              )
+            : createElement(
+                'button',
+                {
+                  'data-darkroom': 'primary-button',
+                  type: 'button',
+                  onClick: () => actions.playItem?.(item.playbackTargetId!),
+                },
+                item.primaryActionLabel ?? '播放',
+              )
+          : null,
         item.progress && item.progress.progressPercent
           ? createElement(
               'div',

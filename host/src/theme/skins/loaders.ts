@@ -48,11 +48,18 @@ export interface DomainSkinParamsProps {
  * 此 hook 把「打开条目」编译为语义键 `openItem`，经各 domain 数据源装配器
  * 汇入 `SkinProps.actions`，主题按需取用。
  */
-function useSkinNavigationActions(): Pick<SkinActions, 'openItem' | 'itemHref'> {
+function useSkinNavigationActions(): Pick<
+  SkinActions,
+  'openItem' | 'itemHref' | 'playItem' | 'playHref'
+> {
   const navigate = useNavigate();
   return {
     openItem: useCallback((id: string) => navigate(`/item/${id}`), [navigate]),
     itemHref: useCallback((id: string) => `/item/${id}`, []),
+    // FE-UI-ACCEPT A5：播放主行动语义键（与 openItem/itemHref 同模式），
+    // browse.item 皮肤据此渲染「播放/继续播放」——此前详情页 0 可点元素。
+    playItem: useCallback((id: string) => navigate(`/play/${id}`), [navigate]),
+    playHref: useCallback((id: string) => `/play/${id}`, []),
   };
 }
 
@@ -105,8 +112,19 @@ function BrowseItemSkinDataProvider({
     selectedSeasonId: undefined,
   });
 
+  // FE-UI-ACCEPT A5：播放主行动的播放目标由 host 归一后注入（皮肤不猜）。
+  // 契约面 playbackTargetId 可能缺省（后端不下发时），与 host 默认详情页
+  // `playbackTargetId ?? item.id` 同口径，用 canPlay 门控可播性。
+  const item = vm.data.item;
+  const playbackTargetId =
+    item?.playbackTargetId ?? (item?.canPlay ? item.id : undefined);
+  const data = {
+    ...vm.data,
+    item: item ? { ...item, playbackTargetId } : undefined,
+  };
+
   const value: DomainSkinData = {
-    data: vm.data,
+    data,
     state: vm.state,
     error: vm.error,
     layout: vm.layout,
