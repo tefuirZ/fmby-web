@@ -30,6 +30,23 @@ import { CODES_HTTP_429 } from './error-catalog.generated';
  */
 const RETRYABLE_CODES = new Set<string>(CODES_HTTP_429);
 
+/**
+ * 「能力未就绪」码（后端 501，FMBY-V2 `middleware/license_gate.rs`，#1626 DECLARE-NOT-READY）。
+ *
+ * 与 `license_feature_denied`（403）**不同轴**：后者是「能力已实现、但当前授权不含」⇒ 引导
+ * 购买是对的；本条是「本端尚未声明该授权键 ⇒ 服务端永不签发」⇒ 买了也还是不通，文案必须
+ * 是「暂未开放」，**不得**出现「请购买/升级授权」（否则就是在卖一个买不到的东西）。
+ *
+ * 注：它是 middleware 的自由 slug（小写），不在 `ERROR_CATALOG_SLUGS`（那是 `ErrorCode`
+ * 的 SCREAMING 值域）⇒ 这里显式登记，避免落到通用兜底。
+ */
+export const LICENSE_CAPABILITY_NOT_READY = 'license_capability_not_ready';
+
+/** 是否「能力未就绪」（501）——区别于授权拒绝（403）。 */
+export function isLicenseCapabilityNotReady(error: unknown): boolean {
+  return isApiError(error) && error.code === LICENSE_CAPABILITY_NOT_READY;
+}
+
 export function isApiError(error: unknown): error is ApiError {
   return (
     typeof error === 'object' &&
@@ -84,6 +101,9 @@ export function isBackendErrorBody(value: unknown): value is BackendErrorBody {
 }
 
 export function retryableForCode(code: string, status: number): boolean {
+  // ★未就绪（501）不是瞬时故障：重试一百次也不会变就绪（要等服务端补声明+执法面）
+  //   ⇒ 必须先于 `status >= 500` 判，否则它会被当成可重试 5xx，界面反复转圈。
+  if (code === LICENSE_CAPABILITY_NOT_READY) return false;
   // ★M1：429 = 限流语义 ⇒ 一律可重试（产品裁）；catalog 三支 Coded-429 码
   //   同时入白名单（覆盖 429 状态被网关改写/响应体先行的形态）。
   return status >= 500 || status === 429 || RETRYABLE_CODES.has(code);
