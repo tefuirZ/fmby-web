@@ -248,7 +248,7 @@ function checkIssue(n, repo, ref) {
 }
 
 function main() {
-  const repo = process.env.FMBY_REPO_SLUG ?? "tefuirZ/fmby-v2";
+  const repo = process.env.FMBY_WEB_REPO_SLUG ?? "tefuirZ/fmby-web";
   const ref = process.env.FMBY_EVIDENCE_REF ?? "origin/main";
   const argv = process.argv.slice(2).filter((a) => !a.startsWith("--"));
   const all = process.argv.includes("--all");
