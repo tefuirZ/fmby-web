@@ -1,0 +1,42 @@
+name: fmby-web gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: node scripts/check-agent-identity.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  evidence:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: node scripts/check-issue-close-evidence.mjs ${{ github.event.pull_request.number }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: fetch error-catalog from fmby-v2
+        run: |
+          gh api repos/tefuirZ/fmby-v2/contents/docs/plans/v2-dev/contracts/error-catalog.md \
+            --jq .content | base64 -d > /tmp/error-catalog.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - run: node scripts/generate-error-contract.mjs --catalog /tmp/error-catalog.md --check
