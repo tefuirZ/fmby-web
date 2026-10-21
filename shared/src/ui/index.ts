@@ -41,4 +41,6 @@ export type {
 
 /* ---- 反馈（Toast 全家桶） ---- */
 export { Toast, ToastProvider, ToastContext, useToast } from './feedback';
+export { AsyncJobsProvider, useAsyncJobs } from './feedback';
+export type { AsyncJob, AsyncJobStatus, AsyncJobsApi, AsyncJobSubmitInput } from './feedback';
 export type { ToastItem, ToastVariant, ToastApi, ToastInput } from './feedback';
