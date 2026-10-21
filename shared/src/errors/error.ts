@@ -18,21 +18,24 @@ export interface BackendErrorBody {
   trace_id?: string;
 }
 
-const RETRYABLE_CODES = new Set([
-  // ★M1（产品裁：429 语义=限流 ⇒ 一律可重试）：catalog 三支 Coded-429 码。
-  //   大小写照 wire 真值（error_code/slug.rs as_slug = SCREAMING_SNAKE）。
-  'AUTH_RATE_LIMITED',
-  'PLAYBACK_SESSION_LIMIT_EXCEEDED',
-  'INSTALL_RATE_LIMITED',
-  // ⚠️ 以下 5 条为**存量死条目**：wire error_code 是 SCREAMING（as_slug），
-  //    snake_case 从未命中 ⇒ 本集合此前对真实流量恒空命中。修正大小写 =
-  //    行为变更（DependencyTimeout 等将变为可重试），超出 M1 范围 ⇒ 另卡裁决。
-  //    （#1870/#1871 的生成器落地后本集合改为生成派生，死条目问题随之消失。）
-  'dependency_timeout',
-  'dependency_unavailable',
-  'dependency_rate_limited',
-  'retryable_storage',
-  'internal',
+import { CODES_HTTP_429, ERROR_CATALOG_SLUGS } from './error-catalog.generated';
+
+/** 意图可重试族（SCREAMING，与 wire 同形；历史 snake 死集的**意图还原**——
+ *  大小写漂移曾使本族从未命中真实流量）。经 ERROR_CATALOG_SLUGS 过滤 ⇒
+ *  catalog 演进时自动跟随/自动剔除（T2·一）。
+ */
+const INTENDED_RETRYABLE_SLUGS: readonly string[] = [
+  'DEPENDENCY_TIMEOUT',
+  'DEPENDENCY_UNAVAILABLE',
+  'DEPENDENCY_RATE_LIMITED',
+  'RETRYABLE_STORAGE',
+  'INTERNAL',
+];
+
+/** 可重试码集 = Coded-429（限流一律可重试，#1838/M1）∪ 意图可重试族 ∩ catalog。 */
+const RETRYABLE_CODES = new Set<string>([
+  ...CODES_HTTP_429,
+  ...INTENDED_RETRYABLE_SLUGS.filter((c) => ERROR_CATALOG_SLUGS.has(c)),
 ]);
 
 export function isApiError(error: unknown): error is ApiError {
