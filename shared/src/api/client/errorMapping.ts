@@ -43,7 +43,11 @@ export async function mapResponseToApiError(response: Response): Promise<ApiErro
     if (isBackendErrorBody(body)) {
       return withHttpMetadata(
         {
-          code: body.error_code === 'unauthorized' && response.status === 401 ? 'HTTP_401' : body.error_code,
+          // ★M2：401 ⇒ 一律 HTTP_401（消除双轨：旧判据要求 error_code === 'unauthorized'，
+          //   而 wire slug 是 SCREAMING（'UNAUTHORIZED'）⇒ 旧条件恒假 = 死轨）。
+          // ★M6：'HTTP_401' 是 **FE 私有值域**（不属于后端 error_code 目录值域）——
+          //   FE 消费方据此区分「会话失效（清会话/重登）」与「后端业务码」。
+          code: response.status === 401 ? 'HTTP_401' : body.error_code,
           message: body.message,
           retryable: retryableForCode(body.error_code, response.status),
           traceId: body.trace_id,
