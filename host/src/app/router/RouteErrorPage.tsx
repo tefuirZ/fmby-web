@@ -1,11 +1,14 @@
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router';
 import { GlassPanel, Button } from '@fmby/v2-shared/ui';
+import { getErrorTraceId } from '@fmby/v2-shared/errors/error';
 
 interface ErrorInfo {
   code: string;
   title: string;
   description: string;
   trace?: string;
+  /** 排查码（后端 ErrorBody.trace_id，#1904 Slice 2 展示位；有则展示，便于报障）。 */
+  traceId?: string;
   showHome: boolean;
 }
 
@@ -47,6 +50,18 @@ function extractErrorInfo(error: unknown): ErrorInfo {
       showHome: true,
     };
   }
+  // ★ApiError 归一化对象（client 桶 throw 的是 plain object，非 Error 实例）：
+  //   展示后端人话 message + HTTP 状态，排查码由组件级 getErrorTraceId 统一提取。
+  const rec = error as { code?: unknown; message?: unknown; status?: unknown };
+  if (typeof rec.code === 'string' && typeof rec.message === 'string') {
+    const statusNum = typeof rec.status === 'number' ? rec.status : 500;
+    return {
+      code: String(statusNum),
+      title: `请求失败 (${statusNum})`,
+      description: rec.message,
+      showHome: true,
+    };
+  }
   return {
     code: '500',
     title: '页面加载失败',
@@ -73,7 +88,7 @@ function safeStringify(value: unknown): string | undefined {
  */
 export function RouteErrorPage() {
   const error = useRouteError();
-  const info = extractErrorInfo(error);
+  const info = { ...extractErrorInfo(error), traceId: getErrorTraceId(error) };
 
   return (
     <main
@@ -132,6 +147,27 @@ export function RouteErrorPage() {
           <p style={{ margin: 0, color: 'var(--text-secondary, #9aa3b5)' }}>
             {info.description}
           </p>
+          {info.traceId ? (
+            <p
+              style={{
+                margin: 0,
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary, #9aa3b5)',
+              }}
+            >
+              排查码：
+              <code
+                style={{
+                  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                  color: 'var(--text-primary, #e6e9ef)',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {info.traceId}
+              </code>
+              （报障时请附上）
+            </p>
+          ) : null}
           {info.trace ? (
             <details
               style={{
