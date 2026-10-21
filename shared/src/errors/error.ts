@@ -19,6 +19,15 @@ export interface BackendErrorBody {
 }
 
 const RETRYABLE_CODES = new Set([
+  // ★M1（产品裁：429 语义=限流 ⇒ 一律可重试）：catalog 三支 Coded-429 码。
+  //   大小写照 wire 真值（error_code/slug.rs as_slug = SCREAMING_SNAKE）。
+  'AUTH_RATE_LIMITED',
+  'PLAYBACK_SESSION_LIMIT_EXCEEDED',
+  'INSTALL_RATE_LIMITED',
+  // ⚠️ 以下 5 条为**存量死条目**：wire error_code 是 SCREAMING（as_slug），
+  //    snake_case 从未命中 ⇒ 本集合此前对真实流量恒空命中。修正大小写 =
+  //    行为变更（DependencyTimeout 等将变为可重试），超出 M1 范围 ⇒ 另卡裁决。
+  //    （#1870/#1871 的生成器落地后本集合改为生成派生，死条目问题随之消失。）
   'dependency_timeout',
   'dependency_unavailable',
   'dependency_rate_limited',
@@ -80,5 +89,7 @@ export function isBackendErrorBody(value: unknown): value is BackendErrorBody {
 }
 
 export function retryableForCode(code: string, status: number): boolean {
-  return status >= 500 || RETRYABLE_CODES.has(code);
+  // ★M1：429 = 限流语义 ⇒ 一律可重试（产品裁）；catalog 三支 Coded-429 码
+  //   同时入白名单（覆盖 429 状态被网关改写/响应体先行的形态）。
+  return status >= 500 || status === 429 || RETRYABLE_CODES.has(code);
 }
