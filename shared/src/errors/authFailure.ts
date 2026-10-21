@@ -3,6 +3,10 @@ import type { ApiError } from '@fmby/v2-shared/types';
 
 type AuthFailureListener = () => void;
 
+// ★nit（w05）：AUTH_FAILURE_CODES（'UNAUTHORIZED'）已删——catalog 401 全列**无
+//   UNAUTHORIZED 生产者**（11 支全列实证），原 Set 恒不命中 = 又一死集；
+//   会话失效判定由 HTTP_401 折叠分支承载（M2 收窄口径）。若将来 wire 出现
+//   'UNAUTHORIZED' 生产者，连同守卫一起加回。
 // ★rb02 收口（二/四）：两支死 Set（AUTH_NON_SESSION_CODES / AUTH_FAILURE_HTTP_CODES）
 //   与消息模式尾段已删——core.ts:274 是唯一触发点；三态 code 合成下 HTTP_401 在下方
 //   提前 return ⇒ 尾段恒不可达；排除集与恒 false 回落结果相同 ⇒ 删除**零行为变化**。
@@ -10,7 +14,6 @@ type AuthFailureListener = () => void;
 //   历史注（保留，四）：'CREDENTIAL_INVALID' 与 'DEPENDENCY_RATE_LIMITED' 均**非**
 //   error-catalog 201 码（rb02 核正；T2·二 原注释误称后者为 catalog 真码）——
 //   若将来真码化，重排守卫时在此处加回排除语义。
-const AUTH_FAILURE_CODES = new Set(['UNAUTHORIZED']);
 
 const listeners = new Set<AuthFailureListener>();
 
@@ -48,11 +51,6 @@ export function notifyAuthFailure(): void {
 export function isSessionInvalidationError(error: unknown): boolean {
   if (!isApiError(error)) {
     return false;
-  }
-
-  // 明确的会话失败码（live：SCREAMING 与 wire 同形）。
-  if (AUTH_FAILURE_CODES.has(error.code)) {
-    return true;
   }
 
   // FE 私有折叠码（M2 收窄：仅 AUTH_REQUIRED/AUTH_EXPIRED 折成 HTTP_401）。
