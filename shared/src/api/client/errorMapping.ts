@@ -18,6 +18,9 @@ type ApiErrorWithHttpMetadata = ApiError & {
 
 type JsonRecord = Record<string, unknown>;
 
+/** ★M2 收窄：折入 HTTP_401 的后端码（会话失效语义；catalog 401 共 11 支，其余 9 支保留后端码）。 */
+const FOLD_INTO_HTTP_401 = new Set(['AUTH_REQUIRED', 'AUTH_EXPIRED']);
+
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -43,11 +46,15 @@ export async function mapResponseToApiError(response: Response): Promise<ApiErro
     if (isBackendErrorBody(body)) {
       return withHttpMetadata(
         {
-          // ★M2：401 ⇒ 一律 HTTP_401（消除双轨：旧判据要求 error_code === 'unauthorized'，
-          //   而 wire slug 是 SCREAMING（'UNAUTHORIZED'）⇒ 旧条件恒假 = 死轨）。
+          // ★M2 收窄（rb02 终审⑤）：仅 AUTH_REQUIRED/AUTH_EXPIRED 折入 HTTP_401
+          //   （会话失效语义）；其余 9 支 401 码**保留后端码**，原始码经 backendCode 旁路。
           // ★M6：'HTTP_401' 是 **FE 私有值域**（不属于后端 error_code 目录值域）——
           //   FE 消费方据此区分「会话失效（清会话/重登）」与「后端业务码」。
-          code: response.status === 401 ? 'HTTP_401' : body.error_code,
+          code:
+            response.status === 401 && FOLD_INTO_HTTP_401.has(body.error_code)
+              ? 'HTTP_401'
+              : body.error_code,
+          backendCode: body.error_code,
           message: body.message,
           retryable: retryableForCode(body.error_code, response.status),
           traceId: body.trace_id,

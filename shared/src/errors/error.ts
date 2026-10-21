@@ -4,8 +4,10 @@
 
 /** 统一 API 错误结构（归一化后使用 camelCase，来源兼容后端 snake_case）。 */
 export interface ApiError {
-  /** 后端 ErrorBody.error_code 的稳定 snake_case slug。 */
+  /** 后端 ErrorBody.error_code 的稳定 slug（SCREAMING；M2 收窄后部分 401 折为 FE 私有 HTTP_401）。 */
   code: string;
+  /** ★M2 收窄旁路：折叠前原始后端码（未折叠时与 code 同值）。 */
+  backendCode?: string;
   message: string;
   traceId?: string;
   /** 仅由错误码/HTTP 状态推导，不信任服务端任意布尔字段。 */
