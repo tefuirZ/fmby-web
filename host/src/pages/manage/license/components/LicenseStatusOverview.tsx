@@ -12,6 +12,10 @@ import {
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatEpochMs, formatEpochRelative } from '../licenseFormat';
+import {
+  formatRealtimeStatusLabel,
+  formatRuntimeStatusLabel,
+} from '../licenseSummaryPresentation';
 import styles from '../../longtail-shared/ManageShared.module.css';
 
 interface LicenseStatusOverviewProps {
@@ -27,16 +31,20 @@ export function LicenseStatusOverview({
   heartbeatError,
   onHeartbeat,
 }: LicenseStatusOverviewProps) {
-  const runtimeLabel = status.runtimeState ?? '未知';
-  const realtimeStatusLabel = status.realtimeStatus ?? '待初始化';
+  // ★LICENSE-UX-STATUS-LABELS：走呈现层中文标签（以前直取枚举 ⇒ 徽章上露 `unactivated`/`grace`）。
+  const runtimeLabel = formatRuntimeStatusLabel(status.runtimeState);
+  const realtimeStatusLabel = formatRealtimeStatusLabel(status.realtimeStatus);
   const summaryItems = [
     {
-      label: '业务访问',
-      value: status.businessAccessAllowed ? '允许' : '阻断',
-      meta: status.businessAccessAllowed
-        ? '当前授权状态允许业务链路继续运行'
-        : '业务链路会被授权 gate 阻断',
-      variant: status.businessAccessAllowed ? 'success' : 'danger',
+      // ★文案修正（2026-10-19）：旧文案把 `business_access_allowed=false` 显示成「阻断 / 业务链路会被阻断」，
+      // 与后端实际行为（设计=A：免费基线 Exempt，浏览/鉴权/安装等仍 200）**冲突**，会误导运维以为全站不可用。
+      // 现按语义正确名 `paidFeaturesAllowed` 显示：付费功能可用性 + 免费基线不受影响。
+      label: '付费功能',
+      value: status.paidFeaturesAllowed ? '可用' : '未授权',
+      meta: status.paidFeaturesAllowed
+        ? '当前授权允许付费能力（pan115 / 微云 / 刮削等）'
+        : '付费能力被授权门拦截；浏览、鉴权、安装、本地库等免费基线不受影响',
+      variant: status.paidFeaturesAllowed ? 'success' : 'warning',
     },
     {
       label: 'Lease 到期',
