@@ -16,6 +16,7 @@ import { isApiError } from '@fmby/v2-shared/types';
 import { getErrorMessage, isPan115CredentialError } from '@fmby/v2-shared/errors';
 import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../../../ManagePages.module.css';
+import { ScanQrImage } from '../../../../longtail-shared/components/ScanQrImage';
 import { useInvalidateCredentialState } from '../../../hooks/useInvalidateCredentialState';
 
 interface Pan115CredentialsSectionProps {
@@ -295,10 +296,11 @@ export function Pan115CredentialsSection({ currentDetail }: Pan115CredentialsSec
         ) : null}
         {qrSession ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <img
+            <ScanQrImage
               src={qrSession.qrImage ?? qrSession.qrUrl}
               alt="115 扫码登录二维码"
-              style={{ width: 220, height: 220, background: '#fff', padding: 8, borderRadius: 8 }}
+              kind="bitmap"
+              naturalSize={185}
             />
             <p className={styles.mutedText}>状态：{STATUS_LABELS[qrStatus]}</p>
             {activating ? <p className={styles.mutedText}>正在激活账号…</p> : null}
