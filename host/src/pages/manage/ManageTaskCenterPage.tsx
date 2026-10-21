@@ -12,9 +12,12 @@ import {
   TaskCenterFlash,
   TaskCenterList,
   TaskCenterMetrics,
+  TaskCenterStreamBanner,
 } from './task-center/components';
+import { AsyncJobsSection } from './task-center/components/AsyncJobsSection';
 import { PAGE_SIZE } from './task-center/constants';
-import { useTaskCenterMutations, useTaskCenterQueries } from './task-center/hooks';
+import { useTaskCenterMutations, useTaskCenterQueries, useTaskCenterStream } from './task-center/hooks';
+import { SKELETON_ROWS } from './task-center/hooks/useTaskCenterStream';
 import type { FlashState, RangePreset, SelectedTaskRef } from './task-center/types';
 import { buildRangePreset, showFlash } from './task-center/utils';
 
@@ -44,6 +47,17 @@ export function ManageTaskCenterPage() {
     selectedTask,
   );
 
+  // W15-TASK-CENTER-STREAM：流式状态（WS 分批推送 + 轮询降级 + 三态）。
+  // 用户红线「可以慢不能空」：首屏骨架/首块 ≤300ms 出，卡死 3s 出降级+重试。
+  const stream = useTaskCenterStream({
+    query: {
+      category: listQueryInput.category,
+      status: listQueryInput.status,
+      from: listQueryInput.from,
+      to: listQueryInput.to,
+    },
+  });
+
   const { actionMutation } = useTaskCenterMutations({
     onSettledSuccess: (message, redirectHint) => {
       if (detailQuery.data) {
@@ -66,13 +80,32 @@ export function ManageTaskCenterPage() {
     return new Map((overviewQuery.data?.categories ?? []).map((item) => [item.category, item]));
   }, [overviewQuery.data?.categories]);
 
-  if ((overviewQuery.isPending && !overviewQuery.data) || (listQuery.isPending && !listQuery.data)) {
+  // W15-TASK-CENTER-STREAM（卡面⑤）：**不再整页转圈**。首屏 overview/list 未就绪时
+  // 渲染骨架页（指标骨架 + 列表骨架行），保证 ≤300ms 有内容可看——用户点开什么也
+  // 看不到 = 必被骂。终态（error）仍整页给错误态（那是真的没内容可给）。
+  const firstPaintReady = Boolean(overviewQuery.data) && Boolean(listQuery.data);
+  if (!firstPaintReady && !overviewQuery.isError && !listQuery.isError) {
     return (
-      <FeedbackState
-        variant="loading"
-        title="正在装配任务中心"
-        description="正在汇总流水线、异常与审核任务，请稍等。"
-      />
+      <div className={styles.page}>
+        <ManagePageHeader
+          title="任务中心"
+          description="把扫描、识别、刮削、AI、审核和墓碑任务统一拎出来，先看系统在干什么，再定位卡在哪。"
+        />
+        <ManageSectionCard title="流水线概览">
+          <TaskCenterStreamBanner stream={stream} />
+        </ManageSectionCard>
+        <ManageSectionCard title="任务列表">
+          <table className={`${styles.table} ${styles.desktopOnly}`}>
+            <tbody>
+              {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                <tr key={`skeleton-${i}`}>
+                  <td colSpan={8}>正在加载…</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ManageSectionCard>
+      </div>
     );
   }
 
@@ -100,6 +133,7 @@ export function ManageTaskCenterPage() {
 
   return (
     <div className={styles.page}>
+      <TaskCenterStreamBanner stream={stream} />
       <ManagePageHeader
         title="任务中心"
         description="把扫描、识别、刮削、AI、审核和墓碑任务统一拎出来，先看系统在干什么，再定位卡在哪。"
@@ -135,6 +169,9 @@ export function ManageTaskCenterPage() {
         failed={overviewQuery.data?.failed ?? 0}
         todaySucceeded={overviewQuery.data?.todaySucceeded ?? 0}
       />
+
+      {/* ★FE-ASYNC-FEEDBACK ②：用户发起的后台操作在此可见（本会话聚合；E1 契约对齐后接全量）。 */}
+      <AsyncJobsSection />
 
       <TaskCenterCategoryGroups
         categoryFilter={categoryFilter}
