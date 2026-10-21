@@ -963,3 +963,48 @@
 .mobileRecordActions {
   composes: mobileRecordActions from './ManageDetailSurfaces.module.css';
 }
+
+/* W15-TASK-CENTER-STREAM：流式状态条（可以慢不能空）。间距走 4 的倍数阶梯
+   （FE-UI 验收 A4 口径：4/8/12/16/20/24/32/40/48/64，1-2px 发丝白名单）。 */
+.taskCenterStreamBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+  font-size: var(--text-body-sm, 13px);
+  color: var(--text-secondary, #aaa);
+}
+
+.taskCenterStreamBanner__hint {
+  color: var(--text-3, #888);
+}
+
+.taskCenterStreamBanner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.taskCenterStreamBanner--stalled {
+  background: var(--warn-bg, rgba(255, 176, 32, 0.12));
+  color: var(--warn-text, #ffb020);
+}
+
+.taskCenterStreamBanner--failed {
+  background: var(--danger-bg, rgba(255, 86, 86, 0.12));
+  color: var(--danger-text, #ff5656);
+}
+
+.taskCenterStreamBanner--empty {
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+}
+
+.taskCenterStreamBanner p {
+  margin: 4px 0 0;
+  font-size: var(--text-caption, 12px);
+  opacity: 0.86;
+}
