@@ -20,25 +20,15 @@ export interface BackendErrorBody {
   trace_id?: string;
 }
 
-import { CODES_HTTP_429, ERROR_CATALOG_SLUGS } from './error-catalog.generated';
+import { CODES_HTTP_429 } from './error-catalog.generated';
 
-/** 意图可重试族（SCREAMING，与 wire 同形；历史 snake 死集的**意图还原**——
- *  大小写漂移曾使本族从未命中真实流量）。经 ERROR_CATALOG_SLUGS 过滤 ⇒
- *  catalog 演进时自动跟随/自动剔除（T2·一）。
+/** 可重试码集 = Coded-429（限流一律可重试，#1838/M1；generated 单源）。
+ *  ★rb02 复评裁决（②）：原「意图可重试族」名单 5 slug 经 catalog 201 码逐字核
+ *  **全 0 命中**（DEPENDENCY_TIMEOUT/…/INTERNAL 均非 catalog slug）⇒ 过滤为空操作，
+ *  名单已删（历史与意图见 git）。意图与 catalog 真码的映射由 T1 裁定；
+ *  T1 落地前本集 = Coded-429 单源。
  */
-const INTENDED_RETRYABLE_SLUGS: readonly string[] = [
-  'DEPENDENCY_TIMEOUT',
-  'DEPENDENCY_UNAVAILABLE',
-  'DEPENDENCY_RATE_LIMITED',
-  'RETRYABLE_STORAGE',
-  'INTERNAL',
-];
-
-/** 可重试码集 = Coded-429（限流一律可重试，#1838/M1）∪ 意图可重试族 ∩ catalog。 */
-const RETRYABLE_CODES = new Set<string>([
-  ...CODES_HTTP_429,
-  ...INTENDED_RETRYABLE_SLUGS.filter((c) => ERROR_CATALOG_SLUGS.has(c)),
-]);
+const RETRYABLE_CODES = new Set<string>(CODES_HTTP_429);
 
 export function isApiError(error: unknown): error is ApiError {
   return (
