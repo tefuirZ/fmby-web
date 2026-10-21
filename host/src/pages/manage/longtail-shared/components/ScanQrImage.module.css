@@ -1,0 +1,65 @@
+/*
+ * ScanQrImage —— 扫码二维码图样式（FE-UI-1）。
+ * ------------------------------------------------------------
+ * 尺寸三档 + 下限兜底 + 位图只缩不放，全部在这里，六处扫码点共用一份。
+ *
+ * ★尺寸口径（CSS 变量，便于单测与门禁按名断言；主题可覆写）：
+ *   --scan-qr-max        280px  桌面档上限
+ *   --scan-qr-max-tablet 260px  平板档上限（≤1279px）
+ *   --scan-qr-max-phone  240px  手机档上限（≤767px / 触屏）
+ *   --scan-qr-min        180px  **任何档位不得低于此**（扫码可用下限）
+ */
+
+.frame {
+  /* 容器自适应：跟着父级内容宽走，父级由档位 max-width 限上限 */
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-width: 0; /* flex/grid 子项：允许收缩，否则 min-width:auto 会撑爆父容器 */
+  /* 下限兜底：CSS 里 min-width 胜过 max-width ⇒ 容器再窄也不破下限 */
+  min-width: var(--scan-qr-min);
+  max-width: var(--scan-qr-max);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 位图放大模糊的兜底（组件 JS 侧还有 naturalSize 上限，双保险） */
+  max-width: 100%;
+  /* position/z-index 一律不设：扫码图是内容，不抢 DetailModal 的 --z-modal 浮层 */
+}
+
+:root {
+  --scan-qr-max: 280px;
+  --scan-qr-max-tablet: 260px;
+  --scan-qr-max-phone: 240px;
+  --scan-qr-min: 180px;
+}
+
+/* 平板档：对齐 ManageShared.module.css 既有 1279 断点 */
+@media (max-width: 1279px) {
+  .frame {
+    max-width: var(--scan-qr-max-tablet);
+  }
+}
+
+/* 手机档：对齐 ManageShared.module.css 既有 767 断点 */
+@media (max-width: 767px) {
+  .frame {
+    max-width: var(--scan-qr-max-phone);
+  }
+}
+
+/*
+ * 触屏设备： coarse pointer 往往伴随窄视口，但**不必然**（平板可横屏 1024px）。
+ * 故按「已落到手机档」处理：手机上扫二维码的场景最常见，档位取手机值。
+ */
+@media (hover: none) and (pointer: coarse) {
+  .frame {
+    max-width: var(--scan-qr-max-phone);
+  }
+}

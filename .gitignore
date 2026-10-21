@@ -1,4 +1,6 @@
-node_modules/
+# node_modules：带斜杠只匹配目录，漏掉 worktree 里指向主仓的**符号链接**
+# （worktree 建链是 pnpm 装机惯例：node_modules -> /home/tefuir/rustproject/fmby-web/node_modules）
+node_modules
 dist/
 .vite/
 *.log
