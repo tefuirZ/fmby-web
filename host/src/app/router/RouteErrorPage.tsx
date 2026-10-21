@@ -1,69 +1,7 @@
 import { Link, isRouteErrorResponse, useRouteError } from 'react-router';
 import { GlassPanel, Button } from '@fmby/v2-shared/ui';
-
-interface ErrorInfo {
-  code: string;
-  title: string;
-  description: string;
-  trace?: string;
-  showHome: boolean;
-}
-
-function extractErrorInfo(error: unknown): ErrorInfo {
-  if (isRouteErrorResponse(error)) {
-    if (error.status === 404) {
-      return {
-        code: '404',
-        title: '页面不存在',
-        description: '你访问的页面不存在或已被移动，返回首页继续浏览。',
-        showHome: true,
-      };
-    }
-    if (error.status === 403) {
-      return {
-        code: '403',
-        title: '无权限访问',
-        description: '当前账号没有访问此页面的权限，如需访问请联系管理员。',
-        showHome: true,
-      };
-    }
-    return {
-      code: String(error.status),
-      title: `请求失败 (${error.status})`,
-      description:
-        typeof error.data === 'string' && error.data
-          ? error.data
-          : '服务端返回了异常状态，请稍后重试。',
-      trace: typeof error.data === 'string' ? undefined : safeStringify(error.data),
-      showHome: true,
-    };
-  }
-  if (error instanceof Error) {
-    return {
-      code: '500',
-      title: '页面加载失败',
-      description: error.message || '页面出现异常，请刷新后重试。',
-      trace: error.stack,
-      showHome: true,
-    };
-  }
-  return {
-    code: '500',
-    title: '页面加载失败',
-    description: '页面出现未知异常，请刷新后重试。',
-    trace: safeStringify(error),
-    showHome: true,
-  };
-}
-
-function safeStringify(value: unknown): string | undefined {
-  if (value == null) return undefined;
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
+import { extractErrorInfo } from '@fmby/v2-shared/errors/routeErrorInfo';
+import { getErrorTraceId } from '@fmby/v2-shared/errors/error';
 
 /**
  * 路由级错误页（玻璃拟态风格）
@@ -73,7 +11,7 @@ function safeStringify(value: unknown): string | undefined {
  */
 export function RouteErrorPage() {
   const error = useRouteError();
-  const info = extractErrorInfo(error);
+  const info = { ...extractErrorInfo(error, isRouteErrorResponse), traceId: getErrorTraceId(error) };
 
   return (
     <main
@@ -132,6 +70,27 @@ export function RouteErrorPage() {
           <p style={{ margin: 0, color: 'var(--text-secondary, #9aa3b5)' }}>
             {info.description}
           </p>
+          {info.traceId ? (
+            <p
+              style={{
+                margin: 0,
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary, #9aa3b5)',
+              }}
+            >
+              排查码：
+              <code
+                style={{
+                  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                  color: 'var(--text-primary, #e6e9ef)',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {info.traceId}
+              </code>
+              （报障时请附上）
+            </p>
+          ) : null}
           {info.trace ? (
             <details
               style={{

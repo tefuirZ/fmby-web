@@ -108,3 +108,26 @@ export function retryableForCode(code: string, status: number): boolean {
   //   同时入白名单（覆盖 429 状态被网关改写/响应体先行的形态）。
   return status >= 500 || status === 429 || RETRYABLE_CODES.has(code);
 }
+
+
+/**
+ * 从任意抛出物中提取**排查码**（trace_id/traceId，#1904 Slice 2 展示位数据源）。
+ *
+ * 识别形态（按序）：
+ * 1. ApiError 归一化对象：`traceId: string`（client 桶 errorMapping 已透传）；
+ * 2. 路由错误响应体：`data.trace_id` / `data.traceId`（isRouteErrorResponse 的
+ *    `data` 若为后端 ErrorBody JSON，则键为 snake_case）；
+ * 3. 其余（真 Error / 未知）⇒ undefined（调用方走 stack/JSON dump 兜底）。
+ */
+export function getErrorTraceId(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const rec = error as Record<string, unknown>;
+  if (typeof rec.traceId === 'string' && rec.traceId) return rec.traceId;
+  const data = (rec as { data?: unknown }).data;
+  if (typeof data === 'object' && data !== null) {
+    const d = data as Record<string, unknown>;
+    if (typeof d.trace_id === 'string' && d.trace_id) return d.trace_id;
+    if (typeof d.traceId === 'string' && d.traceId) return d.traceId;
+  }
+  return undefined;
+}

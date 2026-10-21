@@ -7,6 +7,7 @@
  */
 
 export * from './error';
+export * from './routeErrorInfo';
 export * from './messages';
 export * from './authFailure';
 export { isPan115CredentialError } from './pan115Codes';
