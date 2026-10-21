@@ -4,4 +4,3 @@ export { MountsHealthMatrix } from './components/MountsHealthMatrix';
 export { RiskRadarPanel } from './components/RiskRadarPanel';
 export { ActiveTaskQueueWidget } from './components/ActiveTaskQueueWidget';
 export { TaskDetailModal } from './components/TaskDetailModal';
-export type { ActiveTaskQueueItem, TaskSubItem } from './components/TaskDetailModal';
