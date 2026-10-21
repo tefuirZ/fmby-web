@@ -3,8 +3,12 @@ import type { ApiError } from '@fmby/v2-shared/types';
 
 type AuthFailureListener = () => void;
 
-const AUTH_FAILURE_CODES = new Set(['unauthorized']);
-const AUTH_NON_SESSION_CODES = new Set(['credential_invalid', 'dependency_rate_limited']);
+// ★T2·二：snake 死集改 SCREAMING（wire 真值，as_slug）——原 'unauthorized' 从未命中。
+const AUTH_FAILURE_CODES = new Set(['UNAUTHORIZED']);
+// ★T2·二：同清——'CREDENTIAL_INVALID' 照 AppError::CredentialInvalid 的 slug 意图
+//   （⚠️ 该 slug 不在 error-catalog 201 码内——是否立独立码另卡）；'DEPENDENCY_RATE_LIMITED'
+//   为 catalog 真码（429，M1 后可重试 ⇒ 非会话失效）。
+const AUTH_NON_SESSION_CODES = new Set(['CREDENTIAL_INVALID', 'DEPENDENCY_RATE_LIMITED']);
 const AUTH_FAILURE_HTTP_CODES = new Set(['HTTP_401']);
 const AUTH_FAILURE_MESSAGE_PATTERNS = [
   '缺少认证令牌',
