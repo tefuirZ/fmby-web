@@ -112,6 +112,19 @@ export type SkinActions = Record<string, (...args: never[]) => void> & {
    * 做 SPA 导航（preventDefault）。缺少时主题退化为 `role=link` 锚点。
    */
   itemHref?: (id: string) => string;
+  /**
+   * 发起播放（FE-UI-ACCEPT A5：ItemSkin ready 态此前无可点元素，详情页
+   * 无法开始播放）。host 注入 `navigate(\`/play/${id}\`)`；id 用条目的
+   * playbackTargetId（契约面已有，皮肤不猜）。
+   *
+   * 主题契约：仅在 `typeof actions.playItem === 'function'` 时接该回调。
+   */
+  playItem?: (id: string) => void;
+  /**
+   * 播放 href 构造器（`playItem` 的必配孪生键，与 openItem/itemHref 同模式）：
+   * 可访问性要求真实 `<a href>`；缺少时主题退化为 `<button>`，不伪造链接。
+   */
+  playHref?: (id: string) => string;
 };
 
 /** 主题导航贡献项（由 host 合并进全局导航） */
