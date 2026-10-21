@@ -197,19 +197,17 @@ export function UserEditForm({
           className={styles.secondaryButton}
           type="button"
           onClick={onCancel}
-          disabled={mutation.isPending}
         >
           取消
         </button>
         <button
           className={styles.primaryButton}
           type="button"
-          disabled={mutation.isPending}
           onClick={() =>
             onSubmit()
           }
         >
-          {mutation.isPending ? '保存中...' : '保存修改'}
+          保存修改
         </button>
       </div>
     </div>
