@@ -20,6 +20,7 @@ import { ConfirmDialog, InlineBanner } from '@fmby/v2-shared/ui';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import styles from '../../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '../../longtail-shared/components';
+import { ScanQrImage } from '../../longtail-shared/components/ScanQrImage';
 
 /** 轮询间隔（扫码态需要等待用户在 115 客户端确认）。 */
 const POLL_INTERVAL_MS = 3000;
@@ -125,7 +126,7 @@ export function PreviewCredentialSection() {
               </label>
             </div>
             {qrImage ? (
-              <img src={qrImage} alt="115 登录二维码" className={styles.readonlyField} />
+              <ScanQrImage src={qrImage} alt="115 登录二维码" kind="bitmap" naturalSize={185} />
             ) : qrUrl ? (
               <div className={styles.fieldHint}>
                 二维码图不可用（后端取图失败），请用链接扫码：

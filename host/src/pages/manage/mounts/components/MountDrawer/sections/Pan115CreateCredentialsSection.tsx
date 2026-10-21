@@ -10,6 +10,7 @@ import { DetailModal } from '@fmby/v2-shared/ui';
 import { usePan115QrLogin } from '@fmby/v2-shared/hooks/usePan115QrLogin';
 import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@fmby/v2-shared/utils/pan115-cookie-app';
 import styles from '../../../../ManagePages.module.css';
+import { ScanQrImage } from '../../../../longtail-shared/components/ScanQrImage';
 
 export type Pan115CreatePendingActivation =
   | { mode: 'qr'; sessionId: string; cookieApp: string }
@@ -182,11 +183,11 @@ export function Pan115CreateCredentialsSection({
         ) : null}
         {qrSession ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <img
+            <ScanQrImage
               src={qrSession.qrImage ?? qrSession.qrUrl}
               alt="115 扫码登录二维码"
-              referrerPolicy="no-referrer"
-              style={{ width: 220, height: 220, background: '#fff', padding: 8, borderRadius: 8 }}
+              kind="bitmap"
+              naturalSize={185}
             />
             <p className={styles.mutedText}>状态：{STATUS_LABELS[qrStatus]}</p>
             {activating ? <p className={styles.mutedText}>记录登录会话…</p> : null}
