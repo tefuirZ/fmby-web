@@ -44,7 +44,7 @@ import { readFileSync } from 'node:fs';
 
 const LEGACY_MAX = Number(process.env.FMBY_WEB_IDENTITY_LEGACY_MAX || 92); // fmby-web:92 号起强制
 const GH_BIN = process.env.FMBY_IDENTITY_GH_BIN || 'gh';
-const REPO_SLUG = process.env.FMBY_GH_REPO || 'tefuirZ/fmby-v2';
+const REPO_SLUG = process.env.FMBY_GH_REPO || 'tefuirZ/fmby-web';
 const FIXTURE = process.env.FMBY_IDENTITY_FIXTURE || '';
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
