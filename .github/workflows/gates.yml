@@ -33,10 +33,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
-      - name: fetch error-catalog from fmby-v2
-        run: |
-          gh api repos/tefuirZ/fmby-v2/contents/docs/plans/v2-dev/contracts/error-catalog.md \
-            --jq .content | base64 -d > /tmp/error-catalog.md
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - run: node scripts/generate-error-contract.mjs --catalog /tmp/error-catalog.md --check
+      # catalog 已 vendor 进仓（CI token 无 fmby-v2 权限；更新由主仓变更时同步）
+      - run: node scripts/generate-error-contract.mjs --catalog vendor/error-catalog.md --check
