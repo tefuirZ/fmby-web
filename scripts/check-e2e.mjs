@@ -19,7 +19,8 @@
  *      但 `FMBY_E2E_REQUIRED=1`（验收/夜间全量）时 **exit 3 = 基建缺件**，不冒充绿。
  *   3. **浏览器缺件 ⇒ exit 3**：playwright 未装浏览器时也是非零退出，不能记成产品红。
  *
- * 已知红台账：`scripts/e2e-known-red.txt`（带 issue 号 + STALE 反噬）。
+ * 已知红台账：`scripts/e2e-known-red.txt`（带 issue 号 + STALE 反噬；条目可选
+ * `@project` 限定——chromium / mobile-chrome 是独立失败身份）。
  * 台账里的条目若某天修绿了而没删条目 ⇒ 判红（防止台账变成永久豁免）。
  *
  * 用法：
