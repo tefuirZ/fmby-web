@@ -12,7 +12,12 @@
  * 与「诚实化」裁定相悖（静默放行 = 把 known-red 变成 skip）。
  *
  * 台账格式（见 scripts/e2e-known-red.txt）：
- *   <spec文件>:<用例名片段> | <issue号> | <登记原因>
+ *   <spec文件>[@<project>]:<用例名片段> | <issue号> | <登记原因>
+ *
+ * ★@project 限定（2026-10-22）：每个 project（chromium / mobile-chrome…）是独立失败
+ *   身份。不带 @project = 匹配**任意** project（兼容存量 chromium 时代登记）；
+ *   需要按 project 区分（如同一 spec 两端各有一条已知红）就写两行、各自带 @project——
+ *   旧格式两行文本完全相同 ⇒ `used` 判重吞掉第二行 ⇒ 「写两行」在旧解析器下不可能。
  *
  * 匹配语义：
  *   · spec 文件按 **basename 双向**匹配：台账里可写 `mobile-audit.spec.ts`、
@@ -72,8 +77,20 @@ export function parseKnownRed(raw) {
       continue;
     }
     const idx = parts[0].lastIndexOf(':');
+    let filePart = parts[0].slice(0, idx).trim();
+    let project;
+    const at = filePart.lastIndexOf('@');
+    if (at > 0) {
+      project = filePart.slice(at + 1).trim();
+      filePart = filePart.slice(0, at).trim();
+      if (!project || !filePart) {
+        malformed.push(trimmed);
+        continue;
+      }
+    }
     entries.push({
-      file: parts[0].slice(0, idx).trim(),
+      file: filePart,
+      project,
       titleFragment: parts[0].slice(idx + 1).trim(),
       issue: parts[1],
       reason: parts.slice(2).join('|').trim(),
@@ -104,6 +121,7 @@ export function judgeKnownRed(raw, failures) {
       (e) =>
         !used.has(e.raw) &&
         e.file.split('/').pop() === base &&
+        (!e.project || e.project === failure.project) &&
         (!e.titleFragment || failure.title.includes(e.titleFragment)),
     );
     if (hit) {

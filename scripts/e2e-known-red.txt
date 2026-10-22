@@ -1,7 +1,9 @@
 # E2E 已知存量失败台账（fmby-web）
 #
 # 格式（每行一条，# 开头为注释）：
-#   <spec文件>:<用例名片段> | <issue号> | <登记原因>
+#   <spec文件>[@<project>]:<用例名片段> | <issue号> | <登记原因>
+#   · 可选 @project：chromium / mobile-chrome… 是**独立失败身份**；不带 = 匹配任意
+#     project（兼容存量登记）；同一 spec 两端各有一条已知红 ⇒ 写两行、各自带 @project。
 #
 # 规则（照后端 scripts/lib/node-gates-known-red.txt 范式）：
 #   · 登记项必须是**已开 issue 的存量失败**，不得登记「暂时不想修」；
