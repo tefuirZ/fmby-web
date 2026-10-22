@@ -29,7 +29,16 @@
  */
 
 import { spawn } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -60,6 +69,15 @@ function pruneStaleWorkDirs() {
     for (const name of readdirSync(tmpdir())) {
       if (!name.startsWith('fmby-e2e-real-')) continue;
       const dir = join(tmpdir(), name);
+      // ★#1959 姊妹篇（farm3 根分区 100% ⇒ 920 假红，2026-10-22）：>7 天的 workDir
+      //   **无条件视为残留**——即使 PID 标记"存活"（正常会话生命周期以小时计，
+      //   7 天 = 纯残留）。无此时限兜底 ⇒ 每会话累积直至磁盘满（实测 25G）。
+      let staleOverTtl = false;
+      try {
+        staleOverTtl = Date.now() - statSync(dir).mtimeMs > 7 * 24 * 3600 * 1000;
+      } catch {
+        /* 不可读 ⇒ 不按 stale 处理，走原 PID 判定 */
+      }
       let alive = false;
       try {
         const pid = Number(readFileSync(join(dir, PID_MARKER), 'utf8').trim());
@@ -67,7 +85,7 @@ function pruneStaleWorkDirs() {
       } catch {
         alive = false; // 无标记/不可读 ⇒ 视为僵死
       }
-      if (alive) continue;
+      if (alive && !staleOverTtl) continue;
       try {
         rmSync(dir, { recursive: true, force: true });
         removed += 1;
