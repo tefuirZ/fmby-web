@@ -29,6 +29,8 @@ interface MediaItemFiltersProps {
   setOverrideFilter: Dispatch<SetStateAction<OverrideFilter>>;
   librariesQuery: UseQueryResult<ManageLibrariesResponse>;
   itemsCount: number;
+  /** 列表总条数（ManageMediaItemsPage 传入；#111 build 残余补齐）。 */
+  total?: number;
   localOverrideCount: number;
   isFetching: boolean;
   hasActiveFilters: boolean;

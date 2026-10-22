@@ -74,6 +74,8 @@ export interface TaskCenterListResponse {
   total: number;
   page: number;
   size: number;
+  /** E3 流式增量渲染的分页判断（#88 消费）；后端未实发时 undefined 兜底。 */
+  hasMore?: boolean;
 }
 
 export interface TaskCenterActionResponse {
