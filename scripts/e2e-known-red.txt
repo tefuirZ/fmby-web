@@ -28,3 +28,9 @@ farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-media-items | 123 | 
 farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-users | 123 | 同上
 farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：history | 123 | 同上
 farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：login | 123 | 同上
+
+grid-keynav.spec.ts@mobile-chrome:移动到右邻项  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
+grid-keynav.spec.ts@mobile-chrome:End 跳到整个轨道末项  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
+grid-keynav.spec.ts@mobile-chrome:End/Home 从中间项起算  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
+grid-keynav.spec.ts@mobile-chrome:焦点可见  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
+grid-keynav.spec.ts@mobile-chrome:不破坏既有键盘导航  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
