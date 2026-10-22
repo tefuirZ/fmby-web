@@ -11,7 +11,20 @@
 #   · 门禁当前只做「提示 + 引导登记」，不把台账当 allowlist 静默放行
 #     （静默放行 = 把 known-red 变成 skip，与「诚实化」裁定相悖）。
 #
-# 空台账 = 无已知存量失败（当前状态：见 PR #15 复查）。
+# 首批登记 2026-10-22：A4 间距阶梯迁移（fmby-web#123）×2 projects。
+# ★STALE 反噬在此当**迁移进度表**用：组件迁移完成 ⇒ 对应页转绿 ⇒ 闸报 STALE ⇒ 摘行
+#   （rv01 建议，编排采纳；执行顺序 = #123 清单 #1-#4 壳层 → #5-#10 页内 → #11）。
 
 # 示例（勿取消注释，仅供格式参考）：
 # a11y-report.spec.ts:生成逐页无障碍树 | fmby-web#NNN | 完整跑时序下偶发超时，待独立卡收口
+
+farm-accept-ui2.spec.ts@chromium:留白抽查：manage-overview | 123 | A4 存量脱梯 14 种（审计 P2-1）；迁移中
+farm-accept-ui2.spec.ts@chromium:留白抽查：manage-media-items | 123 | A4 存量脱梯 9 种；迁移中
+farm-accept-ui2.spec.ts@chromium:留白抽查：manage-users | 123 | A4 存量脱梯 8 种；迁移中
+farm-accept-ui2.spec.ts@chromium:留白抽查：history | 123 | A4 存量脱梯 13 种（审计 P2-1 主按钮 10/18）；迁移中
+farm-accept-ui2.spec.ts@chromium:留白抽查：login | 123 | A4 存量脱梯 5 种（审计 P2-5 登录卡 36px）；迁移中
+farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-overview | 123 | 同 chromium 条目（project 独立身份）
+farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-media-items | 123 | 同上
+farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-users | 123 | 同上
+farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：history | 123 | 同上
+farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：login | 123 | 同上
