@@ -307,7 +307,12 @@ test.describe('A5 条目详情（darkroom ItemSkin 实渲染）首屏主行动�
     const card = page.getByRole('link', { name: /星际穿越/ }).first();
     await expect(card).toBeVisible({ timeout: 15_000 });
     await card.click();
-    await page.waitForURL(/\/item\//, { timeout: 15_000 });
+    // ★移动语义（编排裁定 2026-10-22）：移动端点海报**直接播**（/play/:id）是有意设计
+    //   （屏幕小，进详情再播多一步）；桌面仍 /item/:id。两种导航都接受，
+    //   随后统一落回 /item/:id 做 darkroom ItemSkin 断言（断言对象不变）。
+    await page.waitForURL(/\/(item|play)\//, { timeout: 15_000 });
+    const a5ItemId = page.url().match(/\/(?:item|play)\/([^/?#]+)/)?.[1] ?? '';
+    await page.goto(`/item/${a5ItemId}`);
     await expect(page.locator('[data-darkroom="item-skin"][data-state="ready"]')).toBeVisible({
       timeout: 15_000,
     });
@@ -389,8 +394,10 @@ test.describe('A6 历史页同一计数不得同屏两处（审计 P1-4）', () 
     const card = page.getByRole('link', { name: /星际穿越/ }).first();
     await expect(card).toBeVisible({ timeout: 15_000 });
     await card.click();
-    await page.waitForURL(/\/item\//, { timeout: 15_000 });
-    const itemId = page.url().match(/\/item\/([^/?#]+)/)?.[1];
+    // ★移动语义（编排裁定 2026-10-22）：同 A5——移动端点海报直接播（/play/:id）是
+    //   有意设计；本测本就要去 /play 造历史 ⇒ 移动端反而少一步，两种导航都接受。
+    await page.waitForURL(/\/(item|play)\//, { timeout: 15_000 });
+    const itemId = page.url().match(/\/(?:item|play)\/([^/?#]+)/)?.[1];
     await page.goto(`/play/${itemId}`);
     await page.waitForTimeout(10_000); // 等会话建立 + timeupdate 进度上报落库
 
