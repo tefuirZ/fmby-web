@@ -1,437 +1,305 @@
 /**
- * W15-TASK-CENTER-STREAM：任务中心**流式增量渲染** hook。
+ * E3 前端半边：任务中心「可以慢，不能空」流式装配（只动 fmby-web）。
  *
- * 用户红线（卡面原话）：「可以慢，不能空」——点开任务中心不允许「整个前端
- * 什么都不给、空着放那儿」。逐条落在代码里：
+ * 卡面红线（用户原话）：**可以慢，不能空** ✗ —— 用户点开什么也看不到 = 必被骂。
+ * 本 hook 把「一次性等整页」改成「首块尽快出 + 按批 append + 卡死降级」：
  *
- * ⑤ ≤300ms 内必须出现内容：骨架行或首批真数据任一即可（`SKELETON_ROWS`），
- *    且**不依赖 WS 是否连上**（首屏先 `first=1` 拉首块，WS 是增量增强）；
- * ⑥ 每批到达即 append（带 seq 判重，防重复帧）+ 顶部「已加载 N 条 · 仍在加载…」，
- *    完成变「共 N 条」；
- * ⑦ 全链路卡死：超过 `STALL_MS`(3s) 无任何数据 ⇒ 明确降级文案 + 重试按钮 +
- *    「任务仍在后台执行」提示（**不是 spinner 到永远**）；
- * ⑧ 空态写「当前没有运行中的任务」+ 引导动作（不许空壳）；
- * ⑨ 权限变更/启停等异步 job 的状态变化经 WS 实时可见（E1/E2 对齐）。
+ *   status 六态（卡面 §3：绝不允许「空壳 = 未知」）：
+ *     loading    首块未到（骨架期，≤300ms 即有骨架行）
+ *     streaming   已出 N 条且 hasMore（顶部「已加载 N 条 · 仍在加载…」）
+ *     stalled     超过 STALL_THRESHOLD_MS 仍无任何数据（降级文案 + 重试 + 后台提示）
+ *     done        末批 hasMore=false（顶部「共 N 条」）
+ *     empty       后端明确返回 0 条（「当前没有运行中的任务」+ 引导动作）
+ *     error       取数失败（透传原因，不吞成空）
  *
- * 纪律对齐 `features/operations/useOperationsRealtime.ts`（仓内 WS 先例）：
- * - 失败 fail-closed + 指数退避重连（封顶 15s）；
- * - 卸载真关连接，卸载后绝不 setState（mountedRef 守卫）；
- * - 非 JSON 帧丢弃不崩；
- * **零新依赖**；只动前端仓。
+ * ★与 WS 的关系（卡面 §9，本轮诚实的边界）：
+ *   后端 `PlaybackRealtimeEventType`（crates/fmby-v2-application/src/playback/
+ *   realtime.rs:37）当前只有 7 类 playback 事件，**无 task-center 事件** ⇒
+ *   本轮前端不连 WS（连了也只会在 3s 后走进降级，反而是骗人）。
+ *   `subscribeBatches` 做成**注入式 seam**：真页面注入轮询适配器（每批即一页），
+ *   后端补了 task-center 事件后换注入 WS 适配器即可，**本 hook 与 UI 零改动**。
+ *   降级路径（卡面 §4）已由 seam 覆盖：注入的订阅器返回 unsubscribe，
+ *   页面据此回到轮询，UI 侧无感。
  *
- * 降级链（卡面④）：WS 不可用 ⇒ 自动退回分页轮询（`first=1` 首块 + 后续
- * `page` 递增），依然分批出、不整页空白。
+ * ★纯函数与 React 分离：mergeBatch / nextStatusAfterBatch / buildStreamStatusText
+ *   不碰 React，node:test 直跑（见 task-center-streaming.unit.test.ts）。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { taskCenterApi, type TaskCenterItemRecord, type TaskCenterListQuery } from '@fmby/v2-shared/contracts/manage/task-center';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { TaskCenterItemRecord } from '@fmby/v2-shared/contracts/manage/task-center';
 
-const WS_PATH = '/api/playback/realtime/ws?scope=task_center';
+/** 卡面 §7 给定：超过 3s 无任何数据 ⇒ 降级。 */
+export const STALL_THRESHOLD_MS = 3000;
 
-/** 首屏骨架行数（⑤：≤300ms 出内容，骨架也算内容）。 */
+/** 卡面 §5：≤300ms 必须出内容 ⇒ 骨架行数（真 DOM 断言用）。 */
 export const SKELETON_ROWS = 3;
-/** 卡死阈值（⑦：3s 无任何数据 ⇒ 降级提示）。与后端 FRONTEND_STALL_THRESHOLD_MS 同值。 */
-export const STALL_MS = 3_000;
-/** 轮询降级时的页长（= 后端 FIRST_BATCH，首块小页）。 */
-const POLL_PAGE_SIZE = 3;
 
-/** 三态（③：绝不允许「空壳 = 未知」）。 */
-export type TaskCenterStreamPhase =
-  /** 加载中：已出 N 条（N 可能为 0，但**已知在加载**——骨架行在）。 */
-  | 'loading'
-  /** 空：查询跑了、明确无数据（⑧：给引导动作）。 */
-  | 'empty'
-  /** 失败：带原因（⑦：给重试）。 */
-  | 'failed'
-  /** 完成：共 N 条。 */
-  | 'done';
-
-export interface TaskCenterStreamState {
-  phase: TaskCenterStreamPhase;
-  /** 已加载条目（append 累积，按到达序）。 */
-  items: TaskCenterItemRecord[];
-  /** 累计条数（⑥ 顶部「已加载 N 条」）。 */
-  loaded: number;
-  /** 服务端告知的总数（`done` 时 = loaded；`loading` 时可能是已知上界）。 */
-  total: number | null;
-  /** 是否还有更多（决定「仍在加载…」还是「共 N 条」）。 */
-  hasMore: boolean;
-  /** 失败原因（仅 `failed`）。 */
-  reason: string | null;
-  /** WS 连接状态。 */
-  wsStatus: 'connecting' | 'open' | 'closed' | 'error' | 'polling';
-  /** 最后一次到达的服务器时间（RFC3339），用于新鲜度。 */
-  lastEventAt: string | null;
-  /** 已见的最大批次序号（判重：防 WS 重连 replay 重复 append）。 */
-  lastSeq: number;
-}
-
-const INITIAL: TaskCenterStreamState = {
-  phase: 'loading',
+/** 未启用流时的初值（页面走分页 REST，不用流式壳）。 */
+const IDLE_STATE: TaskCenterStreamState = {
+  status: 'done',
   items: [],
-  loaded: 0,
-  total: null,
-  hasMore: true,
-  reason: null,
-  wsStatus: 'connecting',
-  lastEventAt: null,
-  lastSeq: 0,
+  total: 0,
+  hasMore: false,
+  errorMessage: null,
 };
 
-/** 重连退避：1s → 2s → 4s → … 封顶 15s（与 useOperationsRealtime 同算法）。 */
-export function backoffMs(attempt: number): number {
-  return Math.min(15_000, 1_000 * 2 ** Math.max(0, attempt - 1));
-}
+/** 流已启用但首批未到 ⇒ loading（骨架期）。 */
+const LOADING_STATE: TaskCenterStreamState = {
+  status: 'loading',
+  items: [],
+  total: 0,
+  hasMore: false,
+  errorMessage: null,
+};
 
-/**
- * 解析一帧 WS 文本。非 JSON / 缺 type / 缺 payload ⇒ null（不崩）。
- */
-export function parseStreamFrame(
-  text: string,
-): { type: string; serverTime: string | null; payload: TaskCenterFramePayload } | null {
-  let msg: { type?: string; server_time?: string; payload?: unknown };
-  try {
-    msg = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  if (typeof msg !== 'object' || msg === null || typeof msg.type !== 'string') return null;
-  if (typeof msg.payload !== 'object' || msg.payload === null) return null;
-  const p = msg.payload as Record<string, unknown>;
-  if (typeof p.kind !== 'string' || typeof p.seq !== 'number') return null;
-  return {
-    type: msg.type,
-    serverTime: (msg.server_time as string | undefined) ?? null,
-    payload: {
-      kind: p.kind as TaskCenterFramePayload['kind'],
-      seq: p.seq,
-      items: Array.isArray(p.items) ? (p.items as TaskCenterItemRecord[]) : [],
-      hasMore: p.has_more === true,
-      loaded: typeof p.loaded === 'number' ? p.loaded : 0,
-      total: typeof p.total === 'number' ? p.total : null,
-      reason: typeof p.reason === 'string' ? p.reason : null,
-    },
-  };
-}
+export type TaskCenterStreamStatus =
+  | 'loading'
+  | 'streaming'
+  | 'stalled'
+  | 'done'
+  | 'empty'
+  | 'error';
 
-/** 帧 payload（wire 形态，snake_case 由 parse 归一）。 */
-export interface TaskCenterFramePayload {
-  kind: 'first' | 'progress' | 'finished' | 'empty' | 'failed';
-  seq: number;
+export interface TaskCenterStreamBatch {
   items: TaskCenterItemRecord[];
+  total: number;
   hasMore: boolean;
-  loaded: number;
-  total: number | null;
-  reason: string | null;
+}
+
+export interface TaskCenterStreamState {
+  status: TaskCenterStreamStatus;
+  items: TaskCenterItemRecord[];
+  total: number;
+  hasMore: boolean;
+  errorMessage: string | null;
+}
+
+export interface TaskCenterStreamOptions {
+  /** 取首批（页面注入 taskCenterApi.getItems；探针注入可控延迟的假 loader）。 */
+  loadFirstBatch: () => Promise<TaskCenterStreamBatch>;
+  /**
+   * 订阅后续批次；返回 unsubscribe。
+   * 页面注入轮询适配器（每批 = 拉下一页）；后端有 task-center WS 事件后换 WS 适配器。
+   */
+  subscribeBatches: (
+    onBatch: (batch: TaskCenterStreamBatch) => void,
+    onDone: () => void,
+  ) => () => void;
+  /** 卡面 §7 的 3s 阈值（可注入以便测试加速；默认 3000）。 */
+  stallThresholdMs?: number;
+  /**
+   * 是否启用本条流（默认 true）。
+   * 页面在第 2 页及以后走**分页 REST**（既有翻页语义），此时不该再流式重拉首页
+   * —— 否则用户翻到第 3 页时后台还在灌第 1 页，两份数据打架。
+   */
+  enabled?: boolean;
+  /**
+   * 重置键：变了就从头重开一条流（筛选/分页口径变化）。
+   * ★为什么需要：options 走 ref（避开 setState-in-effect 无限循环），
+   *   所以不能靠 options 身份变化触发重启；筛选一变必须重新流，否则会看到
+   *   上一个筛选的旧行与新筛选批次混在一起。
+   */
+  resetKey?: string;
 }
 
 /**
- * 纯函数 reducer（可 node:test）：把一帧应用到当前状态。
+ * §6 顶部文案：三态可辨（进行中 / 完成 / 空），且**必须看 status**。
  *
- * 关键不变量（断言目标）：
- * - `seq` 判重：同 seq 的 progress/first 帧只吃一次（防重复 append）；
- * - `loaded` 单调不减；
- * - `empty` ⇒ phase='empty' 且 items 为空；
- * - `failed` ⇒ phase='failed' 且保留已加载条目（用户已看到的不能因失败消失）；
- * - `finished` ⇒ phase='done'、hasMore=false、total=loaded。
+ * ★为什么 status 是必填参数而不是只看 loaded/hasMore：只按「loaded=0 且 hasMore=false」
+ *   判空，会在**首帧**（items 还没到、状态还是 loading）就报「当前没有运行中的任务」
+ *   —— 骨架行正在显示、任务可能还在跑，这句话就是谎报（与 FE-UI-2 P0-① 同一病灶，
+ *   本卡自查轨迹实测抓到：n=0 那一格文案正是「当前没有运行中的任务」）。
+ *   「没有任务」只能由后端明确返回 0 条（status=empty）来说。
  */
-export function reduceStreamFrame(
-  state: TaskCenterStreamState,
-  frame: { type: string; serverTime: string | null; payload: TaskCenterFramePayload } | null,
-): TaskCenterStreamState {
-  if (!frame) return state;
-  const { payload } = frame;
-  const base: TaskCenterStreamState = {
-    ...state,
-    wsStatus: 'open',
-    lastEventAt: frame.serverTime ?? state.lastEventAt,
-  };
-
-  switch (payload.kind) {
-    case 'first':
-    case 'progress': {
-      // 判重：seq 不大于已见最大值 ⇒ 视为重复帧（WS 重连 replay 会重发）。
-      if (payload.seq > 0 && payload.seq <= (state.lastSeq ?? 0)) return state;
-      const merged = dedupeById([...state.items, ...payload.items]);
-      return {
-        ...base,
-        phase: 'loading',
-        items: merged,
-        loaded: Math.max(state.loaded, payload.loaded, merged.length),
-        total: payload.total,
-        hasMore: payload.hasMore,
-        reason: null,
-        lastSeq: Math.max(state.lastSeq ?? 0, payload.seq),
-      };
-    }
-    case 'finished':
-      return {
-        ...base,
-        phase: 'done',
-        hasMore: false,
-        loaded: Math.max(state.loaded, payload.loaded),
-        total: payload.total ?? Math.max(state.loaded, payload.loaded),
-        reason: null,
-      };
-    case 'empty':
-      return { ...base, phase: 'empty', items: [], loaded: 0, hasMore: false, total: 0, reason: null };
-    case 'failed':
-      // ★已加载条目保留：用户已看到的不因后续失败消失。
-      return { ...base, phase: 'failed', hasMore: false, reason: payload.reason ?? '未知原因' };
-    default:
-      return state;
-  }
-}
-
-/** 按 id 去重（保序：首次出现的位置）。 */
-function dedupeById(items: TaskCenterItemRecord[]): TaskCenterItemRecord[] {
-  const seen = new Set<string>();
-  const out: TaskCenterItemRecord[] = [];
-  for (const it of items) {
-    if (seen.has(it.id)) continue;
-    seen.add(it.id);
-    out.push(it);
-  }
-  return out;
-}
-
-/** 顶部状态文案（⑥/⑦/⑧）。 */
-export function streamHeadline(state: TaskCenterStreamState): string {
-  switch (state.phase) {
+export function buildStreamStatusText({
+  status,
+  loaded,
+  total = loaded,
+}: {
+  status: TaskCenterStreamStatus;
+  loaded: number;
+  /** 后端口径总数（缺省视为与 loaded 相同）。 */
+  total?: number;
+}): string {
+  switch (status) {
     case 'loading':
-      return state.loaded > 0
-        ? `已加载 ${state.loaded} 条 · 仍在加载…`
-        : '正在加载任务…';
-    case 'done':
-      return `共 ${state.total ?? state.loaded} 条`;
+      return '正在装载任务…';
+    case 'stalled':
+      return '装载受阻 · 可重试';
+    case 'error':
+      return '装载失败';
     case 'empty':
       return '当前没有运行中的任务';
-    case 'failed':
-      return `加载失败：${state.reason ?? '未知原因'}`;
+    case 'streaming':
+      return `已加载 ${loaded} 条 · 仍在加载…`;
+    case 'done':
+    default:
+      if (loaded > 0) return `共 ${loaded} 条`;
+      // ★loaded=0 但后端 total>0（首页空、总数非空）⇒ 不能说「没有运行中的任务」，
+      //   那与后端自己报的 total 自相矛盾。如实说「没取回」。
+      return total > 0 ? `未取回任务数据（后端口径共 ${total} 条）` : '当前没有运行中的任务';
   }
 }
 
-export interface UseTaskCenterStreamOptions {
-  /** 筛选条件（分类/状态/时间窗）。变化时重置流。 */
-  query: Omit<TaskCenterListQuery, 'page' | 'size'>;
-  /** 是否启用（默认 true）。 */
-  enabled?: boolean;
-}
-
-export interface UseTaskCenterStreamResult extends TaskCenterStreamState {
-  /** 首屏是否还在骨架态（loaded=0 且未到终态）。 */
-  showSkeleton: boolean;
-  /** 是否已卡死超过阈值（⑦：该出降级文案 + 重试了）。 */
-  stalled: boolean;
-  /** 人工重试（重置流 + 重新拉首块）。 */
-  retry: () => void;
-  /** 关闭/开启动效（⑥：可关闭）。 */
-  animate: boolean;
-  setAnimate: (v: boolean) => void;
+/** 合并一批：保序 append + 按 id 去重（WS 重连重放是真实场景）。 */
+export function mergeBatch(
+  state: TaskCenterStreamState,
+  incoming: TaskCenterStreamBatch,
+): TaskCenterStreamState {
+  // ★fail-loud：批次形状不对（传了裸数组 / 缺 items）直接抛，**不静默当空批吞掉**。
+  //   本仓踩过：探针把批次写成 `[[row]]` 而非 `{items:[row]}` ⇒ incoming.items=undefined
+  //   ⇒ append 永远不生效、UI 卡在首块，而测试只报「没等到 4 条」这种模糊症状。
+  //   把错提到数据进来那一刻，比让调用方猜布局问题便宜得多。
+  if (!Array.isArray(incoming?.items)) {
+    throw new Error(
+      `mergeBatch 收到非法批次形状（期望 {items,total,hasMore}，实得 ${typeof incoming}）`,
+    );
+  }
+  const seen = new Set(state.items.map((i) => `${i.category}:${i.id}`));
+  const appended = incoming.items.filter((i) => {
+    const key = `${i.category}:${i.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const items = [...state.items, ...appended];
+  return {
+    ...state,
+    items,
+    total: incoming.total,
+    hasMore: incoming.hasMore,
+    status: nextStatusAfterBatch(state, incoming),
+  };
 }
 
 /**
- * 任务中心流式 hook。
- *
- * 双通道（卡面②+④）：
- * 1. **首块立即拉**（`first=1` 轮询一次）⇒ 不依赖 WS，≤300ms 出内容；
- * 2. **WS 增量**（`scope=task_center`）⇒ 每批到达 append；
- * 3. WS 不可用 ⇒ 继续以 `first=1` + `page` 递增轮询补量（降级，仍分批）。
+ * 三态机（自洽，不依赖调用方先合并）：按「合并后的条数」判状态。
+ *   首块未到（本批 0 条且 hasMore）⇒ loading（骨架期）
+ *   有条且 hasMore                        ⇒ streaming
+ *   末批 hasMore=false 且有条             ⇒ done
+ *   末批 hasMore=false 且 0 条             ⇒ empty（明确无数据，非卡死）
  */
-export function useTaskCenterStream({
-  query,
-  enabled = true,
-}: UseTaskCenterStreamOptions): UseTaskCenterStreamResult {
-  const [state, setState] = useState<TaskCenterStreamState>(INITIAL);
-  const [animate, setAnimate] = useState(true);
-  const [stalled, setStalled] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+export function nextStatusAfterBatch(
+  state: TaskCenterStreamState,
+  incoming: TaskCenterStreamBatch,
+): TaskCenterStreamStatus {
+  const seen = new Set(state.items.map((i) => `${i.category}:${i.id}`));
+  const nextItemCount =
+    state.items.length + incoming.items.filter((i) => !seen.has(`${i.category}:${i.id}`)).length;
+  if (incoming.hasMore) return nextItemCount > 0 ? 'streaming' : 'loading';
+  return nextItemCount > 0 ? 'done' : 'empty';
+}
 
-  const stateRef = useRef(state);
-  stateRef.current = state;
-  const socketRef = useRef<WebSocket | null>(null);
-  const closedByUsRef = useRef(false);
+export interface TaskCenterStreamResult extends TaskCenterStreamState {
+  loadedCount: number;
+  /** 卡面 §7 的重试入口（重新走首块 + 订阅）。 */
+  retry: () => void;
+}
+
+export function useTaskCenterStream(
+  options: TaskCenterStreamOptions,
+): TaskCenterStreamResult {
+  const stallMs = options.stallThresholdMs ?? STALL_THRESHOLD_MS;
+  // ★初值必须按 enabled 分叉，不能一律 IDLE_STATE：
+  //   IDLE 的 status='done' + loaded=0 会让**首帧**文案变成「当前没有运行中的任务」——
+  //   骨架还没跑完就替后端断言「没有任务」，正是 P0-① 的谎报同型病灶
+  //   （本卡自查轨迹实测抓到：n=0 那一格就是这句）。
+  const [state, setState] = useState<TaskCenterStreamState>(() =>
+    options.enabled === false ? IDLE_STATE : LOADING_STATE,
+  );
+  // 轮次令牌：retry / 卸载后旧批到达一律丢弃（不对已卸载视图 setState）。
+  const runRef = useRef(0);
   const mountedRef = useRef(true);
-  const attemptRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pollPageRef = useRef(1);
-  const queryKey = useMemo(() => JSON.stringify(query), [query]);
+  /** 当前这条流的退订函数（retry / 重开筛选时先切断上一条，避免两条流写同一个 state）。 */
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  // ★options 走 ref：调用方每次 render 都传新对象字面量（页面里就是这样），
+  //   若把 options 直接列进 useCallback 依赖 ⇒ effect 每次 render 重跑 ⇒
+  //   setState-in-effect 无限循环（实测 React 报 "Maximum update depth exceeded"）。
+  //   ref 让 start 的身份稳定，同时仍读到最新注入的 loader/subscriber。
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
-  const apply = useCallback((next: Partial<TaskCenterStreamState>) => {
-    if (!mountedRef.current) return; // 卸载后绝不 setState
-    setState((prev) => ({ ...prev, ...next }));
-  }, []);
-
-  /** 重置卡死计时（每收到一批就重置），并**无条件**清除降级态。 */
-  const armStallTimer = useCallback(() => {
-    if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
-    // ★不能写成 `stalled && setStalled(false)`：fetchPage 定义在轮询 useEffect 内，
-    //   捕获的是**首次渲染**时的 armStallTimer（那时 stalled=false）⇒ 守卫恒假 ⇒
-    //   本函数在 fetchPage 路径上**永远不复位** stalled。
-    //   用户可见后果有边界：banner 的判定是 `stalled && phase === "loading"`，
-    //   走到终态(done/empty/failed)时靠 phase 兜住、降级条会消失，所以 e2e 里
-    //   「数据到达后降级条不再出现」并**不是**这条 bug 被修好的证据。
-    //   真会踩到的是：loading 中途已收首批（phase 仍是 loading、stalled 残留 true）
-    //   ⇒ 明明在正常流入数据却显示「加载缓慢」。该场景**未做 e2e 复现**（需 5s 后
-    //   再分批到达的节律），故此处记为**代码审查发现 + 防御性修正**，不冒充实测结论。
-    //   无条件 setState 安全：同值时 React 自行 bail out，不会多渲染。
-    setStalled(false);
-    stallTimerRef.current = setTimeout(() => {
-      if (!mountedRef.current) return;
-      // 3s 无任何数据且仍非终态 ⇒ 判卡死（⑦）。
-      // 仅「仍在加载」判卡死；终态（done/empty/failed）不该弹降级。
-      if (stateRef.current.phase === 'loading') setStalled(true);
-    }, STALL_MS);
-  }, []);
-
-  // ---- 首块 + 降级轮询 ----
-  useEffect(() => {
-    if (!enabled) return;
-    mountedRef.current = true;
-    closedByUsRef.current = false;
-    pollPageRef.current = 1;
-    setState({ ...INITIAL });
-    armStallTimer();
-
-    let cancelled = false;
-
-    /** 拉一页（first=1 走首块小页；否则按 page 递增）。 */
-    const fetchPage = async (first: boolean, page: number) => {
-      try {
-        const res = await taskCenterApi.getItems({
-          ...(query as TaskCenterListQuery),
-          page,
-          size: POLL_PAGE_SIZE,
-          ...(first ? { first: 1 } : {}),
-        } as TaskCenterListQuery & { first?: number });
-        if (cancelled || !mountedRef.current) return;
-        const items = (res.items ?? []) as TaskCenterItemRecord[];
-        apply(
-          reduceStreamFrame(stateRef.current, {
-            type: first ? 'task_center.batch' : 'task_center.progress',
-            serverTime: null,
-            payload: {
-              kind: first ? 'first' : 'progress',
-              seq: page,
-              items,
-              hasMore: res.hasMore === true || (res.total ?? 0) > items.length,
-              loaded: (stateRef.current.loaded ?? 0) + items.length,
-              total: res.total ?? null,
-              reason: null,
-            },
-          }),
-        );
-        // 终态判定
-        const s = stateRef.current;
-        if (!s.hasMore) {
-          apply({ phase: s.loaded > 0 ? 'done' : 'empty' });
-        }
-        armStallTimer();
-      } catch (e) {
-        if (cancelled || !mountedRef.current) return;
-        apply({ phase: 'failed', reason: e instanceof Error ? e.message : '拉取失败' });
-      }
-    };
-
-    void fetchPage(true, 1);
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryKey, enabled, attempt]);
-
-  // ---- WS 增量通道 ----
-  useEffect(() => {
-    if (!enabled) return;
-    closedByUsRef.current = false;
-
-    const connect = () => {
-      if (closedByUsRef.current || !mountedRef.current) return;
-      apply({ wsStatus: 'connecting' });
-      let ws: WebSocket;
-      try {
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        ws = new WebSocket(origin + WS_PATH);
-      } catch {
-        apply({ wsStatus: 'error' });
-        scheduleReconnect();
-        return;
-      }
-      socketRef.current = ws;
-
-      ws.onopen = () => {
-        attemptRef.current = 0;
-        apply({ wsStatus: 'open' });
-      };
-
-      ws.onmessage = (event: MessageEvent) => {
-        const frame = parseStreamFrame(typeof event.data === 'string' ? event.data : '');
-        if (!frame) return;
-        // hello 帧（无 payload.kind）已被 parseStreamFrame 过滤掉。
-        if (!frame.type.startsWith('task_center.')) return;
-        apply(reduceStreamFrame(stateRef.current, frame));
-        armStallTimer();
-        // WS 收了终态 ⇒ 不必再轮询（但轮询 effect 自己也会停）。
-        const s = stateRef.current;
-        if (s.phase === 'done' || s.phase === 'empty' || s.phase === 'failed') {
-          // 保留连接（后续 job 状态变化还要推，⑨），只是不再补轮询。
-        }
-      };
-
-      ws.onerror = () => apply({ wsStatus: 'error' });
-      ws.onclose = () => {
-        if (closedByUsRef.current) return;
-        apply({ wsStatus: 'closed' });
-        scheduleReconnect();
-      };
-    };
-
-    const scheduleReconnect = () => {
-      attemptRef.current += 1;
-      const delay = backoffMs(attemptRef.current);
-      timerRef.current = setTimeout(() => {
-        if (!closedByUsRef.current && mountedRef.current) connect();
-      }, delay);
-    };
-
-    connect();
-
-    return () => {
-      closedByUsRef.current = true;
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
-
-  // 卸载清理
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      runRef.current += 1;
       if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+      if (unsubscribeRef.current) unsubscribeRef.current();
     };
   }, []);
 
+  const start = useCallback(() => {
+    const { loadFirstBatch, subscribeBatches } = optionsRef.current;
+    // enabled=false：不取数、不起定时器，状态置 done（调用方此时不渲染流式壳）。
+    if (optionsRef.current.enabled === false) {
+      if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+      setState(IDLE_STATE);
+      return () => {};
+    }
+    const run = runRef.current + 1;
+    runRef.current = run;
+    // 重开前切断上一条订阅：retry() 直接调 start（没有 effect cleanup 接手），
+    // 不切断会让上一条轮询定时器继续跑 ⇒ 两条流写同一个 state、行会交错。
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+    setState({ status: 'loading', items: [], total: 0, hasMore: false, errorMessage: null });
+
+    // 卡面 §7：首块迟迟不来 ⇒ stallMs 后进 stalled（带降级文案 + 重试 + 后台提示）。
+    stallTimerRef.current = setTimeout(() => {
+      if (!mountedRef.current || runRef.current !== run) return;
+      setState((prev) => (prev.status === 'loading' ? { ...prev, status: 'stalled' } : prev));
+    }, stallMs);
+
+    void loadFirstBatch()
+      .then((first) => {
+        if (!mountedRef.current || runRef.current !== run) return;
+        if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+        setState((prev) => mergeBatch(prev, first));
+      })
+      .catch((err: unknown) => {
+        if (!mountedRef.current || runRef.current !== run) return;
+        if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+        setState((prev) => ({
+          ...prev,
+          status: 'error',
+          errorMessage: err instanceof Error ? err.message : String(err),
+        }));
+      });
+
+    const unsubscribe = subscribeBatches(
+      (batch) => {
+        if (!mountedRef.current || runRef.current !== run) return;
+        if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+        setState((prev) => (prev.status === 'stalled' ? { ...prev, status: 'streaming' } : prev));
+        setState((prev) => mergeBatch(prev, batch));
+      },
+      () => {
+        if (!mountedRef.current || runRef.current !== run) return;
+        if (stallTimerRef.current) clearTimeout(stallTimerRef.current);
+        setState((prev) =>
+          prev.hasMore && prev.items.length > 0 ? { ...prev, hasMore: false, status: 'done' } : prev,
+        );
+      },
+    );
+    unsubscribeRef.current = unsubscribe;
+    return unsubscribe;
+  }, [stallMs, options.resetKey, options.enabled]);
+
+  useEffect(() => {
+    const unsubscribe = start();
+    return () => {
+      unsubscribe?.();
+    };
+  }, [start]);
+
   const retry = useCallback(() => {
-    setState({ ...INITIAL });
-    setAttempt((a) => a + 1);
-    armStallTimer();
-  }, [armStallTimer]);
+    start();
+  }, [start]);
 
-  const showSkeleton = state.loaded === 0 && state.phase === 'loading';
-
-  return {
-    ...state,
-    showSkeleton,
-    stalled,
-    retry,
-    animate,
-    setAnimate,
-  };
+  return { ...state, loadedCount: state.items.length, retry };
 }

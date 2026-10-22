@@ -40,7 +40,12 @@ export interface TaskCenterItemRecord {
   id: string;
   status: TaskCenterStatus;
   createdAt: string;
-  updatedAt: string;
+  /**
+   * 终态时刻（ISO）。★后端 `updated_at` 是 `Option`：**在途任务为 null**
+   * （`crates/fmby-v2-application/src/task_center.rs` 的 `TaskCenterItem.updated_at`）
+   * ⇒ 前端必须按「可能没有」处理，不许当成恒有值。
+   */
+  updatedAt?: string;
   mediaItemId?: string;
   mediaTitle?: string;
   retryCount: number;
@@ -74,8 +79,6 @@ export interface TaskCenterListResponse {
   total: number;
   page: number;
   size: number;
-  /** E3 流式增量渲染的分页判断（#88 消费）；后端未实发时 undefined 兜底。 */
-  hasMore?: boolean;
 }
 
 export interface TaskCenterActionResponse {

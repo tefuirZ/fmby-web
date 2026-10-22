@@ -1,10 +1,16 @@
 import { useRef, type Dispatch, type SetStateAction } from 'react';
 import type { TaskCenterItemRecord } from '@fmby/v2-shared/contracts/manage/task-center';
 import { StatusBadge } from '@fmby/v2-shared/ui';
-import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
+import { formatDateTime } from '@fmby/v2-shared/time';
 import styles from '../../ManagePages.module.css';
 import { EmptyTableRow, getManageStatusVariant } from '../../components';
-import { getCategoryLabel, getStatusLabel, mapStatusVariant } from '../utils';
+import {
+  getCategoryLabel,
+  getStatusLabel,
+  getTaskMediaLabel,
+  getTaskTimeHint,
+  mapStatusVariant,
+} from '../utils';
 import type { SelectedTaskRef } from '../types';
 import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
 
@@ -54,9 +60,9 @@ export function TaskCenterList({
               <th>类别</th>
               <th>媒体</th>
               <th>状态</th>
-              <th>重试</th>
+              <th>尝试</th>
               <th>错误</th>
-              <th>摘要</th>
+              <th>任务键</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -73,15 +79,13 @@ export function TaskCenterList({
                   <td>
                     <div className={styles.stackText}>
                       <span>{formatDateTime(item.updatedAt)}</span>
-                      <span className={styles.mutedText}>{formatRelativeTime(item.updatedAt)}</span>
+                      <span className={styles.mutedText}>{getTaskTimeHint(item.updatedAt)}</span>
                     </div>
                   </td>
                   <td>{getCategoryLabel(item.category)}</td>
                   <td>
                     <div className={styles.stackText}>
-                      <strong className={styles.primaryText}>
-                        {item.mediaTitle ?? '系统级任务'}
-                      </strong>
+                      <strong className={styles.primaryText}>{getTaskMediaLabel(item)}</strong>
                       <span className={styles.mutedText}>{item.mediaItemId ?? '—'}</span>
                     </div>
                   </td>
@@ -123,9 +127,7 @@ export function TaskCenterList({
             <article key={`${item.category}:${item.id}`} className={styles.mobileRecordCard}>
               <div className={styles.mobileRecordHeader}>
                 <div className={styles.stackText}>
-                  <strong className={styles.mobileRecordTitle}>
-                    {item.mediaTitle ?? getCategoryLabel(item.category)}
-                  </strong>
+                  <strong className={styles.mobileRecordTitle}>{getTaskMediaLabel(item)}</strong>
                   <span className={styles.mobileRecordMeta}>{formatDateTime(item.updatedAt)}</span>
                 </div>
                 <StatusBadge

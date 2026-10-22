@@ -1,0 +1,257 @@
+/*
+ * E3 前端半边：任务中心流式面板样式（可以慢，不能空）。
+ * ------------------------------------------------------------
+ * 视觉纪律：复用 manage 面既有语汇（surface-1 卡底 + border-subtle 细线 + radius-md），
+ * 不新增调色板；骨架用低对比中性块（不用闪烁动画 —— prefers-reduced-motion 友好）。
+ */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--text-body-sm, 12px);
+  color: var(--text-2, #b8bcc4);
+}
+
+.statusIcon {
+  display: inline-flex;
+  color: var(--text-3, #8a8f99);
+}
+
+.statusText {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-1, #e8eaed);
+}
+
+/* 「仍在加载」的呼吸点：纯 opacity 过渡（无 transform，reduced-motion 下自动静止） */
+.streamingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--manage-cyan, #22d3ee);
+  animation: tc-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes tc-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streamingDot {
+    animation: none;
+    opacity: 0.8;
+  }
+  /* 进入动效同样可关（系统级）：动效只是「有新行到了」的提示，不承载信息。 */
+  .row {
+    animation: none;
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ─── 骨架行（§5：≤300ms 出内容） ─────────────────────────────── */
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+}
+
+.skeletonBadge {
+  flex: none;
+  width: 44px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.skeletonLines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.skeletonLine {
+  height: 9px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.skeletonHint {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-3, #8a8f99);
+}
+
+/* ─── 降级 / 失败（§7） ──────────────────────────────────────── */
+
+.stalled {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+}
+
+.stalledBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.stalledBody strong {
+  font-size: var(--text-body, 13px);
+  color: #fbbf24;
+}
+
+.stalledBody p {
+  margin: 0;
+  font-size: var(--text-body-sm, 12px);
+  color: var(--text-2, #b8bcc4);
+}
+
+.retryButton {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  font-size: var(--text-body-sm, 12px);
+  cursor: pointer;
+}
+
+.retryButton:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+/* ─── 空态（§8） ─────────────────────────────────────────────── */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--text-2, #b8bcc4);
+}
+
+.empty strong {
+  font-size: var(--text-body, 13px);
+  color: var(--text-1, #e8eaed);
+}
+
+.empty p {
+  margin: 0;
+  font-size: var(--text-body-sm, 12px);
+  max-width: 42ch;
+}
+
+.emptyActions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* ─── 真行 ───────────────────────────────────────────────────── */
+
+/* §6：每批到达即 append ⇒ 新行带进入动效；prefers-reduced-motion 下自动关闭
+   （卡面「带进入动效 ✓ 但可关闭 ✓」——这里走系统级开关，不另造 UI 设置项）。 */
+@keyframes tc-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.row {
+  animation: tc-row-in 160ms ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+}
+
+.rowHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.category {
+  font-size: 11px;
+  color: var(--text-3, #8a8f99);
+}
+
+.rowBody {
+  font-size: var(--text-body, 13px);
+  color: var(--text-1, #e8eaed);
+  overflow-wrap: anywhere;
+}
+
+.rowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: 11px;
+  color: var(--text-3, #8a8f99);
+}
+
+.rowError {
+  font-size: 11px;
+  color: var(--danger, #f87171);
+  overflow-wrap: anywhere;
+}
+
+.doneHint {
+  font-size: 11px;
+  color: var(--text-3, #8a8f99);
+  text-align: right;
+}
