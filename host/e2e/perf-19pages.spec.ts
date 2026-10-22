@@ -98,7 +98,10 @@ async function probeInPage(page: import('@playwright/test').Page, selector: stri
         window.setTimeout(() => {
           window.clearInterval(iv);
           resolve(-1);
-        }, Math.max(limitMs * 3, 3_000));
+          // ★#1938 同型教训（page.evaluate 序列化边界）：这里必须用**入参** `limit`，
+          //   引用外层 `limitMs` 在浏览器上下文是 ReferenceError（闭包不过 evaluate 边界）
+          //   ⇒ 整个 probeInPage 必炸，perf 验收结论被测试 bug 挡死（两项目同炸实证）。
+        }, Math.max(limit * 3, 3_000));
       });
     },
     [selector, limitMs] as const,
