@@ -85,8 +85,10 @@ export async function mapResponseToApiError(response: Response): Promise<ApiErro
         },
         response,
       );
-      // ★#91：免费基线能力被拒——把「请购买/升级授权」改写成如实说明。
-      return rewriteFreeBaselineDenial(mapped);    }
+      // ★#91：免费基线能力被拒——把「请购买/升级授权」改写成如实说明
+      //   （rewrite 只换 message,status/statusText 经 mapped 保留）。
+      return withHttpMetadata(rewriteFreeBaselineDenial(mapped), response);
+    }
     if (isApiError(body)) {
       return withHttpMetadata(body, response);
     }
