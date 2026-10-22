@@ -20,7 +20,8 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { login, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/helpers';
+import { login, E2E_ENABLED, E2E_SKIP_REASON,
+  openManageNav } from './fixtures/helpers';
 
 test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
@@ -55,6 +56,8 @@ function blockWebsocket(page: Page): void {
  * （真栈实测踩到）。侧栏那个才是用户点开的入口。
  */
 async function openTaskCenter(page: Page): Promise<void> {
+  // ★mobile-chrome：rail 在 ≤1023px 收进抽屉 ⇒ 先开抽屉再点（桌面空操作）
+  await openManageNav(page);
   await page
     .getByRole('navigation', { name: '管理中心导航' })
     .getByRole('link', { name: '任务中心' })
@@ -69,6 +72,8 @@ test.describe('W15-ASYNC-LINK 任务中心降级路径', () => {
 
     // 先进任意管理页，保证侧栏已渲染（点「任务中心」才是 SPA 导航）。
     await page.goto('/manage');
+    // ★mobile-chrome：rail 在 ≤1023px 收进抽屉 ⇒ 先开抽屉（桌面空操作）
+    await openManageNav(page);
     // ★同样要限定导航域：/manage 首页的队列 widget 有个「任务中心 ➔」链接，
     //   裸 getByRole('link', {name:'任务中心'}) 会命中 2 个元素触发 strict violation。
     await expect(
