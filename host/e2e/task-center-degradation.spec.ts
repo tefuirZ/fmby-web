@@ -54,7 +54,24 @@ function blockWebsocket(page: Page): void {
  * { name: '任务中心' })` 命中 2 个元素，Playwright strict mode 直接报错
  * （真栈实测踩到）。侧栏那个才是用户点开的入口。
  */
+/**
+ * 窄屏兜底：管理侧栏在 mobile 收进 Radix 抽屉 ⇒ 先触发打开，
+ * 使「管理中心导航」定位器在两形态下都可用（chromium 桌面已是常显 rail）。
+ */
+async function openMobileNavIfNeeded(page: Page): Promise<void> {
+  const viewport = page.viewportSize();
+  if ((viewport?.width ?? 0) < 1024) {
+    await page.getByRole('button', { name: /切换管理模块/ }).click();
+  }
+}
+
 async function openTaskCenter(page: Page): Promise<void> {
+  // ★#88 后续（mobile-chrome 4 例超时根因）：窄屏下管理侧栏收进 Radix 抽屉
+  //   （ManageLayout mobileNavOpen），桌面 `.rail` 直接隐藏 ⇒ 裸导航定位器
+  //   element(s) not found（chromium 全绿/mobile 全红的真因）。
+  //   修法：窄屏先开抽屉（trigger aria-label「切换管理模块…」），
+  //   抽屉内渲染同一个 ManageSidenav ⇒ 后续定位逻辑两形态一致。
+  await openMobileNavIfNeeded(page);
   await page
     .getByRole('navigation', { name: '管理中心导航' })
     .getByRole('link', { name: '任务中心' })
@@ -69,6 +86,8 @@ test.describe('W15-ASYNC-LINK 任务中心降级路径', () => {
 
     // 先进任意管理页，保证侧栏已渲染（点「任务中心」才是 SPA 导航）。
     await page.goto('/manage');
+    // ★窄屏先开抽屉（mobile 侧栏在 Dialog 内，桌面已是常显）。
+    await openMobileNavIfNeeded(page);
     // ★同样要限定导航域：/manage 首页的队列 widget 有个「任务中心 ➔」链接，
     //   裸 getByRole('link', {name:'任务中心'}) 会命中 2 个元素触发 strict violation。
     await expect(
