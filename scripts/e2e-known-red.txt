@@ -18,16 +18,6 @@
 # 示例（勿取消注释，仅供格式参考）：
 # a11y-report.spec.ts:生成逐页无障碍树 | fmby-web#NNN | 完整跑时序下偶发超时，待独立卡收口
 
-farm-accept-ui2.spec.ts@chromium:留白抽查：manage-overview | 123 | A4 存量脱梯 14 种（审计 P2-1）；迁移中
-farm-accept-ui2.spec.ts@chromium:留白抽查：manage-media-items | 123 | A4 存量脱梯 9 种；迁移中
-farm-accept-ui2.spec.ts@chromium:留白抽查：manage-users | 123 | A4 存量脱梯 8 种；迁移中
-farm-accept-ui2.spec.ts@chromium:留白抽查：history | 123 | A4 存量脱梯 13 种（审计 P2-1 主按钮 10/18）；迁移中
-farm-accept-ui2.spec.ts@chromium:留白抽查：login | 123 | A4 存量脱梯 5 种（审计 P2-5 登录卡 36px）；迁移中
-farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-overview | 123 | 同 chromium 条目（project 独立身份）
-farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-media-items | 123 | 同上
-farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：manage-users | 123 | 同上
-farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：history | 123 | 同上
-farm-accept-ui2.spec.ts@mobile-chrome:留白抽查：login | 123 | 同上
 
 grid-keynav.spec.ts@mobile-chrome:移动到右邻项  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
 grid-keynav.spec.ts@mobile-chrome:End 跳到整个轨道末项  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证

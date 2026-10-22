@@ -475,7 +475,7 @@
 .vitalItem {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--a4-cockpit-row-gap);
   flex: 1 1 0;
   min-width: 0;
 }
@@ -490,7 +490,7 @@
 .vitalName {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--a4-cockpit-row-gap);
   color: var(--text-secondary);
 }
 
@@ -563,7 +563,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 10px 14px;
+  padding: var(--a4-mount-list-pad-y) var(--a4-mount-list-pad-x);
   border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.02);
@@ -621,7 +621,7 @@
 
 .mountTypeChip {
   font-size: var(--text-caption);
-  padding: 1px 6px;
+  padding: 1px 8px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
@@ -632,7 +632,7 @@
 
 .mountPolicyChip {
   font-size: var(--text-caption);
-  padding: 1px 5px;
+  padding: 1px 4px;
   border-radius: 3px;
   flex-shrink: 0;
 }
@@ -670,7 +670,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: var(--text-caption);
-  gap: 6px;
+  gap: var(--a4-cockpit-row-gap);
 }
 
 .threadCountText {
@@ -747,7 +747,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: var(--a4-cockpit-row-gap);
 }
 
 .mountName {
@@ -761,7 +761,7 @@
 
 .mountTypeChip {
   font-size: var(--text-caption);
-  padding: 1px 5px;
+  padding: 1px 4px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
@@ -974,7 +974,7 @@
 .taskActionsRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--a4-cockpit-row-gap);
 }
 
 .taskActionButton {
@@ -1088,7 +1088,7 @@
 .subTasksList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--a4-cockpit-row-gap);
   margin-top: var(--space-3);
   max-height: 280px;
   overflow-y: auto;

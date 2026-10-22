@@ -130,7 +130,7 @@ export function TaskDetailModal({
                 <span
                   style={{
                     fontSize: '11px',
-                    padding: '2px 6px',
+                    padding: '2px var(--a4-live-badge-pad-x)',
                     borderRadius: '4px',
                     background: 'rgba(245, 158, 11, 0.15)',
                     color: '#fbbf24',

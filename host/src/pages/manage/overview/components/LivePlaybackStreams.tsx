@@ -131,7 +131,7 @@ export function LivePlaybackStreams({
                         <span
                           style={{
                             fontSize: '11px',
-                            padding: '2px 6px',
+                            padding: '2px var(--a4-live-badge-pad-x)',
                             borderRadius: '4px',
                             background: 'rgba(255, 255, 255, 0.06)',
                             color: 'var(--text-secondary)',

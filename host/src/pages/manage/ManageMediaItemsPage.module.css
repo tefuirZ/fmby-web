@@ -23,7 +23,7 @@
 }
 
 .searchInput {
-  padding-left: 42px;
+  padding-left: var(--a4-search-input-pad-l);
 }
 
 .filterFooter,
