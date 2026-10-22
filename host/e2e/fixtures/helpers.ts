@@ -41,3 +41,27 @@ export async function login(page: Page) {
   await page.waitForURL(/\/$/);
   await page.getByRole('heading', { name: /星际穿越|继续观看|最近入库/ }).first().waitFor();
 }
+
+/**
+ * 打开管理中心导航（桌面 / 移动双语义）——mobile-chrome 项目 7 例
+ * `element(s) not found` 的修复件（async-feedback ×3 + task-center-degradation ×4）。
+ *
+ * 依据 `ManageLayout.tsx:282-329`：
+ * - 桌面（>1023px）：`.desktopRail` 常驻，scoped locator（nav[aria-label=管理中心导航]）
+ *   直接可用；
+ * - 移动（≤1023px，mobile-chrome project = Pixel 5）：rail 收进「切换管理模块」抽屉，
+ *   且 Radix Portal **只在打开时挂载** ⇒ 抽屉不开 = nav 不在 DOM
+ *   （`getByRole('navigation').getByRole('link', {name:'任务中心'})` ⇒ element(s) not found）。
+ *
+ * 用法：先 `await openManageNav(page)`，再点模块链接（既有 scoped locator 原样可用——
+ * 抽屉里的 ManageSidenav 带同一 nav 标签）。桌面无触发器（mobileBar 隐藏）⇒ 空操作。
+ */
+export async function openManageNav(page: Page): Promise<void> {
+  const trigger = page.getByRole('button', { name: /切换管理模块/ });
+  if (await trigger.isVisible()) {
+    await trigger.click();
+    await import('@playwright/test').then(({ expect }) =>
+      expect(page.getByRole('dialog')).toBeVisible(),
+    );
+  }
+}

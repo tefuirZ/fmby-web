@@ -15,7 +15,12 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { login, E2E_ENABLED, E2E_SKIP_REASON } from './fixtures/helpers';
+import {
+  login,
+  E2E_ENABLED,
+  E2E_SKIP_REASON,
+  openManageNav,
+} from './fixtures/helpers';
 
 test.skip(!E2E_ENABLED, E2E_SKIP_REASON);
 
@@ -154,6 +159,8 @@ test.describe('FE-ASYNC-FEEDBACK 异步反馈验收', () => {
     // ② 任务中心「后台任务」区可见该任务（执行中）。
     // ★用 SPA 导航（点侧栏链接），不用 goto——整页刷新会重置内存态
     // （job 状态跨整页刷新持久化属 E1 契约范围，见报告待对齐清单）。
+    // ★mobile-chrome：侧栏在 ≤1023px 收进抽屉 ⇒ 先开抽屉（helpers.openManageNav）
+    await openManageNav(page);
     await page.getByRole('link', { name: '任务中心' }).click();
     await expect(page.getByRole('heading', { name: '后台任务' })).toBeVisible({ timeout: 15_000 });
     const row = page.getByRole('row', { name: new RegExp(USERNAME) });
@@ -195,6 +202,8 @@ test.describe('FE-ASYNC-FEEDBACK 异步反馈验收', () => {
     // 会挡住外部点击（侧栏链接点不到）；「取消」只切查看态不关抽屉。
     await page.keyboard.press('Escape');
     await expect(page.getByRole('button', { name: '保存修改' })).toBeHidden({ timeout: 5_000 });
+    // ★mobile-chrome：侧栏在 ≤1023px 收进抽屉 ⇒ 先开抽屉（helpers.openManageNav）
+    await openManageNav(page);
     await page.getByRole('link', { name: '任务中心' }).click();
     await expect(page.getByRole('heading', { name: '后台任务' })).toBeVisible({ timeout: 15_000 });
     const rows = page.getByRole('row', { name: new RegExp(USERNAME) });
@@ -219,6 +228,8 @@ test.describe('FE-ASYNC-FEEDBACK 异步反馈验收', () => {
     });
 
     // 退避重试（3s）后第二次请求放行 ⇒ 完成（SPA 导航保内存态）
+    // ★mobile-chrome：侧栏在 ≤1023px 收进抽屉 ⇒ 先开抽屉（helpers.openManageNav）
+    await openManageNav(page);
     await page.getByRole('link', { name: '任务中心' }).click();
     const row = page.getByRole('row', { name: new RegExp(USERNAME) });
     await expect(row).toBeVisible({ timeout: 15_000 });
