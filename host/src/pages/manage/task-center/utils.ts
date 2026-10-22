@@ -4,6 +4,7 @@ import type {
   TaskCenterItemRecord,
   TaskCenterStatus,
 } from '@fmby/v2-shared/contracts/manage/task-center';
+import { formatRelativeTime } from '@fmby/v2-shared/time';
 import type { FlashState, RangePreset } from './types';
 import { CST_OFFSET_MS } from './constants';
 
@@ -124,6 +125,37 @@ export function buildTaskActions(item: TaskCenterItemRecord): Array<{
     default:
       return [];
   }
+}
+
+/**
+ * 任务行/卡/抽屉统一使用的「媒体」文案。
+ *
+ * ★后端口径（`crates/fmby-v2-application/src/task_center.rs` 的 `TaskCenterItem`）：
+ *   - `media_title` **恒 `None`**（V2 `task_definition` 无媒体标题列，跨域 join 登记后续卡）；
+ *   - `media_item_id` 从 idempotency_key 解析，可能为 `Some`。
+ *
+ * ⇒ 改前各处的 `item.mediaTitle ?? '系统级任务'` 会把**所有**任务都说成「系统级任务」，
+ *   包括明明绑定了媒体项的刮削任务（`mediaItemId` 有值）。判「是不是系统级任务」
+ *   只能看 **mediaItemId**，不能拿一个恒空的标题字段当判据。
+ */
+export function getTaskMediaLabel(item: {
+  mediaTitle?: string | null;
+  mediaItemId?: string | null;
+}): string {
+  if (item.mediaTitle) return item.mediaTitle;
+  if (item.mediaItemId) return `媒体 ${item.mediaItemId}`;
+  return '系统级任务';
+}
+
+/**
+ * 任务时间列的第二行（相对时间）。
+ *
+ * ★后端 `updated_at` 是 `Option`：**在途任务没有终态时刻 ⇒ null**。
+ *   改前直接调 `formatRelativeTime(null)` ⇒ 兜底文案「刚刚更新」，
+ *   等于把「八小时前开始、至今没结束」说成「刚刚更新」。没终态时刻就照实说。
+ */
+export function getTaskTimeHint(updatedAt?: string | null): string {
+  return updatedAt ? formatRelativeTime(updatedAt) : '尚无终态时刻';
 }
 
 export function showFlash(

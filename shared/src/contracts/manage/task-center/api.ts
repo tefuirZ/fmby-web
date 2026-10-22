@@ -35,7 +35,8 @@ interface RawTaskCenterItem {
   id: string;
   status: TaskCenterStatus;
   created_at: string;
-  updated_at: string;
+  /** 后端 `Option<i64>`：在途任务为 null。 */
+  updated_at?: string | null;
   media_item_id?: string | null;
   media_title?: string | null;
   retry_count: number;
@@ -84,7 +85,7 @@ function mapItem(raw: RawTaskCenterItem): TaskCenterItemRecord {
     id: raw.id,
     status: raw.status,
     createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
+    updatedAt: raw.updated_at ?? undefined,
     mediaItemId: raw.media_item_id ?? undefined,
     mediaTitle: raw.media_title ?? undefined,
     retryCount: raw.retry_count,
