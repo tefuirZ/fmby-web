@@ -289,6 +289,10 @@
   border-radius: 0;
   background: transparent;
   padding: 0;
+  /* F4：横向全量直出（≤2000 行）——视口外的分集跳过布局/绘制（DOM 仍在，
+     滚动定位不受影响）；intrinsic-size 给估算占位，浏览器记住实际渲染尺寸。 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
 }
 
 .episodeCardMedia {
