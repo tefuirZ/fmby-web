@@ -1,0 +1,42 @@
+/**
+ * A4 间距阶梯迁移的**中间态令牌**（fmby-web#123）——拍板前保持现值，视觉零变化。
+ *
+ * 用法：本文件集中定义 11 个组件的**脱梯间距**（现值）；用户拍板后只改本文件的值
+ * （切到 LADDER 就近档），全部引用处同步生效。
+ *
+ * 迁移完成后（全部值进 LADDER）：① 删除本文件；② 各引用处换回 `--space-*` 梯内令牌；
+ * ③ 摘除 farm-accept-ui2 A4 的 known-red 登记（STALE 核销）。
+ *
+ * 命名纪律：一律 `--a4-` 前缀（迁移作用域可 grep）；按**角色**命名（非按值）。
+ * 清单依据：fmby-web#123 的 file:line 定位表（30 处脱梯 → 11 组件 → 14 变量）。
+ */
+:root {
+  /* StatusBadge（全局徽章）：纵向 3px */
+  --a4-badge-pad-y: 4px;
+  /* TopBar 壳层导航链接：纵向 6px */
+  --a4-navlink-pad-y: 8px;
+  /* cockpit 关键项：gap 8px */
+  --a4-cockpit-vital-gap: 8px;
+  /* cockpit 行组 gap（vitalName/threadLabelRow/mountNameRow/taskActionsRow/subTasksList 同值） */
+  --a4-cockpit-row-gap: 8px;
+  /* cockpit 挂载列表项：10px 14px */
+  --a4-mount-list-pad-y: 8px;
+  --a4-mount-list-pad-x: 12px;
+  /* 媒体管理搜索输入：padding-left 42px */
+  --a4-search-input-pad-l: 40px;
+  /* browse 域按钮组（primary/secondary/ghost）：10px 18px */
+  --a4-browse-btn-pad-y: 8px;
+  --a4-browse-btn-pad-x: 16px;
+  /* browse 域 select（自绘箭头让位）：padding-right 30px */
+  --a4-select-pad-r: 32px;
+  /* login 按钮：10px 14px */
+  --a4-login-btn-pad-y: 8px;
+  --a4-login-btn-pad-x: 12px;
+  /* login 密码输入（切换让位）：padding-right 36px */
+  --a4-login-input-pad-r: 32px;
+  /* TopBar 搜索快捷键（kbd）/ 壳层左区间距上限 */
+  --a4-kbd-pad-x: 4px;
+  --a4-shell-gap-max: 32px;
+  /* overview 直播流/任务徽标（内联样式引用）：横向 6px */
+  --a4-live-badge-pad-x: 8px;
+}

@@ -50,6 +50,9 @@ async function collectOffLadder(page: Page): Promise<Array<{ prop: string; px: n
     const HAIRLINE_MAX = 2; // 1-2px 发丝对齐白名单
     const seen = new Map<string, { prop: string; px: number; sample: string }>();
     for (const el of Array.from(document.querySelectorAll('*'))) {
+      // ★原生下拉项（option）的间距由浏览器 UA 决定，不在设计系统管辖内
+      //   （fmby-web#123 已批排除，依据在卡内）；不计入脱梯统计。
+      if (el.tagName === 'OPTION') continue;
       const cs = getComputedStyle(el);
       const props: Array<[string, string]> = [
         ['padding-top', cs.paddingTop],
