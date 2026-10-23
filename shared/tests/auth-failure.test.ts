@@ -47,9 +47,14 @@ test('业务非会话错误码（凭据无效等）不判定为会话失效', ()
   assert.equal(isSessionInvalidationError(error), false);
 });
 
-test('后端 unauthorized 业务码判定为会话失效', () => {
-  const expired = makeApiError({ code: 'unauthorized' });
-  assert.equal(isSessionInvalidationError(expired), true);
+test('非折叠后端码（unauthorized）保留原码，不判定为会话失效（M2）', () => {
+  // V1 断言「unauthorized → true」基于「401 全折叠」旧语义。★M2 收窄
+  // （errorMapping.ts FOLD_INTO_HTTP_401 = {AUTH_REQUIRED, AUTH_EXPIRED}）：
+  //   折叠发生在 errorMapping 层（401 + 折叠集码 ⇒ code='HTTP_401'，由
+  //   auth-session.test.ts 真实链路用例覆盖）；'unauthorized' 非折叠集成员
+  //   ⇒ 保留后端码 ⇒ 不触发全局登出。若将来 wire 出现该生产者，按
+  //   authFailure.ts 头注连同守卫一起加回。
+  assert.equal(isSessionInvalidationError(makeApiError({ code: 'unauthorized' })), false);
 });
 
 test('非 ApiError 输入返回 false', () => {

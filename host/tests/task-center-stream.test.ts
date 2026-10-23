@@ -1,155 +1,156 @@
 /**
- * W15-TASK-CENTER-STREAM：任务中心流式增量渲染的**纯函数单测**（node:test）。
+ * W15-TASK-CENTER-STREAM：任务中心流式**纯函数单测**（node:test）。
  *
- * 覆盖卡面四条验收断言（a/b/c/d）的可测部分：
- *   a) 人为把后端延迟调到 5s ⇒ 前端仍 ≤300ms 出骨架/首块
- *      ⇒ `showSkeleton` 由 loaded===0 && phase==='loading' 决定，**与 WS/REST
- *         何时返回无关**（首屏先出骨架行），故「后端再慢也有内容」。
- *   b) 全链路阻塞 ⇒ 3s 后出现降级提示与重试按钮
- *      ⇒ `stalled` 由 STALL_MS 定时器置位；阈值常量断言为 3000。
- *   c) 每批到达的 append 计数正确
- *      ⇒ `loaded` 单调递增、末帧等于总数；`lastSeq` 判重防重复 append。
- *   d) 三态文案区分正确
- *      ⇒ `streamHeadline` 四态四种文案，且 empty ≠ finished(0)。
+ * ★v2 重写（F4 期「陈旧断言对齐」卡）：本文件原测 v1 实现的纯函数
+ * （parseStreamFrame/reduceStreamFrame/streamHeadline/backoffMs/STALL_MS），
+ * 该代 API 已整体重设计为 batch/merge/status 模型（现导出面：
+ * mergeBatch / nextStatusAfterBatch / buildStreamStatusText / STALL_THRESHOLD_MS /
+ * SKELETON_ROWS），State 形状也从 phase/loaded/wsStatus/lastSeq 换成
+ * status/hasMore/errorMessage ⇒ 旧文件在 import 处即 ERR_MODULE_NOT_FOUND
+ * （文件级红）。本版按**现实现**重写，保留卡面四条验收（a/b/c/d）的意图映射：
+ *   a) 首屏不依赖后端速度 ⇒ loading 态文案不谎报空 + SKELETON_ROWS 就位；
+ *   b) 3s 卡死阈值 ⇒ STALL_THRESHOLD_MS === 3000（常量断言，原 b 保留）；
+ *   c) 批次 append 计数与判重 ⇒ mergeBatch 保序 append + category:id 去重
+ *      （WS 重连重放场景）+ 形状 fail-loud + status 迁移（nextStatusAfterBatch）；
+ *   d) 三态文案区分 ⇒ buildStreamStatusText 六态分支 + done(0)≠empty 的诚实分支。
  *
- * 这些断言**不依赖浏览器/WS 真连**（纯函数 + 常量）⇒ CI 恒跑，不留 #[ignore] 坑。
- * WS/定时器交互的行为验证归 e2e（farm-accept-ui2 spec）。
+ * 断言不依赖浏览器/WS 真连（纯函数 + 常量）；定时器交互归 e2e。
  */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  STALL_MS,
+  STALL_THRESHOLD_MS,
   SKELETON_ROWS,
-  backoffMs,
-  parseStreamFrame,
-  reduceStreamFrame,
-  streamHeadline,
+  buildStreamStatusText,
+  mergeBatch,
+  nextStatusAfterBatch,
+  type TaskCenterStreamBatch,
   type TaskCenterStreamState,
 } from '@/pages/manage/task-center/hooks/useTaskCenterStream';
 
-type Item = Parameters<typeof reduceStreamFrame>[1] extends never ? never : Record<string, unknown>;
-
-const INITIAL: TaskCenterStreamState = {
-  phase: 'loading',
-  items: [],
-  loaded: 0,
-  total: null,
-  hasMore: true,
-  reason: null,
-  wsStatus: 'connecting',
-  lastEventAt: null,
-  lastSeq: 0,
-};
-
-function item(id: string): Item {
-  return { id, category: 'Scan', status: 'Running' } as unknown as Item;
+function item(id: string, category = 'Scan'): { id: string; category: string } {
+  return { id, category };
 }
 
-function frame(kind: string, seq: number, items: unknown[], hasMore: boolean, loaded: number, total: number | null, reason: string | null = null) {
+const EMPTY: TaskCenterStreamState = {
+  status: 'loading',
+  items: [],
+  total: 0,
+  hasMore: true,
+  errorMessage: null,
+};
+
+function batch(ids: Array<[string, string]>, total: number, hasMore: boolean): TaskCenterStreamBatch {
   return {
-    type: kind === 'first' ? 'task_center.batch' : kind === 'progress' ? 'task_center.progress' : 'task_center.state',
-    serverTime: '2026-10-17T00:00:00Z',
-    payload: { kind, seq, items, hasMore, loaded, total, reason },
+    items: ids.map(([id, category]) => item(id, category) as never),
+    total,
+    hasMore,
   };
 }
 
-describe('W15-TASK-CENTER-STREAM 纯函数', () => {
-  it('⑤ 首屏骨架不依赖后端速度：loaded=0 且 loading ⇒ showSkeleton 条件成立', () => {
-    // 「后端延迟 5s」改变的是何时收到 first 帧，不改变首屏状态。
-    const showSkeleton = INITIAL.loaded === 0 && INITIAL.phase === 'loading';
-    assert.equal(showSkeleton, true, '首屏必须可出骨架（不等后端）');
-    assert.equal(SKELETON_ROWS, 3, '骨架行数 3');
+describe('W15-TASK-CENTER-STREAM 纯函数（v2）', () => {
+  // ------------------------------------------------------------------
+  // a) 首屏不依赖后端速度：loading 态文案不得谎报「没有任务」，骨架行数就位
+  // ------------------------------------------------------------------
+  it('⑤ loading 态（首批未到）文案是「正在装载」而非空态断言；骨架行数就位', () => {
+    assert.equal(buildStreamStatusText({ status: 'loading', loaded: 0 }), '正在装载任务…');
+    assert.ok(SKELETON_ROWS > 0, '骨架行数必须 >0（首屏先出骨架 = 卡面 a 条）');
   });
 
-  it('⑦ 卡死阈值 = 3s（与后端 FRONTEND_STALL_THRESHOLD_MS 同值）', () => {
-    assert.equal(STALL_MS, 3_000);
+  // ------------------------------------------------------------------
+  // b) 3s 卡死阈值（原 b 断言保留，常量随 v2 改名 STALL_THRESHOLD_MS）
+  // ------------------------------------------------------------------
+  it('卡死阈值常量为 3000ms（卡面 §7）', () => {
+    assert.equal(STALL_THRESHOLD_MS, 3000);
   });
 
-  it('退避封顶 15s（不断连打爆后端）', () => {
-    assert.equal(backoffMs(1), 1_000);
-    assert.equal(backoffMs(2), 2_000);
-    assert.equal(backoffMs(3), 4_000);
-    // 第 5 次起 2^4×1000=16000 已超封顶 ⇒ 钳到 15000（封顶生效点）
-    assert.equal(backoffMs(5), 15_000, '16000 超过封顶 ⇒ 钳 15000');
-    assert.equal(backoffMs(50), 15_000, '必须封顶');
-  });
-
-  it('⑥ 首块到达：loaded = 首块条数，文案「已加载 N 条 · 仍在加载…」', () => {
-    const s1 = reduceStreamFrame(INITIAL, frame('first', 1, [item('a'), item('b'), item('c')], true, 3, null));
-    assert.equal(s1.loaded, 3);
-    assert.equal(s1.items.length, 3);
-    assert.equal(streamHeadline(s1), '已加载 3 条 · 仍在加载…');
-  });
-
-  it('⑥ 后续批 append：loaded 单调递增且不重复', () => {
-    let s = reduceStreamFrame(INITIAL, frame('first', 1, [item('a'), item('b'), item('c')], true, 3, null));
-    s = reduceStreamFrame(s, frame('progress', 2, [item('d'), item('e'), item('f')], true, 6, null));
-    assert.equal(s.loaded, 6);
-    assert.equal(s.items.length, 6);
-    assert.equal(streamHeadline(s), '已加载 6 条 · 仍在加载…');
-    // 重复帧（同 seq）不得再 append（WS 重连 replay）
-    const before = s.items.length;
-    s = reduceStreamFrame(s, frame('progress', 2, [item('x')], true, 99, null));
-    assert.equal(s.items.length, before, '同 seq 重复帧必须被丢弃');
-  });
-
-  it('⑥ 完成态：文案变「共 N 条」且 hasMore=false', () => {
-    let s = reduceStreamFrame(INITIAL, frame('first', 1, [item('a'), item('b'), item('c')], true, 3, null));
-    s = reduceStreamFrame(s, frame('finished', 2, [], false, 3, 3));
-    assert.equal(s.phase, 'done');
-    assert.equal(s.hasMore, false);
-    assert.equal(streamHeadline(s), '共 3 条');
-  });
-
-  it('⑧ 空态：文案「当前没有运行中的任务」，且与 finished(0) 区分', () => {
-    const empty = reduceStreamFrame(INITIAL, frame('empty', 1, [], false, 0, 0));
-    assert.equal(empty.phase, 'empty');
-    assert.equal(empty.items.length, 0);
-    assert.equal(streamHeadline(empty), '当前没有运行中的任务');
-
-    const finishedZero = reduceStreamFrame(
-      { ...INITIAL, items: [item('a')], loaded: 1 },
-      frame('finished', 2, [], false, 0, 0),
+  // ------------------------------------------------------------------
+  // c) 批次合并：保序 append + category:id 判重 + 形状 fail-loud + status 迁移
+  // ------------------------------------------------------------------
+  it('mergeBatch：首批保序 append，total/hasMore 透传，状态迁移 streaming', () => {
+    const next = mergeBatch(EMPTY, batch([['t1', 'Scan'], ['t2', 'Scan']], 5, true));
+    assert.deepEqual(
+      next.items.map((i) => i.id),
+      ['t1', 't2'],
+      '首批按序 append',
     );
-    assert.equal(finishedZero.phase, 'done', 'finished(0) 是 done 不是 empty');
-    assert.notEqual(streamHeadline(empty), streamHeadline(finishedZero), '两态文案必须不同');
+    assert.equal(next.total, 5, 'total 取批次后端口径');
+    assert.equal(next.hasMore, true);
+    assert.equal(next.status, 'streaming', '有新增且仍有更多 ⇒ streaming');
+    // 再来一批：继续追加
+    const next2 = mergeBatch(next, batch([['t3', 'Scan']], 5, true));
+    assert.deepEqual(
+      next2.items.map((i) => i.id),
+      ['t1', 't2', 't3'],
+    );
+    assert.equal(next2.status, 'streaming');
   });
 
-  it('⑦ 失败态：带原因，且**已加载条目保留**（用户看到的不因失败消失）', () => {
-    let s = reduceStreamFrame(INITIAL, frame('first', 1, [item('a'), item('b'), item('c')], true, 3, null));
-    s = reduceStreamFrame(s, frame('failed', 2, [], false, 3, null, 'db timeout'));
-    assert.equal(s.phase, 'failed');
-    assert.equal(s.reason, 'db timeout');
-    assert.equal(s.items.length, 3, '失败后已加载条目必须保留');
-    assert.equal(streamHeadline(s), '加载失败：db timeout');
+  it('mergeBatch：WS 重连重放判重（category:id 同键不重复 append）', () => {
+    const seeded = mergeBatch(EMPTY, batch([['t1', 'Scan'], ['t2', 'Scan']], 5, true));
+    // 重放整批 + 一条新数据：重放项不重复计入，新项照常追加
+    const replayed = mergeBatch(seeded, batch([['t1', 'Scan'], ['t2', 'Scan'], ['t3', 'Scan']], 5, false));
+    assert.deepEqual(
+      replayed.items.map((i) => i.id),
+      ['t1', 't2', 't3'],
+      '重放项按 category:id 判重，不得重复 append',
+    );
+    assert.equal(replayed.status, 'done', 'hasMore=false 且已有数据 ⇒ done');
   });
 
-  it('非 JSON / 缺 type / 缺 payload ⇒ null（不崩）', () => {
-    assert.equal(parseStreamFrame('not json'), null);
-    assert.equal(parseStreamFrame('{"type":"x"}'), null);
-    assert.equal(parseStreamFrame('{"type":"task_center.batch"}'), null);
-    assert.equal(parseStreamFrame('{"type":"task_center.batch","payload":{"seq":1}}'), null);
+  it('mergeBatch：同名 id 不同 category 视为不同任务（判重键含 category）', () => {
+    const seeded = mergeBatch(EMPTY, batch([['t1', 'Scan']], 2, true));
+    const next = mergeBatch(seeded, batch([['t1', 'Publish']], 2, false));
+    assert.deepEqual(
+      next.items.map((i) => `${i.category}:${i.id}`),
+      ['Scan:t1', 'Publish:t1'],
+    );
+    assert.equal(next.status, 'done');
   });
 
-  it('hello 帧（无 payload.kind）被过滤，不影响状态', () => {
-    const hello = JSON.stringify({ type: 'playback.realtime.hello', server_time: 'x', payload: { user_id: '1' } });
-    assert.equal(parseStreamFrame(hello), null);
-    assert.deepEqual(reduceStreamFrame(INITIAL, null), INITIAL);
+  it('mergeBatch：非法批次形状 fail-loud（不静默当空批吞掉）', () => {
+    assert.throws(
+      () => mergeBatch(EMPTY, [item('t1')] as never),
+      /非法批次形状/,
+      '裸数组/缺 items 必须抛错（仓内踩过的探针形状坑）',
+    );
   });
 
-  it('parse 归一 snake_case → 内部形态', () => {
-    const raw = JSON.stringify({
-      type: 'task_center.progress',
-      server_time: '2026-10-17T00:00:00Z',
-      payload: { kind: 'progress', seq: 2, items: [{ id: 'a' }], has_more: true, loaded: 5, total: 9 },
-    });
-    const f = parseStreamFrame(raw);
-    assert.ok(f);
-    assert.equal(f.payload.kind, 'progress');
-    assert.equal(f.payload.hasMore, true, 'has_more → hasMore');
-    assert.equal(f.payload.loaded, 5);
-    assert.equal(f.payload.total, 9);
+  it('nextStatusAfterBatch：流尽且零新增 ⇒ empty（三态可辨：empty ≠ done）', () => {
+    const stillLoading = nextStatusAfterBatch(EMPTY, batch([], 0, true));
+    assert.equal(stillLoading, 'loading', 'hasMore 且零新增 ⇒ 继续 loading（等下一批）');
+    const drained = nextStatusAfterBatch(EMPTY, batch([], 0, false));
+    assert.equal(drained, 'empty', '流尽且零数据 ⇒ empty');
+  });
+
+  // ------------------------------------------------------------------
+  // d) 三态（六态）文案区分：loading/stalled/error/empty/streaming/done
+  // ------------------------------------------------------------------
+  it('buildStreamStatusText：六态文案两两可辨', () => {
+    const texts = new Set([
+      buildStreamStatusText({ status: 'loading', loaded: 0 }),
+      buildStreamStatusText({ status: 'stalled', loaded: 0 }),
+      buildStreamStatusText({ status: 'error', loaded: 0 }),
+      buildStreamStatusText({ status: 'empty', loaded: 0 }),
+      buildStreamStatusText({ status: 'streaming', loaded: 7 }),
+      buildStreamStatusText({ status: 'done', loaded: 12 }),
+    ]);
+    assert.equal(texts.size, 6, '六态文案必须互不相同（可辨识）');
+    assert.equal(buildStreamStatusText({ status: 'streaming', loaded: 7 }), '已加载 7 条 · 仍在加载…');
+    assert.equal(buildStreamStatusText({ status: 'done', loaded: 12 }), '共 12 条');
+  });
+
+  it('buildStreamStatusText：done 且 loaded=0 时不得谎报「没有任务」（后端 total>0 = 如实说未取回）', () => {
+    // ★卡面 a 条的变体：首页空但后端口径有数 ⇒ 不能替后端断言「没有运行中的任务」
+    assert.equal(
+      buildStreamStatusText({ status: 'done', loaded: 0, total: 9 }),
+      '未取回任务数据（后端口径共 9 条）',
+    );
+    assert.equal(
+      buildStreamStatusText({ status: 'done', loaded: 0, total: 0 }),
+      '当前没有运行中的任务',
+    );
   });
 });

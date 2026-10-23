@@ -51,8 +51,9 @@ test('登录输错密码（login 401）不触发全局会话失效事件', async
     authFailureCount += 1;
   });
 
-  // 后端 401 body 为 { error_code, message }（非 ApiError 形状），
-  // 前端 mapResponseToApiError 归一化为 code=HTTP_401。
+  // 后端 401 body 为 { error_code, message }；★M2（errorMapping FOLD_INTO_HTTP_401）：
+  // 仅 AUTH_REQUIRED/AUTH_EXPIRED 折入 HTTP_401，其余码保留后端码。登录错密
+  // 401 携带非折叠码 ⇒ code 保留 'unauthorized' ⇒ 不触发全局登出（本测主旨）。
   routeHandler = (url) => {
     if (url.includes('/api/auth/login')) {
       return jsonResponse({ error_code: 'unauthorized', message: 'unauthorized' }, 401);
@@ -63,7 +64,8 @@ test('登录输错密码（login 401）不触发全局会话失效事件', async
   await assert.rejects(
     () => authApi.login({ username: 'admin', password: 'wrong-password' }),
     (error: unknown) => {
-      assert.equal((error as { code?: string }).code, 'HTTP_401');
+      // M2：非折叠码保留后端码（V1 旧断言「归一化为 HTTP_401」已随收窄废弃）。
+      assert.equal((error as { code?: string }).code, 'unauthorized');
       return true;
     },
   );
@@ -80,12 +82,20 @@ test('非登录接口 401 仍触发全局会话失效事件', async () => {
 
   routeHandler = (url) => {
     if (url.includes('/api/auth/me')) {
-      return jsonResponse({ error_code: 'unauthorized', message: 'unauthorized' }, 401);
+      // ★M2：会话过期生产者码 AUTH_EXPIRED（折叠集成员）⇒ 折入 HTTP_401 ⇒
+      //   触发全局登出。V1 stub 的 'unauthorized' 在 M2 下不折叠，测不出本意图。
+      return jsonResponse({ error_code: 'AUTH_EXPIRED', message: 'session expired' }, 401);
     }
     return undefined;
   };
 
-  await assert.rejects(() => authApi.getSession());
+  await assert.rejects(
+    () => authApi.getSession(),
+    (error: unknown) => {
+      assert.equal((error as { code?: string }).code, 'HTTP_401', '折叠集码应归一为 HTTP_401');
+      return true;
+    },
+  );
   assert.equal(authFailureCount, 1, '既有会话过期的 401 应触发会话失效监听器');
   unsubscribe();
 });
