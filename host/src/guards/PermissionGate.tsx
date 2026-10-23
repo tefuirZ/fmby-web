@@ -18,7 +18,7 @@ interface PermissionGateProps {
  * 用于页面内局部权限控制。
  *
  * @example
- * <PermissionGate required="manage_library">
+ * <PermissionGate required="ManageLibrary">
  *   <DeleteLibraryButton />
  * </PermissionGate>
  */

@@ -16,7 +16,7 @@ import {
 
 export function HomePage() {
   const { hasCapability, user } = useSession();
-  const isAdmin = hasCapability('manage:access');
+  const isAdmin = hasCapability('ManageAccess');
 
   // WEB-B1：首页取数、门控加载、hero 派生、管理提醒状态全部上移至 viewmodel。
   const {

@@ -266,7 +266,7 @@ function Yun139TransferPanel() {
 export function Yun139TransferSection() {
   return (
     <PermissionGate
-      required="manage:mount"
+      required="ManageMount"
       fallback={<div className={styles.emptyInlineState}>无 manage:mount 权限，无法查看转存面板。</div>}
     >
       <Yun139TransferPanel />

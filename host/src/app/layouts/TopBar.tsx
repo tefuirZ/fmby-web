@@ -16,7 +16,7 @@ import styles from './TopBar.module.css';
  */
 export function TopBar() {
   const { user, logout, hasCapability } = useSession();
-  const isAdmin = hasCapability('manage:access');
+  const isAdmin = hasCapability('ManageAccess');
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);

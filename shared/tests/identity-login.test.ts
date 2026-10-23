@@ -144,7 +144,7 @@ test('completeIdentityLogin：成功 → 经 /auth/me 组装用户（用户名�
       return jsonResponse({ status: 'ok', user_id: 42, expires_in_secs: 3600 }, 200);
     }
     if (url.includes('/api/auth/me')) {
-      return jsonResponse({ user_id: 42, capabilities: ['ViewCatalog'] }, 200);
+      return jsonResponse({ user_id: 42, capabilities: ['ViewAudit'] }, 200);
     }
     return undefined;
   };
@@ -152,7 +152,7 @@ test('completeIdentityLogin：成功 → 经 /auth/me 组装用户（用户名�
   assert.equal(result.status, 'authenticated');
   if (result.status === 'authenticated') {
     assert.equal(result.user.id, '42');
-    assert.deepEqual(result.user.capabilities, ['ViewCatalog']);
+    assert.deepEqual(result.user.capabilities, ['ViewAudit']);
     // 后端不提供用户名 → 留空（绝不回退 'admin' 之类默认身份）
     assert.equal(result.user.name, '');
     assert.deepEqual(result.user.roles, []);

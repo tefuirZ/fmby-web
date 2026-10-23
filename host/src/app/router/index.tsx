@@ -259,7 +259,7 @@ export const router = createBrowserRouter([
         // ★F10：管理区 section 级边界（同浏览区口径）。
         errorElement: <RouteErrorPage contained />,
         element: (
-          <CapabilityGuard required="manage:access">
+          <CapabilityGuard required="ManageAccess">
             <ManageLayout />
           </CapabilityGuard>
         ),
