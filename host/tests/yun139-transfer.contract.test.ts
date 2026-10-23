@@ -219,14 +219,14 @@ test('⑥ URL 不带 confirmed（后端无 require_confirmed 二次确认闸）'
 // Yun139TransferSection 源码级契约（照 secrets-metadata FE1-1 范式）
 // ───────────────────────────────────────────────────────────────────────────
 
-test('⑦ Yun139TransferSection 源码含 MANAGE_MOUNT 权限门（PermissionGate manage:mount）', async () => {
+test('⑦ Yun139TransferSection 源码含 MANAGE_MOUNT 权限门（PermissionGate ManageMount）', async () => {
   const { readFile } = await import('node:fs/promises');
   const src = await readFile(
     new URL('../src/pages/manage/yun139/Yun139TransferSection.tsx', import.meta.url),
     'utf8',
   );
   assert.match(src, /PermissionGate/, '必须用 PermissionGate 做 UX 权限降级');
-  assert.match(src, /required="manage:mount"/, '权限门必须 required manage:mount（对齐后端 MANAGE_MOUNT）');
+  assert.match(src, /required="ManageMount"/, '权限门必须 required ManageMount（对齐后端 MANAGE_MOUNT）');
 });
 
 test('⑧ Yun139TransferSection 消费 yun139Api 三个 transfer 方法（不臆造数据/端点）', async () => {

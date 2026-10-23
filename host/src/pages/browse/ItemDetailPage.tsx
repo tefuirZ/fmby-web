@@ -19,7 +19,7 @@ import {
 export function ItemDetailPage() {
   const { itemId } = useParams();
   const { hasCapability } = useSession();
-  const isAdmin = hasCapability('manage:access');
+  const isAdmin = hasCapability('ManageAccess');
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>();
   const [item, setItem] = useState<import('@fmby/v2-shared/contracts/browse/item').ItemDetailResponse>();
 

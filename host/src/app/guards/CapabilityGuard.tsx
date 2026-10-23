@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { useSession } from '@/session/SessionProvider';
+import type { Capability } from '@fmby/v2-shared/contracts/auth';
 
 interface CapabilityGuardProps {
-  required: string;
+  required: Capability;
   children: ReactNode;
 }
 

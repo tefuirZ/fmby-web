@@ -252,7 +252,7 @@ export const router = createBrowserRouter([
         // 管理页面使用独立布局
         path: 'manage',
         element: (
-          <CapabilityGuard required="manage:access">
+          <CapabilityGuard required="ManageAccess">
             <ManageLayout />
           </CapabilityGuard>
         ),

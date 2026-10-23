@@ -8,7 +8,8 @@
  */
 
 import { httpClient } from '@fmby/v2-shared/api/client';
-import type { User } from '@fmby/v2-shared/types';
+import { parseCapabilities } from './capability';
+import type { Capability, User } from '@fmby/v2-shared/types';
 import type {
   PasswordResetStartRequest,
   PasswordResetStartResponse,
@@ -197,14 +198,17 @@ export interface SetupCompletedResponse {
 
 export interface MeResponse {
   userId: number;
-  capabilities: string[];
+  /** 已在 `mapMeResponse` 边界 parse 过 ⇒ 只含后端已知能力（未知串 fail-closed 丢弃）。 */
+  capabilities: Capability[];
   user?: User;
 }
 
 export function mapMeResponse(raw: unknown): MeResponse {
   const record = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
   const userId = typeof record.user_id === 'number' ? record.user_id : typeof record.userId === 'number' ? record.userId : 0;
-  const capabilities = Array.isArray(record.capabilities) ? record.capabilities.filter((c): c is string => typeof c === 'string') : [];
+  // F1：wire → 类型的**唯一边界**。后端将来新增能力而前端未跟 ⇒ 该能力在前端
+  // 「不存在」（fail-closed）而不是被当成默认权限 —— 宁可少给，不可错给。
+  const capabilities = parseCapabilities(record.capabilities);
   return {
     userId,
     capabilities,
@@ -285,7 +289,7 @@ export const authApi = {
     }
     // 登录成功后缓存用户名，供后续会话恢复（getSession）使用
     persistSessionUsername(data.username);
-    let capabilities: string[] = [];
+    let capabilities: Capability[] = [];
     try {
       const meRaw = await httpClient.get<MeResponse>('/api/auth/me');
       capabilities = mapMeResponse(meRaw).capabilities;

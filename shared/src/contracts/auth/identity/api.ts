@@ -41,10 +41,11 @@ import type {
   IdentityStartInput,
   TelegramLoginStatus,
 } from './types';
+import type { Capability } from '../capability';
 
 /** 组装 `/auth/me` 的 User（与 `/auth/login` 同法；用户名不可得时留空，不伪造）。 */
 async function assembleUser(userId: number, usernameHint?: string): Promise<User> {
-  let capabilities: string[] = [];
+  let capabilities: Capability[] = [];
   try {
     const me = mapMeResponse(await httpClient.get<unknown>('/api/auth/me'));
     capabilities = me.capabilities;
