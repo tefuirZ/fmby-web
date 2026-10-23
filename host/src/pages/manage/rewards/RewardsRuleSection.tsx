@@ -26,7 +26,24 @@ import { ManageSectionCard } from '../longtail-shared/components';
 type DraftTier = RewardsRuleConfigRecord['tiers'][number] & { _key: string };
 type DraftConfig = Omit<RewardsRuleConfigRecord, 'tiers'> & { tiers: DraftTier[] };
 
-const newTierKey = (): string => crypto.randomUUID();
+/**
+ * 会话内稳定 key（F11 可重排草稿行）。
+ *
+ * ★守卫的必要性（内测必炸级）：`crypto.randomUUID` **仅在安全上下文可用**
+ * （https 或 localhost）。内测走 `http://<局域网 IP>:port` ⇒ undefined ⇒
+ * `seedDraftFrom()` 每次加载草稿即 TypeError（不是点「新增阶梯」才炸，是打开就崩）。
+ * 故照抄仓内先例做守卫+回退：`RewardsAdjustSection.tsx:22` 的
+ * `makeIdempotencyKey()` / `naming-rules/helpers.ts:46` 同形态。
+ *
+ * 回退只需**会话内唯一**（_key 仅用于 React 列表 key，不出 payload、不跨会话），
+ * 故时间戳 + 随机串足够；`crypto.randomUUID` 可用时仍优先用真 UUID。
+ */
+const newTierKey = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `tier-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
 
 function emptyRuleConfig(): RewardsRuleConfigRecord {
   return {
