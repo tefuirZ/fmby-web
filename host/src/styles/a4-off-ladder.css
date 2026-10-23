@@ -34,6 +34,9 @@
   --a4-login-btn-pad-x: 12px;
   /* login 密码输入（切换让位）：padding-right 36px */
   --a4-login-input-pad-r: 32px;
+  /* login 模式切换 tab（modeButton）：10px 4px —— rv02 复核揪出的漏迁项（fmby-web#127） */
+  --a4-login-tab-pad-y: 8px;
+  --a4-login-tab-pad-x: 4px;
   /* TopBar 搜索快捷键（kbd）/ 壳层左区间距上限 */
   --a4-kbd-pad-x: 4px;
   --a4-shell-gap-max: 32px;

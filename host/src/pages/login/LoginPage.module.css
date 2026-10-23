@@ -400,7 +400,7 @@
 }
 
 .modeButton {
-  padding: 10px 4px;
+  padding: var(--a4-login-tab-pad-y) var(--a4-login-tab-pad-x);
   border: none;
   /* 选中标记要压在容器的细线上，靠 -1px 让两条线重合 */
   border-bottom: 1px solid transparent;
