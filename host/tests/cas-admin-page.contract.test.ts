@@ -34,6 +34,7 @@ const read = (rel: string): string =>
   readFileSync(new URL(rel, import.meta.url), 'utf-8');
 
 const PAGE = '../../host/src/pages/manage/ManageCasPage.tsx';
+const TABLE = '../../host/src/pages/manage/cas/DriveConfigTable.tsx';
 const API = '../../shared/src/contracts/manage/casAdmin/api.ts';
 const BADGE = '../../host/src/pages/manage/cas/CasCopyStateBadge.tsx';
 
@@ -191,44 +192,51 @@ test('⑥ 保存走 PUT（与契约层一致，不在前端另发明方法）', 
   );
 });
 test('⑦ 盘配置必须**真可编辑**（不得有「保存原对象」的假保存按钮）', () => {
-  const page = read(PAGE);
+  // ★指针修正（3e16a45 组件拆分遗留）：盘配置编辑控件自 3e16a45 起拆入
+  //   `cas/DriveConfigTable.tsx`（PAGE 只余 onSave 回调与成功 banner）——
+  //   本测试的 read 目标同步改指 TABLE，否则永远读不到控件（红潜伏 8 天）。
+  const table = read(TABLE);
   // 卡面目标 1 是「多盘扇出**配置**」。若表内无可编辑控件，
   // 「保存」按钮传的仍是原 config ⇒ PUT 回去一模一样 ⇒ 却是无操作，
   // 却给用户回「盘配置已保存」—— 那是在**撒谎**。
   assert.ok(
-    /<input[\s\S]*?type=["']checkbox["'][\s\S]*?checked=\{/.test(page),
+    /<input[\s\S]*?type=["']checkbox["'][\s\S]*?checked=\{/.test(table),
     'enabled 列须有受控 checkbox（纳入扇出开关）',
   );
   assert.ok(
-    /<input[\s\S]*?type=["']number["'][\s\S]*?value=\{/.test(page),
+    /<input[\s\S]*?type=["']number["'][\s\S]*?value=\{/.test(table),
     'priority 列须有受控 number 输入（可改优先级）',
   );
   // 保存时必须回传**编辑后**的值，而不是原对象
   // 保存须回传**草稿副本**（展开运算符），而不是把原 config 对象原样 PUT 回去。
   assert.ok(
-    /onSave\(\{\s*\.\.\.draft\s*\}\)/.test(page),
+    /onSave\(\{\s*\.\.\.draft\s*\}\)/.test(table),
     '保存须回传编辑后的草稿副本（不是把原 config 原样 PUT 回去）',
   );
   assert.ok(
-    !/onSave\(config\)/.test(page),
+    !/onSave\(config\)/.test(table),
     '不得把原始 config 直接 PUT 回去（那是无操作）',
   );
   // 「保存」按钮必须受 dirty 门控：无改动时禁用，不允许发出无意义的 PUT。
+  // ★正则同步 3e16a45：G1 给门控加了 `write.disabled ||` 前缀（写面未接线 ⇒ 渲染期禁用），
+  //   旧形 `disabled={saving || !dirty}` 永不可能再命中。
   assert.ok(
-    /disabled=\{saving\s*\|\|\s*!dirty\}/.test(page),
+    /disabled=\{write\.disabled \|\| saving \|\| !dirty\}/.test(table),
     '保存按钮须受 dirty 门控（无改动时禁用，避免发出无意义 PUT）',
   );
 });
 
 test('⑧ 真实改动才提示成功（no-op 不得显示「已保存」）', () => {
+  // ★拆两半读：成功 banner 在 PAGE（onSuccess 回调），dirty 判定在 TABLE（编辑控件）。
   const page = read(PAGE);
+  const table = read(TABLE);
   assert.ok(
     /setBanner\(['"]盘配置已保存['"]\)/.test(page),
     '成功文案须存在',
   );
   // 无操作时不得提示成功：须有 dirty 判定
   assert.ok(
-    /dirty|isDirty|changed/.test(page),
+    /dirty|isDirty|changed/.test(table),
     '须有 dirty 判定，无改动时不得提示「已保存」',
   );
 });

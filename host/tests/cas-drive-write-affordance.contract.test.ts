@@ -45,8 +45,11 @@ test('③ 后端补齐实现后（wired=true）⇒ 可写且不再显示只读�
   assert.equal(w.note, null, '可写时不占位显示只读说明');
 });
 
-test('④ 接线检查（弱判据）：页面与三个控件确实消费该可用性', async () => {
-  const page = await readSrc('pages/manage/ManageCasPage.tsx');
+test('④ 接线检查（弱判据）：表格组件与三个控件确实消费该可用性', async () => {
+  // ★指针修正（3e16a45 组件拆分遗留）：编辑控件与可用性消费自 3e16a45 起
+  //   拆入 `cas/DriveConfigTable.tsx`（PAGE 只余 onSave 回调与成功 banner）——
+  //   接线检查对象同步改指 TABLE，否则永远读不到消费点。
+  const page = await readSrc('pages/manage/cas/DriveConfigTable.tsx');
   assert.match(page, /resolveDriveWriteAffordance\(\)/, '页面必须取可用性判据');
   assert.match(page, /disabled=\{write\.disabled \|\| saving \|\| !dirty\}/, '「保存」按钮必须吃该判据');
   assert.match(page, /checked=\{draft\.enabled\}\s*\n\s*disabled=\{write\.disabled\}/, '开关控件必须禁用');
