@@ -136,10 +136,10 @@ interface RawGovernanceOk {
 }
 
 export const manageApi = {
-  async getOverview(): Promise<ManageOverviewResponse> {
-    const raw = await httpClient.get<RawManageOverviewResponse>(
-      "/api/manage/overview",
-    );
+  async getOverview(options: { signal?: AbortSignal } = {}): Promise<ManageOverviewResponse> {
+    const raw = await httpClient.get<RawManageOverviewResponse>("/api/manage/overview", {
+      signal: options.signal,
+    });
     return mapOverview(raw);
   },
 

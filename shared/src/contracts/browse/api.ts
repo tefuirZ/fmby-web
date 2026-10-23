@@ -43,8 +43,12 @@ export const browseApi = {
   /** 单次请求获取首页首屏核心区块（hero + 最近添加 + 继续观看） */
   async getHomeData(
     limits: { hot?: number; recentlyAdded?: number; continueWatching?: number } = {},
+    options: { signal?: AbortSignal } = {},
   ): Promise<BrowseHomeData> {
-    const raw = await httpClient.get<unknown>('/api/browse/home/bootstrap');
+    // F9：React Query 的 signal 透传（切路由/改筛选取消在途请求，不再只丢弃）
+    const raw = await httpClient.get<unknown>('/api/browse/home/bootstrap', {
+      signal: options.signal,
+    });
     const record = asRecord(raw);
     const sections = readArray(record.sections, mapHomeSection);
 
@@ -110,16 +114,20 @@ export const browseApi = {
     return (await browseApi.getHomeData({ continueWatching: limit })).continueWatching;
   },
 
-  async getLibraries(): Promise<LibrarySummary[]> {
-    const raw = await httpClient.get<RawListResponse<unknown>>('/api/browse/libraries');
+  async getLibraries(options: { signal?: AbortSignal } = {}): Promise<LibrarySummary[]> {
+    const raw = await httpClient.get<RawListResponse<unknown>>('/api/browse/libraries', {
+      signal: options.signal,
+    });
     return readArray(raw.items, mapLibrary);
   },
 
   async getLibraryDetail(
     libraryId: string,
     params: LibraryDetailParams = {},
+    options: { signal?: AbortSignal } = {},
   ): Promise<LibraryDetailResponse> {
     const raw = await httpClient.get<unknown>(`/api/browse/libraries/${libraryId}`, {
+      signal: options.signal,
       params: {
         pageSize: params.pageSize,
         mediaType: params.mediaType,

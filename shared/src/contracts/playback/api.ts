@@ -36,8 +36,13 @@ const RISKY_AUDIO_CODECS = new Set([
 const RISKY_CONTAINERS = new Set(['matroska', 'mkv', 'avi', 'flv', 'mpegts', 'ts']);
 
 export const playbackApi = {
-  async createSession(itemId: string): Promise<PlaybackSession> {
+  async createSession(
+    itemId: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<PlaybackSession> {
+    // POST 也接 signal：取消的是「等待响应」，服务端已提交的会话创建不受影响（HTTP 语义）
     const sessionRaw = await httpClient.post<unknown>('/api/playback/sessions', {
+      signal: options.signal,
       body: {
         item_id: itemId,
       },
