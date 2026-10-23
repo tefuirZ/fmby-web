@@ -40,8 +40,6 @@ const SURFACES = [
   "user-expiration",
   "identity-telegram",
   "identity-google",
-  "poster-imghost",
-  "internal-imghost",
 ];
 
 function walk(dir) {

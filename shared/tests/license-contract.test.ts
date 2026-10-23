@@ -89,7 +89,10 @@ test('summary ③：surface → 可见性位映射（含 upstreams 或语义）'
   assert.equal(summary.canUseLicenseVisibilitySurface(vis, 'unknown-surface'), false);
   assert.equal(summary.isPaidManageSurface('microsoft'), true);
   assert.equal(summary.isPaidManageSurface('bogus'), false);
-  assert.equal(summary.PAID_MANAGE_SURFACES.length, 15);
+  // ★#2032 配套：空壳键摘货架 ⇒ 对应 surface 已删（15→13），不得再被判定为合法 surface
+  assert.equal(summary.isPaidManageSurface('poster-imghost'), false);
+  assert.equal(summary.isPaidManageSurface('internal-imghost'), false);
+  assert.equal(summary.PAID_MANAGE_SURFACES.length, 13);
 });
 
 test('access ④：由 status 派生可见性；无状态 → 免费基线 fail-closed', () => {
