@@ -10,6 +10,9 @@ import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { getManageStatusVariant } from '@/pages/manage/longtail-shared/components';
 import styles from '@/pages/manage/longtail-shared/ManageShared.module.css';
 import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
+import { ManagePaidFeatureGuard } from '@/pages/manage/ManagePaidFeatureGuard';
+import { useLicenseStatusQuery } from '@/pages/manage/license/hooks/useLicenseQueries';
+import { isPaidFeatureEnabled } from '@/featureFlags';
 
 function JobRow({
   job,
@@ -59,6 +62,15 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
   const queryClient = useQueryClient();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
+  // ★内层守卫（#2032 配套）：页面外层守卫是 ['upstream-emby','upstream-apple-cms']
+  //   任一命中放行；但 Emby 导入块（emby/import/jobs）后端单独挂
+  //   `feature.upstream.emby`（license_gate.rs `path.contains("/emby/")` 分支）
+  //   ⇒ apple-cms-only 用户不吃外层拦截、但会吃到导入端点 403。
+  //   这里按可见性：① 导入查询 `enabled` 闸（不发 403 噪音）；② JSX 块用
+  //   ManagePaidFeatureGuard 呈现「需进阶版」引导（不挂载 ⇒ 不发请求）。
+  const statusQuery = useLicenseStatusQuery();
+  const embyEnabled = isPaidFeatureEnabled(statusQuery.data, 'upstream-emby');
+
   const syncJobsQuery = useQuery({
     queryKey: queryKeys.manage.upstreams.syncJobs(sourceId),
     queryFn: () => upstreamsApi.listSyncJobs(sourceId),
@@ -69,6 +81,9 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
     queryKey: queryKeys.manage.upstreams.embyImportJobs(sourceId),
     queryFn: () => upstreamsApi.listEmbyImportJobs(sourceId),
     staleTime: 10_000,
+    // 内层守卫配套：emby 不可见时不发查询（后端会 403 ⇒ 连坐整卡的 isError）。
+    // 注意 react-query v5 禁用查询恒 isPending ⇒ 下方 loading 闸需配合 embyEnabled。
+    enabled: embyEnabled,
   });
 
   // W5-D：单个同步作业详情（list 接好了，但 getSyncJob 一直没接 UI → 补真缺口）
@@ -118,7 +133,7 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
     },
   });
 
-  if (syncJobsQuery.isPending || importJobsQuery.isPending) {
+  if (syncJobsQuery.isPending || (embyEnabled && importJobsQuery.isPending)) {
     return (
       <FeedbackState
         variant="loading"
@@ -189,34 +204,42 @@ export function UpstreamSyncJobsSection({ sourceId }: { sourceId: string }) {
           </div>
         )}
 
-        <h3 className={styles.eyebrow}>Emby 导入作业（emby/import/jobs）</h3>
-        {importJobs.length === 0 ? (
-          <div className={styles.emptyInlineState}>暂无 Emby 导入作业。</div>
-        ) : (
-          <div className={styles.tableWrap} role="region" aria-label="Emby 导入作业（可横向滚动）" tabIndex={0}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>类型</th>
-                  <th>状态</th>
-                  <th>重试</th>
-                  <th>最近错误</th>
-                </tr>
-              </thead>
-              <tbody ref={importJobsTbodyRef}>
-                {importJobs.map((j, index) => (
-                  <JobRow
-                    key={j.id}
-                    job={j}
-                    index={index}
-                    selected={selectedJobId === j.id}
-                    onSelect={() => setSelectedJobId(j.id)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {/* ★内层守卫（#2032 配套）：Emby 导入块单独挂 upstream-emby；未授权时
+            本块由 Guard 呈现「需进阶版」引导（children 不挂载 ⇒ 不发查询）。 */}
+        <ManagePaidFeatureGuard
+          feature="upstream-emby"
+          title="Emby 导入需要上游 Emby 授权"
+          description="Emby 选择性导入（emby/import/jobs）属于付费能力。当前实例许可未包含上游 Emby 时不可用；上方自动同步作业不受影响。"
+        >
+          <h3 className={styles.eyebrow}>Emby 导入作业（emby/import/jobs）</h3>
+          {importJobs.length === 0 ? (
+            <div className={styles.emptyInlineState}>暂无 Emby 导入作业。</div>
+          ) : (
+            <div className={styles.tableWrap} role="region" aria-label="Emby 导入作业（可横向滚动）" tabIndex={0}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>类型</th>
+                    <th>状态</th>
+                    <th>重试</th>
+                    <th>最近错误</th>
+                  </tr>
+                </thead>
+                <tbody ref={importJobsTbodyRef}>
+                  {importJobs.map((j, index) => (
+                    <JobRow
+                      key={j.id}
+                      job={j}
+                      index={index}
+                      selected={selectedJobId === j.id}
+                      onSelect={() => setSelectedJobId(j.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </ManagePaidFeatureGuard>
       </section>
 
       {selectedJobId ? (

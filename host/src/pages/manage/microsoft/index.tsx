@@ -21,12 +21,24 @@ import { getErrorMessage, isForbiddenError } from '@fmby/v2-shared/errors';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { ManagePageHeader } from '../longtail-shared/components';
 import { ManagePaidFeatureGuard } from '../ManagePaidFeatureGuard';
+import { useLicenseStatusQuery } from '../license/hooks/useLicenseQueries';
+import { isPaidFeatureEnabled } from '@/featureFlags';
 import { MicrosoftAccountsSection } from './MicrosoftAccountsSection';
 import { MicrosoftOAuthSection } from './MicrosoftOAuthSection';
 import { MicrosoftAccountActionsSection } from './MicrosoftAccountActionsSection';
 
 /** 内容体（持有 queries）：仅当外层付费守卫放行时才挂载 ⇒ 未授权不发付费端点请求。 */
 export function ManageMicrosoftPageContent() {
+  // ★内层守卫（#2032 配套）：外层是 provider 级（'microsoft'），但后端
+  //   MS-ACCOUNT-POOL-GATE 把**池面族 19 条路由**（profiles / auth start、complete、
+  //   token/import / accounts/*）单独挂 `feature.storage.microsoft.account_pool`
+  //   （license_gate.rs ：122-128）⇒ provider 已授权、池未购的用户会吃 403。
+  //   这里按可见性：① profiles 查询 `enabled` 闸（不发 403 噪音）；② 三个
+  //   section（列表/OAuth/操作 —— 全是池面，config-status 随列表块展示）包进
+  //   ManagePaidFeatureGuard 呈现「需进阶版」引导（不挂载 ⇒ 不发请求）。
+  const statusQuery = useLicenseStatusQuery();
+  const poolEnabled = isPaidFeatureEnabled(statusQuery.data, 'microsoft-account-pool');
+
   const configQuery = useQuery({
     queryKey: queryKeys.manage.microsoft.configStatus(),
     queryFn: () => microsoftApi.getAppConfigStatus(),
@@ -35,9 +47,12 @@ export function ManageMicrosoftPageContent() {
   const profilesQuery = useQuery({
     queryKey: queryKeys.manage.microsoft.profiles(),
     queryFn: () => microsoftApi.listAuthProfiles(),
+    // 内层守卫配套：池不可见时不发 profiles（后端池面族 403）。
+    // 注意 react-query v5 禁用查询恒 isPending ⇒ 下方 loading 闸需配合 poolEnabled。
+    enabled: poolEnabled,
   });
 
-  const isPending = configQuery.isPending || profilesQuery.isPending;
+  const isPending = configQuery.isPending || (poolEnabled && profilesQuery.isPending);
   const error = configQuery.error ?? profilesQuery.error;
 
   function refetchAll() {
@@ -96,9 +111,17 @@ export function ManageMicrosoftPageContent() {
           </button>
         }
       />
-      <MicrosoftAccountsSection configItems={configItems} profiles={profiles} />
-      <MicrosoftOAuthSection />
-      <MicrosoftAccountActionsSection accounts={profiles} isPending={false} />
+      {/* ★内层守卫（#2032 配套）：三个 section 全是池面（后端池面族 19 条路由）。
+          池不可见时 Guard 呈现「需进阶版」引导，children 不挂载 ⇒ 不发请求。 */}
+      <ManagePaidFeatureGuard
+        feature="microsoft-account-pool"
+        title="微软账号池需要授权"
+        description="账号池（列表 / OAuth 授权 / 启停删除）属于付费能力（microsoft-account-pool）。当前实例许可未包含账号池时不可用。"
+      >
+        <MicrosoftAccountsSection configItems={configItems} profiles={profiles} />
+        <MicrosoftOAuthSection />
+        <MicrosoftAccountActionsSection accounts={profiles} isPending={false} />
+      </ManagePaidFeatureGuard>
     </div>
   );
 }
