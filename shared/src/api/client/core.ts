@@ -130,9 +130,22 @@ function anySignal(signals: Array<AbortSignal | undefined>): AbortSignal | undef
 }
 
 /** 默认重试判定 */
-function defaultRetryOn(error: unknown, externalSignal?: AbortSignal): boolean {
+/** RFC 7231 幂等方法：重复发送不产生额外副作用 ⇒ 重试安全（F2）。 */
+const IDEMPOTENT_METHODS = new Set(['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS']);
+
+function defaultRetryOn(
+  error: unknown,
+  externalSignal?: AbortSignal,
+  method = 'GET',
+): boolean {
   // 外部主动取消：永不重试
   if (externalSignal?.aborted) return false;
+
+  // F2（非幂等方法不自动重试）：POST/PATCH 重复发送 = 重复写（重复建会话/
+  // 重复提交类副作用）。retry 配置现状全仓 0 处使用 ⇒ 本判定是给未来
+  // 配 retry 的调用方兜底；确需重试非幂等调用，走自定义 retryOn（显式
+  // 声明权在调用方）或后续引入 idempotency-key 语义。
+  if (!IDEMPOTENT_METHODS.has(method)) return false;
 
   // 网络错误 / 超时 / 运行时 abort（内部超时）：可重试
   if (error instanceof TypeError) return true; // fetch 网络错误
@@ -287,6 +300,9 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
   const retryCfg = config.retry;
   const maxRetries = retryCfg && retryCfg.retries > 0 ? retryCfg.retries : 0;
   const externalSignal = config.signal;
+  // F2：重试判定需要方法语义（POST/PATCH 不自动重试）。httpClient.get/post/…
+  // 便捷方法都会显式塞 method ⇒ 此处总有值；直调 request() 的兜底 GET。
+  const method = (config.method ?? 'GET').toUpperCase();
 
   let attempt = 0;
   // 首次 + 最多 maxRetries 次重试
@@ -297,7 +313,7 @@ async function request<T>(path: string, config: RequestConfig = {}): Promise<T> 
       if (attempt >= maxRetries) throw err;
       const shouldRetry = retryCfg?.retryOn
         ? retryCfg.retryOn(err, attempt)
-        : defaultRetryOn(err, externalSignal);
+        : defaultRetryOn(err, externalSignal, method);
       if (!shouldRetry) throw err;
 
       const delay = computeBackoffDelay(attempt, retryCfg!);
