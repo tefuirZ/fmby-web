@@ -74,6 +74,17 @@
   --info-glass-bg: rgba(125, 151, 192, 0.12);
   --info-glass-border: rgba(125, 151, 192, 0.3);
 
+  /* ---- 历史命名别名（补定义，消 CSS var 闸红；视觉零变） ----
+     ManagePages 的任务中心横幅引用 --warn-bg/--warn-text/--danger-bg/--danger-text
+     但全仓无定义 ⇒ 靠 var(..., fallback) 兜底显示。这里把别名指向**fallback 现值**
+     （#ffb020 / rgba(255,176,32,.12) / #ff5656 / rgba(255,86,86,.12)）⇒ 显示与补前逐字一致。
+     注：别名的现值不等于本文件 --warning/--danger（主题口径不同）；语义统一待设计
+     裁决（A4 阶梯一并处理），届时删别名改直引主题 token。 */
+  --warn-bg: rgba(255, 176, 32, 0.12);
+  --warn-text: #ffb020;
+  --danger-bg: rgba(255, 86, 86, 0.12);
+  --danger-text: #ff5656;
+
   /* ---- 玻璃/浮层（兼容名） ---- */
   --glass-bg: rgba(20, 22, 27, 0.66);
   --glass-bg-strong: rgba(20, 22, 27, 0.85);
