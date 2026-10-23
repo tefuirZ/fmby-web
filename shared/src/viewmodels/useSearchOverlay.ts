@@ -50,7 +50,7 @@ export function useSearchOverlay(options: UseSearchOverlayOptions): SearchOverla
 
   const searchQuery = useQuery({
     queryKey: queryKeys.search.results(keyword),
-    queryFn: () => searchApi.search(keyword),
+    queryFn: ({ signal }) => searchApi.search(keyword, { signal }),
     enabled,
     staleTime: 30_000,
   });

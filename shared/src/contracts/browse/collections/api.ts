@@ -45,9 +45,13 @@ export interface CollectionsListParams {
 }
 
 export const collectionsBrowseApi = {
-  async getCollection(id: string): Promise<ManagedCollectionDetailRecord> {
+  async getCollection(
+    id: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<ManagedCollectionDetailRecord> {
     const raw = await httpClient.get<RawManagedCollectionDetail>(
       `/api/collections/${encodeURIComponent(id)}`,
+      { signal: options.signal },
     );
     return fromDetail(raw);
   },
@@ -56,9 +60,13 @@ export const collectionsBrowseApi = {
    * 用户面合集列表：`GET /api/collections`（USER-COLLECTIONS-LIST-BE）。
    * 可见性闸由后端保证（Hidden 不出现）；检索参数暂无（COLLECTIONS-LIST-SEARCH 在途）。
    */
-  async listCollections(params: CollectionsListParams = {}): Promise<CollectionsListPageRecord> {
+  async listCollections(
+    params: CollectionsListParams = {},
+    options: { signal?: AbortSignal } = {},
+  ): Promise<CollectionsListPageRecord> {
     const trimmedSearch = params.search?.trim() ?? '';
     const raw = await httpClient.get<RawCollectionsListResponse>('/api/collections', {
+      signal: options.signal,
       params: {
         page: params.page,
         pageSize: params.pageSize,

@@ -51,13 +51,13 @@ export function usePersonDetail(options: UsePersonDetailOptions): PersonDetailVi
 
   const personQuery = useQuery({
     queryKey: queryKeys.item.person(personId ?? ''),
-    queryFn: () => personApi.getPerson(personId ?? ''),
+    queryFn: ({ signal }) => personApi.getPerson(personId ?? '', { signal }),
     enabled: Boolean(personId),
   });
 
   const itemsQuery = useQuery({
     queryKey: queryKeys.item.personItems(personId ?? ''),
-    queryFn: () => personApi.getPersonItems(personId ?? ''),
+    queryFn: ({ signal }) => personApi.getPersonItems(personId ?? '', { signal }),
     enabled: Boolean(personId),
   });
 
