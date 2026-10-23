@@ -31,9 +31,14 @@ function firstExisting(candidates) {
 
 /** 无扩展名/目录说明符 → 候选文件列表。 */
 function expand(base) {
-  // ★只认源码扩展名为「已有扩展名」：生成文件带双扩展名（如
-  //   error-catalog.generated.ts），extname 会误报 '.generated' ⇒ 永远补不上
-  //   .ts ⇒ ERR_MODULE_NOT_FOUND（main tip 自带红，基线 stash 验证 rc=1）。
+  // ★rebase 并集（#142 白名单版 + 本卡本体优先版）：base 本体存在（目录说明符/
+  //   无扩展名但文件在）就用本体；否则只认源码扩展名为「已有扩展名」——生成
+  //   文件双扩展名（error-catalog.generated.ts）的 extname '.generated' 误报
+  //   由此拦下（#142）；.jsx/.mjs/.cjs 同口径（#142 白名单）。两者都不中才
+  //   展开候选，firstExisting 收口。
+  if (existsSync(base) && statSync(base).isFile()) {
+    return [base];
+  }
   if (['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(extname(base))) {
     return [base];
   }
