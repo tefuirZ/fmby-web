@@ -27,7 +27,10 @@ interface RawListResponse<T> {
 }
 
 interface LibraryDetailParams {
-  page?: number;
+  // F6：`page` 死参数已删——后端 `browse_library_detail`（browse.rs）注释明写
+  // 「keyset cursor；page 仅兼容保留」，`query.page` 反序列化后被零使用；
+  // 前端也从未传过 page（useLibraryDetail 走 cursor 闭环）。保留只会误导
+  // 调用方以为传 page 能翻页（实际静默无效）。
   pageSize?: number;
   mediaType?: string;
   resolution?: string;
@@ -118,7 +121,6 @@ export const browseApi = {
   ): Promise<LibraryDetailResponse> {
     const raw = await httpClient.get<unknown>(`/api/browse/libraries/${libraryId}`, {
       params: {
-        page: params.page,
         pageSize: params.pageSize,
         mediaType: params.mediaType,
         resolution: params.resolution,
