@@ -61,6 +61,9 @@ const SIG_VISIBLE =
 /// 模型名 → 家族（顺序敏感：先具体后泛化）。推导不出 ⇒ null（不判定，不误红）。
 const FAMILY_BY_MODEL = [
   [/deepseek/i, 'deepseek'],
+  // magpie 池的 hy4 系（magpie/hy4、magpie/hy4-preview、wb2api-b/hy4-preview）
+  // 归 hunyuan——判例：w04 的 `wb2api-b/hy4-preview` 签名 family=hunyuan 已过身份门。
+  [/hy4/i, 'hunyuan'],
   [/glm/i, 'glm'],
   [/qwen/i, 'qwen'],
   [/mimo/i, 'mimo'],
