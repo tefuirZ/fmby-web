@@ -121,7 +121,6 @@ export const browseApi = {
   ): Promise<LibraryDetailResponse> {
     const raw = await httpClient.get<unknown>(`/api/browse/libraries/${libraryId}`, {
       params: {
-        page: params.page,
         pageSize: params.pageSize,
         mediaType: params.mediaType,
         resolution: params.resolution,
