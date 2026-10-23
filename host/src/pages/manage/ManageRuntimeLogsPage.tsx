@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { manageApi, type RuntimeLogLevel, type RuntimeLogRecord } from '@fmby/v2-shared/contracts/manage';
 import { queryKeys } from '@fmby/v2-shared/query';
@@ -79,6 +79,15 @@ export function ManageRuntimeLogsPage() {
   // FE-LIST-KEYNAV-10：见 `useLogViewsRoving` —— 必须在 early return 之前调用，**勿下移**。
   const logViewsTbodyRef = useLogViewsRoving((logsQuery.data?.items ?? []).length);
 
+  const data = logsQuery.data;
+  const items = data?.items ?? [];
+  // F4：logViews 构建此前每次 render 全量重建（页面 5s refetch + 每次弹窗/
+  // 筛选交互都触发），N='全部' 时 O(N) 空转；useMemo 按 items 身份收口。
+  // ★必须在 early return 之前（Rules of Hooks）：放其后会在 pending→loaded
+  //   迁移时多出一个 hook，React 直接抛 "Rendered more hooks" 页面白屏
+  //   （实测实证，教训同 useLogViewsRoving 的注释）。
+  const logViews = useMemo(() => items.map(buildRuntimeLogView), [items]);
+
   if (logsQuery.isPending) {
     return (
       <FeedbackState
@@ -108,9 +117,6 @@ export function ManageRuntimeLogsPage() {
     );
   }
 
-  const data = logsQuery.data;
-  const items = data?.items ?? [];
-  const logViews = items.map(buildRuntimeLogView);
   const selectedLogView = selectedLog ? buildRuntimeLogView(selectedLog) : null;
   const handleResetFilters = () => {
     setLevel('all');

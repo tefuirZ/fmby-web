@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Link } from 'react-router';
 import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
 import { useBackdropUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
@@ -11,7 +11,10 @@ interface EpisodeRowProps {
   episode: MediaCardSummary;
 }
 
-export function EpisodeRow({ episode }: EpisodeRowProps) {
+// F4：剧集区 episodeOptions 来自 query data（同一季内对象身份稳定）⇒ memo 后
+// 页面级 setState（选季/弹层）不再全量重渲 N 行（长番 N 可达 2000，
+// ItemDetailResponse.children 上限 = getDescendants 2000）。
+export const EpisodeRow = memo(function EpisodeRow({ episode }: EpisodeRowProps) {
   const playbackId = episode.playbackTargetId ?? episode.id;
   const { url: artworkUrl, onError } = useBackdropUrl(episode.artwork);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -82,4 +85,4 @@ export function EpisodeRow({ episode }: EpisodeRowProps) {
       </div>
     </div>
   );
-}
+});
