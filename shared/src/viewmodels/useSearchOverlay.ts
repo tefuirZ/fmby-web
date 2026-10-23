@@ -50,7 +50,8 @@ export function useSearchOverlay(options: UseSearchOverlayOptions): SearchOverla
 
   const searchQuery = useQuery({
     queryKey: queryKeys.search.results(keyword),
-    queryFn: ({ signal }) => searchApi.search(keyword, { signal }),
+    // 原调用用缺省 limit=20；options 是第三参，limit 须显式传原缺省值（F9 修 TS2345）
+    queryFn: ({ signal }) => searchApi.search(keyword, 20, { signal }),
     enabled,
     staleTime: 30_000,
   });
