@@ -111,6 +111,9 @@ export const router = createBrowserRouter([
     children: [
       {
         // 浏览类页面使用 BrowseLayout
+        // ★F10：section 级错误边界——子页渲染异常只替换浏览区，AppShell 导航存活
+        // （根路由 errorElement 降为兜底；原先任何子树异常都整站降级）。
+        errorElement: <RouteErrorPage contained />,
         element: <BrowseLayout />,
         children: [
           {
@@ -177,6 +180,8 @@ export const router = createBrowserRouter([
           },
           {
             path: 'settings',
+            // ★F10：设置中心同口径（section 级边界）。
+            errorElement: <RouteErrorPage contained />,
             element: <SettingsLayout />,
             children: [
               {
@@ -251,6 +256,8 @@ export const router = createBrowserRouter([
       {
         // 管理页面使用独立布局
         path: 'manage',
+        // ★F10：管理区 section 级边界（同浏览区口径）。
+        errorElement: <RouteErrorPage contained />,
         element: (
           <CapabilityGuard required="manage:access">
             <ManageLayout />
