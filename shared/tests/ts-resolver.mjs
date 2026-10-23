@@ -31,7 +31,10 @@ function firstExisting(candidates) {
 
 /** 无扩展名/目录说明符 → 候选文件列表。 */
 function expand(base) {
-  if (extname(base)) {
+  // ★只认源码扩展名为「已有扩展名」：生成文件带双扩展名（如
+  //   error-catalog.generated.ts），extname 会误报 '.generated' ⇒ 永远补不上
+  //   .ts ⇒ ERR_MODULE_NOT_FOUND（main tip 自带红，基线 stash 验证 rc=1）。
+  if (['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(extname(base))) {
     return [base];
   }
   return [
