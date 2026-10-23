@@ -156,7 +156,8 @@ export function useHome(options: UseHomeOptions = {}): HomeViewModel {
 
   const homeDataQuery = useQuery({
     queryKey: queryKeys.browse.home(),
-    queryFn: () => browseApi.getHomeData({ hot: 8, recentlyAdded: 14, continueWatching: 12 }),
+    queryFn: ({ signal }) =>
+      browseApi.getHomeData({ hot: 8, recentlyAdded: 14, continueWatching: 12 }, signal),
     staleTime: 60_000,
   });
 
@@ -186,14 +187,14 @@ export function useHome(options: UseHomeOptions = {}): HomeViewModel {
 
   const librariesQuery = useQuery({
     queryKey: queryKeys.browse.librariesHome(),
-    queryFn: () => browseApi.getLibraries(),
+    queryFn: ({ signal }) => browseApi.getLibraries(signal),
     enabled: shouldLoadLibraries,
     staleTime: 5 * 60_000,
   });
 
   const overviewQuery = useQuery({
     queryKey: queryKeys.manage.overviewHome(),
-    queryFn: () => manageApi.getOverview(),
+    queryFn: ({ signal }) => manageApi.getOverview(signal),
     enabled: delayedAdminReminderTrigger,
     staleTime: 60_000,
   });

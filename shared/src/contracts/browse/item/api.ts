@@ -24,15 +24,16 @@ interface RawListResponse<T> {
 }
 
 export const itemApi = {
-  async getDetail(itemId: string): Promise<ItemDetailResponse> {
-    const raw = await httpClient.get<unknown>(`/api/items/${itemId}`);
+  async getDetail(itemId: string, signal?: AbortSignal): Promise<ItemDetailResponse> {
+    const raw = await httpClient.get<unknown>(`/api/items/${itemId}`, { signal });
     return mapItemDetail(raw, itemId);
   },
 
-  async getDescendants(itemId: string, limit = 100): Promise<MediaCardSummary[]> {
+  async getDescendants(itemId: string, limit = 100, signal?: AbortSignal): Promise<MediaCardSummary[]> {
     const raw = await httpClient.get<RawListResponse<unknown>>(
       `/api/items/${itemId}/descendants`,
       {
+        signal,
         params: {
           page: 1,
           pageSize: limit,

@@ -18,14 +18,14 @@ import type { PersonDetail, PersonItemsPage } from './types';
 
 export const personApi = {
   /** 人物详情（不存在 → 后端 404，前端由 viewmodel 映射为 error 态）。 */
-  async getPerson(personId: string): Promise<PersonDetail> {
-    const raw = await httpClient.get<unknown>(`/api/items/people/${personId}`);
+  async getPerson(personId: string, signal?: AbortSignal): Promise<PersonDetail> {
+    const raw = await httpClient.get<unknown>(`/api/items/people/${personId}`, { signal });
     return mapPersonDetail(raw, personId);
   },
 
   /** 人物关联作品（单页硬上限；无分页参数）。 */
-  async getPersonItems(personId: string): Promise<PersonItemsPage> {
-    const raw = await httpClient.get<unknown>(`/api/items/people/${personId}/items`);
+  async getPersonItems(personId: string, signal?: AbortSignal): Promise<PersonItemsPage> {
+    const raw = await httpClient.get<unknown>(`/api/items/people/${personId}/items`, { signal });
     const record = asRecord(raw);
     const items = readArray(record.items, mapPersonItem);
     return {

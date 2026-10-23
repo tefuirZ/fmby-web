@@ -88,12 +88,16 @@ export function useLibraryDetail(options: UseLibraryDetailOptions): LibraryDetai
     initialPageParam: undefined as string | undefined,
     // LIBRARY-FILTER-E2E：mediaType 真发后端 query（防「前端空壳」——此前纯本地 filter，
     // 请求 query 不含 mediaType，切换类型的结果变化是前端做的）。'all' → undefined 不发。
-    queryFn: ({ pageParam }) =>
-      browseApi.getLibraryDetail(libraryId ?? '', {
-        cursor: pageParam,
-        pageSize: LIBRARY_PAGE_SIZE,
-        mediaType: mediaType === 'all' ? undefined : mediaType,
-      }),
+    queryFn: ({ pageParam, signal }) =>
+      browseApi.getLibraryDetail(
+        libraryId ?? '',
+        {
+          cursor: pageParam,
+          pageSize: LIBRARY_PAGE_SIZE,
+          mediaType: mediaType === 'all' ? undefined : mediaType,
+        },
+        signal,
+      ),
     enabled: Boolean(libraryId),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });

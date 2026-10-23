@@ -4,8 +4,8 @@ import { mapMediaCard } from '@fmby/v2-shared/contracts/browse/api';
 import type { HistoryEntry, HistoryOverviewResponse } from './types';
 
 export const historyApi = {
-  async getOverview(): Promise<HistoryOverviewResponse> {
-    const items = await fetchHistoryItems(120);
+  async getOverview(signal?: AbortSignal): Promise<HistoryOverviewResponse> {
+    const items = await fetchHistoryItems(120, signal);
     const continueWatching = items.filter((item) => Boolean(item.progress) && !item.progress?.completed);
     const continueIds = new Set(continueWatching.map((item) => item.id));
     const recentlyPlayed = items
@@ -53,9 +53,10 @@ function mapHistoryEntry(raw: unknown): HistoryEntry | null {
   };
 }
 
-async function fetchHistoryItems(limit: number) {
+async function fetchHistoryItems(limit: number, signal?: AbortSignal) {
   const raw = await httpClient.get<unknown>('/api/browse/history', {
     params: { page: 1, pageSize: limit },
+    signal,
   });
   const record = asRecord(raw);
   const items = readArray(record.items ?? raw, mapHistoryEntry);

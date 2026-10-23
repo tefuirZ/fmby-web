@@ -43,8 +43,10 @@ export const settingsApi = {
     return mapUserProfile(raw);
   },
 
-  async getUserPlayback(): Promise<UserPlaybackSettings> {
-    const raw = await httpClient.get<RawUserPlaybackResponse>('/api/settings/user/playback');
+  async getUserPlayback(signal?: AbortSignal): Promise<UserPlaybackSettings> {
+    const raw = await httpClient.get<RawUserPlaybackResponse>('/api/settings/user/playback', {
+      signal,
+    });
     return mapUserPlayback(raw);
   },
 

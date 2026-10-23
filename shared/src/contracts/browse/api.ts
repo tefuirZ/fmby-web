@@ -40,8 +40,9 @@ export const browseApi = {
   /** 单次请求获取首页首屏核心区块（hero + 最近添加 + 继续观看） */
   async getHomeData(
     limits: { hot?: number; recentlyAdded?: number; continueWatching?: number } = {},
+    signal?: AbortSignal,
   ): Promise<BrowseHomeData> {
-    const raw = await httpClient.get<unknown>('/api/browse/home/bootstrap');
+    const raw = await httpClient.get<unknown>('/api/browse/home/bootstrap', { signal });
     const record = asRecord(raw);
     const sections = readArray(record.sections, mapHomeSection);
 
@@ -107,16 +108,18 @@ export const browseApi = {
     return (await browseApi.getHomeData({ continueWatching: limit })).continueWatching;
   },
 
-  async getLibraries(): Promise<LibrarySummary[]> {
-    const raw = await httpClient.get<RawListResponse<unknown>>('/api/browse/libraries');
+  async getLibraries(signal?: AbortSignal): Promise<LibrarySummary[]> {
+    const raw = await httpClient.get<RawListResponse<unknown>>('/api/browse/libraries', { signal });
     return readArray(raw.items, mapLibrary);
   },
 
   async getLibraryDetail(
     libraryId: string,
     params: LibraryDetailParams = {},
+    signal?: AbortSignal,
   ): Promise<LibraryDetailResponse> {
     const raw = await httpClient.get<unknown>(`/api/browse/libraries/${libraryId}`, {
+      signal,
       params: {
         page: params.page,
         pageSize: params.pageSize,

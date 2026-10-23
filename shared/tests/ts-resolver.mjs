@@ -31,7 +31,17 @@ function firstExisting(candidates) {
 
 /** 无扩展名/目录说明符 → 候选文件列表。 */
 function expand(base) {
-  if (extname(base)) {
+  // ★F9 修正：extname(base) 非空 ≠ 「base 已是最终文件名」。`error-catalog.generated`
+  // 的 extname 是 '.generated'，旧逻辑据此不再补 '.ts' ⇒ 凡 import 链触到
+  // errors/error.ts 的测试（auth-failure / viewmodels 任意 contract 链）裸跑
+  // node --test 一律 ERR_MODULE_NOT_FOUND（与 host/tests/host-alias-loader.mjs
+  // 的 as-is → .ts → /index.ts 逐级回退对齐）。改为：base 本体存在就用本体；
+  // 已是 ts/js 扩展名的维持原候选；否则一律展开候选，firstExisting 收口。
+  if (existsSync(base) && statSync(base).isFile()) {
+    return [base];
+  }
+  const ext = extname(base);
+  if (ext === '.ts' || ext === '.tsx' || ext === '.js') {
     return [base];
   }
   return [

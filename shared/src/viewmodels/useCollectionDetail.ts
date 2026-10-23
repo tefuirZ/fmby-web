@@ -51,7 +51,7 @@ export function useCollectionDetail(
 
   const query = useQuery({
     queryKey: queryKeys.browse.collection(collectionId ?? ''),
-    queryFn: () => collectionsBrowseApi.getCollection(collectionId ?? ''),
+    queryFn: ({ signal }) => collectionsBrowseApi.getCollection(collectionId ?? '', signal),
     enabled: Boolean(collectionId),
   });
 

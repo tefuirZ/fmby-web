@@ -111,7 +111,7 @@ export function useItemDetail(options: UseItemDetailOptions): ItemDetailViewMode
 
   const itemQuery = useQuery({
     queryKey: queryKeys.item.detail(itemId ?? ''),
-    queryFn: () => itemApi.getDetail(itemId ?? ''),
+    queryFn: ({ signal }) => itemApi.getDetail(itemId ?? '', signal),
     enabled: Boolean(itemId),
   });
 
@@ -119,13 +119,13 @@ export function useItemDetail(options: UseItemDetailOptions): ItemDetailViewMode
 
   const selectedSeasonQuery = useQuery({
     queryKey: queryKeys.item.seasonEpisodes(selectedSeasonId ?? ''),
-    queryFn: () => itemApi.getDetail(selectedSeasonId ?? ''),
+    queryFn: ({ signal }) => itemApi.getDetail(selectedSeasonId ?? '', signal),
     enabled: item?.kind === 'series' && Boolean(selectedSeasonId),
   });
 
   const technicalFallbackQuery = useQuery({
     queryKey: queryKeys.item.technicalFallback(item?.playbackTargetId),
-    queryFn: () => itemApi.getDetail(item?.playbackTargetId ?? ''),
+    queryFn: ({ signal }) => itemApi.getDetail(item?.playbackTargetId ?? '', signal),
     enabled: shouldLoadTechnicalFallback(item),
     staleTime: 60_000,
   });

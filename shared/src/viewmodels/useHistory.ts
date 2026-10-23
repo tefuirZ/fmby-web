@@ -126,7 +126,7 @@ export function useHistory(options: UseHistoryOptions): HistoryViewModel {
 
   const historyQuery = useQuery({
     queryKey: queryKeys.history.overview(),
-    queryFn: () => historyApi.getOverview(),
+    queryFn: ({ signal }) => historyApi.getOverview(signal),
   });
 
   const raw: HistoryOverviewResponse = historyQuery.data ?? {

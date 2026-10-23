@@ -59,7 +59,7 @@ export function useCollectionsList(
 
   const query = useQuery({
     queryKey: queryKeys.browse.collections(page, pageSize, search),
-    queryFn: () => collectionsBrowseApi.listCollections({ page, pageSize, search }),
+    queryFn: ({ signal }) => collectionsBrowseApi.listCollections({ page, pageSize, search }, signal),
     placeholderData: keepPreviousData,
   });
 

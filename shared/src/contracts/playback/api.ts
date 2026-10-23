@@ -36,11 +36,12 @@ const RISKY_AUDIO_CODECS = new Set([
 const RISKY_CONTAINERS = new Set(['matroska', 'mkv', 'avi', 'flv', 'mpegts', 'ts']);
 
 export const playbackApi = {
-  async createSession(itemId: string): Promise<PlaybackSession> {
+  async createSession(itemId: string, signal?: AbortSignal): Promise<PlaybackSession> {
     const sessionRaw = await httpClient.post<unknown>('/api/playback/sessions', {
       body: {
         item_id: itemId,
       },
+      signal,
     });
     return mapPlaybackSession(sessionRaw, itemId);
   },

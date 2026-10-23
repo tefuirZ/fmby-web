@@ -4,11 +4,12 @@ import { asRecord, readArray, readNumber, readString } from '@fmby/v2-shared/api
 import type { SearchResultItem } from './types';
 
 export const searchApi = {
-  async search(query: string, limit = 20): Promise<SearchResultItem[]> {
+  async search(query: string, limit = 20, signal?: AbortSignal): Promise<SearchResultItem[]> {
     // 契约仓 G-15：路径笔误 `/api/browse/search` 后端从未注册（实际为
     // `GET /api/search`，见后端 crates/fmby-v2-http/src/routes/mod.rs:165）
     // ——修正后搜索链路才真正可达。
     const raw = await httpClient.get<unknown>('/api/search', {
+      signal,
       params: { q: query, limit },
     });
     const record = asRecord(raw);

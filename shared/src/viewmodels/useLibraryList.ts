@@ -58,7 +58,7 @@ export function useLibraryList(options: UseLibraryListOptions): LibraryListViewM
 
   const librariesQuery = useQuery({
     queryKey: queryKeys.browse.libraries(),
-    queryFn: () => browseApi.getLibraries(),
+    queryFn: ({ signal }) => browseApi.getLibraries(signal),
   });
 
   const libraries = useMemo(() => librariesQuery.data ?? [], [librariesQuery.data]);

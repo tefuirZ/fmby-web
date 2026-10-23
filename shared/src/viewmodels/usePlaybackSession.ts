@@ -73,14 +73,14 @@ export function usePlaybackSession(
 
   const sessionQuery = useQuery({
     queryKey: queryKeys.playback.info(itemId ?? ''),
-    queryFn: () => playbackApi.createSession(itemId ?? ''),
+    queryFn: ({ signal }) => playbackApi.createSession(itemId ?? '', signal),
     enabled: Boolean(itemId),
     retry: false,
   });
 
   const itemQuery = useQuery({
     queryKey: queryKeys.playback.item(itemId ?? ''),
-    queryFn: () => itemApi.getDetail(itemId ?? ''),
+    queryFn: ({ signal }) => itemApi.getDetail(itemId ?? '', signal),
     enabled: Boolean(itemId) && sessionQuery.isSuccess,
     retry: false,
     staleTime: 5 * 60_000,
@@ -89,7 +89,7 @@ export function usePlaybackSession(
 
   const seasonQuery = useQuery({
     queryKey: queryKeys.playback.season(itemQuery.data?.season?.id),
-    queryFn: () => itemApi.getDetail(itemQuery.data?.season?.id ?? ''),
+    queryFn: ({ signal }) => itemApi.getDetail(itemQuery.data?.season?.id ?? '', signal),
     enabled:
       itemQuery.data?.kind === 'episode' &&
       Boolean(itemQuery.data?.season?.id) &&
@@ -103,7 +103,7 @@ export function usePlaybackSession(
 
   const seriesQuery = useQuery({
     queryKey: queryKeys.playback.series(seriesRootId),
-    queryFn: () => itemApi.getDetail(seriesRootId ?? ''),
+    queryFn: ({ signal }) => itemApi.getDetail(seriesRootId ?? '', signal),
     enabled: itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
     retry: false,
     staleTime: 5 * 60_000,
@@ -112,7 +112,7 @@ export function usePlaybackSession(
 
   const seriesEpisodesQuery = useQuery({
     queryKey: queryKeys.playback.seriesEpisodes(seriesRootId),
-    queryFn: () => itemApi.getDescendants(seriesRootId ?? '', 2000),
+    queryFn: ({ signal }) => itemApi.getDescendants(seriesRootId ?? '', 2000, signal),
     enabled: itemQuery.data?.kind === 'episode' && Boolean(seriesRootId),
     retry: false,
     staleTime: 5 * 60_000,
@@ -121,7 +121,7 @@ export function usePlaybackSession(
 
   const playbackSettingsQuery = useQuery({
     queryKey: queryKeys.settings.playback(),
-    queryFn: () => settingsApi.getUserPlayback(),
+    queryFn: ({ signal }) => settingsApi.getUserPlayback(signal),
     enabled: sessionQuery.isSuccess,
     retry: false,
     staleTime: 5 * 60_000,
