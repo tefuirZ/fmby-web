@@ -1,4 +1,4 @@
-import { Children, useRef } from 'react';
+import { Children, isValidElement, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useGridRovingFocus } from '@/features/a11y/useGridRovingFocus';
 import { HoverScrollArea } from '@fmby/v2-shared/ui';
@@ -36,7 +36,10 @@ export function BrowseRail({
     <div ref={containerRef} data-browse-rail>
       <HoverScrollArea className={styles.mediaRail} delayMs={100}>
         {Children.toArray(children).map((child, index) => (
-          <div key={index} className={itemClassName} data-grid-item-index={index}>
+          // F11：轨道内容由父组件按数据序组播（新入库项插最前 ⇒ 可重排），
+          // wrapper 用 child 自带的稳定 key（调用方全部 key={item.id}）；
+          // 非 element 孩子（无 key 概念）退化为 index（同现状不更差）。
+          <div key={isValidElement(child) ? (child.key ?? index) : index} className={itemClassName} data-grid-item-index={index}>
             {child}
           </div>
         ))}

@@ -19,6 +19,15 @@ import { formatEpochMs } from './RewardsLedgerSection';
 import styles from '../longtail-shared/ManageShared.module.css';
 import { ManageSectionCard } from '../longtail-shared/components';
 
+/**
+ * 草稿阶梯行：带**会话内稳定 key**（F11——新增/删除行走 index key，删除中段行后
+ * 受控输入 caret/焦点错位）。`_key` 仅存草稿，发布时剥离（不进 payload）。
+ */
+type DraftTier = RewardsRuleConfigRecord['tiers'][number] & { _key: string };
+type DraftConfig = Omit<RewardsRuleConfigRecord, 'tiers'> & { tiers: DraftTier[] };
+
+const newTierKey = (): string => crypto.randomUUID();
+
 function emptyRuleConfig(): RewardsRuleConfigRecord {
   return {
     checkinEnabled: true,
@@ -34,15 +43,16 @@ function emptyRuleConfig(): RewardsRuleConfigRecord {
   };
 }
 
-function seedDraftFrom(version: RewardsRuleVersionRecord | null): RewardsRuleConfigRecord {
+function seedDraftFrom(version: RewardsRuleVersionRecord | null): DraftConfig {
   if (!version) {
-    return emptyRuleConfig();
+    const base = emptyRuleConfig();
+    return { ...base, tiers: base.tiers.map((tier) => ({ ...tier, _key: newTierKey() })) };
   }
   const c = version.config;
   return {
     checkinEnabled: c.checkinEnabled,
     rewardMode: c.rewardMode,
-    tiers: c.tiers.map((tier) => ({ startDay: tier.startDay, endDay: tier.endDay, points: tier.points })),
+    tiers: c.tiers.map((tier) => ({ startDay: tier.startDay, endDay: tier.endDay, points: tier.points, _key: newTierKey() })),
     randomMinPoints: c.randomMinPoints,
     randomMaxPoints: c.randomMaxPoints,
     watchTask: { enabled: c.watchTask.enabled, requiredMinutes: c.watchTask.requiredMinutes },
@@ -55,7 +65,7 @@ function seedDraftFrom(version: RewardsRuleVersionRecord | null): RewardsRuleCon
 
 export function RewardsRuleSection() {
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState<RewardsRuleConfigRecord | null>(null);
+  const [draft, setDraft] = useState<DraftConfig | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -65,7 +75,9 @@ export function RewardsRuleSection() {
   });
 
   const publishMutation = useMutation({
-    mutationFn: (config: RewardsRuleConfigRecord) => peripheralsApi.publishRewardsRule(config),
+    // F11：剥离草稿行 key——payload 与后端契约逐字一致，_key 不出前端。
+    mutationFn: ({ tiers, ...rest }: DraftConfig) =>
+      peripheralsApi.publishRewardsRule({ ...rest, tiers: tiers.map(({ _key, ...tier }) => tier) }),
     onSuccess: (saved) => {
       queryClient.setQueryData(queryKeys.manage.rewards.rule(), saved);
       queryClient.invalidateQueries({ queryKey: queryKeys.manage.rewards.rule() });
@@ -223,12 +235,13 @@ export function RewardsRuleSection() {
           <div className={styles.fieldGroup}>
             <div className={styles.sectionHeader}>
               <span className={styles.sectionTitle}>阶梯奖励</span>
-              <button className={styles.smallButton} type="button" onClick={() => setDraft({ ...d, tiers: [...d.tiers, { startDay: 1, endDay: null, points: 1 }] })}>
+              <button className={styles.smallButton} type="button" onClick={() => setDraft({ ...d, tiers: [...d.tiers, { startDay: 1, endDay: null, points: 1, _key: newTierKey() }] })}>
                 新增阶梯
               </button>
             </div>
             {d.tiers.map((tier, i) => (
-              <div className={styles.fieldRow} key={i}>
+              // F11：稳定 key——删除中段行后，余行输入框的焦点/值不跨行错位。
+              <div className={styles.fieldRow} key={tier._key}>
                 <label className={styles.label}>
                   起始天
                   <input className={styles.input} type="number" value={tier.startDay} onChange={(e) => setTier(i, { startDay: Number(e.target.value) })} />

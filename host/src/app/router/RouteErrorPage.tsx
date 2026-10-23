@@ -8,19 +8,28 @@ import { getErrorTraceId } from '@fmby/v2-shared/errors/error';
  * - 403：无权限文案 + 返回首页
  * - 404：页面不存在
  * - 500 / 未知异常：展示错误信息与可折叠 trace
+ *
+ * ★F10：`contained` 变体——挂在**布局层路由**（Browse/Manage/Settings）时传 true：
+ *   子页渲染异常只替换该 section 内容区，AppShell（导航）存活；不传则整页替换
+ *   （根路由兜底用）。errorElement 只接 loader/action/渲染错误，本组件即渲染错误的
+ *   落点（errorElement 覆盖不了子树渲染异常的缺口由此补齐）。
  */
-export function RouteErrorPage() {
+export function RouteErrorPage({ contained = false }: { contained?: boolean } = {}) {
   const error = useRouteError();
   const info = { ...extractErrorInfo(error, isRouteErrorResponse), traceId: getErrorTraceId(error) };
 
   return (
     <main
       style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 'var(--space-6, 24px)',
+        ...(contained
+          ? { display: 'flex', justifyContent: 'center', padding: 'var(--space-6, 24px) 0' }
+          : {
+              minHeight: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 'var(--space-6, 24px)',
+            }),
       }}
     >
       <GlassPanel variant="blur">
