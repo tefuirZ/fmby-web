@@ -66,6 +66,11 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: webOrigin,
+    // ★root/容器场景必需（rv02 2026-10-24 实测）：以 root 或容器内跑 Chromium
+    //   不加 --no-sandbox ⇒ browserType.launch: Target page/context/browser has been
+    //   closed（298 条全量假红，且无一条真实断言失败）；--disable-dev-shm-usage 防
+    //   小 /dev/shm 容器崩溃。非 root 环境加该参数无害。
+    launchOptions: { args: ["--no-sandbox", "--disable-dev-shm-usage"] },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

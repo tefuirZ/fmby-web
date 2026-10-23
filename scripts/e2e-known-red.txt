@@ -24,3 +24,59 @@ grid-keynav.spec.ts@mobile-chrome:End 跳到整个轨道末项  | 122 | 负载�
 grid-keynav.spec.ts@mobile-chrome:End/Home 从中间项起算  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
 grid-keynav.spec.ts@mobile-chrome:焦点可见  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
 grid-keynav.spec.ts@mobile-chrome:不破坏既有键盘导航  | 122 | 负载型偶发：全量 28m 长跑下 5 红，同 dist 隔离复跑 8/8 绿（探针全正常）；resetBackend 为空操作不存在竞争——偶发源待长跑中取证
+
+# ── 2026-10-24 全量基线红（9 张 PR 合入后，306 跑/268 绿/38 红）── 编排裁定：登记、不作内测门禁
+# 依据：issue #150（含分组与原因）；首次跑含 840 条 ERR_CONNECTION_REFUSED 已判环境失真，以第二次跑为口径
+# 核销：转绿后按 STALE 反噬机制自动要求摘除
+# ── async-feedback.spec.ts（6 条）── 异步反馈/任务中心/429 转后台语义：真实后端时序下未达成（16-30s 级）
+async-feedback.spec.ts@chromium:① 提交即反馈 ≤200ms + 抽屉不锁 + ② 任务中心可见 + ③ 完成状态变 | 150 | 2026-10-24 全量基线红（9 张合入后）：异步反馈/任务中心/429 转后台语义：真实后端时序下未达成（16-30s 级）；依据 #150
+async-feedback.spec.ts@chromium:④ 高负载（429）：「系统繁忙，已转后台执行，完成后通知你」+ 自动重试后完成 | 150 | 2026-10-24 全量基线红（9 张合入后）：异步反馈/任务中心/429 转后台语义：真实后端时序下未达成（16-30s 级）；依据 #150
+async-feedback.spec.ts@chromium:幂等：进行中重复提交 ⇒ 「已在执行」toast + 不产生第二行 | 150 | 2026-10-24 全量基线红（9 张合入后）：异步反馈/任务中心/429 转后台语义：真实后端时序下未达成（16-30s 级）；依据 #150
+async-feedback.spec.ts@mobile-chrome:① 提交即反馈 ≤200ms + 抽屉不锁 + ② 任务中心可见 + ③ 完成状态变 | 150 | 2026-10-24 全量基线红（9 张合入后）：异步反馈/任务中心/429 转后台语义：真实后端时序下未达成（16-30s 级）；依据 #150
+async-feedback.spec.ts@mobile-chrome:④ 高负载（429）：「系统繁忙，已转后台执行，完成后通知你」+ 自动重试后完成 | 150 | 2026-10-24 全量基线红（9 张合入后）：异步反馈/任务中心/429 转后台语义：真实后端时序下未达成（16-30s 级）；依据 #150
+async-feedback.spec.ts@mobile-chrome:幂等：进行中重复提交 ⇒ 「已在执行」toast + 不产生第二行 | 150 | 2026-10-24 全量基线红（9 张合入后）：异步反馈/任务中心/429 转后台语义：真实后端时序下未达成（16-30s 级）；依据 #150
+
+# ── mobile-audit.spec.ts（10 条）── 手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项
+mobile-audit.spec.ts@chromium:sweep phone-375 p1-5 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@chromium:sweep phone-375 p11-15 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@chromium:sweep phone-375 p16-20 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@chromium:sweep phone-375 p21-25 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@chromium:sweep phone-375 p6-10 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@mobile-chrome:sweep phone-375 p1-5 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@mobile-chrome:sweep phone-375 p11-15 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@mobile-chrome:sweep phone-375 p16-20 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@mobile-chrome:sweep phone-375 p21-25 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+mobile-audit.spec.ts@mobile-chrome:sweep phone-375 p6-10 | 150 | 2026-10-24 全量基线红（9 张合入后）：手机 375 视口 responsive sweep（p1-25）全批红；内测以桌面为主，移动视口待专项；依据 #150
+
+# ── perf-19pages.spec.ts（2 条）── 19 页面预算复测：30s 超时（负载型）
+perf-19pages.spec.ts@chromium:19 页面预算复测：传输 / 解析 / 渲染 | 150 | 2026-10-24 全量基线红（9 张合入后）：19 页面预算复测：30s 超时（负载型）；依据 #150
+perf-19pages.spec.ts@mobile-chrome:19 页面预算复测：传输 / 解析 / 渲染 | 150 | 2026-10-24 全量基线红（9 张合入后）：19 页面预算复测：30s 超时（负载型）；依据 #150
+
+# ── task-center-degradation.spec.ts（7 条）── 任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成
+task-center-degradation.spec.ts@chromium:② 数据源 >3s 且 WS 不可用 ⇒ 出现降级文案 + 重试按钮（不是转圈到永远） | 150 | 2026-10-24 全量基线红（9 张合入后）：任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成；依据 #150
+task-center-degradation.spec.ts@chromium:③ WS 不可用但数据最终到达 ⇒ 降级态被真实数据取代（不卡死在降级） | 150 | 2026-10-24 全量基线红（9 张合入后）：任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成；依据 #150
+task-center-degradation.spec.ts@chromium:④ 点重试 ⇒ 重新拉取并出内容（降级不是死路） | 150 | 2026-10-24 全量基线红（9 张合入后）：任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成；依据 #150
+task-center-degradation.spec.ts@mobile-chrome:① 数据源 5s 延迟 ⇒ 点开后 ≤300ms 仍出内容（非白屏/非纯转圈） | 150 | 2026-10-24 全量基线红（9 张合入后）：任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成；依据 #150
+task-center-degradation.spec.ts@mobile-chrome:② 数据源 >3s 且 WS 不可用 ⇒ 出现降级文案 + 重试按钮（不是转圈到永远） | 150 | 2026-10-24 全量基线红（9 张合入后）：任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成；依据 #150
+task-center-degradation.spec.ts@mobile-chrome:③ WS 不可用但数据最终到达 ⇒ 降级态被真实数据取代（不卡死在降级） | 150 | 2026-10-24 全量基线红（9 张合入后）：任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成；依据 #150
+task-center-degradation.spec.ts@mobile-chrome:④ 点重试 ⇒ 重新拉取并出内容（降级不是死路） | 150 | 2026-10-24 全量基线红（9 张合入后）：任务中心降级路径（延迟/WS 不可用/重试）：降级态与真实数据交替时序未达成；依据 #150
+
+# ── theme-switch.spec.ts（2 条）── 主题热切换（mobile-chrome）：移动视口下主题产物/token 生效链
+theme-switch.spec.ts@mobile-chrome:activates the registered darkroom theme and its tokens | 150 | 2026-10-24 全量基线红（9 张合入后）：主题热切换（mobile-chrome）：移动视口下主题产物/token 生效链；依据 #150
+theme-switch.spec.ts@mobile-chrome:hot-switches to template without reload | 150 | 2026-10-24 全量基线红（9 张合入后）：主题热切换（mobile-chrome）：移动视口下主题产物/token 生效链；依据 #150
+
+# ── theme-template-skin.spec.ts（4 条）── 第三方主题样板（_template）真实栈：移动视口下皮肤与导航注入
+theme-template-skin.spec.ts@mobile-chrome:template 主题不接管 browse.library（回落 host 默认页，功能永不缺失） | 150 | 2026-10-24 全量基线红（9 张合入后）：第三方主题样板（_template）真实栈：移动视口下皮肤与导航注入；依据 #150
+theme-template-skin.spec.ts@mobile-chrome:主题产物经后端静态面可达（manifest / index.js / token / skin css） | 150 | 2026-10-24 全量基线红（9 张合入后）：第三方主题样板（_template）真实栈：移动视口下皮肤与导航注入；依据 #150
+theme-template-skin.spec.ts@mobile-chrome:切到 template 主题后，browse.item L3 皮肤真实渲染（dossier 版式） | 150 | 2026-10-24 全量基线红（9 张合入后）：第三方主题样板（_template）真实栈：移动视口下皮肤与导航注入；依据 #150
+theme-template-skin.spec.ts@mobile-chrome:皮肤导航面：host 注入的 itemHref 产出真实 <a href="/item/..."> | 150 | 2026-10-24 全量基线红（9 张合入后）：第三方主题样板（_template）真实栈：移动视口下皮肤与导航注入；依据 #150
+
+# ── user-pages.spec.ts（7 条）── 用户面页面（首页/历史/库/详情/播放/设置）
+user-pages.spec.ts@mobile-chrome:个人设置三页（资料 / 播放偏好 / 外观） | 150 | 2026-10-24 全量基线红（9 张合入后）：用户面页面（首页/历史/库/详情/播放/设置）；依据 #150
+user-pages.spec.ts@mobile-chrome:媒体库列表页（含搜索真交互） | 150 | 2026-10-24 全量基线红（9 张合入后）：用户面页面（首页/历史/库/详情/播放/设置）；依据 #150
+user-pages.spec.ts@mobile-chrome:媒体库详情页（L3 皮肤真数据渲染） | 150 | 2026-10-24 全量基线红（9 张合入后）：用户面页面（首页/历史/库/详情/播放/设置）；依据 #150
+user-pages.spec.ts@mobile-chrome:播放页（真实会话 + 取流） | 150 | 2026-10-24 全量基线红（9 张合入后）：用户面页面（首页/历史/库/详情/播放/设置）；依据 #150
+user-pages.spec.ts@mobile-chrome:条目详情页 | 150 | 2026-10-24 全量基线红（9 张合入后）：用户面页面（首页/历史/库/详情/播放/设置）；依据 #150
+user-pages.spec.ts@mobile-chrome:观看历史页 | 150 | 2026-10-24 全量基线红（9 张合入后）：用户面页面（首页/历史/库/详情/播放/设置）；依据 #150
+user-pages.spec.ts@mobile-chrome:首页（放映厅）真数据渲染 + 视口滚动 | 150 | 2026-10-24 全量基线红（9 张合入后）：用户面页面（首页/历史/库/详情/播放/设置）；依据 #150
+
