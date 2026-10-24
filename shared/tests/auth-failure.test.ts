@@ -63,6 +63,44 @@ test('非 ApiError 输入返回 false', () => {
   assert.equal(isSessionInvalidationError(undefined), false);
 });
 
+// ★P1-1（fmby-web #154）：**任何 401 状态**都消费为会话失效——原判据只认折叠码
+// HTTP_401 ⇒ 后端用其余 401 码表达会话失效时前端判不出，卡在 recovering 重试按钮。
+test('非折叠码的 401（status 元数据）同样判定为会话失效', () => {
+  const error = {
+    code: 'SOME_OTHER_401_CODE', // 未折成 HTTP_401 的后端码
+    message: 'session expired',
+    retryable: false,
+    status: 401, // 传输层元数据（errorMapping withHttpMetadata 注入）
+  };
+  assert.equal(isSessionInvalidationError(error), true);
+});
+
+test('非折叠码 401 但请求路径是 /api/auth/login 时豁免（输密场景）', () => {
+  const error = {
+    code: 'SOME_OTHER_401_CODE',
+    message: 'bad credentials',
+    retryable: false,
+    status: 401,
+    requestPath: '/api/auth/login',
+  };
+  assert.equal(isSessionInvalidationError(error), false);
+});
+
+test('status 非 401 时不误判（403/500 保持原语义）', () => {
+  for (const status of [403, 500, 502]) {
+    assert.equal(
+      isSessionInvalidationError({
+        code: 'HTTP_FORBIDDEN',
+        message: 'nope',
+        retryable: false,
+        status,
+      }),
+      false,
+      `status=${status} 不得判会话失效`,
+    );
+  }
+});
+
 test('subscribeAuthFailure 返回退订函数', () => {
   let notified = 0;
   const unsubscribe = subscribeAuthFailure(() => {
