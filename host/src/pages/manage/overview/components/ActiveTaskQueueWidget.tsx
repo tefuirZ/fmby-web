@@ -1,29 +1,24 @@
 import {
-  ArrowUpCircle,
   DownloadCloud,
   FileSearch,
   FolderSync,
   ListFilter,
   ListTodo,
   Sparkles,
-  XCircle,
 } from 'lucide-react';
 import { Link } from 'react-router';
-import type { ActiveTaskQueueItem } from './TaskDetailModal';
+import type { TaskCenterItemRecord } from '@fmby/v2-shared/contracts/manage/task-center';
 import styles from '../ManageOverviewCockpit.module.css';
 
 interface ActiveTaskQueueWidgetProps {
-  tasks: ActiveTaskQueueItem[];
-  onOpenTaskDetail: (task: ActiveTaskQueueItem) => void;
-  onBoostPriority?: (taskId: string) => void;
-  onCancelTask?: (taskId: string) => void;
+  // ★P1-2：真 DTO（原 ActiveTaskQueueItem 是 9 假字段的本地形状）。
+  tasks: TaskCenterItemRecord[];
+  onOpenTaskDetail: (task: TaskCenterItemRecord) => void;
 }
 
 export function ActiveTaskQueueWidget({
   tasks,
   onOpenTaskDetail,
-  onBoostPriority,
-  onCancelTask,
 }: ActiveTaskQueueWidgetProps) {
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -33,7 +28,7 @@ export function ActiveTaskQueueWidget({
         return <FolderSync size={13} />;
       case 'Identify':
         return <FileSearch size={13} />;
-      case 'Cleanup':
+      case 'Tombstone':
         return <ListFilter size={13} />;
       default:
         return <Sparkles size={13} />;
@@ -48,14 +43,14 @@ export function ActiveTaskQueueWidget({
         return '数据源扫描';
       case 'Identify':
         return '音视频探针';
-      case 'Cleanup':
-        return '命名规则清洗';
+      case 'Tombstone':
+        return '墓碑（已删条目）';
       default:
         return '异步任务';
     }
   };
 
-  const runningCount = tasks.filter((t) => t.status === 'running').length;
+  const runningCount = tasks.filter((t) => t.status === 'Running').length;
 
   return (
     <section className={styles.cockpitCard}>
@@ -105,80 +100,60 @@ export function ActiveTaskQueueWidget({
               key={task.id}
               className={styles.taskItemCard}
               onClick={() => onOpenTaskDetail(task)}
-              title="点击查看任务详情与子条目"
+              title="点击查看任务详情"
             >
-              {/* 头部：分类标签与快捷操作 */}
               <div className={styles.taskHeaderRow}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span
-                    className={`${styles.taskCategoryBadge} ${
-                      task.category === 'Scrape'
-                        ? styles.scrape
-                        : task.category === 'Scan'
-                          ? styles.scan
-                          : task.category === 'Identify'
-                            ? styles.identify
-                            : styles.cleanup
-                    }`}
-                  >
-                    {getCategoryIcon(task.category)}
-                    {getCategoryLabel(task.category)}
-                  </span>
-
-                  {task.priority === 'urgent' || task.priority === 'high' ? (
-                    <span style={{ fontSize: '10.5px', color: '#fbbf24', fontWeight: 600 }}>
-                      ⚡ 优先
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className={styles.taskActionsRow} onClick={(e) => e.stopPropagation()}>
-                  {task.priority !== 'urgent' && onBoostPriority ? (
-                    <button
-                      type="button"
-                      className={`${styles.taskActionButton} ${styles.boost}`}
-                      title="置顶提高优先级"
-                      onClick={() => onBoostPriority(task.id)}
-                    >
-                      <ArrowUpCircle size={14} />
-                    </button>
-                  ) : null}
-
-                  {onCancelTask ? (
-                    <button
-                      type="button"
-                      className={`${styles.taskActionButton} ${styles.cancel}`}
-                      title="取消此任务"
-                      onClick={() => onCancelTask(task.id)}
-                    >
-                      <XCircle size={14} />
-                    </button>
-                  ) : null}
-                </div>
+                <span
+                  className={`${styles.taskCategoryBadge} ${
+                    task.category === 'Scrape'
+                      ? styles.scrape
+                      : task.category === 'Scan'
+                        ? styles.scan
+                        : task.category === 'Identify'
+                          ? styles.identify
+                          : styles.cleanup
+                  }`}
+                >
+                  {getCategoryIcon(task.category)}
+                  {getCategoryLabel(task.category)}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  {getStatusLabel(task.status)}
+                </span>
               </div>
-
-              {/* 任务目标名称 */}
-              <div className={styles.taskTitleText}>{task.title}</div>
-
-              {/* 进度条与阶段描述 */}
-              <div className={styles.taskProgressArea}>
-                <div className={styles.taskProgressHeader}>
-                  <span className={styles.taskProgressStage}>{task.stageDescription}</span>
-                  <span className={styles.taskProgressPercent}>
-                    {task.completedSubItems}/{task.totalSubItems} ({task.progressPercent}%)
-                  </span>
-                </div>
-                <div className={styles.threadTrack}>
-                  <div
-                    className={styles.streamProgressFill}
-                    style={{ width: `${Math.max(6, task.progressPercent)}%` }}
-                  />
-                </div>
-              </div>
+              {/* 真 DTO 无 title/summary 之外的可信名称字段 ⇒ 用 summary（后端字段）。 */}
+              <div className={styles.taskTitleText}>{task.summary}</div>
+              {task.lastErrorMessage ? (
+                <div style={{ fontSize: '11px', color: 'var(--danger)' }}>{task.lastErrorMessage}</div>
+              ) : null}
             </article>
           ))}
         </div>
       )}
     </section>
   );
+}
+
+/** ★P1-2：真枚举状态文案（TaskCenterStatus，PascalCase）。 */
+function getStatusLabel(status: TaskCenterItemRecord['status']): string {
+  switch (status) {
+    case 'Queued':
+      return '排队中';
+    case 'Running':
+      return '执行中';
+    case 'RetryWaiting':
+      return '等待重试';
+    case 'Failed':
+      return '失败';
+    case 'Succeeded':
+      return '成功';
+    case 'NeedsReview':
+      return '待审核';
+    case 'Cancelled':
+      return '已取消';
+    case 'Skipped':
+      return '已跳过';
+    default:
+      return status;
+  }
 }
