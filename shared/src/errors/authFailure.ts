@@ -59,5 +59,17 @@ export function isSessionInvalidationError(error: unknown): boolean {
     return !isAuthLoginRequest(error);
   }
 
+  // ★P1-1（fmby-web #154）：**任何 401 状态**都消费为会话失效。
+  //   原判据只认折叠码 HTTP_401 ⇒ 后端若用其余 9 支 401 码（或响应不带
+  //   error_code）表达会话失效时，前端判不出 ⇒ 不跳登录，卡在 recovering
+  //   的「网络波动，正在重试」+ 重试按钮（内测值守实测到的形态）。
+  //   传输层 status 元数据（errorMapping.ts:20）比码折叠更本源 ⇒ 兜底判它。
+  // ApiError 基类型无 status；元数据由 mapResponseToApiError 的 withHttpMetadata 注入
+  // （ApiErrorWithHttpMetadata = ApiError & { status: number }）⇒ 守卫式读取。
+  const status = (error as { status?: unknown }).status;
+  if (status === 401) {
+    return !isAuthLoginRequest(error);
+  }
+
   return false;
 }
