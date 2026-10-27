@@ -94,9 +94,11 @@ node --import ./tests/register-resolver.mjs --test tests/contract-mappers.test.t
 
 ## 4. verify job 核查（card 第 4 条）+ 一个必须更正的旧结论
 
-### 4.1 ★更正：origin/main 本身 tsc 红（我 W-FEDEAD 报的 EXIT=0 不可信）
-- 本卡实测：origin/main 干净树 `tsc --noEmit` **EXIT=2** —— `IdentityGovernancePanel.tsx` 发送 `reason`（TS2353，W-METAFAMILY 删类型没删调用点）。
-- 我 W-FEDEAD 时报的 EXIT=0 是 **tsbuildinfo 增量缓存的假绿**（首次全量跑被环境打断、二次跑吃了半成品缓存）。已在 §2.3 修复该红（删幻觉字段调用点），现 EXIT=0。**教训已吃：以后关键绿必须注明是否 `--force`/全量。**
+### 4.1 ★勘误与真相：TS2353 是**分支内瞬态**，main 本身 tsc 绿
+- 时间线：本分支在 18:37 被写入了一个**非本卡提交** `ec08e65`（W-METAFAMILY：删 `ManualMatchMediaItemIdentityRequest` 的幻觉字段 `reason?` + mapper 容错化 + 契约测试扩展；作者身份=本席，非本会话所做 —— ★报主代理： fe-red 分支携带了该卡工作，是否拆分由你裁）。它删了类型字段但没清 `IdentityGovernancePanel` 调用点 ⇒ 分支内 TS2353（EXIT=2）。
+- 本卡已修：删调用点死字段 + 死输入框（`52347e1` + a11y 名单行号同步），分支终态 **EXIT=0**。
+- **撤回我此前的怀疑**：用临时 worktree 实证 `99acc73` 的 tsc = **EXIT=0**（干净），故 W-FEDEAD 报的 EXIT=0 **可信**，非 tsbuildinfo 假绿。教训仍保留：关键绿要能复跑。
+- 工作树终态健康实证：shared 166/166、host 895/895、themes 22+9、tsc 0。
 
 ### 4.2 verify job 会拦住什么
 - 根 `package.json`：`verify` 链含 `pnpm test`；`test` = `pnpm -r test` = **shared(166) + host(895) + darkroom(22) + _template(9)** 四包（themes 也有 test 脚本，已实测）。
