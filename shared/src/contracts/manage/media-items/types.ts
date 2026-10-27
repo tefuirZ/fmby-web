@@ -259,7 +259,6 @@ export interface ManageMediaItemSummaryRecord {
   sourceStatus: ManageMediaItemSourceStatus;
   mountStatus: ManageMediaItemMountStatus;
   metadataStatus: ManageMediaItemMetadataStatus;
-  metadataErrorMessage?: string;
   hasLocalOverride: boolean;
   hasLocalMetadataOverride: boolean;
   hasLocalArtworkOverride: boolean;

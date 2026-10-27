@@ -240,7 +240,6 @@ export interface RawManageMediaItemSummaryRecord {
   source_status: string;
   mount_status: string;
   metadata_status: string;
-  metadata_error_message?: string | null;
   has_local_override: boolean;
   has_local_metadata_override: boolean;
   has_local_artwork_override: boolean;

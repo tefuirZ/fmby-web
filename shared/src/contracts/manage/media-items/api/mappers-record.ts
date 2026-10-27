@@ -88,7 +88,6 @@ export function mapSummaryRecord(raw: RawManageMediaItemSummaryRecord): ManageMe
     sourceStatus: mapSourceStatus(raw.source_status),
     mountStatus: mapMountStatus(raw.mount_status),
     metadataStatus: mapMetadataStatus(raw.metadata_status),
-    metadataErrorMessage: raw.metadata_error_message ?? undefined,
     hasLocalOverride: raw.has_local_override,
     hasLocalMetadataOverride: raw.has_local_metadata_override,
     hasLocalArtworkOverride: raw.has_local_artwork_override,
