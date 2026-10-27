@@ -85,7 +85,6 @@ export function mapSummaryRecord(raw: RawManageMediaItemSummaryRecord): ManageMe
     seasonId: raw.season_id ?? undefined,
     seasonTitle: raw.season_title ?? undefined,
     posterUrl: raw.poster_url ?? undefined,
-    backdropUrl: raw.backdrop_url ?? undefined,
     sourceStatus: mapSourceStatus(raw.source_status),
     mountStatus: mapMountStatus(raw.mount_status),
     metadataStatus: mapMetadataStatus(raw.metadata_status),

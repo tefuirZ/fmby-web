@@ -237,7 +237,6 @@ export interface RawManageMediaItemSummaryRecord {
   season_id?: string | null;
   season_title?: string | null;
   poster_url?: string | null;
-  backdrop_url?: string | null;
   source_status: string;
   mount_status: string;
   metadata_status: string;

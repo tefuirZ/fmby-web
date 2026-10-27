@@ -102,17 +102,7 @@ export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionPro
             src={item.posterUrl}
           />
           <div className={styles.artSecondaryRow}>
-            <div className={styles.artSecondary}>
-              <ArtImage
-                alt={`${item.title} 背景图`}
-                compact
-                placeholder="暂无背景图"
-                src={item.backdropUrl}
-                wide
-              />
-              <span className={styles.artCaption}>背景图</span>
-            </div>
-            </div>
+              </div>
         </div>
 
         <div className={styles.identityBody}>

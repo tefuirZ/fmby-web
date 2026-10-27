@@ -256,7 +256,6 @@ export interface ManageMediaItemSummaryRecord {
   seasonId?: string;
   seasonTitle?: string;
   posterUrl?: string;
-  backdropUrl?: string;
   sourceStatus: ManageMediaItemSourceStatus;
   mountStatus: ManageMediaItemMountStatus;
   metadataStatus: ManageMediaItemMetadataStatus;
