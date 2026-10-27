@@ -31,11 +31,11 @@ interface LibraryDetailParams {
   // 「keyset cursor；page 仅兼容保留」，`query.page` 反序列化后被零使用；
   // 前端也从未传过 page（useLibraryDetail 走 cursor 闭环）。保留只会误导
   // 调用方以为传 page 能翻页（实际静默无效）。
+  // W-FEDEAD（裁定④）：`resolution/watched/sort` 同批删除——后端 `LibraryDetailQuery`
+  // 无这三个字段，唯一调用方（useLibraryDetail）从未传过（值恒 undefined，
+  // buildUrl 跳过 undefined ⇒ 不上 wire）；筛选在前端本地做（useLibraryDetail）。
   pageSize?: number;
   mediaType?: string;
-  resolution?: string;
-  watched?: string;
-  sort?: string;
   cursor?: string;
 }
 
@@ -131,9 +131,6 @@ export const browseApi = {
       params: {
         pageSize: params.pageSize,
         mediaType: params.mediaType,
-        resolution: params.resolution,
-        watched: params.watched,
-        sort: params.sort,
         cursor: params.cursor,
       },
     });
