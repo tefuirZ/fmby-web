@@ -105,14 +105,19 @@ export function formatConfidence(confidence?: number): string {
   return `${percent.toFixed(0)}%`;
 }
 
+// ★W-A-RESUME：后端 mount 词表 = configured/unavailable/maintenance/verified
+// （fmby-v2 dto/manage.rs:188-202 单一真源；旧 FE 词表 active/disabled 后端
+// 从不产出 ⇒ 每行都落 default 显示「挂载缺失」）。
 export function getMountStatusLabel(status: ManageMediaItemMountStatus): string {
   switch (status) {
-    case 'active':
-      return '挂载正常';
-    case 'unreachable':
-      return '挂载不可达';
-    case 'disabled':
-      return '挂载已停用';
+    case 'configured':
+      return '已配置';
+    case 'verified':
+      return '已验证';
+    case 'unavailable':
+      return '挂载不可用';
+    case 'maintenance':
+      return '维护中';
     default:
       return '挂载缺失';
   }
@@ -122,11 +127,12 @@ export function getMountStatusVariant(
   status: ManageMediaItemMountStatus,
 ): StatusBadgeVariant {
   switch (status) {
-    case 'active':
+    case 'configured':
+    case 'verified':
       return 'success';
-    case 'unreachable':
+    case 'unavailable':
       return 'danger';
-    case 'disabled':
+    case 'maintenance':
       return 'warning';
     default:
       return 'neutral';

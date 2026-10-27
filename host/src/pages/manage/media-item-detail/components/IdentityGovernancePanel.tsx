@@ -87,7 +87,6 @@ export function MediaItemIdentityGovernancePanel({ detail, mutations }: Identity
   const [matchProvider, setMatchProvider] = useState('');
   const [matchKeyword, setMatchKeyword] = useState('');
   const [matchProviderItemId, setMatchProviderItemId] = useState('');
-  const [matchReason, setMatchReason] = useState('');
   const [matchOpen, setMatchOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [candidates, setCandidates] = useState<ManageMediaItemProviderSearchCandidate[]>([]);
@@ -130,7 +129,6 @@ export function MediaItemIdentityGovernancePanel({ detail, mutations }: Identity
         payload: {
           provider: matchProvider.trim(),
           providerItemId: matchProviderItemId.trim(),
-          reason: matchReason.trim() || undefined,
         },
         confirmation,
       },
@@ -267,13 +265,6 @@ export function MediaItemIdentityGovernancePanel({ detail, mutations }: Identity
             placeholder="外部编号（从候选中选择或手动填写）"
             value={matchProviderItemId}
             onChange={(e) => setMatchProviderItemId(e.target.value)}
-          />
-          <input
-            aria-label="匹配原因"
-            className={sharedStyles.input}
-            placeholder="匹配原因（可选）"
-            value={matchReason}
-            onChange={(e) => setMatchReason(e.target.value)}
           />
           <button
             className={sharedStyles.primaryButton}

@@ -13,25 +13,24 @@ export type ManageMediaItemMediaType =
   | 'music-artist'
   | 'unknown';
 
-export type ManageMediaItemSourceStatus =
-  | 'pending-validation'
-  | 'playable'
-  | 'unreachable'
-  | 'unsupported'
-  | 'auth-expired'
-  | 'missing';
+// ★W-A-RESUME（2026-10-27）：状态词表对齐后端二元真值 —— 旧 V1 词表（playable/
+// pending-validation/…）后端已不再产出，落在旧 mapper 的 default 分支 ⇒ 列表
+// 每行都显示「状态缺失」。后端真源：
+//   source   ∈ {mounted, missing}      （catalog_repo read.rs:195 / pg:251）
+//   metadata ∈ {identified, missing}   （read.rs:202 / pg:253）
+//   mount    ∈ {configured, unavailable, maintenance, verified}（dto/manage.rs:188-202；
+//             未挂载/无读数 ⇒ wire null，convert.rs 诚实缺省为 missing）
+// 未知值一律落 default（fail-soft），不得伪造已知态。
+export type ManageMediaItemSourceStatus = 'mounted' | 'missing';
 
 export type ManageMediaItemMountStatus =
-  | 'active'
-  | 'unreachable'
-  | 'disabled'
+  | 'configured'
+  | 'unavailable'
+  | 'maintenance'
+  | 'verified'
   | 'missing';
 
-export type ManageMediaItemMetadataStatus =
-  | 'pending'
-  | 'success'
-  | 'failed'
-  | 'missing';
+export type ManageMediaItemMetadataStatus = 'identified' | 'missing';
 
 export type ManageMediaItemMetadataSourceType =
   | 'nfo'
