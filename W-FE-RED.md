@@ -16,6 +16,54 @@
 
 ## 1. shared 6 红：逐条定性（**全部「非缺陷」，且非测试陈旧**）
 
+### 1.0 本机取证（站长要求，2026-10-27 当次原文）
+
+```text
+$ node -v
+v24.15.0
+$ git rev-parse HEAD        # seat/rv3/fe-red
+ce393ba360ffa475e8db162246daa43fee6e447d
+$ git status --porcelain
+（空 —— 工作树干净）
+$ shared/tests 逐文件 test() 计数（预期 166）：
+   6 api-client-boundaries / 12 auth-failure / 9 auth-session / 15 batch-operation /
+   5 capability-union / 16 contract-mappers / 5 csrf-echo / 14 identity-bindings /
+  13 identity-login / 5 license-contract / 1 manage-batch-delete /
+   4 manage-media-items-detail-wire.contract / 5 media-item-status-mappers(本卡新增) /
+   4 media-reprocess / 6 mfa-session-capabilities / 3 rewards-self / 2 scans-query-params /
+   6 theme-capabilities / 4 theme-domain / 2 user-security-ops / 18 viewmodels /
+   3 yun139-owned-browse / 2 yun139-pool-lease / 6 yun139-pools-seg-a
+TOTAL 166
+```
+**用途**：农场复跑（已排队 seat/rv3/fe-red test --node farm3）若再报非 166/0，用本表逐文件对账即可定位缺了哪个文件/哪几条。
+
+### 1.0b ★主代理裁定确认：状态词表病灶是 **main 存量 live bug（P1）**，非本卡引入
+
+`git show origin/main:<path>` 直读 main（99acc73）原文，两个文件都只有 V1 词表：
+
+```text
+$ git show origin/main:shared/src/contracts/manage/media-items/api/mappers-enum.ts
+export function mapSourceStatus(raw?…) {
+  switch ((raw ?? '').trim().toLowerCase()) {
+    case 'pendingvalidation' / 'pending_validation' / 'pending-validation' → 'pending-validation'
+    case 'playable' → 'playable' … case 'auth-expired' → 'auth-expired'
+    default: return 'missing'          ← mounted 落这里
+  }
+}
+export function mapMetadataStatus(…) { case 'pending'/'success'/'failed'/'failure' …
+    default: return 'missing' }        ← identified 落这里
+export function mapMountStatus(…)   { case 'active'/'unreachable'/'disabled' …
+    default: return 'missing' }        ← configured/verified/maintenance 落这里
+mounted in file: False | identified: False | configured: False
+
+$ git show origin/main:host/src/pages/manage/media-items/formUtils.ts
+getSourceStatusLabel: case 'playable'→'可播放' … default: return '状态缺失'
+mounted in file: False
+```
+
+⇒ **main 上每行「状态缺失/元数据缺失/挂载缺失」成立**；修复 = 本卡 commit `55c8c6a`（含 host 显示层、下拉二值化、mount 同族）。合并时按 P1 登记为 main live bug 的修复，非本卡新引入。
+另：`ec08e65`（W-METAFAMILY①，前端活）经主代理查清为派卡错位、**留在本分支正确位置**，不拆。
+
 | # | 用例（农场原文） | 测试位置 | 被测实现（file:line） | 实现是否诚实 | 本机结果 |
 |---|---|---|---|---|---|
 | 55 | operations overview：activeSnapshot 会话行全字段映射（ticks null 原样透传，不伪造 0） | `shared/tests/contract-mappers.test.ts:242` | `shared/src/contracts/manage/operations/api.ts:325-326`（`positionTicks: r.positionTicks` 直传，无 `?? 0`） | ✅ 诚实 | ✅ PASS |
