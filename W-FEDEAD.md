@@ -117,9 +117,65 @@ git ls-files | python3 -c "…按字节排序…"（见卡面交付对话记录�
 #   另一闸已 ack：fmby-v2 scripts/check-query-params.mjs KNOWN_GAPS「前端死声明」
 ```
 
-## 7. 未做 / 边界
+## 7. 裁定执行（2026-10-27 · 四件全批，均已落地）
 
-- 未删 `resolveCredentialGuidance` 及其 2 个测试（§1.1，待裁）。
-- 未改任何闸脚本（scripts 侧归你）、未改 `.github/workflows/`（§2.1 是提案 YAML，等你确认再落）。
-- 未动 15 张 PNG（本卡明令不删；压缩执行放农场）。
-- 本机未跑前端单测（纪律：报农场）；`pnpm size` 需要 dist（本机禁构建），其预算核验随农场。
+### 7.1 裁定① `resolveCredentialGuidance` ⇒ 删（commit `1793113` + 补刀 `79bc147`）
+- 无第三个消费点：全 mounts 域仅 mountPresentation.ts（定义）+ 已删组件（消费）+ 2 个测试；`credentialPresentation.ts:26` 另有**活**副本 `MOUNT_FAULT_CREDENTIAL_EXPIRED`（`:120` 生产比较在用）⇒ 删 mountPresentation 侧函数 + 死常量副本，活副本不动。
+- 手术范围：`mountPresentation.ts` -26 行；`mount-formutils-exports.test.ts` EXPECTED_EXPORTS 摘 2 行；`mount-datasource-backfill.test.ts` 删 ③ 引导三态测试 + makeHealth 夹具、④→③ renumber（10 用例保留）。净 **-84 行**。
+- **tsc 当场拦下一条真红**：删函数后 `ManageMountHealthRecord` 类型 import 成孤立（noUnusedLocals TS6196，EXIT=2）⇒ 摘 import + 同步文件头注释（`79bc147`），复跑 **EXIT=0**。
+
+### 7.2 裁定② PNG 压缩（PIL 无损）+ R1 裁样（commit `48ce5d7`）
+当次命令原文：
+
+```bash
+python3 - <<'PYEOF'
+from PIL import Image
+im=Image.open(f); im.load()
+out=im if not (im.mode=="RGBA" and im.getchannel("A").getextrema()==(255,255)) else im.convert("RGB")
+out.save(f, format="PNG", optimize=True, compress_level=9)   # 逐张校验尺寸不变
+PYEOF
+node scripts/check-repo-size.mjs   # ★闸按 git ls-files 读 ⇒ 需先 git add 再跑
+```
+
+| 步骤 | 总量 | 结果 |
+|---|---|---|
+| 原始（15 张） | 1332.0 KiB | FAIL 130% |
+| ①无损后（15 张，逐张 -2.8%~15.5%；1 张反涨 0.7K 已 `git checkout` 还原） | 1204.2 KiB | 仍超 ⇒ 按预授权转② |
+| ②R1 裁样（fe-opt-02 10→8：移 tablet-768/home 250.2K、desktop-1280/manage-site-settings 116.1K 至 gitignored `full/`） | **837.2 KiB（13 张）** | **PASS，exit 0** |
+
+证据零丢失：被裁 2 张存 `docs/evidence/fe-opt-02/full/`（policy 既有全量外置位，gitignored 未入库）；其余 13 张仅重编码，像素与尺寸逐张校验不变（全不透明 RGBA→RGB 视觉无损）。本机无 oxipng/pngquant（已实测），纯无损压不到 1024 以下 —— 已按预授权落②。
+
+### 7.3 裁定③ CI verify job（commit `38cbc90`，diff = gates.yml +15 行）
+
+```diff
++  # W-FEDEAD（2026-10-27 裁定③）：fmby-web 自己也跑 verify ——
++  verify:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - uses: pnpm/action-setup@v4
++      - uses: actions/setup-node@v4
++        with: { node-version: 24, cache: pnpm }
++      - run: pnpm install --frozen-lockfile
++      - run: pnpm verify
++      - run: pnpm test
+```
+
+（jobs = identity / evidence / contract / **verify**；本席 worktree 即 fmby-web，直接落。）
+
+### 7.4 裁定④ 死声明三键删除（commit `56819cd`）
+
+- `browse/api.ts`：`LibraryDetailParams` 删 3 字段 + params 对象删 3 行，留注释说明去向（本地筛选在 useLibraryDetail 视图模型层，不受影响）。
+- **红→绿实测**：`node scripts/check-fe-be-query-parity.mjs --fe <本仓>` ⇒ DRIFT **9 → 6**（3 条 browse 误报清零；剩 6 条 = media-items 真缺口，属后端 feature gap，未改闸判据）。
+
+### 7.5 合入后验证与投农场
+
+- `tsc -p tsconfig.app.json --noEmit` **EXIT=0**；`git status --porcelain` 空；8 commit 全推 `seat/rv3/fedead`。
+- **需主代理投农场**：`FMBY_ORCHESTRATOR=1 bash scripts/farm.sh seat/rv3/fedead test --node node62` —— 判据：`pnpm -r test` **0 fail**（重点：`mount-formutils-exports` 导出面收缩后应绿、`mount-datasource-backfill` 10 用例、`ui-density-p1-header`）；`pnpm repo-size` 本机已 exit 0，可复核。
+
+## 8. 未做 / 边界（裁定后更新）
+
+- 未改任何闸脚本（裁定：不动判据，改前端死代码 —— 已照办）。
+- 未跑本机前端单测（纪律：报农场）；`pnpm size`/build 预算核验随农场/CI verify job。
+- 被裁 2 张样张的本机留存（`full/`）非长期归档；正式外置位（Release asset / evidence 仓）待指定后补登记。
+- 原始遗留项（§1.1）已由裁定①关闭。
