@@ -16,14 +16,12 @@ import assert from 'node:assert/strict';
 import {
   buildMountFormState,
   buildUpdateMountPayload,
-  resolveCredentialGuidance,
   describeSecretValue,
   createEmptyMountForm,
 } from '../src/pages/manage/mounts/formUtils';
 import { manageApi } from '@fmby/v2-shared/contracts/manage';
 import type {
   ManageMountDetailRecord,
-  ManageMountHealthRecord,
 } from '@fmby/v2-shared/contracts/manage';
 
 // ─── fetch 桩：捕获真实发出的 {method,url,body} ──────────────────────────────
@@ -95,27 +93,6 @@ function makeDetail(): ManageMountDetailRecord {
   } as ManageMountDetailRecord;
 }
 
-function makeHealth(
-  patch: Partial<ManageMountHealthRecord>,
-): ManageMountHealthRecord {
-  return {
-    mountId: 'm1',
-    name: '我的 115 网盘',
-    providerType: 'pan115',
-    status: 'active',
-    healthStatus: 'critical',
-    statusMessage: null,
-    unavailableBindingCount: null,
-    attentionBindingCount: null,
-    lastCheckedAt: null,
-    lastFaultKind: null,
-    lastFaultTitle: null,
-    lastFaultAction: null,
-    lastFaultAt: null,
-    ...patch,
-  };
-}
-
 // ─── ① payload 不得含 name ───────────────────────────────────────────────────
 
 test('① PATCH 挂载 body 不得含 name（用户口径：名字没法变，前端不得静默提交新名）', () => {
@@ -177,37 +154,9 @@ test('②f 密封凭据只说「已设置」，空值说「未设置」，不回
   assert.equal(describeSecretValue(undefined), '未设置');
 });
 
-// ─── ③ 过期引导两态 ──────────────────────────────────────────────────────────
+// ─── ③ health 端点 wire ──────────────────────────────────────────────────────
 
-test('③a last_fault_kind=credential_expired → 判定 expired，标题/动作来自后端', () => {
-  const g = resolveCredentialGuidance(
-    makeHealth({
-      lastFaultKind: 'credential_expired',
-      lastFaultTitle: '凭据已过期',
-      lastFaultAction: '请重新扫码绑定',
-    }),
-  );
-  assert.equal(g.kind, 'expired');
-  assert.equal(g.title, '凭据已过期');
-  assert.equal(g.action, '请重新扫码绑定');
-});
-
-test('③b last_fault_kind=null（无观测）→ unknown，不伪造过期结论', () => {
-  const g = resolveCredentialGuidance(makeHealth({ lastFaultKind: null }));
-  assert.equal(g.kind, 'unknown');
-  assert.equal(g.title, null);
-  assert.equal(g.action, null);
-});
-
-test('③c 未取到健康项 / 其它故障类别 → 不得误报过期', () => {
-  assert.equal(resolveCredentialGuidance(null).kind, 'unknown');
-  assert.equal(resolveCredentialGuidance(undefined).kind, 'unknown');
-  assert.equal(resolveCredentialGuidance(makeHealth({ lastFaultKind: 'rate_limited' })).kind, 'none');
-});
-
-// ─── ④ health 端点 wire ──────────────────────────────────────────────────────
-
-test('④a GET /api/manage/mounts/health 映射 last_fault_*（snake→camel，null 如实透传）', async () => {
+test('③a GET /api/manage/mounts/health 映射 last_fault_*（snake→camel，null 如实透传）', async () => {
   setResponse({
     items: [
       {
@@ -241,7 +190,7 @@ test('④a GET /api/manage/mounts/health 映射 last_fault_*（snake→camel，n
   assert.equal(res.total, 1);
 });
 
-test('④b 健康查询失败（500）必须抛出，不得吞成空列表假装健康', async () => {
+test('③b 健康查询失败（500）必须抛出，不得吞成空列表假装健康', async () => {
   setResponse({ code: 'internal', message: 'mounts health port not assembled' }, 500);
   await assert.rejects(() => manageApi.getMountsHealth());
 });

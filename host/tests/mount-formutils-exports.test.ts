@@ -60,8 +60,6 @@ const EXPECTED_EXPORTS: Record<string, 'function' | 'string'> = {
   buildPendingMountDeleteState: 'function',
   buildMountDeleteImpact: 'function',
   maskSensitiveConfig: 'function',
-  MOUNT_FAULT_CREDENTIAL_EXPIRED: 'string',
-  resolveCredentialGuidance: 'function',
   describeSecretValue: 'function',
 };
 

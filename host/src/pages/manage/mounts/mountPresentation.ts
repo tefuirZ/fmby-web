@@ -141,32 +141,6 @@ export function maskSensitiveConfig(value: unknown): unknown {
 export const PAN115_CREDENTIAL_HINT =
   '尚未绑定 115 账号或登录态已失效，请先在「115 网盘凭据」卡片完成扫码绑定后再操作。';
 
-/** 凭据过期故障类别（与后端 errno 字典一致）。 */
-export const MOUNT_FAULT_CREDENTIAL_EXPIRED = 'credential_expired';
-
-/**
- * 凭据过期引导判定（纯函数，可单测）。
- *
- * 依据：后端 `MountHealthDto.last_fault_kind`（扫描观测落库事实，0049）。
- * 只有明确观测到 credential_expired 才给出「重新绑定」引导；
- * `null`（无观测）归「未知」，**不伪造**过期结论。
- */
-export function resolveCredentialGuidance(
-  health: Pick<ManageMountHealthRecord, 'lastFaultKind' | 'lastFaultTitle' | 'lastFaultAction'> | null | undefined,
-): { kind: 'expired' | 'unknown' | 'none'; title: string | null; action: string | null } {
-  if (!health || health.lastFaultKind === null) {
-    return { kind: 'unknown', title: null, action: null };
-  }
-  if (health.lastFaultKind === MOUNT_FAULT_CREDENTIAL_EXPIRED) {
-    return {
-      kind: 'expired',
-      title: health.lastFaultTitle ?? '凭据已过期',
-      action: health.lastFaultAction ?? '请重新绑定该数据源的凭据。',
-    };
-  }
-  return { kind: 'none', title: health.lastFaultTitle, action: health.lastFaultAction };
-}
-
 /**
  * 密钥类字段展示形态：只说「已设置 / 未设置」，不回显明文、不回显占位假值。
  * 与 maskSensitiveConfig 的区别：后者把值替换为 '***'（仍是占位），
