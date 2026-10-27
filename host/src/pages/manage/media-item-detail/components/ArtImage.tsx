@@ -10,6 +10,8 @@ interface ArtImageProps {
   wide?: boolean;
   /** 资产网格里的小预览用更紧凑的一套盒子。 */
   compact?: boolean;
+  /** 加载失败回调（供调用方做 URL 降级，如 usePosterUrl 三档回落）；可选。 */
+  onSrcError?: () => void;
 }
 
 /**
@@ -25,6 +27,7 @@ export function ArtImage({
   placeholder,
   wide = false,
   compact = false,
+  onSrcError,
 }: ArtImageProps) {
   const [failed, setFailed] = useState(false);
 
@@ -55,7 +58,10 @@ export function ArtImage({
         className={compact ? styles.assetPreviewImage : styles.artImage}
         loading="lazy"
         src={src}
-        onError={() => setFailed(true)}
+        onError={() => {
+          setFailed(true);
+          onSrcError?.();
+        }}
       />
     </div>
   );

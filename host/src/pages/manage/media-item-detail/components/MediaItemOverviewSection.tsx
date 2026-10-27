@@ -1,5 +1,7 @@
 import { Link } from 'react-router';
 import type { ManageMediaItemDetailRecord } from '@fmby/v2-shared/contracts/manage/media-items';
+import { buildItemArtworkUrl } from '@fmby/v2-shared/contracts/assets';
+import { usePosterUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
 import sharedStyles from '../../ManagePages.module.css';
@@ -33,6 +35,17 @@ interface MediaItemOverviewSectionProps {
  */
 export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionProps) {
   const { item, effectiveMetadata } = detail;
+
+  // ★FE-posterUrl（裁定①）：概览海报改走 /api/assets 投机链（复用 browse
+  // 海报位同款 usePosterUrl 机制，零后端改动）—— 旧实现读 item.posterUrl
+  // （BE convert 恒 None ⇒ 恒「暂无海报」占位）。
+  // ponytail: 只投 poster/thumb 两档——经 mapArtwork{itemId} 四 URL 全兜底时
+  // usePosterUrl 的降级器会在 thumb↔backdrop 成环（DOM 实测），二档即止；
+  // 要 backdrop 档先修 usePosterUrl 的终止条件。无图 ⇒ 一档 404 后落文字占位。
+  const { url: derivedPosterUrl, onError: onPosterUrlError } = usePosterUrl({
+    posterUrl: buildItemArtworkUrl(item.id, 'poster'),
+    thumbUrl: buildItemArtworkUrl(item.id, 'thumb'),
+  });
 
   const ownership = [item.libraryName, item.seriesTitle, item.seasonTitle]
     .filter((entry): entry is string => Boolean(entry && entry.trim() !== ''))
@@ -99,10 +112,9 @@ export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionPro
           <ArtImage
             alt={`${item.title} 海报`}
             placeholder="暂无海报"
-            src={item.posterUrl}
+            src={derivedPosterUrl ?? item.posterUrl}
+            onSrcError={onPosterUrlError}
           />
-          <div className={styles.artSecondaryRow}>
-              </div>
         </div>
 
         <div className={styles.identityBody}>
