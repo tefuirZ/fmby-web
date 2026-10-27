@@ -35,3 +35,18 @@ jobs:
         with: { node-version: 24 }
       # catalog 已 vendor 进仓（CI token 无 fmby-v2 权限；更新由主仓变更时同步）
       - run: node scripts/generate-error-contract.mjs --catalog vendor/error-catalog.md --check
+
+  # W-FEDEAD（2026-10-27 裁定③）：fmby-web 自己也跑 verify —— 此前 12+ 闸只有
+  # 后端 ci.yml 的 frontend job 代跑，前端仓 PR/推送无背书（repo-size 红了没人看见）。
+  # e2e-gate 语义：无服务端二进制 ⇒ 显式报数 exit 0（FMBY_E2E_REQUIRED=1 才 exit 3），
+  # CI 不会因 e2e 缺件假红，也不静默 skip。
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # 版本读 package.json 的 packageManager
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify # 12+闸：versions/typecheck/build/build:themes/theme-dist/test/size/repo-size/dupes/contracts/theme-budget/theme-parity/component-size/css-usage/e2e-gate
+      - run: pnpm test
