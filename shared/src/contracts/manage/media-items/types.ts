@@ -60,6 +60,12 @@ export interface ManageMediaItemsQuery {
 
 
 
+export interface ManageMediaPerson {
+  name: string;
+  role?: string;
+  thumbUrl?: string;
+}
+
 export interface ManageMediaExternalId {
   provider: string;
   id: string;
@@ -356,6 +362,12 @@ export interface RequestManageMediaItemScrapeResult {
 }
 
 
+
+export interface UpdateManageMediaPersonInput {
+  name: string;
+  role?: string;
+  thumbUrl?: string;
+}
 
 export interface UpdateManageMediaItemMetadataRequest {
   title?: string;

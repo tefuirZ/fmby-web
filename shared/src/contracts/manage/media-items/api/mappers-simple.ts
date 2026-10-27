@@ -17,6 +17,14 @@ import type {
 
 
 
+export function mapMediaPerson(raw: RawManageMediaPerson): ManageMediaPerson {
+  return {
+    name: raw.name,
+    role: raw.role ?? undefined,
+    thumbUrl: raw.thumb_url ?? undefined,
+  };
+}
+
 export function mapExternalId(raw: RawManageMediaExternalId): ManageMediaExternalId {
   return {
     provider: raw.provider,
