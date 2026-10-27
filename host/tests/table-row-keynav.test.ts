@@ -3296,6 +3296,18 @@ const importItems = [rawJob('import', 0), rawJob('import', 1)];
 
 globalThis.fetch = async (url) => {
   const u = String(url);
+  // 付费闸（W5-D/#2032）：Emby 导入块由 license status 的 summary.visibility
+  // 门控；不 stub 它 ⇒ {} → 免费基线 fail-closed ⇒ 第二张表永不挂载，
+  // 本用例的 tbody===2 等待超时（2026-10-27 实测复现）。给足付费可见性。
+  if (u.includes('/license/status')) {
+    return json({
+      runtime_state: 'active',
+      business_access_allowed: true,
+      usage: {},
+      entitlements: [],
+      summary: { visibility: { upstream_emby: true } },
+    });
+  }
   if (u.includes('/emby/import/jobs')) return json({ items: importItems, total: importItems.length });
   if (u.includes('/sync-jobs')) return json({ items: syncItems, total: syncItems.length });
   return json({});
