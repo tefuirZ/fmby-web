@@ -15,8 +15,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const { mapSourceStatus, mapMetadataStatus, mapMountStatus, mapSourceStatusToApi, mapMetadataStatusToApi, mapMountStatusToApi } =
-  await import('../src/contracts/manage/media-items/api/mappers-enum.ts');
+const enumMappers = await import('../src/contracts/manage/media-items/api/mappers-enum.ts');
+const { mapSourceStatus, mapMetadataStatus, mapMountStatus, mapSourceStatusToApi, mapMetadataStatusToApi } = enumMappers as typeof import('../src/contracts/manage/media-items/api/mappers-enum');
+const { mapQueryParams } = await import('../src/contracts/manage/media-items/api/mappers-payload.ts');
+const { mapListRecord } = await import('../src/contracts/manage/media-items/api/mappers-record.ts');
 
 test('source：mounted → mounted（不再落 default 伪造「缺失」）', () => {
   assert.equal(mapSourceStatus('mounted'), 'mounted');
@@ -50,7 +52,60 @@ test('ToApi：missing 必须直发（筛选「缺失」不再被吞成 undefined
   assert.equal(mapSourceStatusToApi('mounted'), 'mounted');
   assert.equal(mapMetadataStatusToApi('identified'), 'identified');
   assert.equal(mapMetadataStatusToApi('missing'), 'missing');
-  // mount 白名单无 missing ⇒ 不发（undefined），防 /api/search 400
-  assert.equal(mapMountStatusToApi('missing'), undefined);
-  assert.equal(mapMountStatusToApi('verified'), 'verified');
+});
+
+test('FE-1：query params 不再发死契约参 mountStatus/hasPoster/hasSubtitle', () => {
+  // 旧 mapQueryParams 把这三个键恒发（值 undefined）或按不存在的后端筛选发 ——
+  // 后端 MediaItemsQuery 连下划线名都不接（dto/manage.rs），发即静默丢弃。
+  const params = mapQueryParams({
+    page: 2,
+    pageSize: 20,
+    keyword: 'matrix',
+    libraryId: '1',
+    mediaType: 'movie',
+    sourceStatus: 'mounted',
+    metadataStatus: 'identified',
+    hasLocalOverride: true,
+    sortBy: 'updated_at',
+    sortOrder: 'desc',
+  } as Parameters<typeof mapQueryParams>[0]) as Record<string, unknown>;
+  const keys = Object.keys(params);
+  assert.equal('mountStatus' in params, false, 'mountStatus 是死契约参，不得再发');
+  assert.equal('hasPoster' in params, false, 'hasPoster 是死契约参，不得再发');
+  assert.equal('hasSubtitle' in params, false, 'hasSubtitle 是死契约参，不得再发');
+  assert.equal(keys.includes('mount_status'), false, '下划线名同样不得发（后端不收）');
+  assert.deepEqual(keys.sort(), [
+    'hasLocalOverride', 'keyword', 'libraryId', 'mediaType',
+    'metadataStatus', 'page', 'pageSize', 'sortBy', 'sortOrder', 'sourceStatus',
+  ]);
+  assert.equal(params.sourceStatus, 'mounted');
+  assert.equal(params.metadataStatus, 'identified');
+});
+
+test('FE-1：列表 mapper 读的是真实下划线 wire 名（source_status/metadata_status/mount_status）', () => {
+  // 响应侧一直是对的：mapListRecord 读 raw.source_status（mappers-record.ts:53-55）。
+  // 本用例锁住：字段名换回 camelCase 或其它拼写时立即红。
+  const rec = mapListRecord({
+    id: '501',
+    library_id: '1',
+    library_name: 'movies',
+    title: 'The Matrix',
+    media_type: 'movie',
+    type_label: '电影',
+    source_status: 'mounted',
+    mount_status: 'verified',
+    metadata_status: 'identified',
+    has_local_override: false,
+    has_local_metadata_override: false,
+    has_local_artwork_override: false,
+    has_local_subtitle_override: false,
+    has_poster: true,
+    has_subtitle: false,
+    updated_at: 1_700_000_000_000,
+  } as Parameters<typeof mapListRecord>[0]);
+  assert.equal(rec.sourceStatus, 'mounted', '读的是 source_status（下划线）');
+  assert.equal(rec.mountStatus, 'verified', '读的是 mount_status（下划线）');
+  assert.equal(rec.metadataStatus, 'identified', '读的是 metadata_status（下划线）');
+  assert.equal(rec.hasPoster, true);
+  assert.equal(rec.hasSubtitle, false);
 });

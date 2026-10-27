@@ -13,7 +13,6 @@ import type {
 import {
   mapMediaTypeToApi,
   mapMetadataStatusToApi,
-  mapMountStatusToApi,
   mapSourceStatusToApi,
 } from './mappers-enum';
 
@@ -29,11 +28,11 @@ export function mapQueryParams(query?: ManageMediaItemsQuery) {
     libraryId: query.libraryId,
     mediaType: query.mediaType ? mapMediaTypeToApi(query.mediaType) : undefined,
     sourceStatus: query.sourceStatus ? mapSourceStatusToApi(query.sourceStatus) : undefined,
-    mountStatus: query.mountStatus ? mapMountStatusToApi(query.mountStatus) : undefined,
     metadataStatus: query.metadataStatus ? mapMetadataStatusToApi(query.metadataStatus) : undefined,
+    // FE-1：死契约参 mountStatus/hasPoster/hasSubtitle 已停发 —— 后端 MediaItemsQuery
+    // 不接这三个筛选（下划线名也不收），发即静默丢弃；页面也无此筛选。
+    // ponytail: 后端（w3）真加筛选时按当期 wire 名补回，不预留死映射。
     hasLocalOverride: query.hasLocalOverride,
-    hasPoster: query.hasPoster,
-    hasSubtitle: query.hasSubtitle,
     sortBy: query.sortBy,
     sortOrder: query.sortOrder,
   };

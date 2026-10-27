@@ -112,12 +112,6 @@ export function mapSourceStatusToApi(value: ManageMediaItemSourceStatus) {
   return value;
 }
 
-export function mapMountStatusToApi(value: ManageMediaItemMountStatus) {
-  // missing（无挂载读数）在后端 mount 白名单（configured/unavailable/maintenance/
-  // verified，query_mapping.rs:56-58）中无对应 ⇒ 不发（undefined）。
-  return value === 'missing' ? undefined : value;
-}
-
 export function mapMetadataStatusToApi(value: ManageMediaItemMetadataStatus) {
   // /api/search 白名单含 identified/missing（query_mapping.rs:61-66）⇒ 直发。
   return value;

@@ -48,11 +48,12 @@ export interface ManageMediaItemsQuery {
   libraryId?: string;
   mediaType?: ManageMediaItemMediaType;
   sourceStatus?: ManageMediaItemSourceStatus;
-  mountStatus?: ManageMediaItemMountStatus;
   metadataStatus?: ManageMediaItemMetadataStatus;
+  // W-A-RESUME/FE-1：已删死契约参 mountStatus/hasPoster/hasSubtitle ——
+  // 后端 MediaItemsQuery 无这三个筛选（含下划线名也不收，见 dto/manage.rs），
+  // 页面也从未提供；旧写法只是「类型里有、wire 上恒 undefined」的假能力。
+  // 待后端（w3 CRUD-MEDIA-ITEMS）真加筛选时按当期 wire 名补回。
   hasLocalOverride?: boolean;
-  hasPoster?: boolean;
-  hasSubtitle?: boolean;
   sortBy?: string;
   sortOrder?: ManageMediaItemSortOrder;
 }
