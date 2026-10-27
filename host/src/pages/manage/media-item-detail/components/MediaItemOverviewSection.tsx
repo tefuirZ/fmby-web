@@ -39,9 +39,10 @@ export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionPro
   // ★FE-posterUrl（裁定①）：概览海报改走 /api/assets 投机链（复用 browse
   // 海报位同款 usePosterUrl 机制，零后端改动）—— 旧实现读 item.posterUrl
   // （BE convert 恒 None ⇒ 恒「暂无海报」占位）。
-  // ponytail: 只投 poster/thumb 两档——经 mapArtwork{itemId} 四 URL 全兜底时
-  // usePosterUrl 的降级器会在 thumb↔backdrop 成环（DOM 实测），二档即止；
-  // 要 backdrop 档先修 usePosterUrl 的终止条件。无图 ⇒ 一档 404 后落文字占位。
+  // ponytail: 只投 poster/thumb 两档 —— 若经 mapArtwork{itemId} 四 URL 全兜底，
+  // 无图条目每个海报位会产生最多 3 个必 404 请求（请求放大；终止性没问题，
+  // artwork-stage-termination.test.ts 穷举 16 组合已锁「不成环」）。
+  // 二档把无图情形的请求数从 3 降到 1；要 backdrop 档 = 后端交付链卡的事。
   const { url: derivedPosterUrl, onError: onPosterUrlError } = usePosterUrl({
     posterUrl: buildItemArtworkUrl(item.id, 'poster'),
     thumbUrl: buildItemArtworkUrl(item.id, 'thumb'),

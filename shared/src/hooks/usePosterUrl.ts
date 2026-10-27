@@ -4,14 +4,14 @@ import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 type FallbackStage = 'primary' | 'thumb' | 'backdrop' | 'done';
 type BackdropStage = 'banner' | 'backdrop' | 'thumb' | 'poster' | 'done';
 
-function getPosterInitialStage(artwork: ArtworkSet): FallbackStage {
+export function getPosterInitialStage(artwork: ArtworkSet): FallbackStage {
   if (artwork.posterUrl) return 'primary';
   if (artwork.thumbUrl) return 'thumb';
   if (artwork.backdropUrl) return 'backdrop';
   return 'done';
 }
 
-function getNextPosterStage(stage: FallbackStage, artwork: ArtworkSet): FallbackStage {
+export function getNextPosterStage(stage: FallbackStage, artwork: ArtworkSet): FallbackStage {
   switch (stage) {
     case 'primary':
       return artwork.thumbUrl ? 'thumb' : artwork.backdropUrl ? 'backdrop' : 'done';
@@ -22,7 +22,7 @@ function getNextPosterStage(stage: FallbackStage, artwork: ArtworkSet): Fallback
   }
 }
 
-function getBackdropInitialStage(artwork: ArtworkSet): BackdropStage {
+export function getBackdropInitialStage(artwork: ArtworkSet): BackdropStage {
   if (artwork.bannerUrl) return 'banner';
   if (artwork.backdropUrl) return 'backdrop';
   if (artwork.thumbUrl) return 'thumb';
@@ -30,7 +30,7 @@ function getBackdropInitialStage(artwork: ArtworkSet): BackdropStage {
   return 'done';
 }
 
-function getNextBackdropStage(stage: BackdropStage, artwork: ArtworkSet): BackdropStage {
+export function getNextBackdropStage(stage: BackdropStage, artwork: ArtworkSet): BackdropStage {
   switch (stage) {
     case 'banner':
       return artwork.backdropUrl
