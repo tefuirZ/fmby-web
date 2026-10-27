@@ -31,20 +31,25 @@ export function mapExternalId(raw: RawManageMediaExternalId): ManageMediaExterna
   };
 }
 
-export function mapMetadata(raw: RawManageMediaItemMetadata): ManageMediaItemMetadataRecord {
+export function mapMetadata(
+  raw: RawManageMediaItemMetadata | null | undefined,
+): ManageMediaItemMetadataRecord {
+  // W-METAFAMILY：旧 BE wire 曾把 base/effective_metadata 恒送 null，
+  // 无守卫访问 = 详情页整页 TypeError（e2e 基线红 38 条同族）⇒ 空记录兑底。
+  const src: RawManageMediaItemMetadata = raw ?? {};
   return {
-    title: raw.title ?? undefined,
-    originalTitle: raw.original_title ?? undefined,
-    sortTitle: raw.sort_title ?? undefined,
-    year: raw.year ?? undefined,
-    overview: raw.overview ?? undefined,
-    communityRating: raw.community_rating ?? undefined,
-    genres: raw.genres ?? [],
-    directors: raw.directors ?? [],
-    actors: (raw.actors ?? []).map(mapMediaPerson),
-    studios: raw.studios ?? [],
-    premiered: raw.premiered ?? undefined,
-    externalIds: (raw.external_ids ?? []).map(mapExternalId),
+    title: src.title ?? undefined,
+    originalTitle: src.original_title ?? undefined,
+    sortTitle: src.sort_title ?? undefined,
+    year: src.year ?? undefined,
+    overview: src.overview ?? undefined,
+    communityRating: src.community_rating ?? undefined,
+    genres: src.genres ?? [],
+    directors: src.directors ?? [],
+    actors: (src.actors ?? []).map(mapMediaPerson),
+    studios: src.studios ?? [],
+    premiered: src.premiered ?? undefined,
+    externalIds: (src.external_ids ?? []).map(mapExternalId),
   };
 }
 

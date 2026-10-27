@@ -128,12 +128,14 @@ export interface ManageMediaItemRemoteMetadataRecord {
   metadata: ManageMediaItemMetadataRecord;
 }
 
+// W-METAFAMILY：审计归属字段在 BE 扁平 wire 下 undefined ⇒ 来源面板降级展示；
+// V1 wrapper 归属若未来回归 BE，此类型无需再改。
 export interface ManageMediaItemLocalMetadataOverrideRecord {
-  updatedBy: string;
+  updatedBy?: string;
   updatedByUsername?: string;
   updatedByDisplayName?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   metadata: ManageMediaItemMetadataRecord;
 }
 
@@ -418,7 +420,9 @@ export interface ManageMediaItemVisibilityResult {
 export interface ManualMatchMediaItemIdentityRequest {
   provider: string;
   providerItemId: string;
-  reason?: string;
+  // W-METAFAMILY：已删除幻觉字段 `reason?`——V1 `ManualMatchManagedMediaItemRequest`
+  // 与 BE `ManualMatchRequest`（application/media_identity.rs）均无此字段，
+  // 原先发送即被 serde 静默丢弃。
   /** 危险操作二次确认标记（映射后端 `confirm_action`）。 */
   confirmAction?: string;
 }
