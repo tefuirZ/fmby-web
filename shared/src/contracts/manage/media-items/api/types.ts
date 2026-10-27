@@ -8,12 +8,7 @@ export interface RawListResponse<T> {
   total: number;
 }
 
-export interface RawManageMediaPerson {
-  name: string;
-  role?: string | null;
-  thumb_url?: string | null;
-  profile?: string | null;
-}
+
 
 export interface RawManageMediaExternalId {
   provider: string;

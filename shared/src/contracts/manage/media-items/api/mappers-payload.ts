@@ -51,8 +51,6 @@ export function mapUpdatePayloadToApi(payload: UpdateManageMediaItemMetadataRequ
     actors: payload.actors?.map((actor) => ({
       name: actor.name,
       role: actor.role,
-      thumb_url: actor.thumbUrl,
-      profile: actor.profile,
     })),
     studios: payload.studios,
     premiered: payload.premiered,

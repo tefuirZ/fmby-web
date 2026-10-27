@@ -34,7 +34,6 @@ export interface MetadataActorDraft {
   role: string;
   /** 原记录里的头像与档案链接，本表单不编辑但必须原样带回，避免保存后丢失。 */
   thumbUrl?: string;
-  profile?: string;
 }
 
 export interface MetadataFormState {
@@ -90,7 +89,6 @@ function toFormState(metadata: ManageMediaItemMetadataRecord): MetadataFormState
       name: actor.name,
       role: actor.role ?? '',
       thumbUrl: actor.thumbUrl,
-      profile: actor.profile,
     })),
   };
 }
@@ -118,8 +116,7 @@ function isSameForm(left: MetadataFormState, right: MetadataFormState): boolean 
     return (
       actor.name === other.name &&
       actor.role === other.role &&
-      actor.thumbUrl === other.thumbUrl &&
-      actor.profile === other.profile
+      actor.thumbUrl === other.thumbUrl
     );
   });
 }
@@ -166,7 +163,6 @@ function buildPayload(form: MetadataFormState): UpdateManageMediaItemMetadataReq
         name: actor.name.trim(),
         role: actor.role.trim() === '' ? undefined : actor.role.trim(),
         thumbUrl: actor.thumbUrl,
-        profile: actor.profile,
       })),
     premiered: form.premiered.trim(),
   };

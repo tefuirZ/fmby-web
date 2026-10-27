@@ -58,12 +58,7 @@ export interface ManageMediaItemsQuery {
   sortOrder?: ManageMediaItemSortOrder;
 }
 
-export interface ManageMediaPerson {
-  name: string;
-  role?: string;
-  thumbUrl?: string;
-  profile?: string;
-}
+
 
 export interface ManageMediaExternalId {
   provider: string;
@@ -360,12 +355,7 @@ export interface RequestManageMediaItemScrapeResult {
   fingerprint: string;
 }
 
-export interface UpdateManageMediaPersonInput {
-  name: string;
-  role?: string;
-  thumbUrl?: string;
-  profile?: string;
-}
+
 
 export interface UpdateManageMediaItemMetadataRequest {
   title?: string;
