@@ -46,7 +46,9 @@
 ### 3.2 posterUrl 交付链缺口（报主代理派后/全栈卡）
 - **页面实际渲染结果**（判据＝渲染不是类型）：概览海报 `ArtImage src={item.posterUrl}`（MediaItemOverviewSection.tsx:100-104）；`item.posterUrl = raw.poster_url ?? undefined`（mappers-record mapSummaryRecord），而 BE `convert.rs::media_node_to_list_dto` 恒 `poster_url: None` ⇒ **概览海报恒「暂无海报」占位**（当次读码链全查，无其它充值路径——artwork overrides/远程资产走各自独立区块，不喂海报）。
 - 背景图/缩略图同块已随本系列删除（DTO 无字段）；**海报与它们不同**：wire 字段存在、展示需求真实 ⇒ 不可删。
-- 修法归属：后端 convert/读面把 poster 交付链接上（或 FE 概览改走 artwork 派生）—— 单仓原则，**报主代理另派**。
+- ~~修法归属~~ **裁定① 已执行（前端优先，commit `c899769`）**：概览海报改投 `/api/assets/items/{id}/images/{poster,thumb}` 投机链 + `usePosterUrl` onError 降级（复用 browse 海报位同款机制，零后端改动）；`ArtImage` 增可选 `onSrcError`。**真实渲染契约**：DOM 测试 2/2（vite lib + Chromium：① img.src=投机 poster 链 ② error 循环 → 恒空占位）；真实字节渲染随 web-verify/e2e。
+- ★实现注记（实测）：不可经 `mapArtwork{itemId}` 四 URL 全兜底 —— usePosterUrl 降级器会在 thumb↔backdrop 成环，二档（poster→thumb→占位）即止（`ponytail:` 注释已锚在组件里）；要 backdrop 档先修 usePosterUrl 终止条件。
+- 若 web-verify/e2e 发现该链在真实例下仍无图 ⇒ 再派后端卡接 convert.rs 交付链。
 
 ## 4. 验证
 
