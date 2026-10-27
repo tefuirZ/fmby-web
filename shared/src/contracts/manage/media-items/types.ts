@@ -58,12 +58,9 @@ export interface ManageMediaItemsQuery {
   sortOrder?: ManageMediaItemSortOrder;
 }
 
-
-
 export interface ManageMediaPerson {
   name: string;
   role?: string;
-  thumbUrl?: string;
 }
 
 export interface ManageMediaExternalId {
@@ -260,7 +257,6 @@ export interface ManageMediaItemSummaryRecord {
   seasonTitle?: string;
   posterUrl?: string;
   backdropUrl?: string;
-  thumbUrl?: string;
   sourceStatus: ManageMediaItemSourceStatus;
   mountStatus: ManageMediaItemMountStatus;
   metadataStatus: ManageMediaItemMetadataStatus;
@@ -366,7 +362,6 @@ export interface RequestManageMediaItemScrapeResult {
 export interface UpdateManageMediaPersonInput {
   name: string;
   role?: string;
-  thumbUrl?: string;
 }
 
 export interface UpdateManageMediaItemMetadataRequest {

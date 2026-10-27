@@ -13,7 +13,6 @@ export interface RawListResponse<T> {
 export interface RawManageMediaPerson {
   name: string;
   role?: string | null;
-  thumb_url?: string | null;
 }
 
 export interface RawManageMediaExternalId {
@@ -239,7 +238,6 @@ export interface RawManageMediaItemSummaryRecord {
   season_title?: string | null;
   poster_url?: string | null;
   backdrop_url?: string | null;
-  thumb_url?: string | null;
   source_status: string;
   mount_status: string;
   metadata_status: string;

@@ -112,17 +112,7 @@ export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionPro
               />
               <span className={styles.artCaption}>背景图</span>
             </div>
-            <div className={styles.artSecondary}>
-              <ArtImage
-                alt={`${item.title} 缩略图`}
-                compact
-                placeholder="暂无缩略图"
-                src={item.thumbUrl}
-                wide
-              />
-              <span className={styles.artCaption}>缩略图</span>
             </div>
-          </div>
         </div>
 
         <div className={styles.identityBody}>
