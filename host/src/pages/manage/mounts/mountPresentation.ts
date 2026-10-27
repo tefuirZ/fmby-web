@@ -1,11 +1,11 @@
 /**
- * mounts 展示派生：健康/抽屉文案、引用与删除影响摘要、敏感值遮蔽、凭据过期引导
- * （FE-MOUNT-AGGREGATE 拆分）。纯函数，无取数、无副作用。
+ * mounts 展示派生：健康/抽屉文案、引用与删除影响摘要、敏感值遮蔽
+ * （FE-MOUNT-AGGREGATE 拆分；凭据过期引导由 yun139 credentialExpiry 承担）。
+ * 纯函数，无取数、无副作用。
  */
 
 import type {
   ManageMountDetailRecord,
-  ManageMountHealthRecord,
   ManageMountRecord,
 } from '@fmby/v2-shared/contracts/manage';
 import type {
