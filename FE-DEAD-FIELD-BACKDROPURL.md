@@ -41,7 +41,7 @@
 ## 4. 验证
 
 - ✅ `tsc --noEmit` host **EXIT=0**（删后）；shared 套件 **171/171 PASS**（删后实跑）。
-- ⏳ host 全量套件以 **web-verify** 为准（**本卡 + 上一卡 profile/thumb 合并跑一次**）——判据：shared **171/0**、host **895+/0**、typecheck exit 0。注：上卡本机 host 跑出的 2 个超时类红（CAS 态 B / 表格行漫游）在他席重活（load 25-35）下出现，且与删除域无交集；本机 load 已被你清到 1.7，web-verify 应复现干净跑。
+- ⏳ host 全量套件以 **web-verify** 为准（**本卡 + 上一卡 profile/thumb 合并跑一次**）——判据：shared **171/0**、host **895+/0**、typecheck exit 0。注：上卡本机 host 跑出的 2 个超时类红（CAS 态 B / 表格行漫游）在他席重活（load 25-35）下出现，且与删除域无交集；本机 load 已被你清到 1.7，web-verify 应复现干净跑。（补记：本机全量跑在停滞 ~3h 后已中止、未再推进，正式门以 web-verify 为准。）
 
 ## 5. ponytail 段
 - 4 处全删（含渲染块）而非注释/保留死类型 —— 同 profile 卡方法，零新抽象。
