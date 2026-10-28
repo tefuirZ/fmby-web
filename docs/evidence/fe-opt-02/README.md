@@ -17,7 +17,7 @@ EVIDENCE_DIR=docs/evidence/fe-opt-02 pnpm --filter @fmby/v2-host test:e2e -- mob
 
 工具：`host/e2e/mobile-audit.spec.ts`（真实栈：真实 `fmby-v2-server` + 真实 SQLite）。
 
-## 入库样本（8 张，覆盖 3 断点 × 关键页类别）
+## 入库样本（9 张，覆盖 3 断点 × 关键页类别）
 
 | 断点 | 页面 | 类别 | 文件 | 大小 |
 | --- | --- | --- | --- | --- |
@@ -26,18 +26,24 @@ EVIDENCE_DIR=docs/evidence/fe-opt-02 pnpm --filter @fmby/v2-host test:e2e -- mob
 | phone-375 | 媒体库管理 | manage | `samples/phone-375/manage-libraries.png` | 41.9 KiB |
 | phone-375 | 命名刮削设置 | manage | `samples/phone-375/manage-naming-scrape.png` | 1.3 MiB |
 | phone-375 | 管理首页 | manage | `samples/phone-375/manage-overview.png` | 510 KiB |
-| tablet-768 | 首页 | browse | `samples/tablet-768/home.png` | 296.2 KiB |
 | tablet-768 | 站点设置 | manage | `samples/tablet-768/manage-site-settings.png` | 124.0 KiB |
 | desktop-1280 | 媒体库列表 | browse | `samples/desktop-1280/libraries.png` | 16.8 KiB |
 | desktop-1280 | 管理首页 | manage | `samples/desktop-1280/manage-overview.png` | 22.4 KiB |
 | desktop-1280 | 站点设置 | manage | `samples/desktop-1280/manage-site-settings.png` | 131.5 KiB |
-| | | | **合计** | **757.1 KiB** |
+| | | | **合计** | **619.8 KiB（9 张实测）** |
+
+> **外置说明（REPO-HYGIENE-01 预算回收，2026-10-28）**：原入库样本
+> `samples/tablet-768/home.png`（296.2 KiB，tablet-768/browse 代表）已按策略外置 ——
+> 仓库二进制总量超 1 MiB 预算（web-verify 三连红）。文件仍在 git 历史
+> （`git show <本提交之前的 commit>:docs/evidence/fe-opt-02/samples/tablet-768/home.png`
+> 可取回）；重生成见上「生成方式」。tablet-768 断点仍保留 manage 类代表
+> （`manage-site-settings.png`）。
 
 样本选取依据（对应 FE-OPT-02 的修复面）：
 - **phone-375/home**：TopBar 手机档收窄 + 横向溢出清零的代表（修复最集中的页面）。
 - **phone-375/playback**：播放页移动端（进度条可拖 / 控件可达）。
 - **phone-375/manage-libraries**：管理面窄屏表格横滚 + 抽屉。
-- **tablet-768/home**、**tablet-768/manage-site-settings**：中档断点的 browse / manage 代表。
+- **tablet-768/manage-site-settings**：中档断点的 manage 代表（browse 代表 home.png 已外置，见上「外置说明」）。
 - **desktop-1280/{libraries,manage-overview,manage-site-settings}**：桌面档 browse / manage / 表单代表。
 
 > **降采样说明（本轮）**：`manage-naming-scrape` / `manage-overview` 两张是整页长截图
