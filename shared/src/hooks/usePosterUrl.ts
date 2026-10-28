@@ -4,14 +4,14 @@ import type { ArtworkSet } from '@fmby/v2-shared/contracts/assets';
 type FallbackStage = 'primary' | 'thumb' | 'backdrop' | 'done';
 type BackdropStage = 'banner' | 'backdrop' | 'thumb' | 'poster' | 'done';
 
-function getPosterInitialStage(artwork: ArtworkSet): FallbackStage {
+export function getPosterInitialStage(artwork: ArtworkSet): FallbackStage {
   if (artwork.posterUrl) return 'primary';
   if (artwork.thumbUrl) return 'thumb';
   if (artwork.backdropUrl) return 'backdrop';
   return 'done';
 }
 
-function getNextPosterStage(stage: FallbackStage, artwork: ArtworkSet): FallbackStage {
+export function getNextPosterStage(stage: FallbackStage, artwork: ArtworkSet): FallbackStage {
   switch (stage) {
     case 'primary':
       return artwork.thumbUrl ? 'thumb' : artwork.backdropUrl ? 'backdrop' : 'done';
@@ -22,7 +22,7 @@ function getNextPosterStage(stage: FallbackStage, artwork: ArtworkSet): Fallback
   }
 }
 
-function getBackdropInitialStage(artwork: ArtworkSet): BackdropStage {
+export function getBackdropInitialStage(artwork: ArtworkSet): BackdropStage {
   if (artwork.bannerUrl) return 'banner';
   if (artwork.backdropUrl) return 'backdrop';
   if (artwork.thumbUrl) return 'thumb';
@@ -30,7 +30,7 @@ function getBackdropInitialStage(artwork: ArtworkSet): BackdropStage {
   return 'done';
 }
 
-function getNextBackdropStage(stage: BackdropStage, artwork: ArtworkSet): BackdropStage {
+export function getNextBackdropStage(stage: BackdropStage, artwork: ArtworkSet): BackdropStage {
   switch (stage) {
     case 'banner':
       return artwork.backdropUrl
@@ -49,22 +49,41 @@ function getNextBackdropStage(stage: BackdropStage, artwork: ArtworkSet): Backdr
   }
 }
 
+/** 每档加载看门狗缺省时长（请求挂起时强制前进；0 = 关闭）。 */
+export const DEFAULT_WATCHDOG_MS = 8_000;
+
+export interface FallbackWatchdogOptions {
+  /**
+   * 每档加载看门狗（毫秒）：该档 URL 迟迟不加载成功/失败时强制前进到下一档。
+   * 0/缺省 = 关闭（既有调用方行为零变化）。看门狗在 已确认成功 / 降级前进 /
+   * 换图 / 卸载 时都会被清除 —— 不会误伤已成功的图。
+   */
+  watchdogMs?: number;
+}
+
 /**
  * 海报图片智能降级 hook
  *
  * 优先级：poster -> thumb -> backdrop -> null（文字占位）
  * 原生由 <img> 的 onError 触发下级切换，避免由于 pre-fetch 失败导致整链截断。
+ * 可选每档看门狗：请求**挂起**（既不成功也不失败）时 onError 永不触发 ⇒
+ * 海报位永不降级 —— 看门狗到点强制走与 error 相同的下一档路径。
  */
-export function usePosterUrl(artwork: ArtworkSet): {
+export function usePosterUrl(artwork: ArtworkSet, options?: FallbackWatchdogOptions): {
   url: string | null;
   isLoading: boolean;
   onError: () => void;
+  /** 当前档 img 成功加载时由调用方回调（解除本档看门狗；不回调则到点强制前进）。 */
+  markLoaded: () => void;
 } {
+  const watchdogMs = options?.watchdogMs ?? 0;
   const [stage, setStage] = useState<FallbackStage>(() => getPosterInitialStage(artwork));
+  const [loadedStage, setLoadedStage] = useState<string | null>(null);
 
   const artworkKey = `${artwork.posterUrl ?? ''}|${artwork.thumbUrl ?? ''}|${artwork.backdropUrl ?? ''}`;
   useEffect(() => {
     setStage(getPosterInitialStage(artwork));
+    setLoadedStage(null);
   }, [artworkKey]);
 
   const getUrl = (currentStage: FallbackStage): string | null => {
@@ -86,10 +105,27 @@ export function usePosterUrl(artwork: ArtworkSet): {
     setStage((prev) => getNextPosterStage(prev, artwork));
   }, [artwork]);
 
+  // 本档 img 成功加载 ⇒ 记录「该档已确认」，看门狗解除。
+  const markLoaded = useCallback(() => setLoadedStage(stage), [stage]);
+
+  // 每档看门狗（FE-WATCHDOG）：请求挂起时 onError 永不触发 ⇒ 海报位永不降级。
+  // 仅在看门狗开启、URL 在飞、该档未确认成功时武装；前进/成功/换图/卸载即清。
+  useEffect(() => {
+    if (!watchdogMs || watchdogMs <= 0) return;
+    if (stage === 'done') return;
+    if (loadedStage === stage) return;
+    const timer = setTimeout(() => {
+      setStage((prev) => getNextPosterStage(prev, artwork));
+      setLoadedStage(null);
+    }, watchdogMs);
+    return () => clearTimeout(timer);
+  }, [stage, artworkKey, watchdogMs, loadedStage, artwork]);
+
   return {
     url,
     isLoading: stage !== 'done' && url !== null,
     onError,
+    markLoaded,
   };
 }
 
@@ -98,15 +134,22 @@ export function usePosterUrl(artwork: ArtworkSet): {
  *
  * 优先级：banner -> backdrop -> thumb -> poster -> null
  */
-export function useBackdropUrl(artwork: ArtworkSet): {
+export function useBackdropUrl(
+  artwork: ArtworkSet,
+  options?: FallbackWatchdogOptions,
+): {
   url: string | null;
   onError: () => void;
+  markLoaded: () => void;
 } {
+  const watchdogMs = options?.watchdogMs ?? 0;
   const [stage, setStage] = useState<BackdropStage>(() => getBackdropInitialStage(artwork));
+  const [loadedStage, setLoadedStage] = useState<string | null>(null);
 
   const artworkKey = `${artwork.bannerUrl ?? ''}|${artwork.backdropUrl ?? ''}|${artwork.thumbUrl ?? ''}|${artwork.posterUrl ?? ''}`;
   useEffect(() => {
     setStage(getBackdropInitialStage(artwork));
+    setLoadedStage(null);
   }, [artworkKey]);
 
   const getUrl = (): string | null => {
@@ -130,7 +173,21 @@ export function useBackdropUrl(artwork: ArtworkSet): {
     setStage((prev) => getNextBackdropStage(prev, artwork));
   }, [artwork]);
 
-  return { url, onError };
+  const markLoaded = useCallback(() => setLoadedStage(stage), [stage]);
+
+  // 每档看门狗（同 usePosterUrl）：请求挂起时 onError 永不触发 ⇒ 永不降级。
+  useEffect(() => {
+    if (!watchdogMs || watchdogMs <= 0) return;
+    if (stage === 'done') return;
+    if (loadedStage === stage) return;
+    const timer = setTimeout(() => {
+      setStage((prev) => getNextBackdropStage(prev, artwork));
+      setLoadedStage(null);
+    }, watchdogMs);
+    return () => clearTimeout(timer);
+  }, [stage, artworkKey, watchdogMs, loadedStage, artwork]);
+
+  return { url, onError, markLoaded };
 }
 
 /**

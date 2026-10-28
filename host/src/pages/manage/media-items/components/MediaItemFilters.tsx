@@ -128,12 +128,10 @@ export function MediaItemFilters({
               onChange={(event) => setSourceStatus(event.target.value as SourceStatusFilter)}
             >
               <option value="all">全部状态</option>
-              <option value="playable">可播放</option>
-              <option value="pending-validation">待校验</option>
-              <option value="unreachable">不可达</option>
-              <option value="unsupported">不支持</option>
-              <option value="auth-expired">凭证过期</option>
-              <option value="missing">状态缺失</option>
+              {/* W-A-RESUME：后端二元词表 mounted/missing（query_mapping.rs:49-52 白名单，
+                  V1 值 fail-closed 400）⇒ 下拉只给两个真实选项。 */}
+              <option value="mounted">已挂载</option>
+              <option value="missing">来源缺失</option>
             </select>
           </label>
 
@@ -145,10 +143,9 @@ export function MediaItemFilters({
               onChange={(event) => setMetadataStatus(event.target.value as MetadataStatusFilter)}
             >
               <option value="all">全部状态</option>
-              <option value="success">正常</option>
-              <option value="pending">等待解析</option>
-              <option value="failed">解析失败</option>
-              <option value="missing">缺失</option>
+              {/* 后端二元词表 identified/missing（query_mapping.rs:61-66 白名单）。 */}
+              <option value="identified">已识别</option>
+              <option value="missing">元数据缺失</option>
             </select>
           </label>
 

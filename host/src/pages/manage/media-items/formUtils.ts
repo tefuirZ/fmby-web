@@ -6,18 +6,14 @@ import type {
 } from '@fmby/v2-shared/contracts/manage/media-items';
 import type { StatusBadgeVariant } from '@fmby/v2-shared/ui';
 
+// ★W-A-RESUME：后端二元真值 mounted/missing（旧 V1 词表已废，旧行把 mounted
+// 落进 default ⇒ 每行都显示「状态缺失」）。default 仅对未知值 fail-soft。
 export function getSourceStatusLabel(status: ManageMediaItemSourceStatus) {
   switch (status) {
-    case 'playable':
-      return '可播放';
-    case 'pending-validation':
-      return '待校验';
-    case 'unreachable':
-      return '不可达';
-    case 'unsupported':
-      return '不支持';
-    case 'auth-expired':
-      return '凭证过期';
+    case 'mounted':
+      return '已挂载';
+    case 'missing':
+      return '来源缺失';
     default:
       return '状态缺失';
   }
@@ -27,14 +23,10 @@ export function getSourceStatusVariant(
   status: ManageMediaItemSourceStatus,
 ): StatusBadgeVariant {
   switch (status) {
-    case 'playable':
+    case 'mounted':
       return 'success';
-    case 'pending-validation':
-      return 'warning';
-    case 'unreachable':
-    case 'unsupported':
-    case 'auth-expired':
-      return 'danger';
+    case 'missing':
+      return 'neutral';
     default:
       return 'neutral';
   }
@@ -42,12 +34,10 @@ export function getSourceStatusVariant(
 
 export function getMetadataStatusLabel(status: ManageMediaItemMetadataStatus) {
   switch (status) {
-    case 'success':
-      return '元数据正常';
-    case 'pending':
-      return '等待解析';
-    case 'failed':
-      return '解析失败';
+    case 'identified':
+      return '已识别';
+    case 'missing':
+      return '元数据缺失';
     default:
       return '元数据缺失';
   }
@@ -57,12 +47,10 @@ export function getMetadataStatusVariant(
   status: ManageMediaItemMetadataStatus,
 ): StatusBadgeVariant {
   switch (status) {
-    case 'success':
+    case 'identified':
       return 'success';
-    case 'pending':
-      return 'warning';
-    case 'failed':
-      return 'danger';
+    case 'missing':
+      return 'neutral';
     default:
       return 'neutral';
   }

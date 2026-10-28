@@ -15,6 +15,8 @@ import type {
   RequestManageMediaItemScrapeResult,
 } from '../types';
 import { mapMetadata } from './mappers-simple';
+// W-METAFAMILY：扁平/双形态兼容需要 raw metadata 类型（fallback 目标）。
+import type { RawManageMediaItemMetadata } from './types';
 import {
   mapArtworkOverrideRecord,
   mapRemoteAssetRecord,
@@ -50,13 +52,19 @@ export function mapRemoteMetadataRecord(
 export function mapLocalOverrideRecord(
   raw: RawManageMediaItemLocalMetadataOverrideRecord,
 ): ManageMediaItemLocalMetadataOverrideRecord {
+  // W-METAFAMILY：兼容两种 wire 形态——
+  // ① V1 wrapper：{updated_by,…,created_at,updated_at,metadata:{…}}；
+  // ② BE 现行扁平：覆写键直接平铺在对象上（title/overview/premiered(RFC3339)/…）。
+  // 扁平时 raw.metadata 缺失，对象本身即 metadata map；两形态键空间不相交，判别安全。
+  // 审计归属字段（updated_by 等）在扁平形态下 undefined ⇒ 来源面板降级展示（不崩）。
+  const metadata = raw.metadata ?? (raw as RawManageMediaItemMetadata);
   return {
-    updatedBy: raw.updated_by,
+    updatedBy: raw.updated_by ?? undefined,
     updatedByUsername: raw.updated_by_username ?? undefined,
     updatedByDisplayName: raw.updated_by_display_name ?? undefined,
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
-    metadata: mapMetadata(raw.metadata),
+    createdAt: raw.created_at ?? undefined,
+    updatedAt: raw.updated_at ?? undefined,
+    metadata: mapMetadata(metadata),
   };
 }
 

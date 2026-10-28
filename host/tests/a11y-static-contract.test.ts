@@ -59,24 +59,21 @@ const UNLABELED_INPUTS: Array<{ file: string; line: number; want: string }> = [
   // P1-7（UI 密度卡 ca325c8）在该文件 ManageSectionCard 加 collapsible 一行 ⇒ 行号整体 +1。
   {
     file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 214,
+    line: 213,
     want: '刮削源',
   },
   {
     file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 221,
+    line: 220,
     want: '搜索关键词',
   },
   {
     file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 264,
+    line: 263,
     want: '外部编号',
   },
-  {
-    file: 'host/src/pages/manage/media-item-detail/components/IdentityGovernancePanel.tsx',
-    line: 271,
-    want: '匹配原因',
-  },
+  // W-A-RESUME：匹配原因输入框已随幻觉字段 reason（后端无此字段，发送即被丢弃）
+  // 一并删除，名单条目随之移除。
 ];
 
 /** 取证留存：这些输入框虽无 aria-label，但由 `<label>` 包裹 ⇒ 已具备可访问名，非缺陷。 */

@@ -105,7 +105,11 @@ export function SensitiveActionDialog({
           <>
             <div className={styles.hintBox}>
               <strong className={styles.hintTitle}>当前策略：会话级二次确认</strong>
-              请输入操作标识 <code>{actionKey}</code>，后端会按当前管理会话再次校验，不再只认一个固定弹窗。
+              {/* ★FE-LIAR-TEXT：旧文案向用户承诺服务端会复核该输入 —— 实际
+                 session_confirmation 后端接受但不校验（有意设计，2026-09-19 裁定）。
+                 如实说：这是防误触确认，不是安全步进。 */}
+              这是提交前的防误触确认：请输入操作标识 <code>{actionKey}</code>，
+              以示你了解本次操作的影响。提交后服务端按既有权限直接执行，不会对本输入做额外校验。
             </div>
             <label className={styles.field}>
               <span className={styles.label}>操作标识</span>
@@ -128,7 +132,8 @@ export function SensitiveActionDialog({
           <>
             <div className={styles.hintBox}>
               <strong className={styles.hintTitle}>当前策略：密码确认</strong>
-              请输入当前登录账号密码，危险操作不会再只靠前端弹窗自己拍脑袋通过。
+              这是提交前的防误触确认：请输入当前登录账号密码以示确认；
+              服务端按既有权限直接执行，不会用本输入做身份再校验。
             </div>
             <label className={styles.field}>
               <span className={styles.label}>当前密码</span>

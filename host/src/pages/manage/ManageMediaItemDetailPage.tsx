@@ -222,14 +222,6 @@ export function ManageMediaItemDetailPage() {
         />
       ) : null}
 
-      {item.metadataErrorMessage ? (
-        <InlineBanner
-          description={item.metadataErrorMessage}
-          title="元数据存在异常"
-          variant="error"
-        />
-      ) : null}
-
       {/* P1-7（FE-UI-DENSITY-AUDIT）：8 节锚点导航（复用 chip 词汇）；
           低频三节（流水线/身份治理/危险操作）已默认折叠。 */}
       <nav className={sharedStyles.chipRow} aria-label="资源详情分节导航">

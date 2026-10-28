@@ -13,25 +13,24 @@ export type ManageMediaItemMediaType =
   | 'music-artist'
   | 'unknown';
 
-export type ManageMediaItemSourceStatus =
-  | 'pending-validation'
-  | 'playable'
-  | 'unreachable'
-  | 'unsupported'
-  | 'auth-expired'
-  | 'missing';
+// ★W-A-RESUME（2026-10-27）：状态词表对齐后端二元真值 —— 旧 V1 词表（playable/
+// pending-validation/…）后端已不再产出，落在旧 mapper 的 default 分支 ⇒ 列表
+// 每行都显示「状态缺失」。后端真源：
+//   source   ∈ {mounted, missing}      （catalog_repo read.rs:195 / pg:251）
+//   metadata ∈ {identified, missing}   （read.rs:202 / pg:253）
+//   mount    ∈ {configured, unavailable, maintenance, verified}（dto/manage.rs:188-202；
+//             未挂载/无读数 ⇒ wire null，convert.rs 诚实缺省为 missing）
+// 未知值一律落 default（fail-soft），不得伪造已知态。
+export type ManageMediaItemSourceStatus = 'mounted' | 'missing';
 
 export type ManageMediaItemMountStatus =
-  | 'active'
-  | 'unreachable'
-  | 'disabled'
+  | 'configured'
+  | 'unavailable'
+  | 'maintenance'
+  | 'verified'
   | 'missing';
 
-export type ManageMediaItemMetadataStatus =
-  | 'pending'
-  | 'success'
-  | 'failed'
-  | 'missing';
+export type ManageMediaItemMetadataStatus = 'identified' | 'missing';
 
 export type ManageMediaItemMetadataSourceType =
   | 'nfo'
@@ -49,11 +48,12 @@ export interface ManageMediaItemsQuery {
   libraryId?: string;
   mediaType?: ManageMediaItemMediaType;
   sourceStatus?: ManageMediaItemSourceStatus;
-  mountStatus?: ManageMediaItemMountStatus;
   metadataStatus?: ManageMediaItemMetadataStatus;
+  // W-A-RESUME/FE-1：已删死契约参 mountStatus/hasPoster/hasSubtitle ——
+  // 后端 MediaItemsQuery 无这三个筛选（含下划线名也不收，见 dto/manage.rs），
+  // 页面也从未提供；旧写法只是「类型里有、wire 上恒 undefined」的假能力。
+  // 待后端（w3 CRUD-MEDIA-ITEMS）真加筛选时按当期 wire 名补回。
   hasLocalOverride?: boolean;
-  hasPoster?: boolean;
-  hasSubtitle?: boolean;
   sortBy?: string;
   sortOrder?: ManageMediaItemSortOrder;
 }
@@ -61,8 +61,6 @@ export interface ManageMediaItemsQuery {
 export interface ManageMediaPerson {
   name: string;
   role?: string;
-  thumbUrl?: string;
-  profile?: string;
 }
 
 export interface ManageMediaExternalId {
@@ -128,12 +126,14 @@ export interface ManageMediaItemRemoteMetadataRecord {
   metadata: ManageMediaItemMetadataRecord;
 }
 
+// W-METAFAMILY：审计归属字段在 BE 扁平 wire 下 undefined ⇒ 来源面板降级展示；
+// V1 wrapper 归属若未来回归 BE，此类型无需再改。
 export interface ManageMediaItemLocalMetadataOverrideRecord {
-  updatedBy: string;
+  updatedBy?: string;
   updatedByUsername?: string;
   updatedByDisplayName?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   metadata: ManageMediaItemMetadataRecord;
 }
 
@@ -256,12 +256,9 @@ export interface ManageMediaItemSummaryRecord {
   seasonId?: string;
   seasonTitle?: string;
   posterUrl?: string;
-  backdropUrl?: string;
-  thumbUrl?: string;
   sourceStatus: ManageMediaItemSourceStatus;
   mountStatus: ManageMediaItemMountStatus;
   metadataStatus: ManageMediaItemMetadataStatus;
-  metadataErrorMessage?: string;
   hasLocalOverride: boolean;
   hasLocalMetadataOverride: boolean;
   hasLocalArtworkOverride: boolean;
@@ -358,11 +355,11 @@ export interface RequestManageMediaItemScrapeResult {
   fingerprint: string;
 }
 
+
+
 export interface UpdateManageMediaPersonInput {
   name: string;
   role?: string;
-  thumbUrl?: string;
-  profile?: string;
 }
 
 export interface UpdateManageMediaItemMetadataRequest {
@@ -418,7 +415,9 @@ export interface ManageMediaItemVisibilityResult {
 export interface ManualMatchMediaItemIdentityRequest {
   provider: string;
   providerItemId: string;
-  reason?: string;
+  // W-METAFAMILY：已删除幻觉字段 `reason?`——V1 `ManualMatchManagedMediaItemRequest`
+  // 与 BE `ManualMatchRequest`（application/media_identity.rs）均无此字段，
+  // 原先发送即被 serde 静默丢弃。
   /** 危险操作二次确认标记（映射后端 `confirm_action`）。 */
   confirmAction?: string;
 }

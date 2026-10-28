@@ -8,11 +8,11 @@ export interface RawListResponse<T> {
   total: number;
 }
 
+
+
 export interface RawManageMediaPerson {
   name: string;
   role?: string | null;
-  thumb_url?: string | null;
-  profile?: string | null;
 }
 
 export interface RawManageMediaExternalId {
@@ -73,13 +73,15 @@ export interface RawManageMediaItemRemoteMetadataRecord {
   metadata: RawManageMediaItemMetadata;
 }
 
+// W-METAFAMILY：BE 现行扁平形态不送审计归属字段（undefined）与 metadata 键
+//（整个对象即 metadata map），两者皆可缺；V1 wrapper 形态则全量送。
 export interface RawManageMediaItemLocalMetadataOverrideRecord {
-  updated_by: string;
+  updated_by?: string | null;
   updated_by_username?: string | null;
   updated_by_display_name?: string | null;
-  created_at: string;
-  updated_at: string;
-  metadata: RawManageMediaItemMetadata;
+  created_at?: string | null;
+  updated_at?: string | null;
+  metadata?: RawManageMediaItemMetadata;
 }
 
 export interface RawManageMediaItemMetadataStateRecord {
@@ -235,12 +237,9 @@ export interface RawManageMediaItemSummaryRecord {
   season_id?: string | null;
   season_title?: string | null;
   poster_url?: string | null;
-  backdrop_url?: string | null;
-  thumb_url?: string | null;
   source_status: string;
   mount_status: string;
   metadata_status: string;
-  metadata_error_message?: string | null;
   has_local_override: boolean;
   has_local_metadata_override: boolean;
   has_local_artwork_override: boolean;

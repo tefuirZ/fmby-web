@@ -39,20 +39,9 @@ export function mapMediaType(raw?: string | null): ManageMediaItemMediaType {
 
 export function mapSourceStatus(raw?: string | null): ManageMediaItemSourceStatus {
   switch ((raw ?? '').trim().toLowerCase()) {
-    case 'pendingvalidation':
-    case 'pending_validation':
-    case 'pending-validation':
-      return 'pending-validation';
-    case 'playable':
-      return 'playable';
-    case 'unreachable':
-      return 'unreachable';
-    case 'unsupported':
-      return 'unsupported';
-    case 'authexpired':
-    case 'auth_expired':
-    case 'auth-expired':
-      return 'auth-expired';
+    case 'mounted':
+      return 'mounted';
+    // 二元真值：未知/旧后端其它值一律 fail-soft 落 missing（不伪造已知态）
     default:
       return 'missing';
   }
@@ -60,12 +49,14 @@ export function mapSourceStatus(raw?: string | null): ManageMediaItemSourceStatu
 
 export function mapMountStatus(raw?: string | null): ManageMediaItemMountStatus {
   switch ((raw ?? '').trim().toLowerCase()) {
-    case 'active':
-      return 'active';
-    case 'unreachable':
-      return 'unreachable';
-    case 'disabled':
-      return 'disabled';
+    case 'configured':
+      return 'configured';
+    case 'unavailable':
+      return 'unavailable';
+    case 'maintenance':
+      return 'maintenance';
+    case 'verified':
+      return 'verified';
     default:
       return 'missing';
   }
@@ -73,13 +64,8 @@ export function mapMountStatus(raw?: string | null): ManageMediaItemMountStatus 
 
 export function mapMetadataStatus(raw?: string | null): ManageMediaItemMetadataStatus {
   switch ((raw ?? '').trim().toLowerCase()) {
-    case 'pending':
-      return 'pending';
-    case 'success':
-      return 'success';
-    case 'failed':
-    case 'failure':
-      return 'failed';
+    case 'identified':
+      return 'identified';
     default:
       return 'missing';
   }
@@ -121,22 +107,12 @@ export function mapMediaTypeToApi(value: ManageMediaItemMediaType) {
 }
 
 export function mapSourceStatusToApi(value: ManageMediaItemSourceStatus) {
-  switch (value) {
-    case 'pending-validation':
-      return 'pending_validation';
-    case 'auth-expired':
-      return 'auth_expired';
-    case 'missing':
-      return undefined;
-    default:
-      return value;
-  }
-}
-
-export function mapMountStatusToApi(value: ManageMediaItemMountStatus) {
-  return value === 'missing' ? undefined : value;
+  // 二元词表两个值都直发（missing 不再抑制：/api/search 白名单含 missing，
+  // query_mapping.rs:49-52；media-items 筛选参数后端在途）。
+  return value;
 }
 
 export function mapMetadataStatusToApi(value: ManageMediaItemMetadataStatus) {
-  return value === 'missing' ? 'missing' : value;
+  // /api/search 白名单含 identified/missing（query_mapping.rs:61-66）⇒ 直发。
+  return value;
 }

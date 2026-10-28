@@ -1,5 +1,7 @@
 import { Link } from 'react-router';
 import type { ManageMediaItemDetailRecord } from '@fmby/v2-shared/contracts/manage/media-items';
+import { buildItemArtworkUrl } from '@fmby/v2-shared/contracts/assets';
+import { usePosterUrl } from '@fmby/v2-shared/hooks/usePosterUrl';
 import { StatusBadge } from '@fmby/v2-shared/ui';
 import { formatDateTime, formatRelativeTime } from '@fmby/v2-shared/time';
 import sharedStyles from '../../ManagePages.module.css';
@@ -33,6 +35,23 @@ interface MediaItemOverviewSectionProps {
  */
 export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionProps) {
   const { item, effectiveMetadata } = detail;
+
+  // ★FE-posterUrl（裁定①）：概览海报改走 /api/assets 投机链（复用 browse
+  // 海报位同款 usePosterUrl 机制，零后端改动）—— 旧实现读 item.posterUrl
+  // （BE convert 恒 None ⇒ 恒「暂无海报」占位）。
+  // ponytail: 只投 poster/thumb 两档 —— 若经 mapArtwork{itemId} 四 URL 全兜底，
+  // 无图条目每个海报位会产生最多 3 个必 404 请求（请求放大；终止性没问题，
+  // artwork-stage-termination.test.ts 穷举 16 组合已锁「不成环」）。
+  // 二档把无图情形的请求数从 3 降到 1；要 backdrop 档 = 后端交付链卡的事。
+  const { url: derivedPosterUrl, onError: onPosterUrlError, markLoaded: markPosterLoaded } =
+    usePosterUrl(
+      {
+        posterUrl: buildItemArtworkUrl(item.id, 'poster'),
+        thumbUrl: buildItemArtworkUrl(item.id, 'thumb'),
+      },
+      // FE-WATCHDOG（裁定一）：资产请求挂起时 8s 强制降级，海报位必收敛。
+      { watchdogMs: 8_000 },
+    );
 
   const ownership = [item.libraryName, item.seriesTitle, item.seasonTitle]
     .filter((entry): entry is string => Boolean(entry && entry.trim() !== ''))
@@ -99,30 +118,10 @@ export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionPro
           <ArtImage
             alt={`${item.title} 海报`}
             placeholder="暂无海报"
-            src={item.posterUrl}
+            src={derivedPosterUrl ?? item.posterUrl}
+            onSrcError={onPosterUrlError}
+            onSrcLoad={markPosterLoaded}
           />
-          <div className={styles.artSecondaryRow}>
-            <div className={styles.artSecondary}>
-              <ArtImage
-                alt={`${item.title} 背景图`}
-                compact
-                placeholder="暂无背景图"
-                src={item.backdropUrl}
-                wide
-              />
-              <span className={styles.artCaption}>背景图</span>
-            </div>
-            <div className={styles.artSecondary}>
-              <ArtImage
-                alt={`${item.title} 缩略图`}
-                compact
-                placeholder="暂无缩略图"
-                src={item.thumbUrl}
-                wide
-              />
-              <span className={styles.artCaption}>缩略图</span>
-            </div>
-          </div>
         </div>
 
         <div className={styles.identityBody}>
