@@ -141,6 +141,44 @@ async function getHarness(t: any): Promise<Harness> {
       const fresh = r.cloneNode(false);
       r.replaceWith(fresh);
     });
+    // FE-WATCHDOG 观察缝：img src 迁移轨迹（MutationObserver，微任务级）。
+    // about:blank 探针里相对 URL 不可解析 ⇒ thumb 档的 error 与 src 提交几乎
+    // 同时到达，该瞬态可能**短于一帧** —— rAF 轮询的 waitForFunction 会整段
+    // 漏采（farm 三红根因）。断言「链是否逐档经过 thumb」必须看 DOM 迁移轨迹，
+    // 不能看渲染帧。
+    await page.evaluate(() => {
+      const w = window as unknown as { __artTrail: { kind: string; from: string | null; to: string | null }[] };
+      w.__artTrail = [];
+      const imgSrcOf = (n: Node): string | null => {
+        if (!(n instanceof Element)) return null;
+        if (n.tagName === 'IMG') return n.getAttribute('src');
+        const img = n.querySelector('img');
+        return img ? img.getAttribute('src') : null;
+      };
+      new MutationObserver((muts) => {
+        for (const m of muts) {
+          if (m.type === 'attributes' && (m.target as Element).tagName === 'IMG') {
+            w.__artTrail.push({ kind: 'src', from: m.oldValue, to: (m.target as Element).getAttribute('src') });
+          }
+          if (m.type === 'childList') {
+            for (const n of m.addedNodes) {
+              const s = imgSrcOf(n);
+              if (s) w.__artTrail.push({ kind: 'add', from: null, to: s });
+            }
+            for (const n of m.removedNodes) {
+              const s = imgSrcOf(n);
+              if (s) w.__artTrail.push({ kind: 'remove', from: null, to: s });
+            }
+          }
+        }
+      }).observe(document.getElementById('root')!, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['src'],
+        attributeOldValue: true,
+      });
+    });
     await page.addScriptTag({ path: built.bundle });
   };
   await remount();
@@ -178,11 +216,27 @@ test('GREEN：挂起的海报由看门狗收敛到文字占位（≤25s，有限
 test('GREEN 附：看门狗到点先降级到 thumb 档（链是逐档走的，不是跳变）', async (t) => {
   const h = await getHarness(t);
   await h.remount();
-  const img = h.page.locator(POSTER_SEL);
-  await img.waitFor({ state: 'attached', timeout: 15000 });
+  // 终态断言（与上一测同款，帧无关、慢机安全）：二档链走完 ⇒ 海报 img 退场。
   await h.page.waitForFunction(
-    () => (document.querySelector('img[alt="The Matrix 海报"]')?.getAttribute('src') ?? '').includes('/thumb'),
+    () => !document.querySelector('img[alt="The Matrix 海报"]'),
     undefined,
-    { timeout: 15000 },
+    { timeout: 25000 },
+  );
+  // 轨迹断言（MutationObserver，微任务级）：img 的 src 必须真正「经过」thumb 档，
+  // 不许 poster 直跳 done。thumb 瞬态可能短于一帧（见 remount 处观察缝注释），
+  // 旧实现用 rAF waitForFunction 等 src 含 /thumb —— 竞态红（本机与 farm 均复现），
+  // 改以 DOM 迁移轨迹为准。
+  const trail = await h.page.evaluate(
+    () => (window as unknown as { __artTrail: { kind: string; from: string | null; to: string | null }[] }).__artTrail,
+  );
+  const posterAdds = trail.filter((e) => e.kind === 'add' && String(e.to).includes('/images/poster'));
+  const thumbFlips = trail.filter((e) => e.kind === 'src' && String(e.to).includes('/thumb'));
+  assert.ok(
+    posterAdds.length > 0,
+    `轨迹应有 poster 档 img 挂载（trail=${JSON.stringify(trail)}）`,
+  );
+  assert.ok(
+    thumbFlips.length > 0,
+    `img src 必须经过 thumb 档再退场（不许跳变）（trail=${JSON.stringify(trail)}）`,
   );
 });
