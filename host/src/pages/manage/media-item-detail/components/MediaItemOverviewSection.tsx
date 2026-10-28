@@ -43,10 +43,15 @@ export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionPro
   // 无图条目每个海报位会产生最多 3 个必 404 请求（请求放大；终止性没问题，
   // artwork-stage-termination.test.ts 穷举 16 组合已锁「不成环」）。
   // 二档把无图情形的请求数从 3 降到 1；要 backdrop 档 = 后端交付链卡的事。
-  const { url: derivedPosterUrl, onError: onPosterUrlError } = usePosterUrl({
-    posterUrl: buildItemArtworkUrl(item.id, 'poster'),
-    thumbUrl: buildItemArtworkUrl(item.id, 'thumb'),
-  });
+  const { url: derivedPosterUrl, onError: onPosterUrlError, markLoaded: markPosterLoaded } =
+    usePosterUrl(
+      {
+        posterUrl: buildItemArtworkUrl(item.id, 'poster'),
+        thumbUrl: buildItemArtworkUrl(item.id, 'thumb'),
+      },
+      // FE-WATCHDOG（裁定一）：资产请求挂起时 8s 强制降级，海报位必收敛。
+      { watchdogMs: 8_000 },
+    );
 
   const ownership = [item.libraryName, item.seriesTitle, item.seasonTitle]
     .filter((entry): entry is string => Boolean(entry && entry.trim() !== ''))
@@ -115,6 +120,7 @@ export function MediaItemOverviewSection({ detail }: MediaItemOverviewSectionPro
             placeholder="暂无海报"
             src={derivedPosterUrl ?? item.posterUrl}
             onSrcError={onPosterUrlError}
+            onSrcLoad={markPosterLoaded}
           />
         </div>
 

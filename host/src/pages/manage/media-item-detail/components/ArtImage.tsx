@@ -12,6 +12,8 @@ interface ArtImageProps {
   compact?: boolean;
   /** 加载失败回调（供调用方做 URL 降级，如 usePosterUrl 三档回落）；可选。 */
   onSrcError?: () => void;
+  /** 加载成功回调（供调用方解除该档看门狗）；可选。 */
+  onSrcLoad?: () => void;
 }
 
 /**
@@ -28,6 +30,7 @@ export function ArtImage({
   wide = false,
   compact = false,
   onSrcError,
+  onSrcLoad,
 }: ArtImageProps) {
   const [failed, setFailed] = useState(false);
 
@@ -58,6 +61,7 @@ export function ArtImage({
         className={compact ? styles.assetPreviewImage : styles.artImage}
         loading="lazy"
         src={src}
+        onLoad={() => onSrcLoad?.()}
         onError={() => {
           setFailed(true);
           onSrcError?.();

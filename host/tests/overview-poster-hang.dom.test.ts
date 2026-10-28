@@ -1,9 +1,11 @@
-// FE-WATCHDOG RED：概览海报在 img 请求**挂起**时永不降级（当前实现无看门狗）。
+// FE-WATCHDOG GREEN：概览海报在 img 请求**挂起**时由看门狗强制降级收敛。
 //
-// 手法（可靠驱动）：blank 页上相对 URL 的 img 请求**挂起**（既不成功也不失败，
-// 实测多轮）⇒ onError 永不触发 ⇒ 降级器永不前进 ⇒ 占位永不出现。
-// 本测试在**未加看门狗**的实现上应 RED（12s 内占位不出现且 src 不变）；
-// 加看门狗（默认 8s）后同用例 GREEN（~8s 降级到占位）。
+// RED 原文（修复前，commit b0a06db 的同文件）：「img 挂起（src 恒 poster）」
+// + 「12s 内占位不出现、img 不降级」双 PASS ⇒ 缺陷在案。
+// 修复：usePosterUrl/useBackdropUrl 增每档看门狗（默认 8s，可配 watchdogMs）；
+// 到点走与 error 相同的下一档路径；成功/降级/换图/卸载即清。
+//
+// 时序：二档链（poster→thumb→done）× 看门狗 8s ⇒ 占位应在 ~16s 前出现。
 //
 // 跑法：node --import ./tests/register-aliases.mjs --test tests/overview-poster-hang.dom.test.ts
 
@@ -72,7 +74,7 @@ createRoot(document.getElementById('root')).render(
 
 async function buildProbe(): Promise<{ bundle: string; css: string; work: string } | null> {
   if (!existsSync(join(NM, 'react'))) return null;
-  const work = await mkdtemp(join(tmpdir(), 'fewd-'));
+  const work = await mkdtemp(join(tmpdir(), 'fewdg-'));
   const entryFile = join(work, '__probeHang-entry.tsx');
   const outDir = join(work, 'dist');
   await writeFile(entryFile, probeEntry(), 'utf8');
@@ -127,9 +129,24 @@ async function getHarness(t: any): Promise<Harness> {
     body{margin:0;background:#0b0c0f}
   </style></head><body><div id="root"></div></body></html>`);
   if (built.css) await page.addStyleTag({ path: built.css });
-  await page.addScriptTag({ path: built.bundle });
+  const remount = async () => {
+    await page.setContent(`<!doctype html><html><head><style>
+      *{box-sizing:border-box}
+      body{margin:0;background:#0b0c0f}
+    </style></head><body><div id="root"></div></body></html>`);
+    if (built.css) await page.addStyleTag({ path: built.css });
+    // 换新容器：同容器二次 createRoot 会留下旧树。
+    await page.evaluate(() => {
+      const r = document.getElementById('root')!;
+      const fresh = r.cloneNode(false);
+      r.replaceWith(fresh);
+    });
+    await page.addScriptTag({ path: built.bundle });
+  };
+  await remount();
   harness = {
     page,
+    remount,
     close: async () => {
       await browser.close();
       await rm(built.work, { recursive: true, force: true });
@@ -144,28 +161,28 @@ after(async () => {
 
 const POSTER_SEL = 'img[alt="The Matrix 海报"]';
 
-test('RED 前置实证：img 挂起（src 恒 poster、不 error、不降级）', async (t) => {
+test('GREEN：挂起的海报由看门狗收敛到文字占位（≤25s，有限步）', async (t) => {
   const h = await getHarness(t);
   const img = h.page.locator(POSTER_SEL);
   await img.waitFor({ state: 'attached', timeout: 15000 });
-  // 挂 3 秒：src 仍是 poster URL（请求挂起的形态）。
-  await h.page.waitForTimeout(3000);
-  assert.equal(
-    await img.getAttribute('src'),
-    '/api/assets/items/501/images/poster',
-    '挂起形态：src 停在第一档',
-  );
-});
-
-test('RED：12s 内占位不出现、img 不降级（无看门狗的现状）', async (t) => {
-  const h = await getHarness(t);
-  await h.page.waitForTimeout(12000);
-  const imgStill = await h.page.locator(POSTER_SEL).count();
-  assert.equal(
-    imgStill > 0,
-    true,
-    '无看门狗现状：img 恒在（挂起永不降级）⇒ 修复后本断言应红（img 消失=已降级）',
+  // 看门狗 8s/档 × 二档（poster→thumb→done） ⇒ ~16s 内应落到「暂无海报」占位。
+  await h.page.waitForFunction(
+    () => !document.querySelector('img[alt="The Matrix 海报"]'),
+    undefined,
+    { timeout: 25000 },
   );
   const placeholders = await h.page.locator('text=暂无海报').count();
-  assert.equal(placeholders, 0, '无看门狗现状：12s 内不应出现占位（出现=看门狗已生效）');
+  assert.ok(placeholders > 0, '降级尽头应渲染「暂无海报」占位（界面收敛）');
+});
+
+test('GREEN 附：看门狗到点先降级到 thumb 档（链是逐档走的，不是跳变）', async (t) => {
+  const h = await getHarness(t);
+  await h.remount();
+  const img = h.page.locator(POSTER_SEL);
+  await img.waitFor({ state: 'attached', timeout: 15000 });
+  await h.page.waitForFunction(
+    () => (document.querySelector('img[alt="The Matrix 海报"]')?.getAttribute('src') ?? '').includes('/thumb'),
+    undefined,
+    { timeout: 15000 },
+  );
 });
