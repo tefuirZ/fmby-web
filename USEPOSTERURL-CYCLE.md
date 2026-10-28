@@ -102,3 +102,49 @@
 
 缓冲因素：HTTP/2 复用、404 body 极小、同 URL 进浏览器缓存（同页去重）。
 **结论：量级 ≈ 几十到一两百/页 —— 按 card 第 2 条判据写「观察，不改」**；触发再评估的信号：首屏 404 风暴拖慢 LCP、或后端 404 日志噪音成为运维负担（届时 browse 侧改二档，同 FE-posterUrl 做法）。
+
+## 8. web-verify 返工记录（2026-10-28，三连红归因与处置）
+
+PR #158 三轮 verify（`c187800` / `a473711` / `bc94bd9`）均红，**不是同一个病**：
+
+| 轮 | commit | host 套件 | 死因 |
+|---|---|---|---|
+| 1 | `c187800` | 895/895 绿 | `repo-size`：二进制 1.30 MiB > 1 MiB 预算 |
+| 2 | `a473711` | 897/897 绿 | `repo-size`（同上） |
+| 3 | `bc94bd9` | 898/899 | 本卡新增 DOM 测试「GREEN 附：…先降级到 thumb 档」超时 |
+
+### 8.1 测试竞态根因（MutationObserver 取证）
+
+「GREEN 附」用 rAF 轮询的 `page.waitForFunction` 等「img src 含 /thumb」。
+about:blank 探针里 `/api/...` 相对 URL **不可解析 ⇒ error 事件与 src 提交几乎同时**，
+**thumb 瞬态存活短于一帧**。MutationObserver 实录（本机复现，同 farm 死法）：
+
+```
+attr src=/api/assets/items/501/images/thumb alt=The Matrix 海报   ← thumb 档确实经过
+removed img src=/api/assets/items/501/images/thumb                ← 同刻即退场
+```
+
+看门狗行为正确（`primary →8s→ thumb →error→ done`，WDLOG 打点同证）；
+**错的是测试观察手段**：rAF 只能在「帧」上看到 DOM —— 瞬态短于帧窗口 ⇒ 必然漏采。
+本机两红一绿、farm 红，全部吻合「帧窗口竞态」。**实现零改动，只换观察缝**：
+remount 时装 MutationObserver 记 img src 迁移轨迹（`window.__artTrail`，微任务级），
+test 2 改为「等到终态（同 test 1 稳健形态）⇒ 断言轨迹含 `src→/thumb` 属性迁移」。
+
+**突变体检**：临时把 `getNextPosterStage('primary')` 改直跳 `done` —— test 2 当场红
+（「img src 必须经过 thumb 档再退场（不许跳变）」），还原后 2/2 绿 × 2 轮。测试有牙。
+
+### 8.2 repo-size 治理（main 存量，按先例在本分支修）
+
+61 个 docs/evidence 跟踪文件全系 main 存量（本分支零新增二进制）；farm 无
+`REPO_SIZE_MAX_TOTAL` 覆盖 ⇒ 只能按 `docs/evidence-policy.md` 外置/抽样回收预算。
+外置两张最大样本（git 历史可取回，README 索引已同步/补建）：
+
+- `fe-opt-02/samples/tablet-768/home.png`（296.2 KiB；tablet-768 仍留 manage 代表）
+- `fe-ui-accept-node62/samples/desktop/naming-header.png`（210.1 KiB；索引为本次补建）
+
+回收后 1.30 MiB → **0.81 MiB ≤ 1.00 MiB，`pnpm repo-size` PASS**。
+
+### 8.3 identity 门
+
+PR 正文/评论原缺内容签名标记 ⇒ `check-agent-identity` 置红。已在 PR 评论补标准签名
+（`rv3-frontend · glm · magpie/auto/glm-5.3-flash`，家族↔模型一致性机械通过）。
