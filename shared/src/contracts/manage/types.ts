@@ -4,8 +4,7 @@ export type ManageUserAccountKind = "human" | "service";
 export type ManageUserRole =
   | "user"
   | "restricted_user"
-  | "admin"
-  | "super_admin";
+  | "admin";
 export type RegistrationCodeStatus =
   | "active"
   | "paused"

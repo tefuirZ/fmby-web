@@ -281,9 +281,10 @@ export function mapManageActionResult(
 
 export function mapRoleLabelToApi(raw: string) {
   const normalized = raw.trim().toLowerCase();
-  if (normalized.includes("super") || normalized.includes("超级")) {
-    return "super_admin";
-  }
+  // #2127：super 分支已删 —— "super_admin" 角色名永不产出。历史 label
+  // 「超级管理员 / superadmin」落到下方 admin 臂，这不是静默形似匹配，而是
+  // V1→V2 迁移语义的延续（20260601090000_single_admin_role.sql 把 SuperAdmin
+  // 并入 Admin；后端正典最高角色就是 admin）。
   if (normalized.includes("admin") || normalized.includes("管理")) {
     return "admin";
   }

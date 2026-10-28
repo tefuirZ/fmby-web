@@ -48,8 +48,6 @@ export function mapEntityStatus(
 
 export function mapRole(raw: string): ManageUserRole {
   switch (raw) {
-    case "super_admin":
-      return "super_admin";
     case "admin":
       return "admin";
     case "restricted_user":
