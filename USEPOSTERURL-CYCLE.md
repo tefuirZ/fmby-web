@@ -72,3 +72,33 @@
 - **加了什么**：4 个 `export` + 1 个穷举测试文件（57 行）+ 1 条注释改口。**没改**任何状态机逻辑。
 - **跳过**：watchdog（§4.1，需你裁）；mapArtwork 请求放大的 browse 侧收窄（§4.2，同）。
 - **跳过**：DOM ② 的「恰一档」断言（blank 页时序下不稳定，③ 的终止断言已覆盖该语义）。
+
+
+---
+
+## 6. 裁决一执行：每档加载看门狗（commit `d042a3a`）
+
+**改动（hook 内，18 家既有调用方零变化）**：
+- `usePosterUrl(artwork, options?: { watchdogMs? })` / `useBackdropUrl` 同款：
+  该档 URL 超时未确认（成功）⇒ 强制走与 error **完全相同**的 next 路径；
+  默认 **0 = 关闭**（既有行为零变化），概览海报 opt-in 8s。
+- 解除时机（防新泄漏）：**成功**（新 `markLoaded`，经 ArtImage 新 `onSrcLoad`
+  回调）/ **降级前进**（stage 变化即重置）/ **换图**（artworkKey effect）/ **卸载**。
+- `ArtImage` 增可选 `onSrcLoad`（img onLoad，2 行）。
+
+**RED→GREEN 原文**（DOM，blank 页挂起形态）：
+- RED（`b0a06db` 的 `overview-poster-hang.dom.test.ts`，修复前）：「img 挂起（src 恒 poster）」+「12s 内占位不出现、img 不降级」**2/2 PASS = 缺陷在案**。
+- GREEN（修后同文件改写）：「挂起的海报由看门狗收敛到文字占位（≤25s）」PASS（实测 15.4s ≈ 8s×2 档）+「看门狗到点先降级到 thumb 档」（8.2s，逐档非跳变）**2/2 PASS**。
+- 回归锁：`overview-poster.dom.test.ts`（error 路径立即降级、渲染 URL）**4/4 PASS**（看门狗在场不改变 error 时序 —— stage 变化即清看门狗）。
+
+## 7. 裁决二执行：请求放大 量级估算（纯推演，未真跑）
+
+| 场景 | 估算 |
+|---|---|
+| 列表页 20 条 × 全无图 | ~60 个投机 404（poster+thumb+backdrop × mapArtwork{itemId}） |
+| 列表页 50 条 × 全无图 | ~150 个投机 404 |
+| 无图率 30% 的 50 条页 | ~45 个 |
+| 首页聚合 3-4 个海报位组件 | 上限 ~200-400/页 |
+
+缓冲因素：HTTP/2 复用、404 body 极小、同 URL 进浏览器缓存（同页去重）。
+**结论：量级 ≈ 几十到一两百/页 —— 按 card 第 2 条判据写「观察，不改」**；触发再评估的信号：首屏 404 风暴拖慢 LCP、或后端 404 日志噪音成为运维负担（届时 browse 侧改二档，同 FE-posterUrl 做法）。
