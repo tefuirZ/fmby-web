@@ -20,11 +20,6 @@ export const ROLE_OPTIONS: Array<{
     label: '管理员',
     description: '适合可信运营人员，具备完整管理能力。',
   },
-  {
-    value: 'super_admin',
-    label: '超级管理员',
-    description: '只给站点最高权限账号，别乱发。',
-  },
 ];
 
 export const BATCH_MODE_LABELS: Record<RegistrationCodeBatchMode, string> = {

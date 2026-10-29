@@ -4,8 +4,8 @@ import type { Capability } from './capability';
  * 用户类型定义
  */
 
-/** 用户角色 */
-export type UserRole = 'SuperAdmin' | 'Admin' | 'User' | 'RestrictedUser';
+/** 用户角色（V1 形态；#2127：'SuperAdmin' 已删 —— 后端迁移 20260601090000 已把它并入 Admin，V2 永不下发） */
+export type UserRole = 'Admin' | 'User' | 'RestrictedUser';
 
 /** 用户能力标识（与后端 `Capability` 枚举逐值对齐；真源见 ./capability） */
 export type { Capability } from './capability';

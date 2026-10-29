@@ -31,9 +31,11 @@ test('枚举角色全等命中：ManageAccess 具备 manage:access', () => {
   assert.equal(hasCapabilityIn(u, 'manage:access'), true);
 });
 
-test('枚举角色全等命中：SuperAdmin 同样具备', () => {
+test('★#2127 负例：V1 残留 SuperAdmin 不再视为管理员（fail-closed）', () => {
+  // V1 角色名已被后端迁移 20260601090000_single_admin_role.sql 删除，V2 永不下发；
+  // 前端若再见到该串只能来自异常来源 ⇒ 一律按非管理员处理（能力侧才是真执法）。
   const u = user(['SuperAdmin'], []);
-  assert.equal(hasCapabilityIn(u, 'manage:access'), true);
+  assert.equal(hasCapabilityIn(u, 'manage:access'), false);
 });
 
 test('角色大小写变体仍算全等（admin ≡ Admin，V2 规范名全小写但历史数据有 Admin）', () => {
@@ -80,17 +82,20 @@ test('能力面同样不做子串匹配：ManageAccessXxx 不得放行 manage:ac
   assert.equal(hasCapabilityIn(user([], ['ManageAccessXxx']), 'manage:access'), false);
 });
 
-// ── 自审补充：枚举必须覆盖本仓**真实**角色字面量 ──────────────────────────────
-// 值来自 shared/src/contracts/manage/types.ts:4-8 的 `ManageUserRole`
-// （"user" | "restricted_user" | "admin" | "super_admin"），不凭记忆。
-// 上一版漏了 `super_admin`（规范名下划连写）⇒ 超级管理员被误判为非管理员（fail-closed 过头）。
-test('★枚举覆盖规范角色字面量：super_admin 是管理员', () => {
-  assert.equal(hasCapabilityIn(user(['super_admin'], []), 'manage:access'), true);
+// ── #2127 反转：super_admin 全变体一律**不**是管理员 ──────────────────────────────
+// 后端正典仅 admin / user / restricted_user（policies.rs BUILTIN_ROLES；171 个迁移
+// 0 条 super 种子）；V1 SuperAdmin 已被 20260601090000 迁移删除。前端 #2127 已把
+// super_admin 从 ManageUserRole / 下拉 / labels / mapping 全链删除 —— 这些串从此只
+// 可能来自异常来源 ⇒ fail-closed（不命中管理员）。
+// （历史注：本文件上一版曾断言「super_admin 是管理员」——那是枚举残留时代的正例；
+//   #2127 删枚举，正例同步反转为负例 —— 删枚举不删测试正例 = 假绿陷阱。）
+test('★#2127 负例：super_admin 不是管理员（枚举与下拉已删，异常来源 fail-closed）', () => {
+  assert.equal(hasCapabilityIn(user(['super_admin'], []), 'manage:access'), false);
 });
 
-test('★枚举覆盖大小写变体：SuperAdmin / Super_Admin 是管理员', () => {
+test('★#2127 负例：SuperAdmin / Super_Admin / SUPER_ADMIN 变体一律不命中', () => {
   for (const role of ['SuperAdmin', 'Super_Admin', 'SUPER_ADMIN']) {
-    assert.equal(hasCapabilityIn(user([role], []), 'manage:access'), true, role);
+    assert.equal(hasCapabilityIn(user([role], []), 'manage:access'), false, role);
   }
 });
 

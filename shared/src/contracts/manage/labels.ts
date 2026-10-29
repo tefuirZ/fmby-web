@@ -35,8 +35,6 @@ export const QUICK_LINKS = [
 
 export function mapRoleToLabel(raw: string) {
   switch (raw) {
-    case "super_admin":
-      return "超级管理员";
     case "admin":
       return "管理员";
     case "restricted_user":
