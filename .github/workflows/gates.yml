@@ -35,3 +35,16 @@ jobs:
         with: { node-version: 24 }
       # catalog 已 vendor 进仓（CI token 无 fmby-v2 权限；更新由主仓变更时同步）
       - run: node scripts/generate-error-contract.mjs --catalog vendor/error-catalog.md --check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # #154 P2-3：补上 host/shared 的 node:test 门 —— 此前后端无 pnpm test，
+      #   #152 的 3 条 host 契约红在内测前「无人看管」地堆积（CI 里永不显现）。
+      - run: pnpm test
