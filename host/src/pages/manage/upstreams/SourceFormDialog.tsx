@@ -64,7 +64,7 @@ export function SourceFormDialog({
             className={styles.input}
             value={formState.name}
             onChange={(e) => patch({ name: e.target.value })}
-            placeholder="例如：家庭 Emby"
+            placeholder="例如：示例采集站"
           />
         </label>
         <label className={styles.label}>

@@ -6,7 +6,7 @@ import type {
 } from '@fmby/v2-shared/contracts/manage/upstreams';
 
 export const SOURCE_TYPE_OPTIONS = [
-  { value: 'Emby', label: 'Emby' },
+  // sec/remove-emby-upstream：'Emby' 类型已删（后端 0158 收紧 CHECK，创建面 400）。
   { value: 'AppleCms', label: 'Apple CMS' },
   { value: 'WebDav', label: 'WebDAV' },
 ];
@@ -54,9 +54,9 @@ export interface SourceFormState {
 export function createInitialFormState(): SourceFormState {
   return {
     name: '',
-    sourceType: 'Emby',
+    sourceType: 'AppleCms',
     baseUrl: '',
-    authMethod: 'UsernamePassword',
+    authMethod: 'None',
     username: '',
     password: '',
     apiKey: '',
