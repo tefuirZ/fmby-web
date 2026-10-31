@@ -63,20 +63,6 @@ export interface UpstreamHealthCheck {
   serverVersion: string | null;
   serverId: string | null;
 }
-
-/** Emby 局域网发现条目（真实发现，UDP，无需凭据）。 */
-export interface UpstreamLanDiscoveryItem {
-  name: string;
-  serverId: string | null;
-  baseUrl: string;
-  endpointAddress: string | null;
-}
-
-/** 局域网发现列表响应。 */
-export interface UpstreamLanDiscoveryResult {
-  items: UpstreamLanDiscoveryItem[];
-  total: number;
-}
 /** 上游分类 / 媒体库条目（V1F-02 S2，wire snake_case → camelCase）。 */
 export interface UpstreamCategoryRecord {
   id: string;
@@ -84,7 +70,7 @@ export interface UpstreamCategoryRecord {
   upstreamCategoryId: string;
   parentUpstreamCategoryId: string | null;
   name: string;
-  /** `category`（AppleCMS 分类） / `library`（Emby 库）。 */
+  /** `category`（AppleCMS 分类）/ `library`（历史值，0158 后不再产生）。 */
   kind: string;
   /** 已绑定本地库 id（未绑定为 null）。 */
   libraryId: string | null;
@@ -247,22 +233,6 @@ export interface UpstreamAppleCmsSyncResponse {
   discoveredCategoryCount: number;
   boundCategoryCount: number;
   skippedUnboundCategoryCount: number;
-  importedItemCount: number;
-  importedVariantCount: number;
-  syncedAt: number;
-}
-
-/** Emby 采集 / 导入预览请求。 */
-export interface UpstreamEmbySyncRequest {
-  categoryId?: string;
-  pageSize?: number;
-}
-
-/** Emby 采集 / 导入预览响应。 */
-export interface UpstreamEmbySyncResponse {
-  sourceId: string;
-  pageSize: number;
-  categoryCount: number;
   importedItemCount: number;
   importedVariantCount: number;
   syncedAt: number;

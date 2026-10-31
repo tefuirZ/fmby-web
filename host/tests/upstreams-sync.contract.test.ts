@@ -1,3 +1,5 @@
+// sec/remove-emby-upstream：原 ⑤-⑨ emby 采集/导入五个用例随能力整除（api.ts 方法已删）。
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { upstreamsApi } from '@fmby/v2-shared/contracts/manage/upstreams';
@@ -41,7 +43,7 @@ function setResponse(json: unknown, status = 200) {
 const JOB = {
   id: '600',
   source_id: '1',
-  job_kind: 'EmbyImport',
+  job_kind: 'BindingAutoSync',
   status: 'Pending',
   category_ids: ['7'],
   page_size: 100,
@@ -63,7 +65,7 @@ test('① listSyncJobs → GET /api/manage/upstreams/{id}/sync-jobs', async () =
   const r = await upstreamsApi.listSyncJobs('1');
   assert.equal(captured.method, 'GET');
   assert.equal(captured.url, '/api/manage/upstreams/1/sync-jobs');
-  assert.equal(r.items[0].jobKind, 'EmbyImport');
+  assert.equal(r.items[0].jobKind, 'BindingAutoSync');
   assert.equal(r.items[0].sourceId, '1');
   assert.equal(r.total, 1);
 });
@@ -121,86 +123,24 @@ test('④ appleCmsSync → POST .../apple-cms/sync（全量）', async () => {
   assert.equal(r.skippedUnboundCategoryCount, 1);
 });
 
-test('⑤ embySync → POST .../emby/sync', async () => {
-  installFetchStub();
-  setResponse({
-    source_id: '1',
-    page_size: 100,
-    category_count: 1,
-    imported_item_count: 4,
-    imported_variant_count: 7,
-    synced_at: 1000,
-  });
-  const r = await upstreamsApi.embySync('1', { categoryId: '9' });
-  assert.equal(captured.method, 'POST');
-  assert.equal(captured.url, '/api/manage/upstreams/1/emby/sync');
-  assert.deepEqual(captured.body, { categoryId: '9' });
-  assert.equal(r.importedVariantCount, 7);
-});
-
-test('⑥ embyImportPreview → POST .../emby/import/preview（dry-run）', async () => {
-  installFetchStub();
-  setResponse({
-    source_id: '1',
-    page_size: 100,
-    category_count: 1,
-    imported_item_count: 4,
-    imported_variant_count: 7,
-    synced_at: 1000,
-  });
-  const r = await upstreamsApi.embyImportPreview('1', {});
-  assert.equal(captured.method, 'POST');
-  assert.equal(captured.url, '/api/manage/upstreams/1/emby/import/preview');
-  assert.deepEqual(captured.body, {});
-  assert.equal(r.importedItemCount, 4);
-});
-
-test('⑦ embyImportEnqueue → POST .../emby/import（返回作业）', async () => {
-  installFetchStub();
-  setResponse(JOB);
-  const r = await upstreamsApi.embyImportEnqueue('1', {});
-  assert.equal(captured.method, 'POST');
-  assert.equal(captured.url, '/api/manage/upstreams/1/emby/import');
-  assert.equal(r.jobKind, 'EmbyImport');
-  assert.equal(r.id, '600');
-});
-
-test('⑧ listEmbyImportJobs → GET .../emby/import/jobs', async () => {
-  installFetchStub();
-  setResponse({ items: [JOB], total: 1 });
-  const r = await upstreamsApi.listEmbyImportJobs('1');
-  assert.equal(captured.method, 'GET');
-  assert.equal(captured.url, '/api/manage/upstreams/1/emby/import/jobs');
-  assert.equal(r.items[0].id, '600');
-});
-
-test('⑨ getEmbyImportJob → GET .../emby/import/jobs/{job_id}', async () => {
-  installFetchStub();
-  setResponse(JOB);
-  const r = await upstreamsApi.getEmbyImportJob('1', '600');
-  assert.equal(captured.method, 'GET');
-  assert.equal(captured.url, '/api/manage/upstreams/1/emby/import/jobs/600');
-  assert.equal(r.status, 'Pending');
-});
-
-test('⑩ fail-closed：端口未装配 500 必须 reject（不吞成空）', async () => {
+test('⑤ fail-closed：端口未装配 500 必须 reject（不吞成空）', async () => {
   installFetchStub();
   setResponse({ error_code: 'INTERNAL', message: 'upstream_sync 端口未装配' }, 500);
   await assert.rejects(() => upstreamsApi.listSyncJobs('1'));
 });
-test('⑪ getSyncJob → GET /api/manage/upstreams/{id}/sync-jobs/{job_id}（ID 均 URL 编码）', async () => {
+test('⑥ getSyncJob → GET /api/manage/upstreams/{id}/sync-jobs/{job_id}（ID 均 URL 编码）', async () => {
   installFetchStub();
   setResponse(JOB);
   const r = await upstreamsApi.getSyncJob('1', '600');
   assert.equal(captured.method, 'GET');
   assert.equal(captured.url, '/api/manage/upstreams/1/sync-jobs/600');
   assert.equal(r.id, '600');
-  assert.equal(r.jobKind, 'EmbyImport');
+  assert.equal(r.jobKind, 'BindingAutoSync');
   assert.equal(r.sourceId, '1');
   assert.equal(r.status, 'Pending');
 });
 
-test('⑫ getSyncJob → 500（端口未装配）必须 reject，不吞成空作业', async () => {
+test('⑦ getSyncJob → 500（端口未装配）必须 reject，不吞成空作业', async () => {
   installFetchStub();
   setResponse({ error: 'sync port unassembled' }, 500);
   await assert.rejects(
