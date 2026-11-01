@@ -1,9 +1,8 @@
 /**
- * 安装向导的**两步编排**（SIMPLIFY-INSTALL-WIZARD：用户裁定「简单点」）。
+ * 安装向导的**三步编排**（2026-11-01 起：安装口令 → 数据库/缓存 → 管理员）。
  *
- * V2 后端 apply 只收 database / cache / admin 三组，无独立「服务器配置」写入面
- * ⇒ 原第 ②「服务器配置」核对页并入管理员步（生效值核对在输账号密码那一步显示一次），
- *    向导收敛为**两步填写**：① 数据库 / 缓存 → ② 管理员（含生效值核对）。
+ * V2 后端 apply 收 database / cache / admin 三组 + `setup_token`，无独立「服务器配置」
+ * 写入面 ⇒ 原「服务器配置」核对页并入管理员步（生效值核对在输账号密码那一步显示一次）。
  *
  * 只做门控与翻页，**不重写任何判定**：
  *   - 口令强度/二次确认 → `passwordPolicy.ts`
@@ -32,7 +31,7 @@ export const WIZARD_STEPS: readonly WizardStepMeta[] = [
   { id: 'admin', title: '管理员', index: 3 },
 ];
 
-/** 向导收集的全部值（与 `InstallApplyRequest` 的三组一一对应）。 */
+/** 向导收集的全部值（与 `InstallApplyRequest` 的四字段一一对应）。 */
 export interface WizardValues {
   /** 安装口令（安装页第一屏填；服务端启动日志/横幅里那条）。 */
   setupToken: string;

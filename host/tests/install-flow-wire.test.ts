@@ -75,12 +75,14 @@ test('② POST /api/install/probe/redis —— 路径 + body（url 必填）', a
   assert.deepEqual(captured.body, { url: 'redis://127.0.0.1:6379', password: 'p', db: 2 });
 });
 
-test('③ POST /api/install/apply —— 一次收全三组（database/cache/admin）', async () => {
+test('③ POST /api/install/apply —— 一次收全四字段（database/cache/admin/setup_token）', async () => {
   setResponse({ applied: true, auto_login: true, kind: 'sqlite', username: 'root' });
   const res = await authApi.applyInstall({
     database: { kind: 'sqlite' },
     cache: { kind: 'builtin' },
     admin: { username: 'root', password: 'Passw0rd!23' },
+    // 2026-11-01：后端 apply 必读该字段（403 install_setup_token_required）⇒ wire 必须钉住。
+    setup_token: 'probe-token',
   });
   assert.equal(captured.method, 'POST');
   assert.equal(captured.url, '/api/install/apply');
@@ -88,6 +90,7 @@ test('③ POST /api/install/apply —— 一次收全三组（database/cache/adm
     database: { kind: 'sqlite' },
     cache: { kind: 'builtin' },
     admin: { username: 'root', password: 'Passw0rd!23' },
+    setup_token: 'probe-token',
   });
   assert.equal(res.auto_login, true);
   assert.equal(res.username, 'root');
@@ -130,6 +133,7 @@ test('⑥ 失败态：后端 4xx/5xx 一律 reject（不吞成成功 / 不静默
     authApi.applyInstall({
       database: { kind: 'sqlite' },
       admin: { username: 'root', password: 'x' },
+      setup_token: 'probe-token',
     }),
   );
   setResponse({ error: 'validation', message: '确认动作必须为 `complete-install`' }, 400);
