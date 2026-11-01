@@ -8,7 +8,11 @@ import type {
 export const SOURCE_TYPE_OPTIONS = [
   // sec/remove-emby-upstream：'Emby' 类型已删（后端 0158 收紧 CHECK，创建面 400）。
   { value: 'AppleCms', label: 'Apple CMS' },
-  { value: 'WebDav', label: 'WebDAV' },
+  // ★2026-11-01 评审 nit-4：'WebDav' 也删——后端 `upstream_sources.source_type` 的两次
+  //   CHECK（迁移 0035 = `Emby|AppleCms`、0158 = `AppleCms`）**从未**包含 WebDav，
+  //   选中它创建必 400。留着就是「下拉里有个必失败选项」。
+  //   （注意：**存储挂载**域的 WebDAV 是另一条链路，选项在 `mounts/providerCapabilities.ts`,
+  //   不受本改动影响。）
 ];
 
 export const AUTH_METHOD_OPTIONS = [

@@ -49,7 +49,7 @@ export function ManageUpstreamsPageContent() {
     if (isUpstreamsUnwiredError(listQuery.error)) {
       return (
         <div className={styles.page}>
-          <ManagePageHeader title="上游源" description="Apple CMS / WebDAV 等上游源的接入配置与探活。" />
+          <ManagePageHeader title="上游源" description="Apple CMS 上游源的接入配置与探活。" />
           <ManageSectionCard title="上游源端口未装配" description="GET /api/manage/upstreams 当前不可用。">
             <InlineBanner variant="info" title="等待后端装配" description="上游源端点尚未提供或端口未注入。本页不伪造空列表。" />
             <button className={styles.secondaryButton} type="button" onClick={() => void listQuery.refetch()}>

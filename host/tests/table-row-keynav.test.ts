@@ -4756,7 +4756,10 @@ test('接线实证（真实 UpstreamSourceListSection）：查询表独立 rovin
     const path = await tabPathToRow(page, srcIdx0);
     assert.deepEqual(
       path.map((p) => p.text),
-      ['新建上游源', '全部类型Apple CMSWebDAV', '主库Apple CMShttp://s-1.lo'],
+      // ★2026-11-01：筛选下拉的文本少了 `WebDAV` —— 该选项已删（后端
+      //   `upstream_sources.source_type` 的 CHECK 0035/0158 从未包含 WebDav，
+      //   选中即 400）。Tab **跳数不变**（select 元素仍在，只是选项少一个）。
+      ['新建上游源', '全部类型Apple CMS', '主库Apple CMShttp://s-1.lo'],
       '源列表前的真实 Tab 路径应是新建按钮 + 类型 select',
     );
     assert.equal(path.at(-1)?.presses, 3, '真实 Tab 应 3 次到达源列表停靠点');
