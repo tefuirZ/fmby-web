@@ -17,3 +17,5 @@ export * from './manage';
 export * from './settings';
 export * from './assets';
 export * from './theme';
+// 卡 fmby-v2#2437：公告 + 站内信（付费面 feature.site_messaging）。
+export * from './site-messaging';
