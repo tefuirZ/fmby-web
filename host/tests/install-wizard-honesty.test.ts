@@ -273,6 +273,28 @@ test('⑭ 完成页回显口令：默认隐藏 + 可显隐（裁定 ④）', () 
   assert.equal(/PasswordToggle/.test(panel), true, '须复用既有 PasswordToggle 而非自造控件');
 });
 
+test('⑱ 安装口令必须随 apply 一起提交，且契约字段名 = setup_token（后端缺即 403）', () => {
+  // 2026-11-01 用户裁定：安装页第一屏填服务端启动日志里的口令。前端口令字段若改名/漏传，
+  // 用户会卡在「口令不正确」且无法自查 ⇒ 这里把字段名与提交点一起钉死。
+  const api = read(AUTH_API);
+  assert.equal(
+    /\bsetup_token\??:\s*string/.test(api),
+    true,
+    'InstallApplyRequest 必须声明 setup_token: string（后端 #[serde(default)] 但校验必过）',
+  );
+  const page = rendered(INSTALL_PAGE);
+  assert.equal(
+    /setup_token:\s*values\.setupToken\.trim\(\)/.test(page),
+    true,
+    'apply 请求体必须带 setup_token（取自口令框，trim 后提交）',
+  );
+  assert.equal(
+    /values\.setupToken/.test(rendered(WIZARD_STEPS)) || /step === 'setup_token'/.test(page),
+    true,
+    '口令页必须存在（向导第一屏）',
+  );
+});
+
 test('⑮ 用户名不得加 ASCII-only 白名单（中文等 Unicode 必须可用）', () => {
   const admin = rendered(ADMIN_FIELDSET);
   assert.equal(/pattern=/.test(admin), false, '不得用 HTML pattern 限定 ASCII 用户名');

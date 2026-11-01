@@ -150,6 +150,8 @@ export interface InstallApplyRequest {
   database: InstallDatabaseChoice;
   cache?: InstallCacheChoice;
   admin: InstallAdminInput;
+  /** 安装口令（安装页第一屏填；服务端启动日志里那条）。 */
+  setup_token: string;
 }
 
 export interface InstallApplyResponse {

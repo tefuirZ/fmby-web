@@ -1,9 +1,8 @@
 /**
- * 安装向导的**两步编排**（SIMPLIFY-INSTALL-WIZARD：用户裁定「简单点」）。
+ * 安装向导的**三步编排**（2026-11-01 起：安装口令 → 数据库/缓存 → 管理员）。
  *
- * V2 后端 apply 只收 database / cache / admin 三组，无独立「服务器配置」写入面
- * ⇒ 原第 ②「服务器配置」核对页并入管理员步（生效值核对在输账号密码那一步显示一次），
- *    向导收敛为**两步填写**：① 数据库 / 缓存 → ② 管理员（含生效值核对）。
+ * V2 后端 apply 收 database / cache / admin 三组 + `setup_token`，无独立「服务器配置」
+ * 写入面 ⇒ 原「服务器配置」核对页并入管理员步（生效值核对在输账号密码那一步显示一次）。
  *
  * 只做门控与翻页，**不重写任何判定**：
  *   - 口令强度/二次确认 → `passwordPolicy.ts`
@@ -14,7 +13,7 @@
 import { confirmPasswordProblem } from './passwordPolicy';
 import { pgFieldsProblem, type PgFields } from './pgConnection';
 
-export type WizardStepId = 'database' | 'admin';
+export type WizardStepId = 'setup_token' | 'database' | 'admin';
 
 export interface WizardStepMeta {
   id: WizardStepId;
@@ -24,12 +23,18 @@ export interface WizardStepMeta {
 }
 
 export const WIZARD_STEPS: readonly WizardStepMeta[] = [
-  { id: 'database', title: '数据库 / 缓存', index: 1 },
-  { id: 'admin', title: '管理员', index: 2 },
+  // 安装口令：**第一屏**。口令在服务端启动日志/横幅里（掩码 前4…后4；Docker 与命令行都会打）。
+  // 为什么第一屏就要：安装面默认绑 0.0.0.0，`apply` 匿名可写且会建出首管理员 ⇒
+  // 不挡的话，任何"已部署未安装"的实例被恶意网页抢建管理员 = 实例接管。
+  { id: 'setup_token', title: '安装口令', index: 1 },
+  { id: 'database', title: '数据库 / 缓存', index: 2 },
+  { id: 'admin', title: '管理员', index: 3 },
 ];
 
-/** 向导收集的全部值（与 `InstallApplyRequest` 的三组一一对应）。 */
+/** 向导收集的全部值（与 `InstallApplyRequest` 的四字段一一对应）。 */
 export interface WizardValues {
+  /** 安装口令（安装页第一屏填；服务端启动日志/横幅里那条）。 */
+  setupToken: string;
   dbKind: 'sqlite' | 'postgresql';
   sqlitePath: string;
   cacheKind: 'builtin' | 'redis';
@@ -52,6 +57,12 @@ export interface WizardValues {
  */
 export function stepProblem(step: WizardStepId, values: WizardValues): string | null {
   switch (step) {
+    case 'setup_token': {
+      if (values.setupToken.trim().length === 0) {
+        return '请填写安装口令（见服务端启动日志 / Docker 日志里「FMBY 安装口令」那一行）';
+      }
+      return null;
+    }
     case 'database': {
       if (values.dbKind === 'postgresql') {
         const problem = pgFieldsProblem(values.pg);
