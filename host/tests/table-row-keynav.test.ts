@@ -4662,15 +4662,13 @@ test('接线实证（真实 AuthProvidersSection）：行停靠点唯一 + 行�
 });
 
 /**
- * UpstreamSourceListSection 探针：一次覆盖该文件两张表。
+ * UpstreamSourceListSection 探针：覆盖该文件的**源列表**表（2026-11-01 起为单表）。
  *
- * 两张表形态不同，构成一组对照：
- *   - 源列表（查询驱动）：行内有启停/编辑/删除按钮，走原生 Tab；
- *   - 局域网发现结果（mutation 驱动）：行内纯只读，tbody 直到点「局域网发现」
- *     成功才挂载。
+ * 原「局域网发现结果」形态的对照表随 Emby 上游能力删除一并移除（fmby-v2#2412），
+ * 故本探针只剩查询驱动的一张表：行内有启停/编辑/删除按钮，走原生 Tab。
  *
- * ⚠ 本例**不**覆盖 useTableRowRoving 的 attachedTbody 生命周期修复：两张表的
- *   rowCount 都从 0 变到 N，effect 会顺带重跑，属「巧合恢复」。判据③须回退接线。
+ * ⚠ 本探针**不**覆盖 useTableRowRoving 的 attachedTbody 生命周期修复：该表
+ *   rowCount 会从 0 变到 N，effect 顺带重跑，属「巧合恢复」。判据③须回退接线。
  *   attachedTbody 修复的专属实证在 ManageSystemAboutPage 的静态表（rowCount 恒定）。
  */
 const UPSTREAM_SOURCE_LIST_ENTRY = `
