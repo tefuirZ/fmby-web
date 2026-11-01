@@ -3,6 +3,7 @@ import sharedStyles from '../../ManagePages.module.css';
 import { formatOptional, formatResolution, getArtworkKindLabel, isWideArtwork } from '../formatters';
 import styles from '../MediaItemDetail.module.css';
 import { ArtImage } from './ArtImage';
+import { safeExternalHref } from '@fmby/v2-shared/utils/safe-url';
 
 interface ScrapedArtworksGridProps {
   scrapedArtworks: ManageMediaItemDetailRecord['scrapedArtworks'];
@@ -42,7 +43,7 @@ export function ScrapedArtworksGrid({ scrapedArtworks }: ScrapedArtworksGridProp
               <div className={styles.assetActions}>
                 <a
                   className={sharedStyles.smallButton}
-                  href={artwork.url}
+                  href={safeExternalHref(artwork.url) ?? undefined}
                   rel="noreferrer"
                   target="_blank"
                 >

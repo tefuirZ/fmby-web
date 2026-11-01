@@ -23,6 +23,7 @@ import { queryKeys } from '@fmby/v2-shared/query';
 import type { User } from '@fmby/v2-shared/types';
 
 import styles from '../LoginPage.module.css';
+import { safeExternalHref } from '@fmby/v2-shared/utils/safe-url';
 
 /** 待完成的登录流状态（发起成功后进入）。 */
 export interface PendingIdentityLogin {
@@ -152,7 +153,7 @@ export function IdentityCompletionPanel({
       {googleRedirecting ? (
         <a
           className={styles.submitButton}
-          href={pending.authorizeUrl}
+          href={safeExternalHref(pending.authorizeUrl) ?? undefined}
           rel="noreferrer"
           target="_self"
         >
@@ -171,7 +172,7 @@ export function IdentityCompletionPanel({
       {telegramAutoLogin && pending.authorizeUrl ? (
         <a
           className={styles.secondaryButton}
-          href={pending.authorizeUrl}
+          href={safeExternalHref(pending.authorizeUrl) ?? undefined}
           rel="noreferrer"
           target="_blank"
         >
