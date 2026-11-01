@@ -10,7 +10,21 @@
  * 页面禁止直接消费 raw wire 类型，一律走本门面导出的 camelCase 模型。
  */
 
-export * from './types';
+// ★**显式导出 mapped 模型与纯函数**，不 `export *`：raw wire 类型不进 barrel
+// （页面若直接消费 raw DTO，会绕过 `check-frontend-dupes` 的 raw-DTO 闸 —— 评审 2026-11-01）。
+export type {
+  ActiveAnnouncement,
+  Announcement,
+  AnnouncementAudienceKind,
+  AnnouncementLevel,
+  AnnouncementPage,
+  AnnouncementStatus,
+  Notification,
+  NotificationPage,
+  SendNotificationResult,
+  UnreadCount,
+} from './types';
+export { isSafeInternalHref, safeInternalHref } from './types';
 export { siteMessagingApi } from './api';
 export type {
   AnnouncementListQuery,

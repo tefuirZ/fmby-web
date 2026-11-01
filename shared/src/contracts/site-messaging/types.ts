@@ -13,6 +13,8 @@
  * 展示层统一 camelCase，页面不出现 snake_case。
  */
 
+import { safeInAppPath } from '../../utils/safe-url';
+
 /** 公告严重度五档（wire 小写字面量；与 DB CHECK 逐字一致）。 */
 export type AnnouncementLevel =
   | 'info'
@@ -301,16 +303,26 @@ export function mapSendNotificationResult(v: unknown): SendNotificationResult {
 }
 
 /**
- * 站内跳转安全判定（与后端 `check_link_href` 同口径的**前端兜底**）：
- * 只放行同源相对路径 `/...`；`//host`、`javascript:`、`data:`、绝对外链一律 false。
+ * 站内跳转**净化**（与后端 `check_link_href` 同口径的**前端兜底**）。
+ *
+ * 直接复用共享 `safeInAppPath`（单一事实源）：只放行同源相对路径 `/...`；
+ * `//host`、`/\host`、ASCII 控制字符（`java\nscript:` 式伪装）、`javascript:` /
+ * `data:` / `vbscript:`、绝对外链一律 `null`。返回**已 trim** 的串，调用方直接渲染。
+ *
+ * ★评审 2026-11-01：本函数最初手写实现，漏了控制字符检查 ⇒ `/<TAB>/evil.com` 会被
+ *   浏览器按 WHATWG 规则解析成外站（开放重定向）。改为委托 `safeInAppPath`。
  */
-export function isSafeInternalHref(href: string | null | undefined): href is string {
-  if (!href) return false;
-  const s = href.trim();
-  if (!s.startsWith('/') || s.startsWith('//') || s.startsWith('/\\')) return false;
-  const lower = s.toLowerCase();
+export function safeInternalHref(href: string | null | undefined): string | null {
+  const path = safeInAppPath(href);
+  if (!path) return null;
+  const lower = path.toLowerCase();
   if (lower.includes('javascript:') || lower.includes('data:') || lower.includes('vbscript:')) {
-    return false;
+    return null;
   }
-  return true;
+  return path;
+}
+
+/** 布尔谓词版（只为调用点可读性；判定与 [`safeInternalHref`] 同源）。 */
+export function isSafeInternalHref(href: string | null | undefined): href is string {
+  return safeInternalHref(href) !== null;
 }
