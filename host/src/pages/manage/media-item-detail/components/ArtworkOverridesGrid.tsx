@@ -11,6 +11,7 @@ import {
   isWideArtwork,
 } from '../formatters';
 import styles from '../MediaItemDetail.module.css';
+import { safeExternalHref } from '@fmby/v2-shared/utils/safe-url';
 import type { MediaItemMutations } from '../types';
 import { ArtImage } from './ArtImage';
 
@@ -76,7 +77,7 @@ export function ArtworkOverridesGrid({
                 <div className={styles.assetActions}>
                   <a
                     className={sharedStyles.smallButton}
-                    href={artwork.url}
+                    href={safeExternalHref(artwork.url) ?? undefined}
                     rel="noreferrer"
                     target="_blank"
                   >

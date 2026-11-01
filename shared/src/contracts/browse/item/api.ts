@@ -7,6 +7,7 @@ import {
   readString,
   readStringArray,
 } from '@fmby/v2-shared/api/mapping';
+import { safeInAppPath } from '@fmby/v2-shared/utils/safe-url';
 import { mapArtwork } from '@fmby/v2-shared/contracts/assets';
 import { mapMediaCard } from '@fmby/v2-shared/contracts/browse/api';
 import type { MediaCardSummary } from '@fmby/v2-shared/contracts/browse';
@@ -141,7 +142,10 @@ function mapItemDetail(raw: unknown, itemId: string): ItemDetailResponse {
   const adminShortcuts = readArray(record.admin_shortcuts ?? record.adminShortcuts, (item) => {
     const shortcut = asRecord(item);
     const label = readString(shortcut.label, shortcut.title);
-    const to = readString(shortcut.to, shortcut.href);
+    // ★安全（2026-11-01 评审 F1）：`to` 是**服务端下发串**，直进 `<Link to>` ⇒ 原样落 href
+    //   （react-router 对 `javascript:` / `data:` 原样直出）。本站内快捷入口只该是站内路径
+    //   ⇒ 映射层就用 `safeInAppPath` 白名单，非法者整条丢弃（不伪造兜底链接）。
+    const to = safeInAppPath(readString(shortcut.to, shortcut.href));
     if (!label || !to) {
       return null;
     }

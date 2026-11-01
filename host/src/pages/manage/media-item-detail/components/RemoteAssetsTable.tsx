@@ -6,6 +6,7 @@ import sharedStyles from '../../ManagePages.module.css';
 import { formatOptional } from '../formatters';
 import styles from '../MediaItemDetail.module.css';
 import { useTableRowRoving } from '../../../../features/a11y/useTableRowRoving';
+import { safeExternalHref } from '@fmby/v2-shared/utils/safe-url';
 
 interface RemoteAssetsTableProps {
   remoteAssets: ManageMediaItemDetailRecord['remoteAssets'];
@@ -67,7 +68,7 @@ export function RemoteAssetsTable({ remoteAssets }: RemoteAssetsTableProps) {
                   <td>
                     <a
                       className={sharedStyles.smallButton}
-                      href={asset.url}
+                      href={safeExternalHref(asset.url) ?? undefined}
                       rel="noreferrer"
                       target="_blank"
                     >

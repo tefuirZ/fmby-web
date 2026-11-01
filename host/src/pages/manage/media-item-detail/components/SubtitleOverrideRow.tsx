@@ -8,6 +8,7 @@ import { formatDateTime } from '@fmby/v2-shared/time';
 import { getErrorMessage } from '@fmby/v2-shared/errors';
 import { formatOperator } from '../formatters';
 import sharedStyles from '../../ManagePages.module.css';
+import { safeExternalHref } from '@fmby/v2-shared/utils/safe-url';
 import styles from '../MediaItemDetail.module.css';
 import type { MediaItemMutations } from '../types';
 
@@ -128,7 +129,7 @@ export function SubtitleOverrideRow({
           {record.isDefault ? <StatusBadge label="默认字幕" variant="info" /> : null}
           <a
             className={sharedStyles.smallButton}
-            href={record.url}
+            href={safeExternalHref(record.url) ?? undefined}
             rel="noreferrer"
             target="_blank"
           >

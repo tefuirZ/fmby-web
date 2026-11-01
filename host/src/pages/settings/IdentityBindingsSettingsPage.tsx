@@ -35,6 +35,7 @@ import {
   rememberPendingBinding,
   startInputForProvider,
 } from './identityBindingsPresentation';
+import { safeExternalHref } from '@fmby/v2-shared/utils/safe-url';
 
 interface PendingBindingFlow {
   provider: IdentityProviderType;
@@ -224,7 +225,7 @@ export function IdentityBindingsSettingsPage() {
             {pending.authorizeUrl ? (
               <a
                 className={styles.bindingLink}
-                href={pending.authorizeUrl}
+                href={safeExternalHref(pending.authorizeUrl) ?? undefined}
                 // Telegram 深链保持新标签打开；Google OAuth **同一标签跳转**——
                 // 授权完成后回站落点（redirect_uri = 本页 URL）才能在本页挂载树上
                 // 触发回站 effect 真正完成绑定（Major-1：避免新标签回站静默跳过）。
