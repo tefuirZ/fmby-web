@@ -21,7 +21,7 @@ import {
 } from './shared';
 import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 
-/** 上游源本体列表（CRUD + 启停 + 真实探活 + 局域网发现）。 */
+/** 上游源本体列表（CRUD + 启停 + 真实探活）。 */
 export function UpstreamSourceListSection() {
   const queryClient = useQueryClient();
   const [sourceType, setSourceType] = useState('');
@@ -96,21 +96,10 @@ export function UpstreamSourceListSection() {
     onError: (e) => setBanner(getErrorMessage(e)),
   });
 
-  const discoveryMutation = useMutation({
-    mutationFn: () => upstreamsApi.discoverLan(),
-    onSuccess: (r) => setBanner(`局域网发现完成：找到 ${r.items.length} 个 Emby 服务。`),
-    onError: (e) => setBanner(getErrorMessage(e)),
-  });
-
   const sources = listQuery.data?.items ?? [];
 
-  // FE-LIST-KEYNAV-10：两张表都是只读清单 —— 发现结果（行内无控件）与源列表
-  // （行内有启停/编辑/删除按钮，原生 Tab 可达）⇒ 都不传 onActivate。
-  const discoveredTbodyRef = useRef<HTMLTableSectionElement>(null);
-  useTableRowRoving({
-    tbodyRef: discoveredTbodyRef,
-    rowCount: discoveryMutation.data?.items.length ?? 0,
-  });
+  // FE-LIST-KEYNAV-10：本表只读清单 —— 行内有启停/编辑/删除按钮（原生 Tab 可达）
+  // ⇒ 不传 onActivate（sec/remove-emby-upstream：原 LAN 发现结果表已删）。
 
   const sourcesTbodyRef = useRef<HTMLTableSectionElement>(null);
   useTableRowRoving({ tbodyRef: sourcesTbodyRef, rowCount: sources.length });
@@ -141,53 +130,12 @@ export function UpstreamSourceListSection() {
     <>
       {banner ? <InlineBanner variant="info" title={banner} description="操作结果。" /> : null}
 
-      {discoveryMutation.data && discoveryMutation.data.items.length > 0 ? (
-        <ManageSectionCard
-          title={`局域网发现结果（${discoveryMutation.data.items.length}）`}
-          description="UDP 广播真实发现，无需凭据；地址可直接填进新建表单。"
-        >
-          <div
-            className={styles.tableWrap}
-            role="region"
-            aria-label="局域网发现结果（可横向滚动）"
-          >
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>名称</th>
-                  <th>地址</th>
-                  <th>端点</th>
-                  <th>Server ID</th>
-                </tr>
-              </thead>
-              <tbody ref={discoveredTbodyRef}>
-                {discoveryMutation.data.items.map((i, index) => (
-                  <tr key={`${i.baseUrl}-${i.name}`} data-row-index={index}>
-                    <td>{i.name}</td>
-                    <td className={styles.mono}>{i.baseUrl}</td>
-                    <td className={styles.mono}>{i.endpointAddress ?? '—'}</td>
-                    <td className={styles.mono}>{i.serverId ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ManageSectionCard>
-      ) : null}
 
       <ManageSectionCard
         title="上游源列表"
         description="读接口只回 has_secret，永不回显明文凭据。"
         actions={
           <>
-            <button
-              className={styles.secondaryButton}
-              type="button"
-              onClick={() => discoveryMutation.mutate()}
-              disabled={discoveryMutation.isPending}
-            >
-              {discoveryMutation.isPending ? '发现中…' : '局域网发现'}
-            </button>
             <button className={styles.primaryButton} type="button" onClick={openCreate}>
               新建上游源
             </button>

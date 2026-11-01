@@ -5,8 +5,6 @@ import type {
   UpstreamCategoryListResponse,
   UpstreamCategoryRecord,
   UpstreamHealthCheck,
-  UpstreamLanDiscoveryItem,
-  UpstreamLanDiscoveryResult,
   UpstreamMappingApplyResult,
   UpstreamMappingOverrideInput,
   UpstreamMappingPresetListResponse,
@@ -23,8 +21,6 @@ import type {
   UpstreamAppleCmsSyncPageResponse,
   UpstreamAppleCmsSyncRequest,
   UpstreamAppleCmsSyncResponse,
-  UpstreamEmbySyncRequest,
-  UpstreamEmbySyncResponse,
   UpstreamSyncJob,
   UpstreamSyncJobList,
 } from "./types";
@@ -66,18 +62,6 @@ interface RawUpstreamHealthCheck {
   server_name: string | null;
   server_version: string | null;
   server_id: string | null;
-}
-
-interface RawLanDiscoveryItem {
-  name: string;
-  server_id: string | null;
-  base_url: string;
-  endpoint_address: string | null;
-}
-
-interface RawLanDiscoveryList {
-  items: RawLanDiscoveryItem[];
-  total: number;
 }
 
 interface RawUpstreamCategory {
@@ -216,15 +200,6 @@ function fromHealthCheck(r: RawUpstreamHealthCheck): UpstreamHealthCheck {
   };
 }
 
-function fromDiscoveryItem(r: RawLanDiscoveryItem): UpstreamLanDiscoveryItem {
-  return {
-    name: r.name,
-    serverId: r.server_id,
-    baseUrl: r.base_url,
-    endpointAddress: r.endpoint_address,
-  };
-}
-
 function toWriteBody(input: UpstreamSourceWriteInput): Record<string, unknown> {
   return {
     name: input.name,
@@ -315,13 +290,6 @@ const upstreamsApiBase = {
     return { items: raw.items.map(fromCategory), total: raw.total };
   },
 
-  async listEmbyLibraries(id: string): Promise<UpstreamCategoryListResponse> {
-    const raw = await httpClient.get<RawUpstreamCategoryList>(
-      `/api/manage/upstreams/${encodeURIComponent(id)}/emby/libraries`,
-    );
-    return { items: raw.items.map(fromCategory), total: raw.total };
-  },
-
   async listBindings(id: string, libraryId?: string): Promise<UpstreamCategoryListResponse> {
     const raw = await httpClient.get<RawUpstreamCategoryList>(
       `/api/manage/upstreams/${encodeURIComponent(id)}/bindings`,
@@ -340,14 +308,6 @@ const upstreamsApiBase = {
     return { items: raw.items.map(fromCategory), total: raw.total };
   },
 
-  /** Emby 真实媒体库发现（S3）。 */
-  async discoverEmbyLibraries(id: string): Promise<UpstreamCategoryListResponse> {
-    const raw = await httpClient.post<RawUpstreamCategoryList>(
-      `/api/manage/upstreams/${encodeURIComponent(id)}/emby/discover-libraries`,
-    );
-    return { items: raw.items.map(fromCategory), total: raw.total };
-  },
-
   /** 绑定整表替换（全量覆盖，非增量）。 */
   async replaceAppleCmsCategoryBindings(
     id: string,
@@ -355,25 +315,6 @@ const upstreamsApiBase = {
   ): Promise<UpstreamCategoryListResponse> {
     const raw = await httpClient.put<RawUpstreamCategoryList>(
       `/api/manage/upstreams/${encodeURIComponent(id)}/apple-cms/category-bindings`,
-      {
-        body: {
-          bindings: bindings.map((b) => ({
-            categoryId: b.categoryId,
-            libraryId: b.libraryId,
-          })),
-        },
-      },
-    );
-    return { items: raw.items.map(fromCategory), total: raw.total };
-  },
-
-  /** 绑定整表替换（Emby 库）。 */
-  async replaceEmbyLibraryBindings(
-    id: string,
-    bindings: UpstreamCategoryBindingInput[],
-  ): Promise<UpstreamCategoryListResponse> {
-    const raw = await httpClient.put<RawUpstreamCategoryList>(
-      `/api/manage/upstreams/${encodeURIComponent(id)}/emby/library-bindings`,
       {
         body: {
           bindings: bindings.map((b) => ({
@@ -469,16 +410,6 @@ const upstreamsApiBase = {
       preset: raw.preset ? fromPreset(raw.preset) : null,
     };
   },
-
-  async discoverLan(): Promise<UpstreamLanDiscoveryResult> {
-    const raw = await httpClient.post<RawLanDiscoveryList>(
-      "/api/manage/upstreams/emby/discover-lan",
-    );
-    return {
-      items: raw.items.map(fromDiscoveryItem),
-      total: raw.total,
-    };
-  },
 };
 
 // ─── FE-PARITY-UPSTREAMS-SYNC：采集与同步（此前前端零消费）─────────────────────
@@ -525,15 +456,6 @@ interface RawAppleCmsSyncResponse {
   discovered_category_count: number;
   bound_category_count: number;
   skipped_unbound_category_count: number;
-  imported_item_count: number;
-  imported_variant_count: number;
-  synced_at: number;
-}
-
-interface RawEmbySyncResponse {
-  source_id: string;
-  page_size: number;
-  category_count: number;
   imported_item_count: number;
   imported_variant_count: number;
   synced_at: number;
@@ -639,77 +561,6 @@ const upstreamSyncExtension = {
         syncedAt: r.synced_at,
       }));
   },
-
-  /** POST /api/manage/upstreams/{id}/emby/sync —— Emby 采集。 */
-  embySync(
-    id: string,
-    req: UpstreamEmbySyncRequest = {},
-  ): Promise<UpstreamEmbySyncResponse> {
-    return httpClient
-      .post<RawEmbySyncResponse>(
-        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/sync`,
-        { body: { categoryId: req.categoryId, pageSize: req.pageSize } },
-      )
-      .then((r) => ({
-        sourceId: r.source_id,
-        pageSize: r.page_size,
-        categoryCount: r.category_count,
-        importedItemCount: r.imported_item_count,
-        importedVariantCount: r.imported_variant_count,
-        syncedAt: r.synced_at,
-      }));
-  },
-
-  /** POST /api/manage/upstreams/{id}/emby/import/preview —— Emby 导入预览（dry-run）。 */
-  embyImportPreview(
-    id: string,
-    req: UpstreamEmbySyncRequest = {},
-  ): Promise<UpstreamEmbySyncResponse> {
-    return httpClient
-      .post<RawEmbySyncResponse>(
-        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import/preview`,
-        { body: { categoryId: req.categoryId, pageSize: req.pageSize } },
-      )
-      .then((r) => ({
-        sourceId: r.source_id,
-        pageSize: r.page_size,
-        categoryCount: r.category_count,
-        importedItemCount: r.imported_item_count,
-        importedVariantCount: r.imported_variant_count,
-        syncedAt: r.synced_at,
-      }));
-  },
-
-  /** POST /api/manage/upstreams/{id}/emby/import —— Emby 导入入队（EmbyImport 作业）。 */
-  embyImportEnqueue(
-    id: string,
-    req: UpstreamEmbySyncRequest = {},
-  ): Promise<UpstreamSyncJob> {
-    return httpClient
-      .post<RawSyncJob>(
-        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import`,
-        { body: { categoryId: req.categoryId, pageSize: req.pageSize } },
-      )
-      .then(fromSyncJob);
-  },
-
-  /** GET /api/manage/upstreams/{id}/emby/import/jobs —— Emby 导入作业列举。 */
-  listEmbyImportJobs(id: string): Promise<UpstreamSyncJobList> {
-    return httpClient
-      .get<RawSyncJobList>(
-        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import/jobs`,
-      )
-      .then(fromSyncJobList);
-  },
-
-  /** GET /api/manage/upstreams/{id}/emby/import/jobs/{job_id} —— 单个 Emby 导入作业。 */
-  getEmbyImportJob(id: string, jobId: string): Promise<UpstreamSyncJob> {
-    return httpClient
-      .get<RawSyncJob>(
-        `/api/manage/upstreams/${encodeURIComponent(id)}/emby/import/jobs/${encodeURIComponent(jobId)}`,
-      )
-      .then(fromSyncJob);
-  },
 };
 
 interface UpstreamSyncApiExtension {
@@ -717,11 +568,6 @@ interface UpstreamSyncApiExtension {
   getSyncJob(id: string, jobId: string): Promise<UpstreamSyncJob>;
   appleCmsSyncPage(id: string, req: UpstreamAppleCmsSyncPageRequest): Promise<UpstreamAppleCmsSyncPageResponse>;
   appleCmsSync(id: string, req?: UpstreamAppleCmsSyncRequest): Promise<UpstreamAppleCmsSyncResponse>;
-  embySync(id: string, req?: UpstreamEmbySyncRequest): Promise<UpstreamEmbySyncResponse>;
-  embyImportPreview(id: string, req?: UpstreamEmbySyncRequest): Promise<UpstreamEmbySyncResponse>;
-  embyImportEnqueue(id: string, req?: UpstreamEmbySyncRequest): Promise<UpstreamSyncJob>;
-  listEmbyImportJobs(id: string): Promise<UpstreamSyncJobList>;
-  getEmbyImportJob(id: string, jobId: string): Promise<UpstreamSyncJob>;
 }
 
 // 将采集/同步方法并入既有 upstreamsApi（保持单例导出，类型含全部原方法 + 新增）。

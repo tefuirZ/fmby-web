@@ -49,7 +49,7 @@ export function ManageUpstreamsPageContent() {
     if (isUpstreamsUnwiredError(listQuery.error)) {
       return (
         <div className={styles.page}>
-          <ManagePageHeader title="上游源" description="Emby / Apple CMS / WebDAV 等上游源的接入配置与探活。" />
+          <ManagePageHeader title="上游源" description="Apple CMS / WebDAV 等上游源的接入配置与探活。" />
           <ManageSectionCard title="上游源端口未装配" description="GET /api/manage/upstreams 当前不可用。">
             <InlineBanner variant="info" title="等待后端装配" description="上游源端点尚未提供或端口未注入。本页不伪造空列表。" />
             <button className={styles.secondaryButton} type="button" onClick={() => void listQuery.refetch()}>
@@ -165,11 +165,11 @@ export function ManageUpstreamsPageContent() {
 
 export default ManageUpstreamsPage;
 
-/** 付费守卫：上游网关属于收费能力入口（照 V1 对位，feature=['upstream-emby','upstream-apple-cms']）。 */
+/** 付费守卫：上游网关属于收费能力入口（照 V1 对位；sec/remove-emby-upstream 后 feature=['upstream-apple-cms']）。 */
 export function ManageUpstreamsPage() {
   return (
     <ManagePaidFeatureGuard
-      feature={['upstream-emby', 'upstream-apple-cms']}
+      feature={['upstream-apple-cms']}
       title="当前套餐未开通上游网关"
       description="上游网关属于收费能力入口。即使直接访问 URL，也会先按前端授权可见性拦住，再由后端做最终校验。"
     >

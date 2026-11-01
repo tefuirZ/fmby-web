@@ -6,7 +6,7 @@
 // 要求这类区域必须可被键盘触及且可被读屏器命名。
 //
 // 本卡前的真实状态（fe01 在本分支实测）：
-//   · 存量 8 处已有 role=region + aria-label，其中全部带 tabIndex=0；
+//   · 存量 7 处已有 role=region + aria-label，其中全部带 tabIndex=0；
 //   · **41 处缺 role / aria-label** —— PR #29（fix/a11y-tablewrap-region）只补了 39 处，
 //     漏 2 处（MediaItemListTable / MediaItemArtworkSection，两者都用
 //     `ManagePages.module.css` 的 tableWrap，与其余同源却未被扫到）。
@@ -17,7 +17,7 @@
 //   ② 接了 useTableRowRoving 的文件（roving 表）一律不得给容器 tabIndex
 //      —— 容器可聚焦会与行的 roving 停靠点构成「双停靠点」，Tab 先停在容器上，
 //        破坏「Tab 走进行停靠点」断言（PR #29 实测回归 62/64，沿用其结论）；
-//   ③ 带 tabIndex=0 的必须是显式名单内那 8 处（详见该测试内裁决注释）；
+//   ③ 带 tabIndex=0 的必须是显式名单内那 7 处（详见该测试内裁决注释）；
 //   ④ aria-label 用显式名单钉死（49 处）—— 新增/改名一处，本测试立刻红。
 //
 // 跑法：node --import ./tests/register-aliases.mjs --test tests/tablewrap-region-audit.test.ts
@@ -84,8 +84,8 @@ test('FE-WEB-UI-A①：每个 .tableWrap 都带 role="region" + 非空 aria-labe
   assert.deepEqual(offenders, [], `缺 role/aria-label 的横向滚动区：\n${offenders.join('\n')}`);
 });
 
-test('FE-WEB-UI-A②：roving 表新补的滚动区不得带 tabIndex（③名单内的存量 8 处除外）', () => {
-  // ③ 的 8 处是**存量**：既接 roving 又给容器 tabIndex=0，双停靠点已被
+test('FE-WEB-UI-A②：roving 表新补的滚动区不得带 tabIndex（③名单内的存量 7 处除外）', () => {
+  // ③ 的 7 处是**存量**：既接 roving 又给容器 tabIndex=0，双停靠点已被
   // tests/table-row-keynav.test.ts 的步数断言如实钉死（裁决保留，见该文件注释）。
   // 本条的契约是**不许再新增**：PR #29 新补的 39 处 + 本卡补的 2 处一律无 tabIndex。
   const legacy = new Set([
@@ -125,7 +125,6 @@ test('FE-WEB-UI-A③：带 tabIndex=0 的滚动区必须是显式名单内且非
     ['src/pages/manage/ManageSecretsPage.tsx', '密钥链状态列表'],
     ['src/pages/manage/probe-tasks/components/ProbeTaskTable.tsx', '探测任务列表'],
     ['src/pages/manage/upstreams/UpstreamSyncJobsSection.tsx', '自动同步作业'],
-    ['src/pages/manage/upstreams/UpstreamSyncJobsSection.tsx', 'Emby 导入作业'],
     ['src/pages/manage/pan115-share/components/SyncSection.tsx', '同步来源'],
     ['src/pages/manage/pan115-share/components/SyncSection.tsx', '最近同步任务'],
     ['src/pages/manage/pan115-share/components/ShareItemBrowseSection.tsx', '浏览结果'],
@@ -159,7 +158,7 @@ test('FE-WEB-UI-A③：带 tabIndex=0 的滚动区必须是显式名单内且非
   assert.deepEqual(offenders, [], `名单外新增 tabIndex 滚动区：\n${offenders.join('\n')}`);
 });
 
-test('FE-WEB-UI-A④：aria-label 名单（58 处，改一个就要同步改这里）', () => {
+test('FE-WEB-UI-A④：aria-label 名单（56 处，改一个就要同步改这里）', () => {
   // 为什么用名单而非「与同文件 title= 模糊匹配」：本仓大量表格位于详情面板 /
   // 跨文件卡片内（CollectionMemberPanel / AiInterventionDetailPanel /
   // RegistrationCodeDetailTable …），其语义名**有意**比所在卡片标题更精确
@@ -220,8 +219,6 @@ test('FE-WEB-UI-A④：aria-label 名单（58 处，改一个就要同步改这�
     ['src/pages/manage/upstreams/UpstreamMappingPresetsSection.tsx', '映射预设'],
     ['src/pages/manage/upstreams/UpstreamMappingWizardSection.tsx', '预览结果'],
     ['src/pages/manage/upstreams/UpstreamSourceListSection.tsx', '上游源列表'],
-    ['src/pages/manage/upstreams/UpstreamSourceListSection.tsx', '局域网发现结果'],
-    ['src/pages/manage/upstreams/UpstreamSyncJobsSection.tsx', 'Emby 导入作业'],
     ['src/pages/manage/upstreams/UpstreamSyncJobsSection.tsx', '自动同步作业'],
     ['src/pages/manage/users/components/UserTable.tsx', '账号列表'],
     ['src/pages/manage/yun139/Yun139ProfilesSection.tsx', '凭据档案'],

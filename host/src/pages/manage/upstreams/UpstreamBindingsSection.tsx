@@ -13,32 +13,18 @@ import { EmptyTableRow, ManageSectionCard } from '../longtail-shared/components'
 import { useTableRowRoving } from '@/features/a11y/useTableRowRoving';
 import { formatEpochMs } from './shared';
 
-type BindScope = 'apple-cms' | 'emby';
-
-const SCOPE_LABELS: Record<BindScope, string> = {
-  'apple-cms': 'Apple CMS 分类',
-  emby: 'Emby 媒体库',
-};
-
-/** 类别 / 媒体库发现与绑定（V1F-02 S2 + S3）。 */
+/** 类别发现与绑定（V1F-02 S2 + S3；sec/remove-emby-upstream：emby scope 已删）。 */
 export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
   const queryClient = useQueryClient();
-  const [scope, setScope] = useState<BindScope>('apple-cms');
   const [banner, setBanner] = useState<string | null>(null);
   /** 类目 → 本地库 id 的草稿（未保存前只在本地）。 */
   const [draft, setDraft] = useState<Record<string, string>>({});
 
-  const categoriesKey =
-    scope === 'apple-cms'
-      ? queryKeys.manage.upstreams.categories(sourceId)
-      : queryKeys.manage.upstreams.libraries(sourceId);
+  const categoriesKey = queryKeys.manage.upstreams.categories(sourceId);
 
   const categoriesQuery = useQuery({
     queryKey: categoriesKey,
-    queryFn: () =>
-      scope === 'apple-cms'
-        ? upstreamsApi.listAppleCmsCategories(sourceId)
-        : upstreamsApi.listEmbyLibraries(sourceId),
+    queryFn: () => upstreamsApi.listAppleCmsCategories(sourceId),
   });
 
   const librariesQuery = useQuery({
@@ -52,12 +38,9 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
   };
 
   const discoverMutation = useMutation({
-    mutationFn: () =>
-      scope === 'apple-cms'
-        ? upstreamsApi.discoverAppleCmsCategories(sourceId)
-        : upstreamsApi.discoverEmbyLibraries(sourceId),
+    mutationFn: () => upstreamsApi.discoverAppleCmsCategories(sourceId),
     onSuccess: (r) => {
-      setBanner(`发现完成：共 ${r.items.length} 个${SCOPE_LABELS[scope].slice(-2)}。`);
+      setBanner(`发现完成：共 ${r.items.length} 个分类。`);
       invalidate();
     },
     onError: (e) => setBanner(getErrorMessage(e)),
@@ -65,9 +48,7 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
 
   const replaceMutation = useMutation({
     mutationFn: (bindings: { categoryId: string; libraryId: string }[]) =>
-      scope === 'apple-cms'
-        ? upstreamsApi.replaceAppleCmsCategoryBindings(sourceId, bindings)
-        : upstreamsApi.replaceEmbyLibraryBindings(sourceId, bindings),
+      upstreamsApi.replaceAppleCmsCategoryBindings(sourceId, bindings),
     onSuccess: (r) => {
       setBanner(`绑定已保存：${r.items.length} 条。`);
       setDraft({});
@@ -129,7 +110,7 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
 
       <ManageSectionCard
         title="类目与绑定"
-        description={`先「发现」拉取上游${SCOPE_LABELS[scope]}，再逐项选择本地库。绑定保存为整表替换（未选中的会解除绑定）。`}
+        description="先「发现」拉取上游 AppleCMS 分类，再逐项选择本地库。绑定保存为整表替换（未选中的会解除绑定）。"
         actions={
           <>
             <button
@@ -152,18 +133,6 @@ export function UpstreamBindingsSection({ sourceId }: { sourceId: string }) {
         }
       >
         <div className={styles.toolbar}>
-          <label className={styles.label}>
-            范围
-            <select
-              className={styles.select}
-              value={scope}
-              onChange={(e) => setScope(e.target.value as BindScope)}
-            >
-              {(Object.keys(SCOPE_LABELS) as BindScope[]).map((s) => (
-                <option key={s} value={s}>{SCOPE_LABELS[s]}</option>
-              ))}
-            </select>
-          </label>
           <span className={styles.tableHint}>共 {items.length} 个类目</span>
         </div>
 
