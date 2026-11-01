@@ -88,6 +88,11 @@ const LICENSE_ENTITLEMENT_META: Record<string, LicenseEntitlementMeta> = {
     label: '远端技术探测',
     description: '控制远端 probe worker 与手动探测入口。',
   },
+  'feature.site_messaging': {
+    label: '公告 + 站内信',
+    description:
+      '控制公告发布（五档严重度 + 可见范围 + 发布窗口）与站内信收件箱/铃铛徽标；未授权时相关接口回 403。',
+  },
   'limit.activation_instances.max': {
     label: '激活实例上限',
     description: '服务端执行，当前客户端只展示。',

@@ -22,7 +22,17 @@ const CONTRACTS_DIR = path.join(REPO_ROOT, 'shared', 'src', 'contracts');
 const HOST_PAGES_DIR = path.join(REPO_ROOT, 'host', 'src', 'pages');
 const THEMES_DIR = path.join(REPO_ROOT, 'themes');
 
-const REQUIRED_DOMAINS = ['auth', 'browse', 'playback', 'manage', 'settings', 'theme', 'assets'];
+// 卡 fmby-v2#2437：公告 + 站内信（展示面进契约舱 ⇒ 双件套 + mapper 层同受闸）。
+const REQUIRED_DOMAINS = [
+  'auth',
+  'browse',
+  'playback',
+  'manage',
+  'settings',
+  'theme',
+  'assets',
+  'site-messaging',
+];
 
 const violations = [];
 
