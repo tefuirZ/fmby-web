@@ -65,9 +65,12 @@ const LICENSE_ENTITLEMENT_META: Record<string, LicenseEntitlementMeta> = {
     label: 'OpenList 数据源',
     description: '控制 OpenList 挂载、目录浏览、扫描和播放。',
   },
+  // ★2026-11-01（用户裁定砍除 Emby 上游，fmby-v2#2412）：能力已从后端整体移除。
+  //   授权服务器**可能仍下发该键**（旧档位数据），故保留映射避免界面露出裸键，
+  //   但标注「已下线」，不得让用户以为本版本还能用。
   'feature.upstream.emby': {
-    label: 'Emby 上游网关',
-    description: '控制 Emby 上游创建、探活、同步和 bridge 投影。',
+    label: 'Emby 上游网关（已下线）',
+    description: '本版本已移除 Emby 上游能力（后端无该路由；历史档位数据里可能仍带此键）。',
   },
   'feature.upstream.apple_cms': {
     label: 'AppleCMS 上游网关',
@@ -98,7 +101,7 @@ const LICENSE_ENTITLEMENT_META: Record<string, LicenseEntitlementMeta> = {
   'limit.storage_mounts.microsoft.max': { label: 'Microsoft 挂载上限' },
   'limit.microsoft_accounts.max': { label: 'Microsoft 账号上限' },
   'limit.upstream_sources.max': { label: '上游源上限' },
-  'limit.upstream_sources.emby.max': { label: 'Emby 上游源上限' },
+  'limit.upstream_sources.emby.max': { label: 'Emby 上游源上限（已下线）' },
   'limit.upstream_sources.apple_cms.max': { label: 'AppleCMS 上游源上限' },
   'limit.concurrent_streams.max': { label: '全局并发播放上限' },
   'limit.open_api_tokens.max': { label: '开发者 API Token 上限' },
@@ -126,7 +129,7 @@ const LIMIT_USAGE_LABELS: Record<string, string> = {
   'limit.storage_mounts.microsoft.max': '当前 Microsoft 挂载',
   'limit.microsoft_accounts.max': '当前 Microsoft 账号',
   'limit.upstream_sources.max': '当前上游源',
-  'limit.upstream_sources.emby.max': '当前 Emby 上游源',
+  'limit.upstream_sources.emby.max': '当前 Emby 上游源（已下线）',
   'limit.upstream_sources.apple_cms.max': '当前 AppleCMS 上游源',
   'limit.concurrent_streams.max': '当前活跃播放',
   'limit.open_api_tokens.max': '当前开发者 Token',
