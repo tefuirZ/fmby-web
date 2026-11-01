@@ -44,6 +44,7 @@ import {
   type PendingIdentityLogin,
 } from './forms/IdentityCompletionPanel';
 import { clearPendingIdentity, resolvePendingProvider } from './forms/identityPendingContext';
+import { safeExternalHref } from '@fmby/v2-shared/utils/safe-url';
 
 function LoginShell({ children }: { children: ReactNode }) {
   return (
@@ -135,7 +136,17 @@ export function LoginPage() {
   ) {
     // Google：start 的 authorizeUrl 需浏览器跳转授权，不在站内展示完成面板。
     if (provider.provider === 'google' && result.authorizeUrl) {
-      window.location.assign(result.authorizeUrl);
+      // ★净化后再导航（安全审计 2026-11-01）：`authorizeUrl` 是服务端下发的**外部**地址，
+      //   而 `location.assign` 比 `<a href>` 更危险——**无需用户再点一次**即导航执行。
+      //   本卡已在 6 处 `<a href>` 上净化，这里曾漏（同数据源的第 7 个消费点）。
+      const target = safeExternalHref(result.authorizeUrl);
+      if (!target) {
+        // 非法 scheme（javascript:/data:/…）不放行：落到站内完成面板让用户看到提示，
+        // 而不是静默导航到攻击者指定的协议。
+        setPendingIdentity(pendingFromStart(result));
+        return;
+      }
+      window.location.assign(target);
       return;
     }
     setPendingIdentity(pendingFromStart(result));
