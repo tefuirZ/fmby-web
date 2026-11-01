@@ -10,10 +10,12 @@ import {
 } from '../src/pages/install/installWizard.ts';
 
 /**
- * #640「三步向导」的**步骤门控**纯函数实测。
+ * #640「三步向导」+ 安装口令页的**步骤门控**纯函数实测。
  *
- * ★措辞口径（rb01 N1）：结构三步，但第 ② 步（服务器配置）**不收集输入、恒过**，
- *   实为核对页 ⇒ 对外称「两步填写 + 一步核对」。
+ * ★2026-11-01 追加第 ⓪ 步「安装口令」（用户裁定：安装页最开始校验口令，一个输入框）。
+ *   此前结构三步：① 数据库/缓存 ② 服务器配置（核对，恒过） ③ 管理员；
+ *   现为四步：安装口令 → ① 数据库/缓存 → ② 服务器配置（核对，恒过） → ③ 管理员。
+ *   口令**不写在这里做强度校验**（它由服务端生成、需逐字匹配），本文件只钉「非空才放行」。
  *
  * 为什么要抽出来：门控是「哪页填齐了才能往下走」的分支逻辑，塞进组件就测不到
  * （本仓无 jsdom）。判定本体仍归 `passwordPolicy.ts` / `pgConnection.ts`，
@@ -21,6 +23,7 @@ import {
  */
 
 const empty: WizardValues = {
+  setupToken: '',
   dbKind: 'sqlite',
   sqlitePath: '',
   cacheKind: 'builtin',
@@ -32,9 +35,19 @@ const empty: WizardValues = {
   adminDisplayName: '',
 };
 
-test('① 两步结构（SIMPLIFY-INSTALL-WIZARD：server 核对步并入 admin）', () => {
-  assert.deepEqual(WIZARD_STEPS.map((s) => s.id), ['database', 'admin']);
-  assert.deepEqual(WIZARD_STEPS.map((s) => s.title), ['数据库 / 缓存', '管理员']);
+test('① 步骤结构：安装口令 → 数据库/缓存 → 管理员', () => {
+  assert.deepEqual(WIZARD_STEPS.map((s) => s.id), ['setup_token', 'database', 'admin']);
+  assert.deepEqual(WIZARD_STEPS.map((s) => s.title), ['安装口令', '数据库 / 缓存', '管理员']);
+  // 序号必须连续 1..3（页头「第 N / 3 步」直接用它渲染）。
+  assert.deepEqual(WIZARD_STEPS.map((s) => s.index), [1, 2, 3]);
+});
+
+test('①b 安装口令页：空 / 纯空白拦下，有值放行（判定只看非空）', () => {
+  assert.equal(stepProblem('setup_token', empty), '请填写安装口令（见服务端启动日志 / Docker 日志里「FMBY 安装口令」那一行）');
+  assert.notEqual(stepProblem('setup_token', { ...empty, setupToken: '   ' }), null, '纯空白不得放行');
+  assert.equal(stepProblem('setup_token', { ...empty, setupToken: 'deadbeef' }), null);
+  assert.equal(stepDone('setup_token', { ...empty, setupToken: 'deadbeef' }), true);
+  assert.equal(stepDone('setup_token', empty), false);
 });
 
 test('② SQLite + 内置缓存：第 1 页零输入即完成（卡面「留空用内置默认」）', () => {
@@ -69,9 +82,10 @@ test('⑤ Redis 缓存：连接串必填；内置缓存不要求任何输入', (
 });
 
 test('⑥ 生效值核对并入管理员步（原独立 server 步已删，不再有恒过的 server 门控）', () => {
-  // SIMPLIFY-INSTALL-WIZARD：原第 ②「服务器配置」核对页（恒过、不收集输入）并入 admin 步，
-  // 向导收敛为两步；不再有 'server' 步。
-  assert.deepEqual(WIZARD_STEPS.map((s) => s.id), ['database', 'admin']);
+  // SIMPLIFY-INSTALL-WIZARD：原「服务器配置」核对页（恒过、不收集输入）并入 admin 步；
+  // 不再有 'server' 步。2026-11-01 追加的 'setup_token' 是**真门控**（非恒过），另计。
+  assert.deepEqual(WIZARD_STEPS.map((s) => s.id), ['setup_token', 'database', 'admin']);
+  assert.equal(WIZARD_STEPS.some((s) => (s.id as string) === 'server'), false);
 });
 
 test('⑦ 第 3 页管理员：用户名必填 + 口令判定委托 passwordPolicy（弱口令拦下）', () => {
@@ -100,8 +114,10 @@ test('⑧ 用户名允许中文（卡面硬要求：不得按 ASCII 拦）', () 
   );
 });
 
-test('⑨ 翻页边界：第一页没有上一页，最后一页没有下一步（两步）', () => {
-  assert.equal(prevWizardStep('database'), null);
+test('⑨ 翻页边界：第一页没有上一页，最后一页没有下一步', () => {
+  assert.equal(prevWizardStep('setup_token'), null);
+  assert.equal(nextWizardStep('setup_token'), 'database');
+  assert.equal(prevWizardStep('database'), 'setup_token');
   assert.equal(nextWizardStep('database'), 'admin');
   assert.equal(nextWizardStep('admin'), null);
   assert.equal(prevWizardStep('admin'), 'database');

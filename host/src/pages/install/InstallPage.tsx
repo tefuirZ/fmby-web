@@ -81,6 +81,7 @@ const STATE_HEADLINE: Record<InstallState, string> = {
 };
 
 const INITIAL_VALUES: WizardValues = {
+  setupToken: '',
   dbKind: 'sqlite',
   sqlitePath: '',
   cacheKind: 'builtin',
@@ -96,7 +97,8 @@ export function InstallPage() {
   const navigate = useNavigate();
   const { retryRestore } = useSession();
 
-  const [step, setStep] = useState<WizardStepId>('database');
+  // ★第一屏是安装口令（user 2026-11-01 裁定：安装页最开始校验一下口令，一个输入框即可）。
+  const [step, setStep] = useState<WizardStepId>('setup_token');
   const [values, setValues] = useState<WizardValues>(INITIAL_VALUES);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -127,6 +129,9 @@ export function InstallPage() {
   const apply = useMutation({
     mutationFn: () =>
       authApi.applyInstall({
+        // ★安装口令：与数据库/管理员同一次 apply 一起交；服务端在 install 模式里先校验它，
+        //   不通过直接 403（详见 crates/fmby-v2-server/src/install_flow/setup_token.rs）。
+        setup_token: values.setupToken.trim(),
         database:
           values.dbKind === 'sqlite'
             ? {
@@ -263,6 +268,32 @@ export function InstallPage() {
               {WIZARD_STEPS.find((meta) => meta.id === step)?.title}
             </p>
 
+            {step === 'setup_token' ? (
+              // 只做一个口令输入框就够（user 裁定「不用啊，你做的太复杂了」）：
+              // 不设自定义头、不设中间件，口令随 apply 请求体一起过去。
+              <fieldset className={styles.fieldset}>
+                <legend className={styles.legend}>安装口令</legend>
+                <label className={styles.fieldGroup}>
+                  安装口令
+                  <input
+                    className={styles.input}
+                    type="password"
+                    required
+                    name="setup_token"
+                    autoFocus
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={values.setupToken}
+                    onChange={(e) => patch({ setupToken: e.target.value })}
+                  />
+                  <span className={styles.fieldHint}>
+                    口令在服务端启动时打印：命令行 / Docker 日志里找「FMBY 安装口令」那一行
+                    （只显示前4…后4，复制完整口令填入）。
+                  </span>
+                </label>
+              </fieldset>
+            ) : null}
+
             {step === 'database' ? (
               <DatabaseCacheFieldset
                 values={values}
@@ -307,7 +338,10 @@ export function InstallPage() {
               </>
             ) : null}
 
-            {pageProblem && step !== 'admin' ? (
+            {pageProblem &&
+            step !== 'admin' &&
+            // 口令页空值时不出红字（还没开始输就报错 = 噪声），空值由「下一步」禁用兜住。
+            !(step === 'setup_token' && values.setupToken.trim().length === 0) ? (
               <p className={styles.fieldError} role="alert">
                 {pageProblem}
               </p>

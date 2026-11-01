@@ -66,7 +66,7 @@ export function AdminFieldset({
 
   return (
     <fieldset className={styles.fieldset}>
-      <legend className={styles.legend}>③ 管理员账号</legend>
+      <legend className={styles.legend}>管理员账号</legend>
       <label className={styles.fieldGroup}>
         用户名
         <input

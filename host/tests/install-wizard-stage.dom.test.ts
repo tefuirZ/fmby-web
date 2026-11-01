@@ -46,6 +46,8 @@ const INSTALL_PAGE = pathToFileURL(join(HOST_ROOT, 'src/pages/install/InstallPag
 const SESSION_PROVIDER = pathToFileURL(join(HOST_ROOT, 'src/session/SessionProvider.tsx')).href;
 
 const USERNAME = 'probe_admin';
+/** 安装口令（2026-11-01 新增第一屏）：探针随便给个非空串即可 —— 服务端校验不在这里，真值校验有 e2e。 */
+const SETUP_TOKEN = 'probe-setup-token-001';
 const PASSWORD = 'Str0ng#Passw0rd!x9';
 /** 后端防误触的精确确认串（`INSTALL_COMPLETE_CONFIRM_ACTION`，shared 契约同一常量值）。 */
 const CONFIRM_ACTION = 'complete-install';
@@ -371,7 +373,41 @@ async function openAdminStep(h: Harness) {
   return { page, problems };
 }
 
-/** 第 1 步 → 第 2 步（SIMPLIFY-INSTALL-WIZARD 后只有两步：数据库/缓存 → 管理员）。 */
+/** 第一屏：填安装口令（受控输入 ⇒ 原生 setter + input 事件），并等「下一步」可点。 */
+async function fillSetupToken(page: any) {
+  await page.evaluate((token: string) => {
+    const el = document.querySelector('input[name="setup_token"]') as HTMLInputElement | null;
+    if (!el) throw new Error('未找到安装口令输入框（name=setup_token）');
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value',
+    )!.set!;
+    setter.call(el, token);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, SETUP_TOKEN);
+  await page.waitForFunction(
+    () => {
+      const b = Array.from(document.querySelectorAll('button')).find((x) =>
+        /下一步/.test((x.textContent || '').trim()));
+      return !!b && !(b as HTMLButtonElement).disabled;
+    },
+    undefined,
+    { timeout: 10000 },
+  );
+}
+
+/** 口令屏 → 数据库 / 缓存屏（2026-11-01 起这是第 2 / 4 屏）。 */
+async function toDatabaseStep(page: any) {
+  await fillSetupToken(page);
+  await clickButton(page, /下一步/);
+  await page.waitForFunction(
+    () => (document.body.innerText || '').includes('数据库 / 缓存'),
+    undefined,
+    { timeout: 15000 },
+  );
+}
+
+/** 数据库 / 缓存 → 管理员（旧的两步流：口令屏已被 toDatabaseStep 满足）。 */
 async function toAdminStep(page: any) {
   await clickButton(page, /下一步/);
   await page.waitForFunction(
@@ -413,7 +449,16 @@ test('阶段唯一性：每阶段只渲染该渲染的那一段（apply 成功�
   }
   const { page, problems } = await openAdminStep(h);
   try {
-    // —— 阶段 A：第 1 步（数据库 / 缓存）⇒ 填写段与完成段都不该在场
+    // —— 阶段 0：安装口令屏（2026-11-01 新增第一屏）⇒ 只该有一个口令框、不得有管理员段
+    const zero = await read(page);
+    assert.equal(zero.writablePassword, 1, `口令屏应恰有一个可写口令框：${JSON.stringify(zero.legends)}`);
+    assert.deepEqual(zero.legends, ['安装口令'], `口令屏应只有「安装口令」小节：${JSON.stringify(zero.legends)}`);
+    assert.equal(zero.editableUsername, 0, `口令屏不该有用户名框：${JSON.stringify(zero)}`);
+    assertNoRestartLie('安装口令页', zero.text);
+
+    await toDatabaseStep(page);
+
+    // —— 阶段 A：数据库 / 缓存 ⇒ 填写段与完成段都不该在场
     const a = await read(page);
     assert.equal(a.writablePassword, 0, `阶段 A 不该有可写口令框：${JSON.stringify(a.legends)}`);
     assert.equal(
@@ -522,10 +567,14 @@ test('重启口径一致性：安装面任何一段都不得把「须重启」�
   }
   const { page, problems } = await openAdminStep(h);
   try {
-    // 第 1 步（数据库 / 缓存）
-    assertNoRestartLie('第 1 步', (await read(page)).text);
+    // 口令屏（2026-11-01 新增）
+    assertNoRestartLie('安装口令页', (await read(page)).text);
 
-    // 第 2 步（含「生效值核对」段 —— SIMPLIFY 后并入本页）
+    // 数据库 / 缓存屏
+    await toDatabaseStep(page);
+    assertNoRestartLie('数据库 / 缓存步', (await read(page)).text);
+
+    // 管理员屏（含「生效值核对」段 —— SIMPLIFY 后并入本页）
     await toAdminStep(page);
     const b = await read(page);
     assert.match(
