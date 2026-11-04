@@ -20,6 +20,7 @@ import type {
   RawManageMediaItemDetailRecord,
   RawManageMediaItemListRecord,
   RawManageMediaItemPipelineRecord,
+  RawManageMediaItemProviderSearchResponse,
 } from './types';
 
 export const mediaItemsQueries = {
@@ -70,7 +71,7 @@ export const mediaItemsQueries = {
     itemId: string,
     query: ManageMediaItemProviderSearchQuery,
   ): Promise<ManageMediaItemProviderSearchResponse> {
-    const raw = await httpClient.get<ManageMediaItemProviderSearchResponse>(
+    const raw = await httpClient.get<RawManageMediaItemProviderSearchResponse>(
       `/api/manage/media-items/${itemId}/provider-search`,
       {
         params: {
@@ -79,6 +80,25 @@ export const mediaItemsQueries = {
         },
       },
     );
-    return raw;
+    // ★PROVIDER-SEARCH-MAPPER（2026-11-04）：后端裸派生无 rename_all ⇒ wire 是
+    // snake_case（provider_item_id / entity_type / original_title / external_ids[]）。
+    // 此前直接 `return raw` ⇒ 域字段恒 undefined：人工匹配面板外部编号恒空、
+    // 点候选后 matchProviderItemId.trim() 抛 TypeError、所有候选同时高亮。
+    // 回归见 host/tests/provider-search-mapper.contract.test.ts。
+    return {
+      provider: raw.provider,
+      query: raw.query,
+      candidates: raw.candidates.map((c) => ({
+        provider: c.provider,
+        entityType: c.entity_type,
+        providerItemId: c.provider_item_id,
+        title: c.title,
+        originalTitle: c.original_title ?? null,
+        year: c.year ?? null,
+        overview: c.overview ?? null,
+        confidence: c.confidence ?? null,
+        externalId: c.external_ids?.[0]?.id ?? null,
+      })),
+    };
   },
 };
