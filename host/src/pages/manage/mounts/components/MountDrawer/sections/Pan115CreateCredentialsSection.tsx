@@ -1,15 +1,7 @@
-// Pan115 创建模式凭据卡：扫码绑定 + cookieApp 选择器。
-//
-// ★PAN115-QR-ONLY（2026-11-04）：原「手填 Cookie」tab 已移除。
-//   原因：后端 `POST /api/manage/pan115/activate` 的凭据恒来自服务端 QR 会话
-//   （`qr.exchange(session_id)`），**没有「裸 cookie 直接绑定」路径**；手填分支提交的
-//   `{mount_id, cookie_header}`（无 session_id）在服务端必然失败 —— 100% 不可用的入口，
-//   留着只会让用户点了报错。恢复条件：后端提供裸 cookie 绑定端点（见
-//   memory/tasks/fix__pan115-cookie-tab.md）。
-//
-// 创建抽屉里 mount 还未生成 mount_id，因此扫码完成只把 pending 状态报告给父组件，
+// Pan115 创建模式凭据卡：扫码 / 手填 cookie 两种 tab + cookieApp 选择器。
+// 创建抽屉里 mount 还未生成 mount_id，因此扫码完成 / cookie 填写完毕只把 pending 状态报告给父组件，
 // 待 createMountMutation 成功拿到 mount_id 后再统一调 activate。
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { pan115Api } from '@fmby/v2-shared/contracts/manage/pan115';
 import type { Pan115QrcodeStatus } from '@fmby/v2-shared/contracts/manage/pan115';
 import { ManageSectionCard } from '../../../../components';
@@ -20,7 +12,9 @@ import { PAN115_COOKIE_APP_OPTIONS, PAN115_DEFAULT_COOKIE_APP } from '@fmby/v2-s
 import styles from '../../../../ManagePages.module.css';
 import { ScanQrImage } from '../../../../longtail-shared/components/ScanQrImage';
 
-export type Pan115CreatePendingActivation = { mode: 'qr'; sessionId: string; cookieApp: string };
+export type Pan115CreatePendingActivation =
+  | { mode: 'qr'; sessionId: string; cookieApp: string }
+  | { mode: 'cookie'; cookieHeader: string };
 
 interface Pan115CreateCredentialsSectionProps {
   pending: Pan115CreatePendingActivation | null;
@@ -43,7 +37,9 @@ export function Pan115CreateCredentialsSection({
   onPendingChange,
   isSaving,
 }: Pan115CreateCredentialsSectionProps) {
+  const [tab, setTab] = useState<'qr' | 'cookie'>('qr');
   const [cookieApp, setCookieApp] = useState<string>(PAN115_DEFAULT_COOKIE_APP);
+  const [cookieDraft, setCookieDraft] = useState('');
 
   const {
     qrOpen,
@@ -67,21 +63,60 @@ export function Pan115CreateCredentialsSection({
     },
   });
 
-  const pendingSummary = pending
-    ? `已扫码（待保存后激活，cookieApp=${pending.cookieApp}）`
-    : null;
+  // cookie tab 同步：用户输入即上报
+  useEffect(() => {
+    if (tab !== 'cookie') return;
+    const trimmed = cookieDraft.trim();
+    if (!trimmed) {
+      if (pending && pending.mode === 'cookie') onPendingChange(null);
+      return;
+    }
+    onPendingChange({ mode: 'cookie', cookieHeader: trimmed });
+    // 不把 onPendingChange / pending 当依赖，避免循环
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cookieDraft, tab]);
+
+  const switchTab = (next: 'qr' | 'cookie') => {
+    setTab(next);
+    onPendingChange(null);
+  };
+
+  const pendingSummary = (() => {
+    if (!pending) return null;
+    if (pending.mode === 'qr') return `已扫码（待保存后激活，cookieApp=${pending.cookieApp}）`;
+    return `已填入 cookie（${pending.cookieHeader.length} 字符，待保存后激活）`;
+  })();
 
   return (
     <ManageSectionCard
       title="115 网盘凭据绑定"
-      description="扫码登录后保存数据源，会立即用该凭据激活账号。如失败可在创建后进入详情抽屉重试。"
+      description="扫码或手填 cookie 二选一；保存数据源后会立即用所选凭据激活账号。如失败可在创建后进入详情抽屉重试。"
     >
+      <div className={styles.rowActions} style={{ marginBottom: 12 }}>
+        <button
+          type="button"
+          className={tab === 'qr' ? styles.primaryButton : styles.smallButton}
+          disabled={isSaving}
+          onClick={() => switchTab('qr')}
+        >
+          扫码登录
+        </button>
+        <button
+          type="button"
+          className={tab === 'cookie' ? styles.primaryButton : styles.smallButton}
+          disabled={isSaving}
+          onClick={() => switchTab('cookie')}
+        >
+          手填 Cookie
+        </button>
+      </div>
+
       <label className={styles.fieldLabel} style={{ display: 'block', marginBottom: 12 }}>
         客户端类型 (cookie_app)
         <select
           className={styles.input}
           value={cookieApp}
-          disabled={isSaving}
+          disabled={isSaving || tab === 'cookie'}
           onChange={(e) => setCookieApp(e.target.value)}
         >
           {PAN115_COOKIE_APP_OPTIONS.map((opt) => (
@@ -89,23 +124,44 @@ export function Pan115CreateCredentialsSection({
           ))}
         </select>
         <span className={styles.fieldHelpText}>
-          扫码时使用，避免挤占你日常使用的 115 客户端登录态。
+          扫码时使用，避免挤占你日常使用的 115 客户端登录态。手填 cookie 模式忽略此项。
         </span>
       </label>
 
-      <div>
-        <p className={styles.mutedText}>
-          点击&ldquo;扫码登录&rdquo;弹出二维码，用 115 App 扫码确认后即可关闭弹窗，等待保存数据源。
-        </p>
-        <button
-          type="button"
-          className={styles.primaryButton}
-          disabled={isSaving || startPending}
-          onClick={openQrDialog}
-        >
-          {startPending ? '生成二维码…' : pending ? '重新扫码' : '扫码登录'}
-        </button>
-      </div>
+      {tab === 'qr' ? (
+        <div>
+          <p className={styles.mutedText}>
+            点击"扫码登录"弹出二维码，用 115 App 扫码确认后即可关闭弹窗，等待保存数据源。
+          </p>
+          <button
+            type="button"
+            className={styles.primaryButton}
+            disabled={isSaving || startPending}
+            onClick={openQrDialog}
+          >
+            {startPending ? '生成二维码…' : pending && pending.mode === 'qr' ? '重新扫码' : '扫码登录'}
+          </button>
+        </div>
+      ) : (
+        <div>
+          <label className={styles.fieldLabel} style={{ display: 'block' }}>
+            完整 cookie header
+            <textarea
+              className={styles.textarea}
+              rows={4}
+              placeholder="UID=...; CID=...; SEID=...; KID=..."
+              value={cookieDraft}
+              disabled={isSaving}
+              onChange={(e) => setCookieDraft(e.target.value)}
+            />
+            <span className={styles.fieldHelpText}>
+              从浏览器 115.com 已登录页面 DevTools → Application → Cookies 复制完整 cookie 字符串；
+              必须包含 <code>UID=</code> 段（缺失会被后端拒绝）。手填凭据保存后不由服务端探活，
+              建议随后在详情抽屉里用「健康检查」确认可用。
+            </span>
+          </label>
+        </div>
+      )}
 
       {pendingSummary ? (
         <InlineBanner variant="success" title="凭据已就绪" description={pendingSummary} />
@@ -113,7 +169,7 @@ export function Pan115CreateCredentialsSection({
         <InlineBanner
           variant="info"
           title="尚未提供凭据"
-          description="数据源会先创建，但若没有完成扫码，需要在详情抽屉里重新激活。"
+          description="数据源会先创建，但若没有完成扫码或填写 cookie，需要在详情抽屉里重新激活。"
         />
       )}
 
