@@ -320,3 +320,30 @@ export interface RawRequestManageMediaItemScrapeResponse {
   status: string;
   fingerprint: string;
 }
+
+/**
+ * `GET /api/manage/media-items/{id}/provider-search` 的后端 wire。
+ *
+ * ★PROVIDER-SEARCH-MAPPER（2026-11-04）：后端 `ManagedProviderCandidateDto`
+ * （`crates/fmby-v2-http/src/dto/manage_media_scrape.rs:108-120`）是**裸派生、
+ * 无 `rename_all`** ⇒ wire 字段是 snake_case，且 `external_ids` 是**数组**。
+ * 此前该端点是全仓唯一「直接 return raw」的读端点，导致域字段恒 undefined。
+ */
+export interface RawManageMediaItemProviderSearchCandidate {
+  provider: string;
+  entity_type: string;
+  provider_item_id: string;
+  title: string;
+  original_title?: string | null;
+  year?: number | null;
+  overview?: string | null;
+  confidence: number;
+  external_ids?: RawManageMediaExternalId[];
+  evidence_json?: unknown;
+}
+
+export interface RawManageMediaItemProviderSearchResponse {
+  provider: string;
+  query: string;
+  candidates: RawManageMediaItemProviderSearchCandidate[];
+}
