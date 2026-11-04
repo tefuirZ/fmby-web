@@ -76,9 +76,13 @@ export function MountDrawer({
     if (activateAttemptedRef.current === detail.mount.id) return;
     if (!pan115Pending) return;
     activateAttemptedRef.current = detail.mount.id;
-    const payload = pan115Pending.mode === 'qr'
-      ? { mountId: detail.mount.id, sessionId: pan115Pending.sessionId, cookieApp: pan115Pending.cookieApp }
-      : { mountId: detail.mount.id, cookieHeader: pan115Pending.cookieHeader };
+    // ★PAN115-QR-ONLY：pending 只剩扫码一种模式（手填 cookie 分支已移除，见
+    // Pan115CreateCredentialsSection 头注）。
+    const payload = {
+      mountId: detail.mount.id,
+      sessionId: pan115Pending.sessionId,
+      cookieApp: pan115Pending.cookieApp,
+    };
     pan115Api.activate(payload).catch((err) => {
       // activate 失败不影响 mount 创建成功的状态；详情抽屉里可重试，
       // 所以这里不打扰用户，只在开发态留一条线索。
