@@ -80,9 +80,16 @@ export function MountDrawer({
       ? { mountId: detail.mount.id, sessionId: pan115Pending.sessionId, cookieApp: pan115Pending.cookieApp }
       : { mountId: detail.mount.id, cookieHeader: pan115Pending.cookieHeader };
     pan115Api.activate(payload).catch((err) => {
-      // activate 失败不影响 mount 创建成功的状态；详情抽屉里可重试，
-      // 所以这里不打扰用户，只在开发态留一条线索。
+      // activate 失败不影响 mount 创建成功的状态；详情抽屉里可重试。
+      // ★但不能**静默**：本卡新增的「手填 cookie」入口让「cookie 缺 UID= ⇒ 400 拒绝」
+      //   成为一条常见路径，只记日志会让用户以为绑定成功。
+      //   独立评审（codex/gpt-6-astra, PR#168）IMPORTANT 项。
       logger.warn('[pan115] 自动激活失败，挂载已创建，可在详情抽屉里重试', err);
+      setBanner({
+        variant: 'error',
+        title: '115 凭据未激活',
+        description: `数据源已创建，但凭据绑定失败：${getErrorMessage(err)}。请打开该数据源的详情抽屉，检查 cookie 后重试。`,
+      });
     });
   }, [createMountMutation.data, pan115Pending]);
   // 关闭抽屉时清掉本地状态
