@@ -77,6 +77,11 @@ export function Pan115CreateCredentialsSection({
   }, [cookieDraft, tab]);
 
   const switchTab = (next: 'qr' | 'cookie') => {
+    // ★重复点当前 tab 必须**无操作**：`setTab(next)` 值不变 ⇒ 下面的 effect
+    // （依赖 `[cookieDraft, tab]`）不会重跑，若这里照清 `pending`，用户已填好的
+    // 手填 cookie 就被静默丢弃（保存时不再 activate，等于白填）。
+    // 独立评审（codex/gpt-6-astra, PR#168）抓到的反例。
+    if (next === tab) return;
     setTab(next);
     onPendingChange(null);
   };
